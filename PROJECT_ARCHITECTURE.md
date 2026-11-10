@@ -55,6 +55,8 @@ battlitaire/
 * **敵:** 種類、HP、次の行動の予告（例: 攻撃10）。
 * **フェーズ:** 何フェーズ目か、このフェーズの行動回数と残り、いまの段階（段取り中／攻防中／決着）。
 * **設定（調整値）:** スートの数、各スートの枚数、列の数、見える枚数、基本の行動回数、倍率の式に使う値、力こぶの換算（5ごとに+1行動、最大+2）、城と敵の数値など。ルール層の設定のファイル1か所にまとめる。
+* **画面の操作の途中の状態:** 選択中の山札など、画面の操作の途中の状態はルール層の状態に入れず、シーンが持つ。
+* **並びの向き:** 山札は `cards[0]` が一番上、列は `[0]` が一番下。
 * **乱数:** ゲームを作るときに外から渡す乱数の関数。ルール層はこれだけを使う。
 * **操作の結果:** めくる・置く・放つ・攻防などの操作は、状態を変えるとともに「何が起きたか」（めくったカード、置いた先、放った束の内訳と倍率、攻防の出来事の並び など）を返す。演出はこの結果を見て動く。
 
@@ -75,7 +77,7 @@ battlitaire/
 5. 決着していなければ、次のフェーズへ（1に戻る）。
 
 **1ティックの中での役割**
-* `onPointer`・`onKeyDown`: シーンが入力を受け、ルール層の操作を呼び、結果を `anim` に渡す。
+* `onPointer`・`onKeyDown`: シーンが入力を受け、ルール層の操作を呼び、結果を `anim` に渡す。ポインタ入力は `onPointer` の `'down'` で受け、当たり判定は `js/view/layout.js` の `hitTest` で行う（`Engine.addButton` は使わない）。
 * `update(dt)`: シーンが `anim` の時間を進める。ルール層の状態は変えない。
 * `draw(ctx, layer, time)`: シーンが `view` を呼び、ルール層の状態と `anim` の見た目の値から描く。状態は変えない。
 
@@ -95,8 +97,28 @@ battlitaire/
 | `js/ui/` | 土台から残したバーチャルパッドの定義と描画（このゲームでは使う予定がない） | ゲーム固有の処理 |
 | `assets/` | 画像・音・スプライトJS | 書き出したスプライトJSの手編集（憲法3章） |
 
-**土台から残したファイル（立ち上げ時点）**
-* `js/main.js`: 起動。boot 画面の次（`next`）は、まだ空のシーン。
+**作成済みのファイル（Phase01-01）**
+
+| ファイル | 責務 |
+| --- | --- |
+| `js/rules/config.js` | ルールの調整値（`RULES`）を1か所に凍結して持つ |
+| `js/rules/card.js` | カードのデータ構造と生成 |
+| `js/rules/shuffle.js` | 外から渡された乱数で配列を混ぜる |
+| `js/rules/piles.js` | 山札・捨て札の生成、一番上を取る、空の山札の補充 |
+| `js/rules/columns.js` | 列の生成と、置けるかの判定 |
+| `js/rules/release.js` | 放った束のゲージ加算量の計算（純粋関数） |
+| `js/rules/Game.js` | ゲーム全体の状態と操作（置く・捨てる・放つ）、問い合わせ |
+| `js/view/suitStyle.js` | スート・ゲージの見た目（絵文字・色・表示名） |
+| `js/view/layout.js` | 画面の配置（座標）と、座標から何に当たるかの判定（`hitTest`） |
+| `js/view/cardView.js` | カード面・空き枠・強調枠の描画、角丸パス |
+| `js/view/deckView.js` | 山札・捨て札の描画 |
+| `js/view/columnView.js` | 列と放つボタンの描画 |
+| `js/view/hudView.js` | ゲージと行動回数のパネルの描画 |
+| `js/view/boardView.js` | 盤面全体の描画の取りまとめ |
+| `js/scenes/BoardScene.js` | 盤面のシーン。入力を受けてルール層の操作を呼び、盤面を描く |
+
+**土台から残したファイル**
+* `js/main.js`: 起動。boot 画面の次（`next`）は `BoardScene`。乱数の関数として `Math.random` を渡す。`virtualPad` は `false`。
 * `js/scenes/BootScene.js`: 最初の入力を受ける画面（「TAP SCREEN」）。
 * `js/scenes/MenuScene.js`: プレイ中に開く、項目が縦に並んだメニューの仕組み。項目は呼ぶ側から渡す。まだ使っていない。
-* `js/ui/virtualPadConfig.js`・`js/ui/virtualPadView.js`: バーチャルパッド。操作はタップとドラッグだけなので使わない予定。`js/main.js` の `virtualPad` は、まだ `true`（土台の既定値）のまま。
+* `js/ui/virtualPadConfig.js`・`js/ui/virtualPadView.js`: バーチャルパッド。操作はタップとドラッグだけなので使わない予定。`js/main.js` の `virtualPad` は `false`。
