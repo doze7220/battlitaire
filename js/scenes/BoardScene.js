@@ -1,8 +1,10 @@
 /**
  * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択中の山札を持ち、view を呼んで盤面を描くこと。
+ * 行動終了のボタンで攻防を呼び、結果の窓を積むこと。
  */
-import { Scene } from 'oz';
+import { Engine, Scene } from 'oz';
 import { Game } from '../rules/Game.js';
+import { BattleResultScene } from './BattleResultScene.js';
 import { createLayout } from '../view/layout.js';
 import { drawBoard } from '../view/boardView.js';
 
@@ -11,15 +13,18 @@ import { drawBoard } from '../view/boardView.js';
  * @property {{ width: number, height: number }} screen 解像度
  * @property {string} layer 描くレイヤー名
  * @property {() => number} random 乱数の関数（0以上1未満。ルール層へ渡す）
+ * @property {() => Scene} createTitle タイトルの画面のシーンを作る関数（結果の窓へ渡す）
  */
 
-/** 盤面を表示し、置く・捨てる・放つをタップ／クリックで行うシーン */
+/** 盤面を表示し、置く・捨てる・放つ・攻防への進行をタップ／クリックで行うシーン */
 export class BoardScene extends Scene {
   /**
    * @param {BoardOptions} options オプション
    */
-  constructor({ screen, layer, random }) {
+  constructor({ screen, layer, random, createTitle }) {
     super();
+    /** @type {() => Scene} タイトルの画面のシーンを作る関数 */
+    this.createTitle = createTitle;
     /** @type {{ width: number, height: number }} 解像度 */
     this.screen = screen;
     /** @type {string} 描くレイヤー名 */
@@ -32,7 +37,7 @@ export class BoardScene extends Scene {
     this.layout = null;
     /** @type {number|null} 選択中の山札の番号（選択なしは null） */
     this.selectedDeck = null;
-    /** @type {import('../rules/Game.js').PlaceResult|import('../rules/Game.js').DiscardResult|import('../rules/Game.js').ReleaseResult|null} 直近の操作の結果（Phase 2 の演出で使う。今は保持するだけ） */
+    /** @type {import('../rules/Game.js').PlaceResult|import('../rules/Game.js').DiscardResult|import('../rules/Game.js').ReleaseResult|import('../rules/Game.js').BattleResult|null} 直近の操作の結果（Phase 2 の演出で使う。今は保持するだけ） */
     this.lastResult = null;
   }
 
@@ -60,12 +65,22 @@ export class BoardScene extends Scene {
   onPointer(pointer) {
     if (pointer.type !== 'down') return;
     const game = this.game;
+    const hit = this.layout.hitTest(pointer.x, pointer.y);
     if (game.isOutOfActions()) {
       this.selectedDeck = null;
+      if (hit !== null && hit.kind === 'actionEnd' && game.canResolveBattle()) {
+        this.lastResult = game.resolveBattle();
+        Engine.pushScene(new BattleResultScene({
+          screen: this.screen,
+          layer: this.layer,
+          game,
+          result: this.lastResult,
+          createTitle: this.createTitle,
+        }));
+      }
       return;
     }
-    const hit = this.layout.hitTest(pointer.x, pointer.y);
-    if (hit === null) {
+    if (hit === null || hit.kind === 'actionEnd') {
       this.selectedDeck = null;
       return;
     }
@@ -120,6 +135,7 @@ export class BoardScene extends Scene {
       placeableColumns: selected !== null ? game.placeableColumns(selected) : [],
       releasable: game.columns.map((_, c) => game.canRelease(c)),
       outOfActions: game.isOutOfActions(),
+      battleReady: game.canResolveBattle(),
     };
     drawBoard(ctx, this.layout, game, ui);
   }

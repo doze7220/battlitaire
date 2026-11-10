@@ -9,8 +9,24 @@ import { BoardScene } from './scenes/BoardScene.js';
 const screen = { width: 1280, height: 720 };
 
 /**
+ * 盤面のシーンを作る（乱数の関数 Math.random とタイトルを作る関数を渡す）。
+ * @returns {Scene} 新しい盤面のシーン
+ */
+function createBoard() {
+  return new BoardScene({ screen, layer: 'main', random: Math.random, createTitle });
+}
+
+/**
+ * タイトルの画面（boot 画面）を作る。進む先は盤面のシーンを作る関数。
+ * @returns {Scene} 新しいタイトルの画面
+ */
+function createTitle() {
+  return new BootScene({ screen, layer: 'main', next: createBoard });
+}
+
+/**
  * Engine.start に渡す設定。tickRate は書かない（既定の 60）。
- * scene: 最初の画面は boot 画面。next が次に進む画面（盤面のシーン）を作る関数で、乱数の関数 Math.random をここから渡す。
+ * scene: 最初の画面はタイトル（boot 画面）。決着後もここへ戻る。タイトルの next は盤面のシーンを作る関数で、盤面のシーンにはタイトルを作る関数を渡す。
  * virtualPad: バーチャルパッドを使うなら true。false にすると表示も画像の読み込みもしない（今は使わないので false）。
  * @type {{canvas: HTMLCanvasElement, width: number, height: number, layers: string[], scene: Scene, debug?: boolean, virtualPad?: boolean}}
  */
@@ -19,9 +35,8 @@ const config = {
   width: screen.width,
   height: screen.height,
   layers: ['main'],
-  scene: new BootScene({ screen, layer: 'main', next: () => new BoardScene({ screen, layer: 'main', random: Math.random }) }),
+  scene: createTitle(),
   virtualPad: false,
 };
-
 
 Engine.start(config);
