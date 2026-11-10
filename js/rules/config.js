@@ -1,4 +1,4 @@
-/** ルールの調整値（スート・数字の範囲・列の数・行動回数・倍率の式の係数）を1か所に集める設定ファイル。 */
+/** ルールの調整値（スート・数字の範囲・列の数・行動回数・倍率の式の係数、城・敵の数値、敵の行動、力こぶの換算）を1か所に集める設定ファイル。 */
 
 /**
  * ルールの調整値。
@@ -12,6 +12,11 @@
  * @property {readonly string[]} gauges ゲージの識別子。ゲージの並び順でもある。
  * @property {Readonly<Object<string, string>>} suitGauge スートの識別子から、加算先のゲージの識別子への対応。
  * @property {Readonly<{base: number, perCard: number}>} releaseMultiplier 放ったときの倍率の式の係数。倍率 = base + perCard × 同スート区切りの枚数。
+ * @property {number} castleMaxHp 城の最大 HP（ゲーム開始時の HP でもある）。
+ * @property {number} enemyMaxHp 敵の最大 HP（ゲーム開始時の HP でもある）。
+ * @property {Readonly<{kind: string, amount: number}>} enemyAction 敵が毎フェーズ予告する行動。kind は行動の種類、amount はその量。
+ * @property {readonly string[]} keptGauges フェーズをまたいで値を残すゲージの識別子。
+ * @property {Readonly<{gauge: string, per: number, maxBonus: number}>} muscleConversion 力こぶの換算。gauge のゲージが per ごとに行動回数 +1、最大 maxBonus。
  */
 
 /**
@@ -33,4 +38,9 @@ export const RULES = Object.freeze({
     muscle: 'muscle',
   }),
   releaseMultiplier: Object.freeze({ base: 0, perCard: 1 }),
+  castleMaxHp: 50,
+  enemyMaxHp: 100,
+  enemyAction: Object.freeze({ kind: 'attack', amount: 10 }),
+  keptGauges: Object.freeze(['muscle']),
+  muscleConversion: Object.freeze({ gauge: 'muscle', per: 5, maxBonus: 2 }),
 });
