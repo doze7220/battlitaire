@@ -1,12 +1,12 @@
 /**
- * 責務: 城・敵の状態の生成と、敵の次の行動の決定（ルール層。画面・エンジンには触れない）。
+ * 責務: 城・敵の状態の生成と、敵の次の行動の決定（渡された乱数で。ルール層。画面・エンジンには触れない）。
  */
 
 /**
  * 敵の行動（予告にも使う）。
  * @typedef {Object} EnemyAction
- * @property {string} kind 行動の種類（今は 'attack' だけ）
- * @property {number} amount 行動の量（攻撃なら攻撃の値）
+ * @property {'attack'|'defend'} kind 行動の種類（攻撃・防御）
+ * @property {number} amount 行動の量（攻撃なら攻撃の値、防御なら防御の値）
  */
 
 /**
@@ -43,10 +43,20 @@ export function createEnemy(config) {
 }
 
 /**
- * 敵の次の行動を決める。今は毎回 `config.enemyAction` の写しを返す。
- * @param {{ enemyAction: { kind: string, amount: number } }} config ルールの設定
- * @returns {EnemyAction} 新しい行動オブジェクト
+ * 敵の次の行動を、設定の重みと渡された乱数で決める。`random()` は1回だけ呼ぶ。
+ * @param {{ enemyActions: ReadonlyArray<{ kind: string, amount: number, weight: number }> }} config ルールの設定
+ * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @returns {EnemyAction} 新しい行動オブジェクト（重みは含まない）
  */
-export function planEnemyAction(config) {
-  return { kind: config.enemyAction.kind, amount: config.enemyAction.amount };
+export function planEnemyAction(config, random) {
+  const specs = config.enemyActions;
+  const total = specs.reduce((sum, spec) => sum + spec.weight, 0);
+  const r = random() * total;
+  let acc = 0;
+  for (const spec of specs) {
+    acc += spec.weight;
+    if (acc > r) return { kind: spec.kind, amount: spec.amount };
+  }
+  const last = specs[specs.length - 1];
+  return { kind: last.kind, amount: last.amount };
 }
