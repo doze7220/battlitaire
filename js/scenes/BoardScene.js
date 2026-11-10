@@ -32,7 +32,7 @@ export class BoardScene extends Scene {
     this.layout = null;
     /** @type {number|null} 選択中の山札の番号（選択なしは null） */
     this.selectedDeck = null;
-    /** @type {object|null} 直近の操作の結果（Phase 2 の演出で使う。今は保持するだけ） */
+    /** @type {import('../rules/Game.js').PlaceResult|import('../rules/Game.js').DiscardResult|import('../rules/Game.js').ReleaseResult|null} 直近の操作の結果（Phase 2 の演出で使う。今は保持するだけ） */
     this.lastResult = null;
   }
 
