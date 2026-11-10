@@ -1,12 +1,15 @@
 /**
- * 責務: ゲーム全体の状態（山札・捨て札・列・ゲージ・行動回数）の保持と、
- * 問い合わせ・操作（置く・捨てる・放つ）の提供。操作は「何が起きたか」を返す。
+ * 責務: ゲーム全体の状態（山札・捨て札・列・ゲージ・行動回数・フェーズと段階・城・敵）の保持と、
+ * 問い合わせ・操作（置く・捨てる・放つ・攻防・次のフェーズ）の提供。操作は「何が起きたか」を返す。
  */
 
 import { RULES } from './config.js';
 import { createDecks, takeTop, refillEmptyDecks } from './piles.js';
 import { createColumns, placeableColumnIndices } from './columns.js';
 import { computeRelease } from './release.js';
+import { createCastle, createEnemy, planEnemyAction } from './combatants.js';
+import { computeBattle } from './battle.js';
+import { computePhaseStart } from './phase.js';
 
 /**
  * 「置く」操作の結果。
@@ -42,6 +45,30 @@ import { computeRelease } from './release.js';
  */
 
 /**
+ * 「攻防」操作の結果。
+ * @typedef {Object} BattleResult
+ * @property {'battle'} type 操作の種類
+ * @property {import('./combatants.js').EnemyAction} enemyAction この攻防での敵の行動
+ * @property {import('./battle.js').BattleEvent[]} events 出来事の並び（起きた順）
+ * @property {number} castleHp 攻防の後の城の HP
+ * @property {number} enemyHp 攻防の後の敵の HP
+ * @property {'win'|'lose'|null} outcome 決着（決着していなければ null）
+ */
+
+/**
+ * 「次のフェーズ」操作の結果。
+ * @typedef {Object} NextPhaseResult
+ * @property {'nextPhase'} type 操作の種類
+ * @property {number} phase 新しいフェーズの番号
+ * @property {number} bonusActions 力こぶの換算で増えた行動回数
+ * @property {number} muscleSpent 換算で使った力こぶの量
+ * @property {number} muscleLeft 換算後に残った力こぶの量
+ * @property {number} actionsMax このフェーズの行動回数
+ * @property {number} actionsLeft 残りの行動回数（フェーズの頭では actionsMax と同じ）
+ * @property {import('./combatants.js').EnemyAction} enemyAction 敵の次の行動の予告
+ */
+
+/**
  * ゲーム全体の状態と操作。列は `[0]` が一番下、山札は `cards[0]` が一番上。
  */
 export class Game {
@@ -74,6 +101,17 @@ export class Game {
     this.actionsLeft = config.baseActions;
     /** @type {number} 列に積める最大の枚数（読み取り用） */
     this.maxColumnLength = config.maxRank - config.minRank + 1;
+    /** @type {number} 今のフェーズの番号（1から） */
+    this.phase = 1;
+    /** @type {'planning'|'result'|'over'} 段階（段取り中・攻防の結果を見ている・決着） */
+    this.stage = 'planning';
+    /** @type {'win'|'lose'|null} 決着（決着前は null） */
+    this.outcome = null;
+    /** @type {import('./combatants.js').Castle} 城 */
+    this.castle = createCastle(config);
+    /** @type {import('./combatants.js').Enemy} 敵 */
+    this.enemy = createEnemy(config);
+    this.enemy.intent = planEnemyAction(config);
   }
 
   /**
@@ -108,7 +146,7 @@ export class Game {
    * @returns {boolean} 選べるなら `true`
    */
   canSelectDeck(d) {
-    return !this.isOutOfActions() && this.decks[d].cards.length > 0;
+    return this.stage === 'planning' && !this.isOutOfActions() && this.decks[d].cards.length > 0;
   }
 
   /**
@@ -136,7 +174,31 @@ export class Game {
    * @returns {boolean} 放てるなら `true`
    */
   canRelease(c) {
-    return !this.isOutOfActions() && this.columns[c].length > 0;
+    return this.stage === 'planning' && !this.isOutOfActions() && this.columns[c].length > 0;
+  }
+
+  /**
+   * 攻防に入れるか（段取り中で、行動回数が0）。
+   * @returns {boolean} 入れるなら `true`
+   */
+  canResolveBattle() {
+    return this.stage === 'planning' && this.isOutOfActions();
+  }
+
+  /**
+   * 次のフェーズに進めるか（攻防の結果を見ている段階）。
+   * @returns {boolean} 進めるなら `true`
+   */
+  canStartNextPhase() {
+    return this.stage === 'result';
+  }
+
+  /**
+   * 決着したか。
+   * @returns {boolean} 決着していれば `true`
+   */
+  isOver() {
+    return this.stage === 'over';
   }
 
   /**
@@ -184,5 +246,66 @@ export class Game {
     this.actionsLeft -= 1;
     const refills = refillEmptyDecks(this.decks, this.discard, this.random);
     return { type: 'release', columnIndex: c, cards, segments, gains, actionsLeft: this.actionsLeft, refills };
+  }
+
+  /**
+   * 攻防を計算し、城・敵の HP と段階を更新する。条件を満たさなければ何もしない。
+   * 決着しなければ段階は 'result'、決着したら 'over' になる。
+   * @returns {BattleResult|null} 結果。攻防に入れなければ `null`
+   */
+  resolveBattle() {
+    if (!this.canResolveBattle()) return null;
+    const enemyAction = this.enemy.intent;
+    const calc = computeBattle({
+      attack: this.gauges.attack ?? 0,
+      defense: this.gauges.defense ?? 0,
+      heal: this.gauges.heal ?? 0,
+      enemyAttack: enemyAction.amount,
+      castleHp: this.castle.hp,
+      castleMaxHp: this.castle.maxHp,
+      enemyHp: this.enemy.hp,
+    });
+    this.castle.hp = calc.castleHp;
+    this.enemy.hp = calc.enemyHp;
+    if (calc.outcome === null) {
+      this.stage = 'result';
+    } else {
+      this.stage = 'over';
+      this.outcome = calc.outcome;
+    }
+    return {
+      type: 'battle',
+      enemyAction: { kind: enemyAction.kind, amount: enemyAction.amount },
+      events: calc.events,
+      castleHp: calc.castleHp,
+      enemyHp: calc.enemyHp,
+      outcome: calc.outcome,
+    };
+  }
+
+  /**
+   * 次のフェーズを始める（ゲージの戻し・力こぶの換算・行動回数・敵の予告）。条件を満たさなければ何もしない。
+   * 山札・列・捨て札・城と敵の HP には触れない。
+   * @returns {NextPhaseResult|null} 結果。進めなければ `null`
+   */
+  startNextPhase() {
+    if (!this.canStartNextPhase()) return null;
+    const start = computePhaseStart(this.gauges, this.config);
+    this.phase += 1;
+    this.gauges = start.gauges;
+    this.actionsMax = start.actions;
+    this.actionsLeft = start.actions;
+    this.enemy.intent = planEnemyAction(this.config);
+    this.stage = 'planning';
+    return {
+      type: 'nextPhase',
+      phase: this.phase,
+      bonusActions: start.bonusActions,
+      muscleSpent: start.muscleSpent,
+      muscleLeft: this.gauges[this.config.muscleConversion.gauge],
+      actionsMax: this.actionsMax,
+      actionsLeft: this.actionsLeft,
+      enemyAction: { kind: this.enemy.intent.kind, amount: this.enemy.intent.amount },
+    };
   }
 }
