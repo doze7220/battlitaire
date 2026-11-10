@@ -1,48 +1,17 @@
 /**
- * 責務: ゲーム全体の状態（山札・捨て札・列・ゲージ・行動回数・フェーズと段階・城・敵）の保持と、
- * 問い合わせ・操作（置く・捨てる・放つ・攻防・次のフェーズ）の提供。操作は「何が起きたか」を返す。
+ * 責務: ゲーム全体の状態（山札・捨て札・列・手札・ゲージ・行動回数・フェーズと段階・城・敵）の保持と、
+ * 問い合わせ・操作（置く・捨てる・放つ・手札に入れる・手札から置く・束を移す・攻防・次のフェーズ）の提供。
+ * 操作は「何が起きたか」を返す。
  */
 
 import { RULES } from './config.js';
 import { createDecks, takeTop, refillEmptyDecks } from './piles.js';
-import { createColumns, placeableColumnIndices } from './columns.js';
+import { createColumns, placeableColumnIndices, runStartIndex } from './columns.js';
+import { createHand, isEmptySlot, hasCardInSlot } from './hand.js';
 import { computeRelease } from './release.js';
 import { createCastle, createEnemy, planEnemyAction } from './combatants.js';
 import { computeBattle } from './battle.js';
 import { computePhaseStart } from './phase.js';
-
-/**
- * 「置く」操作の結果。
- * @typedef {Object} PlaceResult
- * @property {'place'} type 操作の種類
- * @property {number} deckIndex 取った山札の番号
- * @property {number} columnIndex 置いた列の番号
- * @property {import('./card.js').Card} card 置いたカード
- * @property {number} actionsLeft 操作後の残り行動回数
- * @property {import('./piles.js').Refill[]} refills 操作後に起きた補充
- */
-
-/**
- * 「捨てる」操作の結果。
- * @typedef {Object} DiscardResult
- * @property {'discard'} type 操作の種類
- * @property {number} deckIndex 捨てた山札の番号
- * @property {import('./card.js').Card} card 捨てたカード
- * @property {number} actionsLeft 操作後の残り行動回数
- * @property {import('./piles.js').Refill[]} refills 操作後に起きた補充
- */
-
-/**
- * 「放つ」操作の結果。
- * @typedef {Object} ReleaseResult
- * @property {'release'} type 操作の種類
- * @property {number} columnIndex 放った列の番号
- * @property {import('./card.js').Card[]} cards 放ったカード（列の下から順）
- * @property {import('./release.js').ReleaseSegment[]} segments 区切りごとの計算結果
- * @property {Object<string, number>} gains ゲージごとの加算量
- * @property {number} actionsLeft 操作後の残り行動回数
- * @property {import('./piles.js').Refill[]} refills 操作後に起きた補充
- */
 
 /**
  * 「攻防」操作の結果。
@@ -92,6 +61,8 @@ export class Game {
     this.discard = [];
     /** @type {import('./card.js').Card[][]} 列 */
     this.columns = createColumns(config.columnCount);
+    /** @type {import('./hand.js').Hand} 手札（枠ごとにカードか `null`）。フェーズをまたいで残る */
+    this.hand = createHand(config.handSize);
     /** @type {Object<string, number>} ゲージ（`config.gauges` の順） */
     this.gauges = {};
     for (const gauge of config.gauges) this.gauges[gauge] = 0;
@@ -99,8 +70,6 @@ export class Game {
     this.actionsMax = config.baseActions;
     /** @type {number} 残りの行動回数 */
     this.actionsLeft = config.baseActions;
-    /** @type {number} 列に積める最大の枚数（読み取り用） */
-    this.maxColumnLength = config.maxRank - config.minRank + 1;
     /** @type {number} 今のフェーズの番号（1から） */
     this.phase = 1;
     /** @type {'planning'|'result'|'over'} 段階（段取り中・攻防の結果を見ている・決着） */
@@ -111,7 +80,7 @@ export class Game {
     this.castle = createCastle(config);
     /** @type {import('./combatants.js').Enemy} 敵 */
     this.enemy = createEnemy(config);
-    this.enemy.intent = planEnemyAction(config);
+    this.enemy.intent = planEnemyAction(config, random);
   }
 
   /**
@@ -156,7 +125,7 @@ export class Game {
    */
   placeableColumns(d) {
     if (!this.canSelectDeck(d)) return [];
-    return placeableColumnIndices(this.columns, this.decks[d].cards[0]);
+    return placeableColumnIndices(this.columns, this.decks[d].cards[0], this.config);
   }
 
   /**
@@ -166,6 +135,59 @@ export class Game {
    */
   canDiscard(d) {
     return this.canSelectDeck(d) && this.placeableColumns(d).length === 0;
+  }
+
+  /**
+   * 山札の一番上のカードを手札の空き枠に入れられるか（山札を選べて、枠が空いている）。
+   * @param {number} d 山札の番号
+   * @param {number} s 手札の枠の番号
+   * @returns {boolean} 入れられるなら `true`
+   */
+  canHold(d, s) {
+    return this.canSelectDeck(d) && isEmptySlot(this.hand, s);
+  }
+
+  /**
+   * 手札の枠のカードを選べるか（段取り中で、行動が残り、枠にカードがある）。
+   * @param {number} s 手札の枠の番号
+   * @returns {boolean} 選べるなら `true`
+   */
+  canSelectHandSlot(s) {
+    return this.stage === 'planning' && !this.isOutOfActions() && hasCardInSlot(this.hand, s);
+  }
+
+  /**
+   * 手札の枠のカードを置ける列の番号を返す。
+   * @param {number} s 手札の枠の番号
+   * @returns {number[]} 置ける列の番号。選べなければ空配列
+   */
+  handPlaceableColumns(s) {
+    if (!this.canSelectHandSlot(s)) return [];
+    return placeableColumnIndices(this.columns, this.hand[s], this.config);
+  }
+
+  /**
+   * 列の `i` 番目から上を束として選べるか（段取り中で、行動が残り、置ける並びが続いている）。
+   * @param {number} c 列の番号
+   * @param {number} i 束の一番下にするカードの位置（列の下から数えた番号）
+   * @returns {boolean} 選べるなら `true`
+   */
+  canSelectRun(c, i) {
+    if (this.stage !== 'planning' || this.isOutOfActions()) return false;
+    const column = this.columns[c];
+    if (!column || !Number.isInteger(i)) return false;
+    return runStartIndex(column, this.config) <= i && i < column.length;
+  }
+
+  /**
+   * 束を移せる列の番号を返す（元の列は含めない。空いた列は含む）。
+   * @param {number} c 束の元の列の番号
+   * @param {number} i 束の一番下の位置
+   * @returns {number[]} 移せる列の番号。束を選べなければ空配列
+   */
+  runTargetColumns(c, i) {
+    if (!this.canSelectRun(c, i)) return [];
+    return placeableColumnIndices(this.columns, this.columns[c][i], this.config).filter((to) => to !== c);
   }
 
   /**
@@ -205,7 +227,7 @@ export class Game {
    * 山札の一番上のカードを列に置く。条件を満たさなければ何もしない。
    * @param {number} d 山札の番号
    * @param {number} c 列の番号
-   * @returns {PlaceResult|null} 結果。置けなければ `null`
+   * @returns {import('./planningResults.js').PlaceResult|null} 結果。置けなければ `null`
    */
   place(d, c) {
     if (!this.placeableColumns(d).includes(c)) return null;
@@ -219,7 +241,7 @@ export class Game {
   /**
    * 山札の一番上のカードを捨て札に捨てる。条件を満たさなければ何もしない。
    * @param {number} d 山札の番号
-   * @returns {DiscardResult|null} 結果。捨てられなければ `null`
+   * @returns {import('./planningResults.js').DiscardResult|null} 結果。捨てられなければ `null`
    */
   discardTop(d) {
     if (!this.canDiscard(d)) return null;
@@ -231,9 +253,54 @@ export class Game {
   }
 
   /**
+   * 山札の一番上のカードを手札の空き枠に入れる。条件を満たさなければ何もしない。
+   * @param {number} d 山札の番号
+   * @param {number} s 手札の枠の番号
+   * @returns {import('./planningResults.js').HoldResult|null} 結果。入れられなければ `null`
+   */
+  hold(d, s) {
+    if (!this.canHold(d, s)) return null;
+    const card = takeTop(this.decks[d]);
+    this.hand[s] = card;
+    this.actionsLeft -= 1;
+    const refills = refillEmptyDecks(this.decks, this.discard, this.random);
+    return { type: 'hold', deckIndex: d, slotIndex: s, card, actionsLeft: this.actionsLeft, refills };
+  }
+
+  /**
+   * 手札の枠のカードを列に置く。条件を満たさなければ何もしない。
+   * @param {number} s 手札の枠の番号
+   * @param {number} c 列の番号
+   * @returns {import('./planningResults.js').HandPlaceResult|null} 結果。置けなければ `null`
+   */
+  placeFromHand(s, c) {
+    if (!this.handPlaceableColumns(s).includes(c)) return null;
+    const card = this.hand[s];
+    this.columns[c].push(card);
+    this.hand[s] = null;
+    this.actionsLeft -= 1;
+    return { type: 'placeFromHand', slotIndex: s, columnIndex: c, card, actionsLeft: this.actionsLeft };
+  }
+
+  /**
+   * 列の `i` 番目から上の束を、並びを保ったまま別の列へ移す。条件を満たさなければ何もしない。
+   * @param {number} c 元の列の番号
+   * @param {number} i 束の一番下の位置
+   * @param {number} to 移し先の列の番号
+   * @returns {import('./planningResults.js').MoveResult|null} 結果。移せなければ `null`
+   */
+  moveRun(c, i, to) {
+    if (!this.runTargetColumns(c, i).includes(to)) return null;
+    const cards = this.columns[c].splice(i);
+    this.columns[to].push(...cards);
+    this.actionsLeft -= 1;
+    return { type: 'move', fromColumn: c, fromIndex: i, toColumn: to, cards, actionsLeft: this.actionsLeft };
+  }
+
+  /**
    * 列のカードをすべて放ち、ゲージに加算して捨て札に移す。条件を満たさなければ何もしない。
    * @param {number} c 列の番号
-   * @returns {ReleaseResult|null} 結果。放てなければ `null`
+   * @returns {import('./planningResults.js').ReleaseResult|null} 結果。放てなければ `null`
    */
   release(c) {
     if (!this.canRelease(c)) return null;
@@ -260,7 +327,7 @@ export class Game {
       attack: this.gauges.attack ?? 0,
       defense: this.gauges.defense ?? 0,
       heal: this.gauges.heal ?? 0,
-      enemyAttack: enemyAction.amount,
+      enemyAction: { kind: enemyAction.kind, amount: enemyAction.amount },
       castleHp: this.castle.hp,
       castleMaxHp: this.castle.maxHp,
       enemyHp: this.enemy.hp,
@@ -295,7 +362,7 @@ export class Game {
     this.gauges = start.gauges;
     this.actionsMax = start.actions;
     this.actionsLeft = start.actions;
-    this.enemy.intent = planEnemyAction(this.config);
+    this.enemy.intent = planEnemyAction(this.config, this.random);
     this.stage = 'planning';
     return {
       type: 'nextPhase',
