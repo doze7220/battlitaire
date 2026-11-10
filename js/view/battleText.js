@@ -9,8 +9,10 @@
  */
 const EVENT_LABELS = Object.freeze({
   enemyAttack: '敵の攻撃',
+  enemyDefend: '敵の防御',
   block: '防御で相殺',
   castleDamage: '城が受けたダメージ',
+  enemyBlock: '敵の防御で相殺',
   enemyDamage: '敵に与えたダメージ',
   heal: '城の回復',
 });
@@ -30,6 +32,7 @@ const OUTCOME_LABELS = Object.freeze({
  */
 const ACTION_LABELS = Object.freeze({
   attack: '攻撃',
+  defend: '防御',
 });
 
 /** 未知の行動の種類の表示名 */
