@@ -1,4 +1,4 @@
-/** 山札と捨て札のデータ構造・生成・一番上の取り出し・空の山札の補充を担う。 */
+/** 山札のデータ構造と生成・一番上の取り出し・捨て札からの空の山札の補充を担う。 */
 
 import { createCard } from './card.js';
 import { shuffle } from './shuffle.js';
