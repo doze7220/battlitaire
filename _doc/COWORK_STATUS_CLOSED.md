@@ -10,3 +10,5 @@
 * Phaseクローズのたびに、`COWORK_STATUS.md`側で「解決済み」に仕分けられた項目をここへ追記していく（追記型。既存の記載内容は変更しない）。
 
 ---
+
+* **index.html 1ファイルで作る案の置き換え**（2026-11-10 解決）: アイデアメモ11章の「1日目は index.html の1ファイルで作る」は採らず、OZ Engine と `PROJECT_ARCHITECTURE.md` の構成（`js/rules/`・`js/view/`・`js/scenes/`）で盤面と段取りを作った。REQ: `_log/req/261110_2149_Phase01-01_盤面と段取り.md`、RES: `_log/res/261110_2149_RES_Phase01-01_盤面と段取り.md`。
