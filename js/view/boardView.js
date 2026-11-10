@@ -1,11 +1,12 @@
 /**
- * 責務: 盤面全体の描画の取りまとめ（背景を塗り、山札・捨て札・列・放つボタン・HUD の部品を配置に従って順に呼ぶ）。
+ * 責務: 盤面全体の描画の取りまとめ（背景を塗り、山札・捨て札・列・放つボタン・HUD・状況の帯の部品を配置に従って順に呼ぶ）。
  * ゲームの状態は読むだけで変えず、ルールの判定は行わない。
  */
 
 import { drawDeck, drawDiscard } from './deckView.js';
 import { drawColumn, drawReleaseButton } from './columnView.js';
 import { drawHud } from './hudView.js';
+import { drawStatus } from './statusView.js';
 
 const BACKGROUND_COLOR = '#1f3a2e';
 
@@ -17,6 +18,7 @@ const BACKGROUND_COLOR = '#1f3a2e';
  * @property {number[]} placeableColumns 強調する（置ける）列の番号
  * @property {boolean[]} releasable 列ごとの「放つ」が押せるか
  * @property {boolean} outOfActions 行動を使い切ったか
+ * @property {boolean} battleReady 「行動終了」を押して攻防へ進めるか
  */
 
 /**
@@ -46,5 +48,6 @@ export function drawBoard(ctx, layout, game, ui) {
     drawReleaseButton(ctx, layout.releaseButtons[c], ui.releasable[c]);
   }
 
-  drawHud(ctx, layout.hud, game.gauges, game.actionsLeft, game.actionsMax, ui.outOfActions);
+  drawHud(ctx, layout.hud, game.gauges, game.actionsLeft, game.actionsMax, ui.outOfActions, ui.battleReady);
+  drawStatus(ctx, layout.status, { phase: game.phase, castle: game.castle, enemy: game.enemy });
 }

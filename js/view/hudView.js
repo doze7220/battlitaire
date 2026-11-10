@@ -1,6 +1,6 @@
 /**
  * 責務: 右側パネルのゲージの名前と数値、残りの行動回数、「行動終了」の表示を描く。
- * 状態は変えず、ルール層は実行時に import しない。
+ * 押せるときは攻防へ進むボタンとしての見た目にする。状態は変えず、ルール層は実行時に import しない。
  */
 
 import { roundRectPath } from './cardView.js';
@@ -20,6 +20,12 @@ const END_TEXT = '行動終了';
 const END_FONT = 'bold 44px sans-serif';
 const END_FILL = 'rgba(160, 30, 30, 0.8)';
 const END_COLOR = '#ffffff';
+const END_READY_STROKE = '#ffe680';
+const END_READY_STROKE_WIDTH = 4;
+const END_READY_MAIN_OFFSET = -0.2;
+const END_READY_SUB_OFFSET = 0.28;
+const END_READY_SUB_TEXT = 'タップで攻防へ';
+const END_READY_SUB_FONT = 'bold 22px sans-serif';
 
 /**
  * 右側パネルを描く。ゲージは gauges のキーの順に並べる。
@@ -29,9 +35,10 @@ const END_COLOR = '#ffffff';
  * @param {number} actionsLeft 残りの行動回数
  * @param {number} actionsMax 行動回数の最大
  * @param {boolean} outOfActions 行動を使い切ったか（true なら「行動終了」を出す）
+ * @param {boolean} battleReady 攻防へ進めるか（true なら「行動終了」を押せるボタンの見た目にする）
  * @returns {void}
  */
-export function drawHud(ctx, hudLayout, gauges, actionsLeft, actionsMax, outOfActions) {
+export function drawHud(ctx, hudLayout, gauges, actionsLeft, actionsMax, outOfActions, battleReady) {
   const { panel, actions, actionEnd, gaugeH } = hudLayout;
   ctx.save();
   roundRectPath(ctx, panel.x, panel.y, panel.w, panel.h, PANEL_CORNER);
@@ -68,7 +75,18 @@ export function drawHud(ctx, hudLayout, gauges, actionsLeft, actionsMax, outOfAc
     ctx.fillStyle = END_COLOR;
     ctx.textAlign = 'center';
     ctx.font = END_FONT;
-    ctx.fillText(END_TEXT, actionEnd.x + actionEnd.w / 2, actionEnd.y + actionEnd.h / 2);
+    const cx = actionEnd.x + actionEnd.w / 2;
+    const cy = actionEnd.y + actionEnd.h / 2;
+    if (battleReady) {
+      ctx.strokeStyle = END_READY_STROKE;
+      ctx.lineWidth = END_READY_STROKE_WIDTH;
+      ctx.stroke();
+      ctx.fillText(END_TEXT, cx, cy + actionEnd.h * END_READY_MAIN_OFFSET);
+      ctx.font = END_READY_SUB_FONT;
+      ctx.fillText(END_READY_SUB_TEXT, cx, cy + actionEnd.h * END_READY_SUB_OFFSET);
+    } else {
+      ctx.fillText(END_TEXT, cx, cy);
+    }
   }
   ctx.restore();
 }
