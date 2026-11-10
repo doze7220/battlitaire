@@ -17,7 +17,7 @@ import { applyTap, boardUiFor } from './boardSelection.js';
  * @property {() => Scene} createTitle タイトルの画面のシーンを作る関数（結果の窓へ渡す）
  */
 
-/** 盤面を表示し、置く・捨てる・放つ・攻防への進行をタップ／クリックで行うシーン */
+/** 盤面を表示し、置く・捨てる・手札に入れる・手札から置く・束の移し替え・放つ・攻防への進行をタップ／クリックで行うシーン */
 export class BoardScene extends Scene {
   /**
    * @param {BoardOptions} options オプション

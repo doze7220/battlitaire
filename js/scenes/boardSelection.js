@@ -58,11 +58,8 @@ function tapDeck(game, selection, index) {
  * @returns {TapStep} タップ後の選択と、操作の結果
  */
 function tapHand(game, selection, slot) {
-  if (game.hand[slot] === null) {
-    if (selection !== null && selection.kind === 'deck' && game.canHold(selection.index, slot)) {
-      return { selection: null, result: game.hold(selection.index, slot) };
-    }
-    return { selection: null, result: null };
+  if (selection !== null && selection.kind === 'deck' && game.canHold(selection.index, slot)) {
+    return { selection: null, result: game.hold(selection.index, slot) };
   }
   if (selection !== null && selection.kind === 'hand' && selection.index === slot) {
     return { selection: null, result: null };
