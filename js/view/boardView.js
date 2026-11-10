@@ -1,10 +1,11 @@
 /**
- * 責務: 盤面全体の描画の取りまとめ（背景を塗り、山札・捨て札・列・放つボタン・HUD・状況の帯の部品を配置に従って順に呼ぶ）。
+ * 責務: 盤面全体の描画の取りまとめ（背景を塗り、山札・捨て札・列・手札・放つボタン・HUD・状況の帯の部品を配置に従って順に呼ぶ）。
  * ゲームの状態は読むだけで変えず、ルールの判定は行わない。
  */
 
 import { drawDeck, drawDiscard } from './deckView.js';
 import { drawColumn, drawReleaseButton } from './columnView.js';
+import { drawHand } from './handView.js';
 import { drawHud } from './hudView.js';
 import { drawStatus } from './statusView.js';
 
@@ -15,7 +16,10 @@ const BACKGROUND_COLOR = '#1f3a2e';
  * @typedef {Object} BoardUi
  * @property {number|null} selectedDeck 選択中の山札の番号（なければ null）
  * @property {boolean} discardMode 選択中の山札を「捨てる」状態で表示するか
- * @property {number[]} placeableColumns 強調する（置ける）列の番号
+ * @property {number[]} placeableColumns 目印を付ける列（置ける列・移せる列）の番号
+ * @property {number[]} holdSlots 山札のカードを入れられる手札の枠の番号
+ * @property {number|null} selectedHandSlot 選択中の手札の枠の番号（なければ null）
+ * @property {{ column: number, from: number }|null} selectedRun 選択中の束（なければ null）
  * @property {boolean[]} releasable 列ごとの「放つ」が押せるか
  * @property {boolean} outOfActions 行動を使い切ったか
  * @property {boolean} battleReady 「行動終了」を押して攻防へ進めるか
@@ -44,9 +48,11 @@ export function drawBoard(ctx, layout, game, ui) {
   drawDiscard(ctx, layout.discard, game.discard.length);
 
   for (let c = 0; c < layout.columns.length; c++) {
-    drawColumn(ctx, layout.columns[c], game.columns[c], ui.placeableColumns.includes(c));
+    const runFrom = ui.selectedRun !== null && ui.selectedRun.column === c ? ui.selectedRun.from : null;
+    drawColumn(ctx, layout.columns[c], game.columns[c], ui.placeableColumns.includes(c), runFrom);
     drawReleaseButton(ctx, layout.releaseButtons[c], ui.releasable[c]);
   }
+  drawHand(ctx, layout.hand, game.hand, { selectedSlot: ui.selectedHandSlot, holdSlots: ui.holdSlots });
 
   drawHud(ctx, layout.hud, game.gauges, game.actionsLeft, game.actionsMax, ui.outOfActions, ui.battleReady);
   drawStatus(ctx, layout.status, { phase: game.phase, castle: game.castle, enemy: game.enemy });

@@ -1,11 +1,13 @@
 /**
- * 責務: 列（重ねたカード・空き枠・置ける列の強調）と「放つ」ボタンの見た目を描く。
+ * 責務: 列（重ねたカード・長い列の詰め・空き枠・置ける列の強調・選んだ束の枠）と「放つ」ボタンの見た目を描く。
  * 状態は変えず、ルール層は実行時に import しない。
  */
 
 import { drawCardFace, drawEmptySlot, drawHighlight, roundRectPath } from './cardView.js';
+import { columnCardYs } from './layout.js';
 
 const PLACEABLE_COLOR = '#7be07b';
+const RUN_COLOR = '#5bc0ff';
 const EMPTY_LABEL = '空き';
 const BUTTON_LABEL = '放つ';
 const BUTTON_CORNER = 8;
@@ -19,26 +21,32 @@ const BUTTON_OFF_TEXT = '#777777';
 const BUTTON_LINE_WIDTH = 2;
 
 /**
- * 列を描く。カードは下から順に step ずつずらして重ねる。空なら空き枠。
+ * 列を描く。カードの位置は columnCardYs で求め、下から順に重ねる。空なら空き枠。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').ColumnLayout} columnLayout 列の配置
  * @param {import('../rules/card.js').Card[]} cards 列のカード（[0] が一番下）
- * @param {boolean} highlighted 置ける列として強調するか
+ * @param {boolean} highlighted 置ける列（移せる列）として強調するか
+ * @param {number|null} runFrom 選んだ束の一番下の番号（選んでいなければ null）
  * @returns {void}
  */
-export function drawColumn(ctx, columnLayout, cards, highlighted) {
-  const { x, y, step, cardW, cardH } = columnLayout;
+export function drawColumn(ctx, columnLayout, cards, highlighted, runFrom) {
+  const { x, y, cardW, cardH } = columnLayout;
   if (cards.length === 0) {
     drawEmptySlot(ctx, x, y, cardW, cardH, EMPTY_LABEL);
     if (highlighted) drawHighlight(ctx, x, y, cardW, cardH, PLACEABLE_COLOR);
     return;
   }
+  const ys = columnCardYs(columnLayout, cards.length);
   for (let i = 0; i < cards.length; i++) {
-    drawCardFace(ctx, x, y + step * i, cardW, cardH, cards[i]);
+    drawCardFace(ctx, x, ys[i], cardW, cardH, cards[i]);
+  }
+  if (runFrom !== null && runFrom >= 0 && runFrom < cards.length) {
+    const top = ys[runFrom];
+    const bottom = ys[cards.length - 1] + cardH;
+    drawHighlight(ctx, x, top, cardW, bottom - top, RUN_COLOR);
   }
   if (highlighted) {
-    const topY = y + step * (cards.length - 1);
-    drawHighlight(ctx, x, topY, cardW, cardH, PLACEABLE_COLOR);
+    drawHighlight(ctx, x, ys[cards.length - 1], cardW, cardH, PLACEABLE_COLOR);
   }
 }
 
