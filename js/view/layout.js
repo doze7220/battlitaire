@@ -36,7 +36,16 @@
 
 /**
  * 当たり判定の結果。
- * @typedef {{ kind: 'deck'|'column'|'release', index: number }} Hit
+ * @typedef {{ kind: 'deck'|'column'|'release'|'actionEnd', index: number }} Hit
+ */
+
+/**
+ * 状況の帯（フェーズ・城・敵・敵の予告）の配置。
+ * @typedef {Object} StatusLayout
+ * @property {Rect} phase 「フェーズ N」の枠
+ * @property {Rect} castle 城の HP の枠
+ * @property {Rect} enemy 敵の HP の枠
+ * @property {Rect} intent 敵の次の行動の予告の枠
  */
 
 /**
@@ -49,6 +58,7 @@
  * @property {ColumnLayout[]} columns 列の領域
  * @property {Rect[]} releaseButtons 放つボタンの領域
  * @property {HudLayout} hud 右側パネル
+ * @property {StatusLayout} status 状況の帯
  * @property {function(number, number): (Hit|null)} hitTest 座標から当たったものを返す
  */
 
@@ -74,7 +84,17 @@ const GAUGE_H = 56;
 const ACTIONS_Y = 360;
 const ACTIONS_H = 50;
 const ACTION_END_Y = 440;
-const ACTION_END_H = 80;
+const ACTION_END_H = 100;
+const STATUS_Y = 656;
+const STATUS_H = 48;
+const STATUS_PHASE_X = 80;
+const STATUS_PHASE_W = 160;
+const STATUS_CASTLE_X = 260;
+const STATUS_CASTLE_W = 300;
+const STATUS_ENEMY_X = 580;
+const STATUS_ENEMY_W = 300;
+const STATUS_INTENT_X = 900;
+const STATUS_INTENT_W = 340;
 const PANEL_PADDING = 20;
 
 /**
@@ -129,13 +149,22 @@ export function createLayout({ screen, deckCount, columnCount, maxColumnLength }
     actionEnd: { x: innerX, y: ACTION_END_Y, w: innerW, h: ACTION_END_H },
   };
 
+  /** @type {StatusLayout} */
+  const status = {
+    phase: { x: STATUS_PHASE_X, y: STATUS_Y, w: STATUS_PHASE_W, h: STATUS_H },
+    castle: { x: STATUS_CASTLE_X, y: STATUS_Y, w: STATUS_CASTLE_W, h: STATUS_H },
+    enemy: { x: STATUS_ENEMY_X, y: STATUS_Y, w: STATUS_ENEMY_W, h: STATUS_H },
+    intent: { x: STATUS_INTENT_X, y: STATUS_Y, w: STATUS_INTENT_W, h: STATUS_H },
+  };
+
   /**
-   * 座標から当たったものを返す（放つボタン → 山札 → 列 の順）。
+   * 座標から当たったものを返す（行動終了 → 放つボタン → 山札 → 列 の順）。
    * @param {number} x x 座標
    * @param {number} y y 座標
    * @returns {Hit|null} 当たったもの。なければ null
    */
   function hitTest(x, y) {
+    if (inRect(hud.actionEnd, x, y)) return { kind: 'actionEnd', index: 0 };
     for (let i = 0; i < releaseButtons.length; i++) {
       if (inRect(releaseButtons[i], x, y)) return { kind: 'release', index: i };
     }
@@ -148,5 +177,5 @@ export function createLayout({ screen, deckCount, columnCount, maxColumnLength }
     return null;
   }
 
-  return { screen, card: { w: CARD_W, h: CARD_H }, decks, discard, columns, releaseButtons, hud, hitTest };
+  return { screen, card: { w: CARD_W, h: CARD_H }, decks, discard, columns, releaseButtons, hud, status, hitTest };
 }
