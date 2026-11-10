@@ -1,5 +1,5 @@
 /**
- * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択中の山札を持ち、view を呼んで盤面を描くこと。
+ * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面を描くこと。
  * 行動終了のボタンで攻防を呼び、結果の窓を積むこと。
  */
 import { Engine, Scene } from 'oz';
@@ -7,6 +7,7 @@ import { Game } from '../rules/Game.js';
 import { BattleResultScene } from './BattleResultScene.js';
 import { createLayout } from '../view/layout.js';
 import { drawBoard } from '../view/boardView.js';
+import { applyTap, boardUiFor } from './boardSelection.js';
 
 /**
  * @typedef {Object} BoardOptions BoardScene に渡すオプション
@@ -35,9 +36,9 @@ export class BoardScene extends Scene {
     this.game = null;
     /** @type {import('../view/layout.js').Layout|null} 画面の配置（init で作る） */
     this.layout = null;
-    /** @type {number|null} 選択中の山札の番号（選択なしは null） */
-    this.selectedDeck = null;
-    /** @type {import('../rules/Game.js').PlaceResult|import('../rules/Game.js').DiscardResult|import('../rules/Game.js').ReleaseResult|import('../rules/Game.js').BattleResult|null} 直近の操作の結果（Phase 2 の演出で使う。今は保持するだけ） */
+    /** @type {import('./boardSelection.js').BoardSelection} 選択の状態（選択なしは null） */
+    this.selection = null;
+    /** @type {import('../rules/planningResults.js').PlanningResult|import('../rules/Game.js').BattleResult|null} 直近の操作の結果（Phase 2 の演出で使う。今は保持するだけ） */
     this.lastResult = null;
   }
 
@@ -51,23 +52,23 @@ export class BoardScene extends Scene {
       screen: this.screen,
       deckCount: this.game.decks.length,
       columnCount: this.game.columns.length,
-      maxColumnLength: this.game.maxColumnLength,
+      handSize: this.game.hand.length,
     });
-    this.selectedDeck = null;
+    this.selection = null;
     this.lastResult = null;
   }
 
   /**
-   * 押したとき（'down'）だけ、当たった場所に応じてルール層の操作を呼ぶ。
+   * 押したとき（'down'）だけ、当たった場所に応じてルール層の操作を呼ぶ（選択の扱いは boardSelection.js）。
    * @param {{ type: string, x: number, y: number }} pointer ポインタ入力
    * @returns {void}
    */
   onPointer(pointer) {
     if (pointer.type !== 'down') return;
     const game = this.game;
-    const hit = this.layout.hitTest(pointer.x, pointer.y);
+    const hit = this.layout.hitTest(pointer.x, pointer.y, game.columns.map((col) => col.length));
     if (game.isOutOfActions()) {
-      this.selectedDeck = null;
+      this.selection = null;
       if (hit !== null && hit.kind === 'actionEnd' && game.canResolveBattle()) {
         this.lastResult = game.resolveBattle();
         Engine.pushScene(new BattleResultScene({
@@ -80,42 +81,9 @@ export class BoardScene extends Scene {
       }
       return;
     }
-    if (hit === null || hit.kind === 'actionEnd') {
-      this.selectedDeck = null;
-      return;
-    }
-    if (hit.kind === 'deck') {
-      this.#onDeck(hit.index);
-    } else if (hit.kind === 'column') {
-      if (this.selectedDeck !== null && game.placeableColumns(this.selectedDeck).includes(hit.index)) {
-        this.lastResult = game.place(this.selectedDeck, hit.index);
-      }
-      this.selectedDeck = null;
-    } else if (hit.kind === 'release') {
-      if (game.canRelease(hit.index)) {
-        this.lastResult = game.release(hit.index);
-        this.selectedDeck = null;
-      }
-    }
-  }
-
-  /**
-   * 山札を押したときの処理（同じ山札なら捨てる、別の山札なら選択を替える）。
-   * @param {number} index 押した山札の番号
-   * @returns {void}
-   */
-  #onDeck(index) {
-    const game = this.game;
-    if (index === this.selectedDeck) {
-      if (game.canDiscard(index)) {
-        this.lastResult = game.discardTop(index);
-      }
-      this.selectedDeck = null;
-    } else if (game.canSelectDeck(index)) {
-      this.selectedDeck = index;
-    } else {
-      this.selectedDeck = null;
-    }
+    const step = applyTap(game, this.selection, hit);
+    this.selection = step.selection;
+    if (step.result !== null) this.lastResult = step.result;
   }
 
   /**
@@ -127,16 +95,6 @@ export class BoardScene extends Scene {
   draw(ctx, layer) {
     if (layer !== this.layer) return;
     const game = this.game;
-    const selected = this.selectedDeck;
-    /** @type {import('../view/boardView.js').BoardUi} */
-    const ui = {
-      selectedDeck: selected,
-      discardMode: selected !== null && game.canDiscard(selected),
-      placeableColumns: selected !== null ? game.placeableColumns(selected) : [],
-      releasable: game.columns.map((_, c) => game.canRelease(c)),
-      outOfActions: game.isOutOfActions(),
-      battleReady: game.canResolveBattle(),
-    };
-    drawBoard(ctx, this.layout, game, ui);
+    drawBoard(ctx, this.layout, game, boardUiFor(game, this.selection));
   }
 }
