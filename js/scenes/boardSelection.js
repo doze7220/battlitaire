@@ -9,6 +9,7 @@
  *   | { kind: 'deck', index: number }
  *   | { kind: 'hand', index: number }
  *   | { kind: 'run', column: number, from: number }} BoardSelection
+ * 'run' の from は束の一番下の位置（束は常に全体が選ばれる。描画の枠用）。
  */
 
 /**
@@ -79,7 +80,7 @@ function tapHand(game, selection, slot) {
 function tapColumn(game, selection, column, cardIndex) {
   if (selection === null) {
     if (cardIndex !== null && game.canSelectRun(column, cardIndex)) {
-      return { selection: { kind: 'run', column, from: cardIndex }, result: null };
+      return { selection: { kind: 'run', column, from: game.runStart(column) }, result: null };
     }
     return { selection: null, result: null };
   }
@@ -97,8 +98,8 @@ function tapColumn(game, selection, column, cardIndex) {
   }
   if (selection.kind === 'run') {
     if (column === selection.column) return { selection: null, result: null };
-    const result = game.runTargetColumns(selection.column, selection.from).includes(column)
-      ? game.moveRun(selection.column, selection.from, column)
+    const result = game.runTargetColumns(selection.column).includes(column)
+      ? game.moveRun(selection.column, column)
       : null;
     return { selection: null, result };
   }
@@ -130,7 +131,7 @@ export function boardUiFor(game, selection) {
   let placeableColumns = [];
   if (deck !== null) placeableColumns = game.placeableColumns(deck);
   else if (hand !== null) placeableColumns = game.handPlaceableColumns(hand);
-  else if (run !== null) placeableColumns = game.runTargetColumns(run.column, run.from);
+  else if (run !== null) placeableColumns = game.runTargetColumns(run.column);
   const holdSlots = [];
   if (deck !== null) {
     game.hand.forEach((_, s) => {

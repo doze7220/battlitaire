@@ -167,9 +167,9 @@ export class Game {
   }
 
   /**
-   * 列の `i` 番目から上を束として選べるか（段取り中で、行動が残り、置ける並びが続いている）。
+   * 列の `i` 番目のカードが、一番上から続く束に含まれるか（段取り中で、行動が残っている）。
    * @param {number} c 列の番号
-   * @param {number} i 束の一番下にするカードの位置（列の下から数えた番号）
+   * @param {number} i タップしたカードの位置（列の下から数えた番号）
    * @returns {boolean} 選べるなら `true`
    */
   canSelectRun(c, i) {
@@ -180,14 +180,26 @@ export class Game {
   }
 
   /**
-   * 束を移せる列の番号を返す（元の列は含めない。空いた列は含む）。
+   * 列の一番上から続く束の一番下の位置を返す。
+   * @param {number} c 列の番号
+   * @returns {number} 束の一番下の位置（列の下から数えた番号）。列がない・空なら `-1`
+   */
+  runStart(c) {
+    const column = this.columns[c];
+    if (!column) return -1;
+    return runStartIndex(column, this.config);
+  }
+
+  /**
+   * 束全体（束の一番下から一番上まで）を移せる列の番号を返す（元の列は含めない。空いた列は含む）。
+   * 移せるかは束の一番下のカードで判定する。
    * @param {number} c 束の元の列の番号
-   * @param {number} i 束の一番下の位置
    * @returns {number[]} 移せる列の番号。束を選べなければ空配列
    */
-  runTargetColumns(c, i) {
-    if (!this.canSelectRun(c, i)) return [];
-    return placeableColumnIndices(this.columns, this.columns[c][i], this.config).filter((to) => to !== c);
+  runTargetColumns(c) {
+    const start = this.runStart(c);
+    if (start < 0 || !this.canSelectRun(c, start)) return [];
+    return placeableColumnIndices(this.columns, this.columns[c][start], this.config).filter((to) => to !== c);
   }
 
   /**
@@ -283,18 +295,18 @@ export class Game {
   }
 
   /**
-   * 列の `i` 番目から上の束を、並びを保ったまま別の列へ移す。条件を満たさなければ何もしない。
+   * 列の束全体（束の一番下から一番上まで）を、並びを保ったまま別の列へ移す。条件を満たさなければ何もしない。
    * @param {number} c 元の列の番号
-   * @param {number} i 束の一番下の位置
    * @param {number} to 移し先の列の番号
-   * @returns {import('./planningResults.js').MoveResult|null} 結果。移せなければ `null`
+   * @returns {import('./planningResults.js').MoveResult|null} 結果（`fromIndex` は束の一番下だった位置）。移せなければ `null`
    */
-  moveRun(c, i, to) {
-    if (!this.runTargetColumns(c, i).includes(to)) return null;
-    const cards = this.columns[c].splice(i);
+  moveRun(c, to) {
+    if (!this.runTargetColumns(c).includes(to)) return null;
+    const start = this.runStart(c);
+    const cards = this.columns[c].splice(start);
     this.columns[to].push(...cards);
     this.actionsLeft -= 1;
-    return { type: 'move', fromColumn: c, fromIndex: i, toColumn: to, cards, actionsLeft: this.actionsLeft };
+    return { type: 'move', fromColumn: c, fromIndex: start, toColumn: to, cards, actionsLeft: this.actionsLeft };
   }
 
   /**
