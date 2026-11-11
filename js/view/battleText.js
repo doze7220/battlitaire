@@ -1,21 +1,7 @@
 /**
- * 責務: 攻防の出来事・敵の行動・決着を、画面に出す文字に直す。
+ * 責務: 敵の行動・決着を、画面に出す文字に直す。
  * 計算はせず、量をそのまま文字にする。ルール層は実行時に import しない。
  */
-
-/**
- * 出来事の種類 → 行の文字（量の前の部分）の対応表。決着（win・lose）は行にしない。
- * @type {Readonly<Record<string, string>>}
- */
-const EVENT_LABELS = Object.freeze({
-  enemyAttack: '敵の攻撃',
-  enemyDefend: '敵の防御',
-  block: '防御で相殺',
-  castleDamage: '城が受けたダメージ',
-  enemyBlock: '敵の防御で相殺',
-  enemyDamage: '敵に与えたダメージ',
-  heal: '城の回復',
-});
 
 /**
  * 決着 → 表示文字の対応表。
@@ -37,31 +23,6 @@ const ACTION_LABELS = Object.freeze({
 
 /** 未知の行動の種類の表示名 */
 const UNKNOWN_ACTION_LABEL = '？';
-
-/**
- * 出来事1つを行の文字にする。
- * @param {import('../rules/battle.js').BattleEvent} event 出来事
- * @returns {string|null} 「敵の攻撃 10」のような文字。行にしない出来事・未知の種類は null
- */
-export function eventLine(event) {
-  const label = Object.prototype.hasOwnProperty.call(EVENT_LABELS, event.type) ? EVENT_LABELS[event.type] : null;
-  if (label === null) return null;
-  return `${label} ${event.amount}`;
-}
-
-/**
- * 出来事の並びを行の文字の並びにする（並びの順を保ち、行にしないものは除く）。
- * @param {import('../rules/battle.js').BattleEvent[]} events 出来事の並び
- * @returns {string[]} 行の文字の配列
- */
-export function battleEventLines(events) {
-  const lines = [];
-  for (const event of events) {
-    const line = eventLine(event);
-    if (line !== null) lines.push(line);
-  }
-  return lines;
-}
 
 /**
  * 決着を表示文字にする。

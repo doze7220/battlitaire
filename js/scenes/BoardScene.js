@@ -1,10 +1,11 @@
 /**
  * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面を描くこと。
- * 操作の結果を anim に渡して時間を進め、動いている間はタップを無視すること。行動終了のボタンで攻防を呼び、結果の窓を積むこと。
+ * 操作の結果を anim に渡して時間を進め、動いている間はタップを無視すること。行動終了のボタンで攻防を呼び、攻防の演出のシーンを積むこと。
  */
 import { Engine, Scene } from 'oz';
 import { Game } from '../rules/Game.js';
-import { BattleResultScene } from './BattleResultScene.js';
+import { BattleShowScene } from './BattleShowScene.js';
+import { snapshotBattle } from '../anim/battleSteps.js';
 import { createLayout } from '../view/layout.js';
 import { drawBoard } from '../view/boardView.js';
 import { BoardAnimator } from '../anim/boardAnimator.js';
@@ -16,7 +17,7 @@ import { applyTap, boardUiFor } from './boardSelection.js';
  * @property {{ width: number, height: number }} screen 解像度
  * @property {string} layer 描くレイヤー名
  * @property {() => number} random 乱数の関数（0以上1未満。ルール層へ渡す）
- * @property {() => Scene} createTitle タイトルの画面のシーンを作る関数（結果の窓へ渡す）
+ * @property {() => Scene} createTitle タイトルの画面のシーンを作る関数（攻防の演出のシーンへ渡す）
  */
 
 /** 盤面を表示し、置く・捨てる・手札に入れる・手札から置く・束の移し替え・放つ・攻防への進行をタップ／クリックで行うシーン */
@@ -86,14 +87,18 @@ export class BoardScene extends Scene {
     if (game.isOutOfActions()) {
       this.selection = null;
       if (hit !== null && hit.kind === 'actionEnd' && game.canResolveBattle()) {
+        const battleBefore = snapshotBattle(game);
         this.lastResult = game.resolveBattle();
-        Engine.pushScene(new BattleResultScene({
-          screen: this.screen,
-          layer: this.layer,
-          game,
-          result: this.lastResult,
-          createTitle: this.createTitle,
-        }));
+        if (this.lastResult !== null) {
+          Engine.pushScene(new BattleShowScene({
+            layer: this.layer,
+            game,
+            layout: this.layout,
+            before: battleBefore,
+            result: this.lastResult,
+            createTitle: this.createTitle,
+          }));
+        }
       }
       return;
     }
