@@ -3,7 +3,7 @@
 
 ## 1. プロジェクト基本定義
 *   **プロジェクト名:** バトリティア（リポジトリ: battlitaire）
-*   **実行環境:** ブラウザ / HTML5 Canvas 2D / Vanilla JS（ES Modules + import map）。ビルド工程はなく、静的サーバで実行する。エンジンは `oz/` の OZ Engine である。OZ Engine がビルドなしの ES Modules と import map を前提にしているので、フレームワークやビルドツールは使わない。画面は横長で、PC を中心に考える。
+*   **実行環境:** ブラウザ / HTML5 Canvas 2D / Vanilla JS（ES Modules + import map）。ビルド工程はなく、静的サーバで実行する。エンジンは `oz/` の OZ Engine である。OZ Engine がビルドなしの ES Modules と import map を前提にしているので、フレームワークやビルドツールは使わない。画面は縦長で、スマホを優先して配置を決め、PC でも遊べるようにする（タップ（クリック）だけで遊べ、ホバーに頼らない）。
 *   **アプリ概要:** 見た目はソリティア、結果はバトルになるターン制のパズルゲーム。スートごとの4つの山札からカードを列に積み、放った束を攻撃・防御・回復・溜めに換えて、城を襲う敵を撃退する。
 *   **検証コマンド:** 変更した .js ファイルの構文チェック `node --input-type=module --check < <変更した .js ファイル>`（`package.json` がないため、`node --check <ファイル>` では ES Modules の構文エラーを検出できない）。自動テストは置かない。
 

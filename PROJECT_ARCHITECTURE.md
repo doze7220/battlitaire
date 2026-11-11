@@ -39,7 +39,7 @@ battlitaire/
 
 * `js/anim/` はまだない。最初のファイルを置く REQ で作る。
 * import map（`index.html`）: `oz` は `./oz/index.js`、`assets/` は `./assets/`。
-* 画面の論理解像度は横長（1280×720）とする（`js/main.js` の土台の値のまま）。
+* 画面の論理解像度は縦長（720×1280）とする（Phase 02-01 で `js/main.js` の値を 1280×720 から切り替える）。
 
 ---
 
