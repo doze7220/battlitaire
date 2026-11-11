@@ -1,5 +1,5 @@
 /**
- * 責務: 最下段（UI）の残りの行動回数と「行動終了」の表示を描く。
+ * 責務: 最下段（UI）の残りの行動回数と「行動終了」の表示、攻防の演出中の最下段（早送り・スキップ）を描く。
  * 押せるときは攻防へ進むボタンとしての見た目にする。状態は変えず、ルール層は実行時に import しない。
  */
 
@@ -39,6 +39,76 @@ const END_READY_SUB_OFFSET = 0.28;
 const END_READY_SUB_TEXT = 'タップで攻防へ';
 /** 押せるときの補助文のフォント。 */
 const END_READY_SUB_FONT = 'bold 22px sans-serif';
+
+/** 演出中の最下段の不透明の塗りつぶしの色（盤面の背景に PANEL_FILL を重ねた色に近い）。 */
+const BATTLE_PANEL_FILL = '#172b23';
+/** 早送り・スキップのボタンの塗りつぶしの色。 */
+const BATTLE_BTN_FILL = 'rgba(255, 255, 255, 0.12)';
+/** 早送りを押し込んだときのボタンの塗りつぶしの色。 */
+const BATTLE_BTN_ACTIVE_FILL = 'rgba(255, 230, 128, 0.35)';
+/** 押し込んだときのボタンの縁の色。 */
+const BATTLE_BTN_ACTIVE_STROKE = '#ffe680';
+/** 押し込んだときのボタンの縁の太さ。 */
+const BATTLE_BTN_ACTIVE_STROKE_WIDTH = 4;
+/** ボタンの文字のフォント。 */
+const BATTLE_BTN_FONT = 'bold 36px sans-serif';
+/** 早送りの文字。 */
+const FAST_TEXT = '早送り';
+/** スキップの文字。 */
+const SKIP_TEXT = 'スキップ';
+/** 早送りの倍率表示を出すときの、文字の位置のずれ（ボタンの高さに対する割合）。 */
+const FAST_MAIN_OFFSET = -0.18;
+/** 倍率表示の位置のずれ（ボタンの高さに対する割合）。 */
+const FAST_SUB_OFFSET = 0.24;
+/** 倍率表示のフォント。 */
+const FAST_SUB_FONT = 'bold 28px sans-serif';
+
+/**
+ * 演出中の最下段（早送り・スキップ）を描く。段全体を不透明に塗り、背面の盤面の UI を覆う。
+ * @param {CanvasRenderingContext2D} ctx 描画先
+ * @param {import('./layout.js').HudLayout} hudLayout 最下段の配置
+ * @param {{ fastForward: import('./layout.js').Rect, skip: import('./layout.js').Rect }} controls 早送り・スキップの矩形
+ * @param {{ fast: boolean, showButtons: boolean, fastLabel: string }} state 早送り中か・ボタンを出すか・倍率の文字
+ * @returns {void}
+ */
+export function drawBattleHud(ctx, hudLayout, controls, { fast, showButtons, fastLabel }) {
+  const { panel } = hudLayout;
+  ctx.save();
+  ctx.fillStyle = BATTLE_PANEL_FILL;
+  ctx.fillRect(panel.x, panel.y, panel.w, panel.h);
+  if (showButtons) {
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = BATTLE_BTN_FONT;
+    const ff = controls.fastForward;
+    roundRectPath(ctx, ff.x, ff.y, ff.w, ff.h, ROW_CORNER);
+    ctx.fillStyle = fast ? BATTLE_BTN_ACTIVE_FILL : BATTLE_BTN_FILL;
+    ctx.fill();
+    if (fast) {
+      ctx.strokeStyle = BATTLE_BTN_ACTIVE_STROKE;
+      ctx.lineWidth = BATTLE_BTN_ACTIVE_STROKE_WIDTH;
+      ctx.stroke();
+    }
+    ctx.fillStyle = TEXT_COLOR;
+    const ffx = ff.x + ff.w / 2;
+    const ffy = ff.y + ff.h / 2;
+    if (fast) {
+      ctx.fillText(FAST_TEXT, ffx, ffy + ff.h * FAST_MAIN_OFFSET);
+      ctx.font = FAST_SUB_FONT;
+      ctx.fillText(fastLabel, ffx, ffy + ff.h * FAST_SUB_OFFSET);
+      ctx.font = BATTLE_BTN_FONT;
+    } else {
+      ctx.fillText(FAST_TEXT, ffx, ffy);
+    }
+    const sk = controls.skip;
+    roundRectPath(ctx, sk.x, sk.y, sk.w, sk.h, ROW_CORNER);
+    ctx.fillStyle = BATTLE_BTN_FILL;
+    ctx.fill();
+    ctx.fillStyle = TEXT_COLOR;
+    ctx.fillText(SKIP_TEXT, sk.x + sk.w / 2, sk.y + sk.h / 2);
+  }
+  ctx.restore();
+}
 
 /**
  * 最下段（UI）を描く（残りの行動回数と「行動終了」。ゲージは gaugeView.js が描く）。
