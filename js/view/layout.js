@@ -1,5 +1,5 @@
 /**
- * 責務: 盤面の画面配置（座標・大きさ）を一手に持ち、座標から「何に当たるか」を求める。
+ * 責務: 盤面の画面配置（座標・大きさ。戦闘の段の兵の配置・早送りとスキップの矩形を含む）を一手に持ち、座標から「何に当たるか」を求める。
  * ルール層は import せず、数の情報は引数で受け取る。状態は変えない。
  */
 
@@ -47,6 +47,26 @@
  */
 
 /**
+ * 戦闘の段での兵の配置。城の前から敵の前までを4つの区画に分け、その中心の x を持つ。
+ * @typedef {Object} TroopLayout
+ * @property {number} groundY 小さな兵（前の列）の足元の y
+ * @property {number} backFootY 大きなユニット（後ろの列）の足元の y
+ * @property {number} zoneW 1つの区画に収める群れの幅
+ * @property {number} smallW 小さな兵の幅
+ * @property {number} smallH 小さな兵の高さ
+ * @property {number} bigW 大きなユニットの幅
+ * @property {number} bigH 大きなユニットの高さ
+ * @property {number} spacing 兵の間隔の、兵の幅に対する倍率
+ * @property {number} guardX 区画A: 守備兵が並ぶ・兵士が出る位置の中心 x
+ * @property {number} defenseClashX 区画B: 敵兵が守備兵とぶつかる位置の中心 x
+ * @property {number} offenseClashX 区画C: 兵士が敵の守りとぶつかる位置の中心 x
+ * @property {number} enemyGuardX 区画D: 敵の守りが並ぶ・敵兵が出る位置の中心 x
+ * @property {number} castleHitX 城に当たる位置の x（城の中心）
+ * @property {number} enemyHitX 敵に当たる位置の x（敵の中心）
+ * @property {number} carpenterX 大工が現れる位置の x（城の中心）
+ */
+
+/**
  * 最上段（戦闘）の配置。サイドビューの見立てで、左に城、右に敵。
  * @typedef {Object} BattleLayout
  * @property {Rect} area 段全体
@@ -57,6 +77,8 @@
  * @property {Rect} castleHp 城の HP の枠
  * @property {Rect} enemyHp 敵の HP の枠
  * @property {Rect} intent 敵の次の行動の予告の枠
+ * @property {TroopLayout} troops 兵の配置
+ * @property {{ x: number, textY: number, hintY: number }} outcome 決着の表示の位置（段の中央の x、「勝ち」「負け」の文字の y、案内の y）
  */
 
 /**
@@ -73,8 +95,10 @@
  * @property {Rect[]} releaseButtons 放つボタンの領域
  * @property {HudLayout} hud 最下段（UI）
  * @property {BattleLayout} battle 最上段（戦闘）
+ * @property {{ fastForward: Rect, skip: Rect }} battleControls 攻防の演出中の最下段の「早送り」「スキップ」の矩形（`hud.actionEnd` を左右に2分割）
  * @property {function(number, number): Rect[]} columnCardRects 列の番号と枚数から、下から順の各カードの矩形（長い列の詰めを含む）
  * @property {function(number, number, number[]=): (Hit|null)} hitTest 座標（と列ごとのカードの枚数）から当たったものを返す
+ * @property {function(number, number): ('fastForward'|'skip'|null)} battleHitTest 座標から、演出中のボタン（早送り・スキップ）に当たったものを返す
  */
 
 /** 最上段（戦闘）の高さ。300〜480 の範囲で変えてよい。試遊で決め直す。 */
@@ -130,6 +154,24 @@ const INFO_W = 240;
 const INFO_GAP = 8;
 /** HP の枠と予告の枠の間隔 */
 const INFO_GAP_Y = 4;
+/** 城・敵と、兵が動く場の端の間隔 */
+const FIELD_GAP = 12;
+/** 区画の幅から引く余白（群れが区画に収まる幅 = 区画の幅 − この値） */
+const ZONE_PAD = 8;
+/** 小さな兵の高さの、城・敵の立つ高さ（地面から体の上端まで）に対する割合 */
+const SMALL_UNIT_RATIO = 0.2;
+/** 大きなユニットの高さの、城・敵の立つ高さに対する割合 */
+const BIG_UNIT_RATIO = 0.36;
+/** 兵の幅の、高さに対する割合 */
+const UNIT_ASPECT = 0.55;
+/** 後ろの列の足元が、地面より上にある高さの、城・敵の立つ高さに対する割合 */
+const BACK_ROW_RATIO = 0.12;
+/** 兵の間隔の、兵の幅に対する倍率 */
+const UNIT_SPACING = 1.15;
+/** 決着の「勝ち」「負け」の文字の y の、段の高さに対する割合 */
+const OUTCOME_TEXT_RATIO = 0.42;
+/** 決着の案内の文字の y の、段の高さに対する割合 */
+const OUTCOME_HINT_RATIO = 0.66;
 
 /** 最下段の行（行動の枠・行動終了）の上の余白 */
 const UI_PAD_TOP = 16;
@@ -196,15 +238,49 @@ function createBattleLayout(width) {
   const enemySize = Math.min(ENEMY_MAX_SIZE, groundY - bodyTop);
   const infoY = groundY + INFO_GAP;
   const enemyHp = { x: width - SIDE_MARGIN - INFO_W, y: infoY, w: INFO_W, h: BOX_H };
-  return {
-    area: { x: 0, y: 0, w: width, h: BATTLE_H },
+  const area = { x: 0, y: 0, w: width, h: BATTLE_H };
+  const castle = { x: CASTLE_X, y: groundY - castleH, w: CASTLE_W, h: castleH };
+  const enemy = { x: width - ENEMY_RIGHT - enemySize, y: groundY - enemySize, w: enemySize, h: enemySize };
+
+  const fieldL = castle.x + castle.w + FIELD_GAP;
+  const F = enemy.x - FIELD_GAP - fieldL;
+  const span = groundY - bodyTop;
+  const smallH = span * SMALL_UNIT_RATIO;
+  const bigH = span * BIG_UNIT_RATIO;
+  /** @type {TroopLayout} */
+  const troops = {
     groundY,
-    castle: { x: CASTLE_X, y: groundY - castleH, w: CASTLE_W, h: castleH },
-    enemy: { x: width - ENEMY_RIGHT - enemySize, y: groundY - enemySize, w: enemySize, h: enemySize },
+    backFootY: groundY - span * BACK_ROW_RATIO,
+    zoneW: F / 4 - ZONE_PAD,
+    smallW: smallH * UNIT_ASPECT,
+    smallH,
+    bigW: bigH * UNIT_ASPECT,
+    bigH,
+    spacing: UNIT_SPACING,
+    guardX: fieldL + F / 8,
+    defenseClashX: fieldL + (3 * F) / 8,
+    offenseClashX: fieldL + (5 * F) / 8,
+    enemyGuardX: fieldL + (7 * F) / 8,
+    castleHitX: castle.x + castle.w / 2,
+    enemyHitX: enemy.x + enemy.w / 2,
+    carpenterX: castle.x + castle.w / 2,
+  };
+
+  return {
+    area,
+    groundY,
+    castle,
+    enemy,
     phase,
     castleHp: { x: SIDE_MARGIN, y: infoY, w: INFO_W, h: BOX_H },
     enemyHp,
     intent: { x: enemyHp.x, y: enemyHp.y + BOX_H + INFO_GAP_Y, w: INFO_W, h: BOX_H },
+    troops,
+    outcome: {
+      x: area.x + area.w / 2,
+      textY: area.y + area.h * OUTCOME_TEXT_RATIO,
+      hintY: area.y + area.h * OUTCOME_HINT_RATIO,
+    },
   };
 }
 
@@ -284,6 +360,24 @@ export function createLayout({ screen, deckCount, columnCount, handSize, gaugeCo
 
   const battle = createBattleLayout(W);
 
+  const controlW = (hud.actionEnd.w - UI_GAP_X) / 2;
+  const battleControls = {
+    fastForward: { x: hud.actionEnd.x, y: hud.actionEnd.y, w: controlW, h: hud.actionEnd.h },
+    skip: { x: hud.actionEnd.x + controlW + UI_GAP_X, y: hud.actionEnd.y, w: controlW, h: hud.actionEnd.h },
+  };
+
+  /**
+   * 座標から、演出中のボタン（早送り・スキップ）に当たったものを返す。
+   * @param {number} x x 座標
+   * @param {number} y y 座標
+   * @returns {'fastForward'|'skip'|null} 当たったもの。なければ null
+   */
+  function battleHitTest(x, y) {
+    if (inRect(battleControls.fastForward, x, y)) return 'fastForward';
+    if (inRect(battleControls.skip, x, y)) return 'skip';
+    return null;
+  }
+
   /**
    * 列のカードの矩形を下から順に求める（`columnCardYs` を使うので長い列の詰めを含む）。
    * @param {number} c 列の番号
@@ -328,5 +422,5 @@ export function createLayout({ screen, deckCount, columnCount, handSize, gaugeCo
     return null;
   }
 
-  return { screen, sections, card: { w: cardW, h: cardH }, gauges, decks, discard, columns, hand, releaseButtons, hud, battle, columnCardRects, hitTest };
+  return { screen, sections, card: { w: cardW, h: cardH }, gauges, decks, discard, columns, hand, releaseButtons, hud, battle, battleControls, columnCardRects, hitTest, battleHitTest };
 }
