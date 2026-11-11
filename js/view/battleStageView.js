@@ -25,15 +25,25 @@ const MERLON_W_RATIO = 0.16;
 /** 狭間の高さの、城の幅に対する割合。 */
 const MERLON_H_RATIO = 0.1;
 
+/** 枠の塗りつぶしの色。 */
 const BOX_FILL = 'rgba(0, 0, 0, 0.35)';
+/** 枠の角の半径。 */
 const BOX_CORNER = 8;
+/** 枠の左端から文字までの余白。 */
 const BOX_PADDING_X = 14;
+/** 文字の色。 */
 const TEXT_COLOR = '#f0f0f0';
+/** 文字のフォント。 */
 const TEXT_FONT = 'bold 24px sans-serif';
+/** フェーズの枠の見出し。 */
 const PHASE_LABEL = 'フェーズ';
+/** 城の HP の枠の見出し。 */
 const CASTLE_LABEL = '城 HP';
+/** 敵の HP の枠の見出し。 */
 const ENEMY_LABEL = '敵 HP';
+/** 予告の枠の見出し。 */
 const INTENT_LABEL = '次の行動';
+/** 予告がないときに出す文字。 */
 const NO_INTENT_TEXT = '－';
 
 /**

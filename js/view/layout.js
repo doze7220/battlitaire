@@ -231,6 +231,11 @@ export function createLayout({ screen, deckCount, columnCount, handSize, gaugeCo
   const cardW = Math.floor((W - SIDE_MARGIN * 2 - ROW_GAP_X * (n - 1)) / n);
   const cardH = Math.round(cardW * CARD_ASPECT);
   const rowY = sections.solitaire.y + SOLITAIRE_PAD_TOP;
+  /**
+   * 上の行（山札・捨て札・手札の枠）の i 番目のカードの左端 x を返す。
+   * @param {number} i 上の行での左からの番号
+   * @returns {number} 左端 x
+   */
   const rowX = (i) => SIDE_MARGIN + (cardW + ROW_GAP_X) * i;
 
   const decks = [];

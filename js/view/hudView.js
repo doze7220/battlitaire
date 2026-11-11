@@ -6,24 +6,43 @@
 import { roundRectPath } from './cardView.js';
 import { gaugeLabel } from './suitStyle.js';
 
+/** 段の背景の塗りつぶしの色。 */
 const PANEL_FILL = 'rgba(0, 0, 0, 0.25)';
+/** ゲージ・行動の枠の塗りつぶしの色。 */
 const ROW_FILL = 'rgba(255, 255, 255, 0.08)';
+/** 枠の角の半径。 */
 const ROW_CORNER = 8;
+/** 枠の左端から文字までの余白。 */
 const ROW_PADDING_X = 16;
+/** ゲージの名前のフォント。 */
 const LABEL_FONT = 'bold 24px sans-serif';
+/** ゲージの数値のフォント。 */
 const VALUE_FONT = 'bold 30px sans-serif';
+/** 文字の色。 */
 const TEXT_COLOR = '#f0f0f0';
+/** 行動の枠の文字のフォント。 */
 const ACTIONS_FONT = 'bold 26px sans-serif';
+/** 行動の枠の見出し。 */
 const ACTIONS_LABEL = '行動';
+/** 行動終了の文字。 */
 const END_TEXT = '行動終了';
+/** 行動終了の文字のフォント。 */
 const END_FONT = 'bold 44px sans-serif';
+/** 行動終了の塗りつぶしの色。 */
 const END_FILL = 'rgba(160, 30, 30, 0.8)';
+/** 行動終了の文字の色。 */
 const END_COLOR = '#ffffff';
+/** 押せるときの行動終了の縁の色。 */
 const END_READY_STROKE = '#ffe680';
+/** 押せるときの行動終了の縁の太さ。 */
 const END_READY_STROKE_WIDTH = 4;
+/** 押せるときの「行動終了」の文字の位置のずれ（枠の高さに対する割合）。 */
 const END_READY_MAIN_OFFSET = -0.2;
+/** 押せるときの補助文の位置のずれ（枠の高さに対する割合）。 */
 const END_READY_SUB_OFFSET = 0.28;
+/** 押せるときの補助文。 */
 const END_READY_SUB_TEXT = 'タップで攻防へ';
+/** 押せるときの補助文のフォント。 */
 const END_READY_SUB_FONT = 'bold 22px sans-serif';
 
 /**

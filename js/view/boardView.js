@@ -9,6 +9,7 @@ import { drawHand } from './handView.js';
 import { drawHud } from './hudView.js';
 import { drawBattleStage } from './battleStageView.js';
 
+/** 盤面全体の背景の色。 */
 const BACKGROUND_COLOR = '#1f3a2e';
 
 /**
