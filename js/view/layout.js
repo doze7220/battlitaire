@@ -73,6 +73,7 @@
  * @property {Rect[]} releaseButtons 放つボタンの領域
  * @property {HudLayout} hud 最下段（UI）
  * @property {BattleLayout} battle 最上段（戦闘）
+ * @property {function(number, number): Rect[]} columnCardRects 列の番号と枚数から、下から順の各カードの矩形（長い列の詰めを含む）
  * @property {function(number, number, number[]=): (Hit|null)} hitTest 座標（と列ごとのカードの枚数）から当たったものを返す
  */
 
@@ -284,6 +285,17 @@ export function createLayout({ screen, deckCount, columnCount, handSize, gaugeCo
   const battle = createBattleLayout(W);
 
   /**
+   * 列のカードの矩形を下から順に求める（`columnCardYs` を使うので長い列の詰めを含む）。
+   * @param {number} c 列の番号
+   * @param {number} count 列のカードの枚数
+   * @returns {Rect[]} 下から数えた各カードの矩形（長さ count）
+   */
+  function columnCardRects(c, count) {
+    const col = columns[c];
+    return columnCardYs(col, count).map((y) => ({ x: col.x, y, w: col.cardW, h: col.cardH }));
+  }
+
+  /**
    * 座標から当たったものを返す（行動終了 → 放つボタン → 山札 → 手札の枠 → 列 の順）。
    * @param {number} x x 座標
    * @param {number} y y 座標
@@ -316,5 +328,5 @@ export function createLayout({ screen, deckCount, columnCount, handSize, gaugeCo
     return null;
   }
 
-  return { screen, sections, card: { w: cardW, h: cardH }, gauges, decks, discard, columns, hand, releaseButtons, hud, battle, hitTest };
+  return { screen, sections, card: { w: cardW, h: cardH }, gauges, decks, discard, columns, hand, releaseButtons, hud, battle, columnCardRects, hitTest };
 }
