@@ -39,7 +39,7 @@ battlitaire/
 
 * `js/anim/` はまだない。最初のファイルを置く REQ で作る。
 * import map（`index.html`）: `oz` は `./oz/index.js`、`assets/` は `./assets/`。
-* 画面の論理解像度は縦長（720×1280）とする（Phase 02-01 で `js/main.js` の値を 1280×720 から切り替える）。
+* 画面の論理解像度は縦長（720×1280）。`js/main.js` の `screen` で決める。画面は上から「戦闘」「ソリティア」「UI」の3段で、最上段（戦闘）の高さは `js/view/layout.js` の `BATTLE_H`（1つだけ）で決まり、ほかの段の位置・大きさはそこと画面の大きさから計算する。
 
 ---
 
@@ -116,14 +116,14 @@ battlitaire/
 | `js/rules/hand.js` | 手札の枠の生成と、枠が空いているか・カードが入っているかの判定（純粋関数） |
 | `js/rules/planningResults.js` | 段取りの操作（置く・捨てる・放つ・手札に入れる・手札から置く・束を移す）の結果の型定義 |
 | `js/view/suitStyle.js` | スート・ゲージの見た目（絵文字・色・表示名） |
-| `js/view/layout.js` | 画面の配置（座標。状況の帯・手札の枠・列のカードの位置（長い列の詰め）を含む）と、座標から何に当たるかの判定（`hitTest`。行動終了・手札の枠・列のカードの当たり判定を含む） |
+| `js/view/layout.js` | 画面の配置（3段の配置（最上段の高さ `BATTLE_H`）、戦闘の段の城・敵・地面の位置、横幅から決めるカードの大きさ、手札の枠・列のカードの位置（長い列の詰め）を含む）と、座標から何に当たるかの判定（`hitTest`。行動終了・手札の枠・列のカードの当たり判定を含む） |
 | `js/view/cardView.js` | カード面・空き枠・強調枠の描画、角丸パス |
 | `js/view/deckView.js` | 山札・捨て札の描画 |
 | `js/view/columnView.js` | 列と放つボタンの描画（長い列の詰めと、選んだ束の枠を含む） |
-| `js/view/hudView.js` | ゲージと行動回数のパネルの描画（押せる「行動終了」ボタンの見た目を含む） |
-| `js/view/boardView.js` | 盤面全体の描画の取りまとめ（状況の帯・手札を含む） |
+| `js/view/hudView.js` | 最下段（UI）のゲージ・残りの行動回数・「行動終了」の描画（押せる「行動終了」ボタンの見た目を含む） |
+| `js/view/boardView.js` | 盤面全体の描画の取りまとめ（戦闘の段・山札・捨て札・列・手札・放つボタン・最下段） |
 | `js/view/battleText.js` | 攻防の出来事・敵の行動・決着を表示文字に直す |
-| `js/view/statusView.js` | フェーズ・城・敵・敵の予告の状況の帯の描画 |
+| `js/view/battleStageView.js` | 最上段（戦闘）の描画（背景・地面の線・城と敵の仮の図形・フェーズ・城と敵の HP・敵の予告） |
 | `js/view/resultLayout.js` | 結果の窓の配置 |
 | `js/view/resultWindowView.js` | 結果の窓の描画（暗幕・出来事の行・決着・案内） |
 | `js/view/handView.js` | 手札の枠の描画（見出し・空き枠・カード・選択と入れられる枠の目印） |
@@ -135,4 +135,4 @@ battlitaire/
 * `js/main.js`: 起動。タイトルの画面（`BootScene`）を作る関数と盤面のシーンを作る関数を持ち、互いに渡す。最初のシーンはタイトル。盤面のシーンにはタイトルを作る関数を渡す。乱数の関数として `Math.random` を渡す。`virtualPad` は `false`。
 * `js/scenes/BootScene.js`: 最初の入力を受ける画面（「TAP SCREEN」）。決着後に戻るタイトルの画面としても使う。
 * `js/scenes/MenuScene.js`: プレイ中に開く、項目が縦に並んだメニューの仕組み。項目は呼ぶ側から渡す。まだ使っていない。
-* `js/ui/virtualPadConfig.js`・`js/ui/virtualPadView.js`: バーチャルパッド。操作はタップとドラッグだけなので使わない予定。`js/main.js` の `virtualPad` は `false`。
+* `js/ui/virtualPadConfig.js`・`js/ui/virtualPadView.js`: バーチャルパッド。操作はタップとドラッグだけなので使わない予定。`js/main.js` の `virtualPad` は `false`。配置は 1280×720 のときに決めたままで、縦画面では未調整（使わない）。
