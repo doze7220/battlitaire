@@ -28,7 +28,6 @@
  * 最下段（UI）の配置。
  * @typedef {Object} HudLayout
  * @property {Rect} panel 段の背景
- * @property {Rect[]} gauges ゲージの枠（ゲージの並び順）
  * @property {Rect} actions 「行動 残り / 最大」の枠
  * @property {Rect} actionEnd 「行動終了」の領域
  */
@@ -67,6 +66,7 @@
  * @property {{ battle: Rect, solitaire: Rect, ui: Rect }} sections 3段の領域（上から戦闘・ソリティア・UI）
  * @property {{ w: number, h: number }} card カードの幅と高さ
  * @property {Rect[]} decks 山札の領域
+ * @property {Rect[]} gauges ゲージの枠（ソリティアの段の最上部の横1行。ゲージの並び順。押せない）
  * @property {Rect} discard 捨て札の領域
  * @property {ColumnLayout[]} columns 列の領域
  * @property {HandLayout} hand 手札の見出しと枠
@@ -78,8 +78,8 @@
 
 /** 最上段（戦闘）の高さ。300〜480 の範囲で変えてよい。試遊で決め直す。 */
 const BATTLE_H = 360;
-/** 最下段（UI）の高さ（固定。中身の行がおさまる高さ） */
-const UI_H = 220;
+/** 最下段（UI）の高さ（固定。行動の枠・行動終了の行がおさまる高さ） */
+const UI_H = 144;
 /** 左右の余白 */
 const SIDE_MARGIN = 20;
 /** 上の行のカードの横の間隔 */
@@ -130,14 +130,14 @@ const INFO_GAP = 8;
 /** HP の枠と予告の枠の間隔 */
 const INFO_GAP_Y = 4;
 
-/** 最下段のゲージの枠の上の余白 */
+/** 最下段の行（行動の枠・行動終了）の上の余白 */
 const UI_PAD_TOP = 16;
 /** ゲージの枠の高さ */
 const GAUGE_H = 64;
+/** ゲージの行と、その下の山札の行の間のすき間 */
+const GAUGE_GAP_Y = 12;
 /** 最下段の横の間隔 */
 const UI_GAP_X = 12;
-/** 最下段の縦の間隔 */
-const UI_GAP_Y = 12;
 /** 「行動 残り / 最大」の枠の幅 */
 const ACTIONS_W = 200;
 /** 行動の枠と行動終了の高さ */
@@ -230,7 +230,13 @@ export function createLayout({ screen, deckCount, columnCount, handSize, gaugeCo
   const n = deckCount + 1 + handSize;
   const cardW = Math.floor((W - SIDE_MARGIN * 2 - ROW_GAP_X * (n - 1)) / n);
   const cardH = Math.round(cardW * CARD_ASPECT);
-  const rowY = sections.solitaire.y + SOLITAIRE_PAD_TOP;
+  const gaugeW = (W - SIDE_MARGIN * 2 - UI_GAP_X * (gaugeCount - 1)) / gaugeCount;
+  const gaugeY = sections.solitaire.y + SOLITAIRE_PAD_TOP;
+  const gauges = [];
+  for (let i = 0; i < gaugeCount; i++) {
+    gauges.push({ x: SIDE_MARGIN + (gaugeW + UI_GAP_X) * i, y: gaugeY, w: gaugeW, h: GAUGE_H });
+  }
+  const rowY = gaugeY + GAUGE_H + GAUGE_GAP_Y;
   /**
    * 上の行（山札・捨て札・手札の枠）の i 番目のカードの左端 x を返す。
    * @param {number} i 上の行での左からの番号
@@ -265,19 +271,12 @@ export function createLayout({ screen, deckCount, columnCount, handSize, gaugeCo
     releaseButtons.push({ x, y: releaseY, w: cardW, h: RELEASE_H });
   }
 
-  const gaugeW = (W - SIDE_MARGIN * 2 - UI_GAP_X * (gaugeCount - 1)) / gaugeCount;
-  const gaugeY = sections.ui.y + UI_PAD_TOP;
-  const gauges = [];
-  for (let i = 0; i < gaugeCount; i++) {
-    gauges.push({ x: SIDE_MARGIN + (gaugeW + UI_GAP_X) * i, y: gaugeY, w: gaugeW, h: GAUGE_H });
-  }
-  const actionsY = gaugeY + GAUGE_H + UI_GAP_Y;
+  const actionsY = sections.ui.y + UI_PAD_TOP;
   const actions = { x: SIDE_MARGIN, y: actionsY, w: ACTIONS_W, h: ACTION_END_H };
   const actionEndX = actions.x + actions.w + UI_GAP_X;
   /** @type {HudLayout} */
   const hud = {
     panel: sections.ui,
-    gauges,
     actions,
     actionEnd: { x: actionEndX, y: actionsY, w: W - SIDE_MARGIN - actionEndX, h: ACTION_END_H },
   };
@@ -317,5 +316,5 @@ export function createLayout({ screen, deckCount, columnCount, handSize, gaugeCo
     return null;
   }
 
-  return { screen, sections, card: { w: cardW, h: cardH }, decks, discard, columns, hand, releaseButtons, hud, battle, hitTest };
+  return { screen, sections, card: { w: cardW, h: cardH }, gauges, decks, discard, columns, hand, releaseButtons, hud, battle, hitTest };
 }

@@ -1,23 +1,18 @@
 /**
- * 責務: 最下段（UI）のゲージの名前と数値、残りの行動回数、「行動終了」の表示を描く。
+ * 責務: 最下段（UI）の残りの行動回数と「行動終了」の表示を描く。
  * 押せるときは攻防へ進むボタンとしての見た目にする。状態は変えず、ルール層は実行時に import しない。
  */
 
 import { roundRectPath } from './cardView.js';
-import { gaugeLabel } from './suitStyle.js';
 
 /** 段の背景の塗りつぶしの色。 */
 const PANEL_FILL = 'rgba(0, 0, 0, 0.25)';
-/** ゲージ・行動の枠の塗りつぶしの色。 */
+/** 行動の枠の塗りつぶしの色。 */
 const ROW_FILL = 'rgba(255, 255, 255, 0.08)';
 /** 枠の角の半径。 */
 const ROW_CORNER = 8;
 /** 枠の左端から文字までの余白。 */
 const ROW_PADDING_X = 16;
-/** ゲージの名前のフォント。 */
-const LABEL_FONT = 'bold 24px sans-serif';
-/** ゲージの数値のフォント。 */
-const VALUE_FONT = 'bold 30px sans-serif';
 /** 文字の色。 */
 const TEXT_COLOR = '#f0f0f0';
 /** 行動の枠の文字のフォント。 */
@@ -46,37 +41,22 @@ const END_READY_SUB_TEXT = 'タップで攻防へ';
 const END_READY_SUB_FONT = 'bold 22px sans-serif';
 
 /**
- * 最下段（UI）を描く。ゲージは gauges のキーの順に、hudLayout.gauges[i] の枠へ描く。
+ * 最下段（UI）を描く（残りの行動回数と「行動終了」。ゲージは gaugeView.js が描く）。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').HudLayout} hudLayout 最下段の配置
- * @param {Object<string, number>} gauges ゲージ（識別子 → 値）
  * @param {number} actionsLeft 残りの行動回数
  * @param {number} actionsMax 行動回数の最大
  * @param {boolean} outOfActions 行動を使い切ったか（true なら「行動終了」を出す）
  * @param {boolean} battleReady 攻防へ進めるか（true なら「行動終了」を押せるボタンの見た目にする）
  * @returns {void}
  */
-export function drawHud(ctx, hudLayout, gauges, actionsLeft, actionsMax, outOfActions, battleReady) {
-  const { panel, gauges: gaugeRects, actions, actionEnd } = hudLayout;
+export function drawHud(ctx, hudLayout, actionsLeft, actionsMax, outOfActions, battleReady) {
+  const { panel, actions, actionEnd } = hudLayout;
   ctx.save();
   ctx.fillStyle = PANEL_FILL;
   ctx.fillRect(panel.x, panel.y, panel.w, panel.h);
 
   ctx.textBaseline = 'middle';
-  const keys = Object.keys(gauges);
-  for (let i = 0; i < keys.length; i++) {
-    const r = gaugeRects[i];
-    roundRectPath(ctx, r.x, r.y, r.w, r.h, ROW_CORNER);
-    ctx.fillStyle = ROW_FILL;
-    ctx.fill();
-    ctx.fillStyle = TEXT_COLOR;
-    ctx.textAlign = 'left';
-    ctx.font = LABEL_FONT;
-    ctx.fillText(gaugeLabel(keys[i]), r.x + ROW_PADDING_X, r.y + r.h / 2);
-    ctx.textAlign = 'right';
-    ctx.font = VALUE_FONT;
-    ctx.fillText(String(gauges[keys[i]]), r.x + r.w - ROW_PADDING_X, r.y + r.h / 2);
-  }
 
   roundRectPath(ctx, actions.x, actions.y, actions.w, actions.h, ROW_CORNER);
   ctx.fillStyle = ROW_FILL;

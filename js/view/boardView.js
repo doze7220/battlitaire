@@ -1,5 +1,5 @@
 /**
- * 責務: 盤面全体の描画の取りまとめ（背景を塗り、戦闘の段（battleStageView.js）・山札・捨て札・列・手札・放つボタン・最下段（UI）の部品を配置に従って順に呼ぶ）。
+ * 責務: 盤面全体の描画の取りまとめ（背景を塗り、戦闘の段（battleStageView.js）・ゲージ・山札・捨て札・列・手札・放つボタン・最下段（UI）の部品を配置に従って順に呼ぶ）。
  * ゲームの状態は読むだけで変えず、ルールの判定は行わない。
  */
 
@@ -7,6 +7,7 @@ import { drawDeck, drawDiscard } from './deckView.js';
 import { drawColumn, drawReleaseButton } from './columnView.js';
 import { drawHand } from './handView.js';
 import { drawHud } from './hudView.js';
+import { drawGauges } from './gaugeView.js';
 import { drawBattleStage } from './battleStageView.js';
 
 /** 盤面全体の背景の色。 */
@@ -42,6 +43,8 @@ export function drawBoard(ctx, layout, game, ui) {
 
   drawBattleStage(ctx, layout.battle, { phase: game.phase, castle: game.castle, enemy: game.enemy });
 
+  drawGauges(ctx, layout.gauges, game.gauges);
+
   for (let d = 0; d < layout.decks.length; d++) {
     drawDeck(ctx, layout.decks[d], game.visibleCards(d), game.hiddenCount(d), {
       selected: ui.selectedDeck === d,
@@ -57,5 +60,5 @@ export function drawBoard(ctx, layout, game, ui) {
   }
   drawHand(ctx, layout.hand, game.hand, { selectedSlot: ui.selectedHandSlot, holdSlots: ui.holdSlots });
 
-  drawHud(ctx, layout.hud, game.gauges, game.actionsLeft, game.actionsMax, ui.outOfActions, ui.battleReady);
+  drawHud(ctx, layout.hud, game.actionsLeft, game.actionsMax, ui.outOfActions, ui.battleReady);
 }
