@@ -22,7 +22,7 @@ const TROOP_STYLES = Object.freeze({
   enemyGuard: Object.freeze({ color: '#9a5cc8', item: 'shield', facing: -1 }),
 });
 
-/** 持ち物・旗の色。 */
+/** 持ち物（盾・槍・槌）と旗の竿の色。旗の三角は FLAG_COLOR で塗る。 */
 const ITEM_COLOR = '#e8e8e8';
 /** 旗の色。 */
 const FLAG_COLOR = '#ffffff';

@@ -41,7 +41,7 @@ export class BoardScene extends Scene {
     this.layout = null;
     /** @type {import('./boardSelection.js').BoardSelection} 選択の状態（選択なしは null） */
     this.selection = null;
-    /** @type {import('../rules/planningResults.js').PlanningResult|import('../rules/Game.js').BattleResult|null} 直近の操作の結果（Phase 2 の演出で使う。今は保持するだけ） */
+    /** @type {import('../rules/planningResults.js').PlanningResult|import('../rules/Game.js').BattleResult|null} 直近の操作の結果（段取りの操作の結果、または戦闘の結果。戦闘の演出の入力にも渡す。新しい局の開始で null に戻る） */
     this.lastResult = null;
     /** @type {BoardAnimator|null} 盤面の動きの集まり（init で作る） */
     this.animator = null;
