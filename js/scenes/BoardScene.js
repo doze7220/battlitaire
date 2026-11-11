@@ -1,12 +1,14 @@
 /**
  * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面を描くこと。
- * 行動終了のボタンで攻防を呼び、結果の窓を積むこと。
+ * 操作の結果を anim に渡して時間を進め、動いている間はタップを無視すること。行動終了のボタンで攻防を呼び、結果の窓を積むこと。
  */
 import { Engine, Scene } from 'oz';
 import { Game } from '../rules/Game.js';
 import { BattleResultScene } from './BattleResultScene.js';
 import { createLayout } from '../view/layout.js';
 import { drawBoard } from '../view/boardView.js';
+import { BoardAnimator } from '../anim/boardAnimator.js';
+import { snapshotBoard, buildPlanningMotion } from '../anim/planningMotion.js';
 import { applyTap, boardUiFor } from './boardSelection.js';
 
 /**
@@ -40,6 +42,8 @@ export class BoardScene extends Scene {
     this.selection = null;
     /** @type {import('../rules/planningResults.js').PlanningResult|import('../rules/Game.js').BattleResult|null} 直近の操作の結果（Phase 2 の演出で使う。今は保持するだけ） */
     this.lastResult = null;
+    /** @type {BoardAnimator|null} 盤面の動きの集まり（init で作る） */
+    this.animator = null;
   }
 
   /**
@@ -57,15 +61,26 @@ export class BoardScene extends Scene {
     });
     this.selection = null;
     this.lastResult = null;
+    this.animator = new BoardAnimator();
   }
 
   /**
-   * 押したとき（'down'）だけ、当たった場所に応じてルール層の操作を呼ぶ（選択の扱いは boardSelection.js）。
+   * 動きの時計に dt（ミリ秒）を足して進める（timeScale は update の呼ばれる回数に反映されるので掛けない。ルール層の状態は変えない）。
+   * @param {number} dt 1ティックの長さ（ミリ秒）
+   * @returns {void}
+   */
+  update(dt) {
+    this.animator.update(dt);
+  }
+
+  /**
+   * 押したとき（'down'）だけ、動いている間は無視し、当たった場所に応じてルール層の操作を呼ぶ（選択の扱いは boardSelection.js）。
    * @param {{ type: string, x: number, y: number }} pointer ポインタ入力
    * @returns {void}
    */
   onPointer(pointer) {
     if (pointer.type !== 'down') return;
+    if (this.animator.isBusy()) return;
     const game = this.game;
     const hit = this.layout.hitTest(pointer.x, pointer.y, game.columns.map((col) => col.length));
     if (game.isOutOfActions()) {
@@ -82,13 +97,17 @@ export class BoardScene extends Scene {
       }
       return;
     }
+    const before = snapshotBoard(game);
     const step = applyTap(game, this.selection, hit);
     this.selection = step.selection;
-    if (step.result !== null) this.lastResult = step.result;
+    if (step.result !== null) {
+      this.lastResult = step.result;
+      this.animator.start(buildPlanningMotion(step.result, before, snapshotBoard(game), this.layout));
+    }
   }
 
   /**
-   * ルール層の問い合わせから表示用の値を作り、盤面を描く（状態は変えない）。
+   * ルール層の問い合わせと anim の見た目の値から盤面を描く（状態は変えない）。
    * @param {CanvasRenderingContext2D} ctx 描画先
    * @param {string} layer レイヤー名
    * @returns {void}
@@ -96,6 +115,6 @@ export class BoardScene extends Scene {
   draw(ctx, layer) {
     if (layer !== this.layer) return;
     const game = this.game;
-    drawBoard(ctx, this.layout, game, boardUiFor(game, this.selection));
+    drawBoard(ctx, this.layout, game, boardUiFor(game, this.selection), this.animator.view());
   }
 }
