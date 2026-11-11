@@ -32,3 +32,12 @@ export function easeOutCubic(t) {
   const u = 1 - t;
   return 1 - u * u * u;
 }
+
+/**
+ * 出だしと終わりがゆるやかなイージング（群れの移動に使う）。
+ * @param {number} t 進み具合（0〜1）
+ * @returns {number} イージング後の進み具合（0〜1）
+ */
+export function easeInOutQuad(t) {
+  return t < 0.5 ? 2 * t * t : 1 - ((-2 * t + 2) * (-2 * t + 2)) / 2;
+}
