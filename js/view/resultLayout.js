@@ -3,8 +3,10 @@
  * 状態は持たず、ルール層は import しない。
  */
 
-/** 窓の幅 */
-const PANEL_W = 640;
+/** 窓の幅の上限 */
+const PANEL_MAX_W = 640;
+/** 窓の左右に空ける最小の余白（画面の幅が狭いとき、窓が画面を超えないようにする） */
+const PANEL_SIDE_MARGIN = 24;
 /** 窓の高さ */
 const PANEL_H = 520;
 /** 窓の上端から見出しまでの距離 */
@@ -31,16 +33,17 @@ const HINT_OFFSET = 470;
  */
 
 /**
- * 結果の窓の配置を作る。窓は画面の中央に置く。
+ * 結果の窓の配置を作る。窓は画面の中央に置き、幅は min(上限, 画面の幅 − 左右の余白) とする。
  * @param {{ width: number, height: number }} screen 画面の大きさ
  * @returns {ResultLayout} 窓の配置
  */
 export function createResultLayout(screen) {
-  const x = (screen.width - PANEL_W) / 2;
+  const panelW = Math.min(PANEL_MAX_W, screen.width - PANEL_SIDE_MARGIN * 2);
+  const x = (screen.width - panelW) / 2;
   const y = (screen.height - PANEL_H) / 2;
   return {
     screen,
-    panel: { x, y, w: PANEL_W, h: PANEL_H },
+    panel: { x, y, w: panelW, h: PANEL_H },
     titleY: y + TITLE_OFFSET,
     lineTop: y + LINE_TOP_OFFSET,
     linePitch: LINE_PITCH,
