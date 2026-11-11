@@ -1,5 +1,5 @@
 /**
- * 責務: ソリティアの段の最上部に並ぶゲージ（攻撃・防御・回復・力こぶ）の枠と、名前・数値の描画。
+ * 責務: ソリティアの段の最上部に並ぶゲージ（攻撃・防御・回復・力こぶ）の枠と、名前・数値（数え上げ中の表示値への差し替えを含む）の描画。
  * 状態は変えず、ルール層は実行時に import しない。
  */
 
@@ -24,9 +24,10 @@ const TEXT_COLOR = '#f0f0f0';
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').Rect[]} gaugeRects ゲージの枠（並び順）
  * @param {Object<string, number>} gauges ゲージ（識別子 → 値）
+ * @param {Object<string, number>} [shownValues] 表示値の差し替え（識別子 → 表示する値。あればその値を、なければ gauges の値を出す）
  * @returns {void}
  */
-export function drawGauges(ctx, gaugeRects, gauges) {
+export function drawGauges(ctx, gaugeRects, gauges, shownValues = {}) {
   ctx.save();
   ctx.textBaseline = 'middle';
   const keys = Object.keys(gauges);
@@ -41,7 +42,7 @@ export function drawGauges(ctx, gaugeRects, gauges) {
     ctx.fillText(gaugeLabel(keys[i]), r.x + GAUGE_PADDING_X, r.y + r.h / 2);
     ctx.textAlign = 'right';
     ctx.font = VALUE_FONT;
-    ctx.fillText(String(gauges[keys[i]]), r.x + r.w - GAUGE_PADDING_X, r.y + r.h / 2);
+    ctx.fillText(String(shownValues[keys[i]] ?? gauges[keys[i]]), r.x + r.w - GAUGE_PADDING_X, r.y + r.h / 2);
   }
   ctx.restore();
 }

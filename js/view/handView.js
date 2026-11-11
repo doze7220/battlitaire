@@ -1,5 +1,5 @@
 /**
- * 責務: 手札（見出し・空き枠・カード・選択中の枠と入れられる枠の強調）を描く。
+ * 責務: 手札（見出し・空き枠・カード・動いている最中のカードを隠す描画・選択中の枠と入れられる枠の強調）を描く。
  * 状態は変えず、ルール層は実行時に import しない。
  */
 
@@ -17,6 +17,7 @@ const HOLDABLE_COLOR = '#7be07b';
  * @typedef {Object} HandViewState
  * @property {number|null} selectedSlot 選択中の手札の枠の番号（なければ null）
  * @property {number[]} holdSlots 山札のカードを入れられる枠の番号
+ * @property {Set<number>} [hiddenIds] 描かないカードの ID（動いている最中のカード。そのカードの枠は空き枠として描く。未指定なら隠さない）
  */
 
 /**
@@ -38,7 +39,8 @@ export function drawHand(ctx, handLayout, hand, state) {
 
   for (let s = 0; s < handLayout.slots.length; s++) {
     const { x, y, w, h } = handLayout.slots[s];
-    const card = hand[s] ?? null;
+    const held = hand[s] ?? null;
+    const card = held !== null && state.hiddenIds?.has(held.id) ? null : held;
     if (card === null) {
       drawEmptySlot(ctx, x, y, w, h, EMPTY_LABEL);
       if (state.holdSlots.includes(s)) drawHighlight(ctx, x, y, w, h, HOLDABLE_COLOR);
