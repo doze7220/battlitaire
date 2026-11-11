@@ -67,6 +67,7 @@ export function buildPlanningMotion(result, before, after, layout) {
    * @param {import('./cardTween.js').Rect} to 先
    * @param {'column'|'hand'|'discard'} dest 先の種類
    * @param {number} [delay] 開始の遅れ（ms）
+   * @returns {void}
    */
   const addTween = (card, from, to, dest, delay = 0) => {
     motion.tweens.push(createCardTween({ card, from, to, delay, duration: move, dest }));

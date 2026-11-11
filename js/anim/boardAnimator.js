@@ -38,6 +38,9 @@ import { gaugeCountEnd, sampleGaugeCount } from './gaugeCount.js';
  * 動きの集まりの管理。
  */
 export class BoardAnimator {
+  /**
+   * 時計と動きを空の状態で作る。
+   */
   constructor() {
     /**
      * 動きの時計（ms）。`update(dt)` の `dt` を足して進める。
