@@ -1,9 +1,9 @@
 /**
- * 責務: 山札（一番上の表・残り枚数・選択枠・「捨てる」表示）と捨て札の見た目を描く。
+ * 責務: 山札（一番上の表またはめくれ・残り枚数・選択枠・「捨てる」表示）と捨て札（着いていない分を除く枚数）の見た目を描く。
  * 状態は変えず、ルール層は実行時に import しない。
  */
 
-import { drawCardFace, drawEmptySlot, drawHighlight, roundRectPath } from './cardView.js';
+import { drawCardFace, drawCardFlip, drawEmptySlot, drawHighlight, roundRectPath } from './cardView.js';
 
 const SELECT_COLOR = '#ffd84a';
 const COUNT_FONT = '16px sans-serif';
@@ -29,6 +29,7 @@ const BAND_COLOR = '#ffffff';
  * @typedef {Object} DeckViewState
  * @property {boolean} selected 選択中か
  * @property {boolean} discardMode 「捨てる」の帯を出すか
+ * @property {{ scaleX: number, faceUp: boolean }|null} [flip] めくれ中の見た目（null か未指定なら普通の表）
  */
 
 /**
@@ -40,12 +41,13 @@ const BAND_COLOR = '#ffffff';
  * @param {DeckViewState} state 表示用の状態
  * @returns {void}
  */
-export function drawDeck(ctx, rect, visibleCards, hiddenCount, { selected, discardMode }) {
+export function drawDeck(ctx, rect, visibleCards, hiddenCount, { selected, discardMode, flip }) {
   const { x, y, w, h } = rect;
   if (visibleCards.length === 0) {
     drawEmptySlot(ctx, x, y, w, h, EMPTY_LABEL);
   } else {
-    drawCardFace(ctx, x, y, w, h, visibleCards[0]);
+    if (flip) drawCardFlip(ctx, x, y, w, h, visibleCards[0], flip.scaleX, flip.faceUp);
+    else drawCardFace(ctx, x, y, w, h, visibleCards[0]);
     ctx.save();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
@@ -72,10 +74,11 @@ export function drawDeck(ctx, rect, visibleCards, hiddenCount, { selected, disca
  * 捨て札（枠・「捨て札」・枚数）を描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {{ x: number, y: number, w: number, h: number }} rect 捨て札の領域
- * @param {number} count 捨て札の枚数
+ * @param {number} count 捨て札の枚数（ルール層の値）
+ * @param {number} [pending] まだ着いていない飛行中のカードの枚数（出す枚数は count から引く。既定 0）
  * @returns {void}
  */
-export function drawDiscard(ctx, rect, count) {
+export function drawDiscard(ctx, rect, count, pending = 0) {
   const { x, y, w, h } = rect;
   ctx.save();
   roundRectPath(ctx, x, y, w, h, DISCARD_CORNER);
@@ -90,6 +93,6 @@ export function drawDiscard(ctx, rect, count) {
   ctx.font = DISCARD_FONT;
   ctx.fillText(DISCARD_LABEL, x + w / 2, y + h * 0.3);
   ctx.font = DISCARD_COUNT_FONT;
-  ctx.fillText(String(count), x + w / 2, y + h * 0.62);
+  ctx.fillText(String(Math.max(0, count - pending)), x + w / 2, y + h * 0.62);
   ctx.restore();
 }
