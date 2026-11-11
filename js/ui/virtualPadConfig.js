@@ -4,7 +4,7 @@
  */
 
 /**
- * パッドの配置とキーの割り当て（論理解像度 1280x720）。Engine.addVirtualPad の第2引数にそのまま渡す。
+ * パッドの配置とキーの割り当て（1280×720 のときに決めた配置のまま。縦画面では未調整で、virtualPad は false で使わない）。Engine.addVirtualPad の第2引数にそのまま渡す。
  * @type {{
  *   stick: {x: number, y: number, radius: number, deadZone: number, keys: {left?: string, right?: string, up?: string, down?: string}},
  *   buttons: {x: number, y: number, radius: number, key: string}[]

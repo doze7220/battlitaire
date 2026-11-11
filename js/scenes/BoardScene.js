@@ -53,6 +53,7 @@ export class BoardScene extends Scene {
       deckCount: this.game.decks.length,
       columnCount: this.game.columns.length,
       handSize: this.game.hand.length,
+      gaugeCount: Object.keys(this.game.gauges).length,
     });
     this.selection = null;
     this.lastResult = null;

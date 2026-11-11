@@ -5,8 +5,8 @@ import { Engine, Scene } from 'oz';
 import { BootScene } from './scenes/BootScene.js';
 import { BoardScene } from './scenes/BoardScene.js';
 
-/** 解像度 */
-const screen = { width: 1280, height: 720 };
+/** 解像度（縦長の画面。論理解像度 720×1280） */
+const screen = { width: 720, height: 1280 };
 
 /**
  * 盤面のシーンを作る（乱数の関数 Math.random とタイトルを作る関数を渡す）。

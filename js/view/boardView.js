@@ -1,5 +1,5 @@
 /**
- * 責務: 盤面全体の描画の取りまとめ（背景を塗り、山札・捨て札・列・手札・放つボタン・HUD・状況の帯の部品を配置に従って順に呼ぶ）。
+ * 責務: 盤面全体の描画の取りまとめ（背景を塗り、戦闘の段（battleStageView.js）・山札・捨て札・列・手札・放つボタン・最下段（UI）の部品を配置に従って順に呼ぶ）。
  * ゲームの状態は読むだけで変えず、ルールの判定は行わない。
  */
 
@@ -7,7 +7,7 @@ import { drawDeck, drawDiscard } from './deckView.js';
 import { drawColumn, drawReleaseButton } from './columnView.js';
 import { drawHand } from './handView.js';
 import { drawHud } from './hudView.js';
-import { drawStatus } from './statusView.js';
+import { drawBattleStage } from './battleStageView.js';
 
 const BACKGROUND_COLOR = '#1f3a2e';
 
@@ -26,7 +26,7 @@ const BACKGROUND_COLOR = '#1f3a2e';
  */
 
 /**
- * 盤面全体を描く。game は読むだけで、何も書き換えない。
+ * 盤面全体を描く（背景 → 戦闘の段 → ソリティアの段 → 最下段の順）。game は読むだけで、何も書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').Layout} layout 画面の配置
  * @param {import('../rules/Game.js').Game} game ゲームの状態（読み取り専用）
@@ -38,6 +38,8 @@ export function drawBoard(ctx, layout, game, ui) {
   ctx.fillStyle = BACKGROUND_COLOR;
   ctx.fillRect(0, 0, layout.screen.width, layout.screen.height);
   ctx.restore();
+
+  drawBattleStage(ctx, layout.battle, { phase: game.phase, castle: game.castle, enemy: game.enemy });
 
   for (let d = 0; d < layout.decks.length; d++) {
     drawDeck(ctx, layout.decks[d], game.visibleCards(d), game.hiddenCount(d), {
@@ -55,5 +57,4 @@ export function drawBoard(ctx, layout, game, ui) {
   drawHand(ctx, layout.hand, game.hand, { selectedSlot: ui.selectedHandSlot, holdSlots: ui.holdSlots });
 
   drawHud(ctx, layout.hud, game.gauges, game.actionsLeft, game.actionsMax, ui.outOfActions, ui.battleReady);
-  drawStatus(ctx, layout.status, { phase: game.phase, castle: game.castle, enemy: game.enemy });
 }
