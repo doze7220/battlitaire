@@ -1,7 +1,9 @@
 /**
  * 責務: Engine.start の呼び出しと、レイヤーと最初の画面の流れ（boot 画面と次の画面）の定義を行う利用側のエントリポイント。
+ * 起動の前の音の読み込みと SE の音量の設定も行う。
  */
-import { Engine, Scene } from 'oz';
+import { Engine, Scene, Assets, Sound } from 'oz';
+import { SOUND_FILES, SE_VOLUME } from './audio/soundConfig.js';
 import { BootScene } from './scenes/BootScene.js';
 import { BoardScene } from './scenes/BoardScene.js';
 
@@ -38,5 +40,9 @@ const config = {
   scene: createTitle(),
   virtualPad: false,
 };
+
+// 起動の前の準備: SE の音量を設定し、効果音を読み込み終えてから Engine.start を呼ぶ（盤面で鳴らす音が未ロードにならないようにする）
+Sound.seVolume = SE_VOLUME;
+await Assets.load({ sounds: SOUND_FILES });
 
 Engine.start(config);
