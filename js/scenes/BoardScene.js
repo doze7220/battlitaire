@@ -1,6 +1,7 @@
 /**
  * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面を描くこと。
  * 操作の結果を anim に渡して時間を進め、動いている間はタップを無視すること。行動終了のボタンで攻防を呼び、攻防の演出のシーンを積むこと。
+ * 操作が成り立ったとき・行動終了・連鎖のきっかけで効果音を鳴らすこと（soundCues.js）。
  */
 import { Engine, Scene } from 'oz';
 import { Game } from '../rules/Game.js';
@@ -11,6 +12,7 @@ import { drawBoard } from '../view/boardView.js';
 import { BoardAnimator } from '../anim/boardAnimator.js';
 import { snapshotBoard, buildPlanningMotion } from '../anim/planningMotion.js';
 import { applyTap, boardUiFor } from './boardSelection.js';
+import { playPlanningSe, playTurnEndSe, playChainSe } from './soundCues.js';
 
 /**
  * @typedef {Object} BoardOptions BoardScene に渡すオプション
@@ -67,15 +69,18 @@ export class BoardScene extends Scene {
 
   /**
    * 動きの時計に dt（ミリ秒）を足して進める（timeScale は update の呼ばれる回数に反映されるので掛けない。ルール層の状態は変えない）。
+   * 進めた直後に、その間に着いた連鎖の序数ごとに連鎖の効果音を鳴らす。
    * @param {number} dt 1ティックの長さ（ミリ秒）
    * @returns {void}
    */
   update(dt) {
     this.animator.update(dt);
+    for (const ordinal of this.animator.chainCuesInLastUpdate()) playChainSe(ordinal);
   }
 
   /**
    * 押したとき（'down'）だけ、動いている間は無視し、当たった場所に応じてルール層の操作を呼ぶ（選択の扱いは boardSelection.js）。
+   * 操作が成り立ったとき・行動終了で攻防に入ったときに効果音を鳴らす（soundCues.js）。
    * @param {{ type: string, x: number, y: number }} pointer ポインタ入力
    * @returns {void}
    */
@@ -90,6 +95,7 @@ export class BoardScene extends Scene {
         const battleBefore = snapshotBattle(game);
         this.lastResult = game.resolveBattle();
         if (this.lastResult !== null) {
+          playTurnEndSe(); // 行動終了（攻防に入った）の効果音
           Engine.pushScene(new BattleShowScene({
             layer: this.layer,
             game,
@@ -103,8 +109,11 @@ export class BoardScene extends Scene {
       return;
     }
     const before = snapshotBoard(game);
+    const prevSelection = this.selection;
     const step = applyTap(game, this.selection, hit);
     this.selection = step.selection;
+    // 操作が成り立った（山札を選んだ）ときの効果音（タップの時点で1つ）
+    playPlanningSe(prevSelection, step);
     if (step.result !== null) {
       this.lastResult = step.result;
       this.animator.start(buildPlanningMotion(step.result, before, snapshotBoard(game), this.layout));
