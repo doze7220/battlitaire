@@ -3,6 +3,7 @@
  * シーンから呼ばれる音の補助モジュール（Scene を継承しない）。ルールの判定はしない。
  */
 import { Sound } from 'oz';
+import { CHAIN_PITCH } from '../audio/soundConfig.js';
 
 /**
  * 段取りの操作の種類 → 音の名前。
@@ -83,13 +84,24 @@ export function playTurnEndSe() {
 }
 
 /**
- * 連鎖の音を鳴らす。
- * @param {number} ordinal 何枚目か（1 始まり）。将来、エンジンに音程の指定が入ったときに音程を上げるために使う。今は使わない
+ * 連鎖の音の再生速度（音程）を、何枚目かから決める（純粋関数）。
+ * 1枚目は 1。以降は1枚ごとに上げ、上限で頭打ち。ありえない値は 1。
+ * @param {number} ordinal 何枚目か（1 始まりの整数）
+ * @returns {number} 再生速度 rate
+ */
+export function chainSeRate(ordinal) {
+  if (!Number.isInteger(ordinal) || ordinal < 1) return 1;
+  const semitones = Math.min((ordinal - 1) * CHAIN_PITCH.stepSemitones, CHAIN_PITCH.maxSemitones);
+  return 2 ** (semitones / 12);
+}
+
+/**
+ * 連鎖の音を、何枚目かに応じた音程で鳴らす。
+ * @param {number} ordinal 何枚目か（1 始まり）
  * @returns {void}
  */
 export function playChainSe(ordinal) {
-  void ordinal;
-  Sound.playSe(CHAIN_SE);
+  Sound.playSe(CHAIN_SE, { rate: chainSeRate(ordinal) });
 }
 
 /**
