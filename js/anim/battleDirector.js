@@ -1,12 +1,13 @@
 /**
- * 攻防の演出全体の管理。時計を進め、いまの段・終わったか・次へ進んでよいかを答え、スキップで終わりへ移り、見た目の値を作る。
- * 描画せず、ゲームの状態に触れない。
+ * 攻防の演出全体の管理。時計を進め、いまの段・終わったか・次へ進んでよいか・直前の進みの間に起きたきっかけを答え、
+ * スキップで終わりへ移り、見た目の値を作る。描画せず、ゲームの状態に触れない。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
 import { sampleSquadTrack } from './squadTrack.js';
 import { sampleHp } from './hpTrack.js';
 import { formationUnits } from './troopFormation.js';
+import { buildBattleCues } from './battleCues.js';
 
 /**
  * 描画用の見た目の値。
@@ -37,6 +38,10 @@ export class BattleDirector {
     this.troopLayout = troopLayout;
     /** @type {number} 演出の時計（ms） */
     this.clock = 0;
+    /** @type {number} 直前の update の前の時計（ms）。きっかけの区間を答えるためだけに使う */
+    this.prevClock = 0;
+    /** @type {import('./battleCues.js').BattleCue[]} 音を合わせるきっかけ（時刻の昇順） */
+    this.cues = buildBattleCues(timeline.steps);
     /** @type {boolean} スキップされたか */
     this.skipped = false;
   }
@@ -47,7 +52,16 @@ export class BattleDirector {
    * @returns {void}
    */
   update(ms) {
+    this.prevClock = this.clock;
     this.clock += ms;
+  }
+
+  /**
+   * 直前の `update` の間（prevClock < 時刻 <= clock）に起きたきっかけの段の種類を、時刻の順に返す（状態は変えない）。
+   * @returns {string[]} 段の種類の並び
+   */
+  cuesInLastUpdate() {
+    return this.cues.filter((cue) => this.prevClock < cue.time && cue.time <= this.clock).map((cue) => cue.type);
   }
 
   /**
@@ -57,6 +71,8 @@ export class BattleDirector {
   skip() {
     this.skipped = true;
     this.clock = Math.max(this.clock, this.timeline.endTime);
+    // 飛ばした段のきっかけを、次の問い合わせで出さない
+    this.prevClock = this.clock;
   }
 
   /**
