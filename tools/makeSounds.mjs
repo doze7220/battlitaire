@@ -24,6 +24,10 @@ const LONG_NAMES = new Set(['win', 'lose']);
 /** 書き出し先のフォルダ（スクリプトの位置から求める）。 */
 const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'sounds');
 
+/**
+ * 円周率の2倍（正弦波の位相を角度に直すのに使う）。
+ * @type {number}
+ */
 const TWO_PI = Math.PI * 2;
 
 /**

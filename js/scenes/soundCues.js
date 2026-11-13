@@ -49,8 +49,8 @@ export const TURN_END_SE = 'turnEnd';
 
 /**
  * タップの結果から鳴らす音の名前を決める（純粋関数）。
- * @param {{kind: string, index?: number}|null} prevSelection タップの前の選択
- * @param {{selection: {kind: string, index?: number}|null, result: {type: string}|null}} step applyTap の戻り値
+ * @param {import('./boardSelection.js').BoardSelection} prevSelection タップの前の選択
+ * @param {import('./boardSelection.js').TapStep} step applyTap の戻り値
  * @returns {string|null} 音の名前。鳴らさないなら null
  */
 export function planningSeName(prevSelection, step) {
@@ -65,8 +65,8 @@ export function planningSeName(prevSelection, step) {
 
 /**
  * タップの結果に応じた音があれば鳴らす。
- * @param {{kind: string, index?: number}|null} prevSelection タップの前の選択
- * @param {{selection: {kind: string, index?: number}|null, result: {type: string}|null}} step applyTap の戻り値
+ * @param {import('./boardSelection.js').BoardSelection} prevSelection タップの前の選択
+ * @param {import('./boardSelection.js').TapStep} step applyTap の戻り値
  * @returns {void}
  */
 export function playPlanningSe(prevSelection, step) {

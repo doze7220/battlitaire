@@ -112,7 +112,7 @@ export class BoardScene extends Scene {
     const prevSelection = this.selection;
     const step = applyTap(game, this.selection, hit);
     this.selection = step.selection;
-    // 操作が成り立った（山札を選んだ）ときの効果音（タップの時点で1つ）
+    // タップで成り立った操作（めくる＝山札を選ぶ・置く・捨てる・放つ）を表す効果音を鳴らす（タップの時点で1つ）
     playPlanningSe(prevSelection, step);
     if (step.result !== null) {
       this.lastResult = step.result;

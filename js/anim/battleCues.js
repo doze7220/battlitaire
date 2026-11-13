@@ -13,7 +13,7 @@ import { BATTLE_ANIM } from './battleAnimConfig.js';
  */
 
 /**
- * 段の種類ごとの、段の開始 `start` からきっかけまでの時間（ms）を返す関数。
+ * 段の種類 → 段の開始 `start` からきっかけまでの時間（ms）の、凍結した対応表（値は関数ではなく数値）。
  * 当たり・修理の式は `battleTimeline.js` の `addHit`（`start + hitMoveMs`）・`addHeal`（`start + formMs`）と同じ。
  * 注意: `battleTimeline.js` の `addHit`・`addHeal` の時刻を変えるときは、ここも合わせて直すこと。
  * @type {Readonly<Record<string, number>>}
