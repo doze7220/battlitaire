@@ -1,8 +1,10 @@
 /**
- * 責務: 攻防の演出のシーン。結果を anim に渡して時間を進め、早送り・スキップ・決着後のタップを受けること。
- * Engine.timeScale の切り替えと戻し、終わったら次のフェーズへ進めて戻る／タイトルへ切り替えること、見た目の値を view に渡して描くこと。
+ * 責務: 攻防の演出のシーン。結果を anim に渡して時間を進め、早送り・スキップ・決着後のタップを受け、timeScale を切り替えて戻すこと。
+ * 終わったら次のフェーズへ進めて戻る／タイトルへ切り替え、見た目の値を view に渡して描くこと。
+ * 攻防のきっかけと決着の表示で効果音を鳴らすこと（soundCues.js）。
  */
 import { Engine, Scene } from 'oz';
+import { playBattleCueSe, playOutcomeSe } from './soundCues.js';
 import { BATTLE_ANIM } from '../anim/battleAnimConfig.js';
 import { buildBattleSteps } from '../anim/battleSteps.js';
 import { buildBattleTimeline } from '../anim/battleTimeline.js';
@@ -46,6 +48,8 @@ export class BattleShowScene extends Scene {
     this.director = null;
     /** @type {boolean} 早送り中か */
     this.fast = false;
+    /** @type {boolean} 決着の効果音（勝ち・負け）を鳴らし済みか（音を1回に限るためだけに使い、演出の進み方には使わない） */
+    this.outcomeSePlayed = false;
   }
 
   /**
@@ -63,12 +67,17 @@ export class BattleShowScene extends Scene {
   }
 
   /**
-   * 演出の時計に dt を足す。終わったら等速に戻し、決着していなければ間の後に次のフェーズへ進めて戻る。
+   * 演出の時計に dt を足し、その間に起きた攻防のきっかけと、決着の表示が出たとき（1回だけ）に効果音を鳴らす。終わったら等速に戻し、決着していなければ間の後に次のフェーズへ進めて戻る。
    * @param {number} dt 1ティックの長さ（ミリ秒）
    * @returns {void}
    */
   update(dt) {
     this.director.update(dt);
+    for (const type of this.director.cuesInLastUpdate()) playBattleCueSe(type);
+    if (this.director.isFinished() && this.result.outcome !== null && !this.outcomeSePlayed) {
+      this.outcomeSePlayed = true;
+      playOutcomeSe(this.result.outcome);
+    }
     if (this.director.isFinished() && (Engine.timeScale !== NORMAL_SCALE || this.fast)) {
       Engine.timeScale = NORMAL_SCALE;
       this.fast = false;
