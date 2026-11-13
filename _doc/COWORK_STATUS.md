@@ -21,7 +21,7 @@
 ### 2. 現在進行中のタスク・懸念事項（毎セッション更新）
 * **A. 次フェイズ／Interruptへ持ち越す事項**
   * （Interrupt・小さな片付け）`js/view/hudView.js` の `drawHud` の引数 `outOfActions` は、行動終了を常に出すようにしてから使っていない（`js/view/boardView.js`・`js/scenes/boardSelection.js` から渡したまま）。次に最下段を触るときに一緒に消す（RES `_log/res/261113_2320_RES_Interrupt_放つの矢印と最下段の整理.md` 6章）。
-  * （Interrupt・エンジン待ち）SE の音程（再生速度）を指定できないため、連鎖で音程が上がる SE（DIR 02-04 の実装要件2）は作っていない。OZ Engine へ連絡票 `D:\ozlab\ozengine-web\_doc\BRIDGE_FROM_BATTLITAIRE.md` を出した（2026-11-13）。直った `oz/` に置き換えたら、`js/scenes/soundCues.js` の `playChainSe(ordinal)` で何枚目かから音程を決める（02-04 RES 5章）。
+  * （Interrupt・次の候補）連鎖で音程が上がる SE（DIR 02-04 の実装要件2）。2026-11-14 に OZ Engine を更新し、`Sound.playSe(名前, { rate })` で再生速度（音程）を指定できるようになった（`oz/ENGINE_API.md`。半音は `2 ** (半音の数 / 12)`）。`js/scenes/soundCues.js` の `playChainSe(ordinal)` で何枚目かから `rate` を決める（02-04 RES 5章）。
   * （注意・演出の時刻を触るとき）攻防の当たり・修理の時刻の式が `js/anim/battleCues.js` と `js/anim/battleTimeline.js` の2か所にある。片方を変えたら、もう片方も合わせて直す（02-04 RES 5章）。
   * （Phase 4 へ）手札の枠を増やすと、縦画面では盤面のカード全体が同じ比率で縮む（山札・捨て札・手札を1行に並べるため）。3枠以上で押せる大きさが 80px を下回り、カードの数字・絵文字のフォントは縮まないので窮屈に見える（初期値1枠では起きない）。手札の枠を増やすスキルを作るときに配置を見直す（02-01 RES 5章）。
   * （任意）見た目の磨き込みの候補（カードの動き・攻防の演出・仮の音）は `_doc/PROJECT_MILESTONE.md` の「演出と手触り」に移した。
