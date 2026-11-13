@@ -1,6 +1,6 @@
 /**
  * 責務: 盤面の動きの集まりを持ち、時計を進め、動いているか（終わったか）を答え、描画用の見た目の値を作る。
- * 描画はせず、ゲームの状態にもルール層にも触れない。
+ * 直前の時計の進みの間に着いた連鎖の何枚目かも答える。描画はせず、ゲームの状態にもルール層にも触れない。
  */
 
 import { cardTweenEnd, sampleCardTween } from './cardTween.js';
@@ -57,6 +57,16 @@ export class BoardAnimator {
      * @type {import('./planningMotion.js').Motion|null}
      */
     this.motion = null;
+    /**
+     * 直前の `update` の前の時計（ms）。連鎖のきっかけの区間を答えるためだけに使う。
+     * @type {number}
+     */
+    this.prevClock = 0;
+    /**
+     * 連鎖のきっかけの時刻（ms、昇順）。動きを捨てても残す。
+     * @type {number[]}
+     */
+    this.chainTimes = [];
   }
 
   /**
@@ -66,6 +76,8 @@ export class BoardAnimator {
    */
   start(motion) {
     this.clock = 0;
+    this.prevClock = 0;
+    this.chainTimes = [...(motion.chainTimes ?? [])];
     this.motion = motion;
     let end = 0;
     for (const t of motion.tweens) end = Math.max(end, cardTweenEnd(t));
@@ -80,8 +92,23 @@ export class BoardAnimator {
    * @returns {void}
    */
   update(ms) {
+    this.prevClock = this.clock;
     this.clock += ms;
     if (this.clock >= this.endTime) this.motion = null;
+  }
+
+  /**
+   * 直前の `update` の間（前の時計より後、今の時計まで）に着いた連鎖の序数を答える（状態は変えない）。
+   * @returns {number[]} 連鎖の何枚目か（1 始まり）の昇順の配列
+   */
+  chainCuesInLastUpdate() {
+    /** @type {number[]} */
+    const ordinals = [];
+    for (let i = 0; i < this.chainTimes.length; i++) {
+      const t = this.chainTimes[i];
+      if (this.prevClock < t && t <= this.clock) ordinals.push(i + 1);
+    }
+    return ordinals;
   }
 
   /**

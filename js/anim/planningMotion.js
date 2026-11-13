@@ -1,5 +1,5 @@
 /**
- * 責務: 操作前後の盤面の写しと段取りの操作の結果から、動き（カードの移動・山札のめくれ・ゲージの数え上げ）を組み立てる。
+ * 責務: 操作前後の盤面の写しと段取りの操作の結果から、動き（カードの移動・山札のめくれ・ゲージの数え上げ）と、放った束の連鎖のきっかけの時刻を組み立てる。
  * ルール層は import せず、描画も状態の変更も行わない。
  */
 
@@ -22,6 +22,7 @@ import { createGaugeCount } from './gaugeCount.js';
  * @property {import('./cardTween.js').CardTween[]} tweens カードの移動
  * @property {import('./deckFlip.js').DeckFlip[]} flips 山札のめくれ
  * @property {import('./gaugeCount.js').GaugeCount[]} counts ゲージの数え上げ
+ * @property {number[]} chainTimes 放った束の連鎖のきっかけの時刻（ms、昇順。カードが捨て札に着く時刻。release 以外は空）
  */
 
 /**
@@ -47,7 +48,7 @@ export function snapshotBoard(game) {
  */
 export function buildPlanningMotion(result, before, after, layout) {
   /** @type {Motion} */
-  const motion = { tweens: [], flips: [], counts: [] };
+  const motion = { tweens: [], flips: [], counts: [], chainTimes: [] };
   const move = ANIM_TIMING.cardMoveMs;
   /** めくる山札の番号（重複なし）。 */
   const flipDecks = new Set();
@@ -106,6 +107,10 @@ export function buildPlanningMotion(result, before, after, layout) {
       const fromRects = layout.columnCardRects(result.columnIndex, n);
       for (let k = 0; k < n; k++) {
         addTween(result.cards[k], fromRects[k], layout.discard, 'discard', (n - 1 - k) * stagger);
+      }
+      // 上のカード（k が大きい）から順に捨て札へ着くので、k を大きい方から数えると着く時刻は昇順になる
+      for (let k = n - 1; k >= 0; k--) {
+        motion.chainTimes.push((n - 1 - k) * stagger + move);
       }
       const duration = (n - 1) * stagger + move;
       for (const [gauge, gain] of Object.entries(result.gains ?? {})) {
