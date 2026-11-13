@@ -128,8 +128,6 @@ battlitaire/
 | `js/anim/planningMotion.js` | 操作前後の盤面の写しと、段取りの操作の結果から、動き（移動・めくれ・数え上げ）と、放った束の連鎖のきっかけの時刻を組み立てる |
 | `js/anim/boardAnimator.js` | 盤面の動きの集まりの管理（時計を進め、すべて終わったかを答え、描画用の見た目の値を作る。直前の時計の進みの間に着いた連鎖の何枚目かを答える） |
 | `js/anim/battleCues.js` | 時間割の段から、音を合わせるきっかけ（相殺・当たり・修理）の時刻の並びを組み立てる |
-| `js/audio/soundConfig.js` | 音の名前とパスの一覧（`SOUND_FILES`）と SE の音量の初期値（`SE_VOLUME`）を1か所に凍結して持つ |
-| `tools/makeSounds.mjs` | 仮の効果音（WAV 16bit モノラル）を合成して `assets/sounds/` に書き出す（Node.js、外部パッケージなし） |
 | `js/anim/battleAnimConfig.js` | 攻防の演出の設定（段ごとの時間・段の間・換算の人数・早送りの倍率・終わりの後の間）を1か所に凍結して持つ |
 | `js/anim/battleSteps.js` | 攻防の前の値の写しと、攻防の出来事の並びから演出の段の並びを組み立てる |
 | `js/anim/squadTrack.js` | 兵の群れ1つの動きの記録（時刻ごとの位置・数・濃さ）と、時計からの見た目 |
@@ -154,6 +152,8 @@ battlitaire/
 | `js/scenes/BattleShowScene.js` | 攻防の演出のシーン。結果を `anim` に渡して時間を進め、早送り・スキップ・決着後のタップを受け、`Engine.timeScale` を切り替えて戻し、終わったら次のフェーズへ進めて戻るか、タイトルへ切り替える。攻防のきっかけと決着の表示が出たときに効果音を鳴らす（`soundCues.js`） |
 | `js/scenes/soundCues.js` | 段取りの操作・連鎖・行動終了・攻防のきっかけ・決着から鳴らす効果音を決め、`Sound.playSe` で鳴らす（シーンから呼ばれる音の補助） |
 | `js/scenes/boardSelection.js` | 盤面の選択の状態（山札・手札・束）と、タップに応じた選択の遷移・ルール層の操作の呼び出し、選択から表示用の値を作ること |
+| `js/audio/soundConfig.js` | 音の名前とパスの一覧（`SOUND_FILES`）と SE の音量の初期値（`SE_VOLUME`）を1か所に凍結して持つ |
+| `tools/makeSounds.mjs` | 仮の効果音（WAV 16bit モノラル）を合成して `assets/sounds/` に書き出す（Node.js、外部パッケージなし） |
 
 **土台から残したファイル**
 * `js/main.js`: 起動。`Engine.start` の前に音を読み込み、SE の音量を設定する。タイトルの画面（`BootScene`）を作る関数と盤面のシーンを作る関数を持ち、互いに渡す。最初のシーンはタイトル。盤面のシーンにはタイトルを作る関数を渡す。乱数の関数として `Math.random` を渡す。`virtualPad` は `false`。
