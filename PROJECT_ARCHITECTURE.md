@@ -149,9 +149,9 @@ battlitaire/
 | `js/view/handView.js` | 手札の枠の描画（見出し・空き枠・カード・選択と入れられる枠の目印、動いている（着いていない）カードを隠すことを含む） |
 | `js/scenes/BoardScene.js` | 盤面のシーン。入力を受けてルール層の操作を呼び（選択の扱いは `boardSelection.js`）、結果を `anim` に渡して進め（動いている間はタップを無視する）、盤面を描く。行動終了で攻防の前の値を写して攻防を呼び、攻防の演出のシーンを積む。効果音は `soundCues.js` で鳴らす |
 | `js/scenes/BattleShowScene.js` | 攻防の演出のシーン。結果を `anim` に渡して進め、早送り・スキップ・決着後のタップを受け（`Engine.timeScale` を切り替えて戻す）、終わったら次のフェーズへ進めて戻るか、タイトルへ切り替える。効果音は `soundCues.js` で鳴らす |
-| `js/scenes/soundCues.js` | 段取りの操作・連鎖・行動終了・攻防のきっかけ・決着から鳴らす効果音を決め、`Sound.playSe` で鳴らす（シーンから呼ばれる音の補助） |
+| `js/scenes/soundCues.js` | 段取りの操作・連鎖・行動終了・攻防のきっかけ・決着から鳴らす効果音を決め、`Sound.playSe` で鳴らす（シーンから呼ばれる音の補助）。連鎖の音は何枚目かから再生速度を決め（`chainSeRate`）、1枚ごとに音程を上げて上限で頭打ちにする |
 | `js/scenes/boardSelection.js` | 盤面の選択の状態（山札・手札・束）と、タップに応じた選択の遷移・ルール層の操作の呼び出し、選択から表示用の値を作ること |
-| `js/audio/soundConfig.js` | 音の名前とパスの一覧（`SOUND_FILES`）と SE の音量の初期値（`SE_VOLUME`）を1か所に凍結して持つ |
+| `js/audio/soundConfig.js` | 音の名前とパスの一覧（`SOUND_FILES`）、SE の音量の初期値（`SE_VOLUME`）、連鎖の音程の上がり方（`CHAIN_PITCH`。1枚ごとの半音の数と上限）を1か所に凍結して持つ |
 | `tools/makeSounds.mjs` | 仮の効果音（WAV 16bit モノラル）を合成して `assets/sounds/` に書き出す（Node.js、外部パッケージなし） |
 
 **土台から残したファイル**
