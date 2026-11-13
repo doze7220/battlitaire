@@ -28,8 +28,7 @@
  * 最下段（UI）の配置。
  * @typedef {Object} HudLayout
  * @property {Rect} panel 段の背景
- * @property {Rect} actions 「行動 残り / 最大」の枠
- * @property {Rect} actionEnd 「行動終了」の領域
+ * @property {Rect} actionEnd 「行動終了」の領域（中に残りの行動回数も出す。左側は空けてある）
  */
 
 /**
@@ -179,11 +178,11 @@ const UI_PAD_TOP = 16;
 const GAUGE_H = 64;
 /** ゲージの行と、その下の山札の行の間のすき間 */
 const GAUGE_GAP_Y = 12;
-/** 最下段の横の間隔 */
+/** 横の間隔（ゲージの枠どうし、最下段の左の空きと行動終了の間、早送りとスキップの間） */
 const UI_GAP_X = 12;
-/** 「行動 残り / 最大」の枠の幅 */
-const ACTIONS_W = 200;
-/** 行動の枠と行動終了の高さ */
+/** 最下段の左側の空き（何も置かない。Phase 4 のスキル用）の幅 */
+const UI_LEFT_W = 200;
+/** 行動終了の高さ */
 const ACTION_END_H = 100;
 
 /**
@@ -349,12 +348,10 @@ export function createLayout({ screen, deckCount, columnCount, handSize, gaugeCo
   }
 
   const actionsY = sections.ui.y + UI_PAD_TOP;
-  const actions = { x: SIDE_MARGIN, y: actionsY, w: ACTIONS_W, h: ACTION_END_H };
-  const actionEndX = actions.x + actions.w + UI_GAP_X;
+  const actionEndX = SIDE_MARGIN + UI_LEFT_W + UI_GAP_X;
   /** @type {HudLayout} */
   const hud = {
     panel: sections.ui,
-    actions,
     actionEnd: { x: actionEndX, y: actionsY, w: W - SIDE_MARGIN - actionEndX, h: ACTION_END_H },
   };
 

@@ -9,16 +9,23 @@ import { columnCardYs } from './layout.js';
 const PLACEABLE_COLOR = '#7be07b';
 const RUN_COLOR = '#5bc0ff';
 const EMPTY_LABEL = '空き';
-const BUTTON_LABEL = '放つ';
 const BUTTON_CORNER = 8;
-const BUTTON_FONT = 'bold 20px sans-serif';
-const BUTTON_ON_FILL = '#c0392b';
-const BUTTON_ON_STROKE = '#ffd0c8';
-const BUTTON_ON_TEXT = '#ffffff';
-const BUTTON_OFF_FILL = '#3a3a3a';
-const BUTTON_OFF_STROKE = '#555555';
-const BUTTON_OFF_TEXT = '#777777';
+/** ボタンの背景（押せる範囲を示す控えめな角丸）の色。 */
+const BUTTON_ON_FILL = 'rgba(192, 57, 43, 0.25)';
+const BUTTON_ON_STROKE = 'rgba(255, 208, 200, 0.6)';
+const BUTTON_OFF_FILL = 'rgba(58, 58, 58, 0.5)';
+const BUTTON_OFF_STROKE = 'rgba(85, 85, 85, 0.6)';
 const BUTTON_LINE_WIDTH = 2;
+/** 矢印の色（押せるとき／押せないとき）。 */
+const ARROW_ON_COLOR = '#ff6a55';
+const ARROW_OFF_COLOR = '#555555';
+/** 矢印の全体の幅・高さ（ボタンの領域の中央に置く）。 */
+const ARROW_W = 40;
+const ARROW_H = 52;
+/** 矢印の軸の太さ。 */
+const ARROW_SHAFT_W = 14;
+/** 矢印の頭の高さ（全体の高さのうち）。 */
+const ARROW_HEAD_H = 26;
 
 /**
  * 列を描く。カードの位置は columnCardYs で求め、下から順に重ねる。空なら空き枠。
@@ -53,7 +60,7 @@ export function drawColumn(ctx, columnLayout, cards, highlighted, runFrom, hidde
 }
 
 /**
- * 「放つ」ボタンを描く。押せないときは暗い色と薄い文字にする。
+ * 「放つ」ボタンを描く（領域の中央に上向きの矢印。背後に押せる範囲を示す薄い角丸）。押せないときは暗い灰色にする。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {{ x: number, y: number, w: number, h: number }} rect ボタンの領域
  * @param {boolean} enabled 押せるか
@@ -68,10 +75,22 @@ export function drawReleaseButton(ctx, rect, enabled) {
   ctx.lineWidth = BUTTON_LINE_WIDTH;
   ctx.strokeStyle = enabled ? BUTTON_ON_STROKE : BUTTON_OFF_STROKE;
   ctx.stroke();
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.font = BUTTON_FONT;
-  ctx.fillStyle = enabled ? BUTTON_ON_TEXT : BUTTON_OFF_TEXT;
-  ctx.fillText(BUTTON_LABEL, x + w / 2, y + h / 2);
+  const cx = x + w / 2;
+  const top = y + (h - ARROW_H) / 2;
+  const bottom = top + ARROW_H;
+  const halfW = ARROW_W / 2;
+  const halfShaft = ARROW_SHAFT_W / 2;
+  const headBottom = top + ARROW_HEAD_H;
+  ctx.beginPath();
+  ctx.moveTo(cx, top);
+  ctx.lineTo(cx + halfW, headBottom);
+  ctx.lineTo(cx + halfShaft, headBottom);
+  ctx.lineTo(cx + halfShaft, bottom);
+  ctx.lineTo(cx - halfShaft, bottom);
+  ctx.lineTo(cx - halfShaft, headBottom);
+  ctx.lineTo(cx - halfW, headBottom);
+  ctx.closePath();
+  ctx.fillStyle = enabled ? ARROW_ON_COLOR : ARROW_OFF_COLOR;
+  ctx.fill();
   ctx.restore();
 }
