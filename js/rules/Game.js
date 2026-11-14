@@ -1,7 +1,7 @@
 /**
  * 責務: ゲーム全体の状態（山札・捨て札・列・手札・ゲージ・行動回数・フェーズと段階・城・敵）の保持と、
  * 問い合わせ・操作（置く・捨てる・放つ・手札に入れる・手札から置く・束を移す・攻防・次のフェーズ）の提供。
- * 敵の順番の中の今の敵（倒した敵の入れ替わりを含む）を持つ。操作は「何が起きたか」を返す。
+ * 敵の順番の中の今の敵（倒した敵の入れ替わりを含む）を持つ。攻防では行動に付く札の燃やしを列・捨て札に反映する。操作は「何が起きたか」を返す。
  */
 
 import { RULES } from './config.js';
@@ -10,7 +10,14 @@ import { createColumns, placeableColumnIndices, runStartIndex } from './columns.
 import { createHand, isEmptySlot, hasCardInSlot } from './hand.js';
 import { computeRelease } from './release.js';
 import { createCastle, createEnemy } from './combatants.js';
-import { planBehaviorAction, behaviorCountdown, rollAttackHeal } from './enemyBehaviors.js';
+import {
+  planBehaviorAction,
+  behaviorCountdown,
+  behaviorCharge,
+  settleBehaviorAction,
+  rollAttackHeal,
+} from './enemyBehaviors.js';
+import { planActionBurns, applyBurns } from './cardBurn.js';
 import { enemyTypeIdAt, enemySpecAt, isLastEnemy, nextEnemyName } from './enemyProgress.js';
 import { computeBattle } from './battle.js';
 import { computePhaseStart } from './phase.js';
@@ -19,10 +26,11 @@ import { computePhaseStart } from './phase.js';
  * 「攻防」操作の結果。
  * @typedef {Object} BattleResult
  * @property {'battle'} type 操作の種類
- * @property {import('./combatants.js').EnemyAction} enemyAction この攻防での敵の行動
+ * @property {import('./combatants.js').EnemyAction} enemyAction この攻防での敵の行動（予告の写し。`variant`・`burn` を含む）
  * @property {import('./battle.js').BattleEvent[]} events 出来事の並び（起きた順）
  * @property {number} castleHp 攻防の後の城の HP
  * @property {number} enemyHp 攻防の後の敵の HP
+ * @property {{ current: number, max: number }|null} enemyCharge 攻防の後の敵のチャージ（持たない敵は null）
  * @property {'win'|'lose'|null} outcome 決着（決着していなければ null。途中の敵を倒しただけなら null）
  * @property {{ enemyName: string, nextEnemyName: string|null }|null} defeat 途中の敵を倒したときの倒した敵と次の敵の名前（そうでなければ null）
  */
@@ -105,6 +113,14 @@ export class Game {
    */
   attackCountdown() {
     return behaviorCountdown(enemySpecAt(this.config, this.enemyIndex).behavior, this.enemy.behaviorState);
+  }
+
+  /**
+   * いまの敵のチャージ（現在値と満ちる数）。チャージを持たない敵は null。
+   * @returns {{ current: number, max: number }|null} チャージ。持たなければ `null`
+   */
+  enemyCharge() {
+    return behaviorCharge(enemySpecAt(this.config, this.enemyIndex).behavior, this.enemy.behaviorState);
   }
 
   /**
@@ -354,7 +370,8 @@ export class Game {
   /**
    * 攻防を計算し、城・敵の HP と段階を更新する。条件を満たさなければ何もしない。
    * 決着しなければ段階は 'result'、決着したら 'over' になる（途中の敵を倒しただけなら 'result'）。
-   * 敵は入れ替えない（入れ替わりは次のフェーズの頭）。
+   * 敵は入れ替えない（入れ替わりは次のフェーズの頭）。行動の `burn` があれば列の札を燃やして捨て札へ移し、
+   * 攻防の後の決まりの状態（チャージなど）に更新する。
    * @returns {BattleResult|null} 結果。攻防に入れなければ `null`
    */
   resolveBattle() {
@@ -362,6 +379,7 @@ export class Game {
     const enemyAction = this.enemy.intent;
     const spec = enemySpecAt(this.config, this.enemyIndex);
     const enemyHeal = rollAttackHeal(spec.behavior, enemyAction, this.random);
+    const burns = planActionBurns(enemyAction, this.columns, this.random);
     const calc = computeBattle({
       attack: this.gauges.attack ?? 0,
       defense: this.gauges.defense ?? 0,
@@ -374,9 +392,12 @@ export class Game {
       enemyHeal,
       enemyArmor: this.enemy.armor,
       lastEnemy: isLastEnemy(this.config, this.enemyIndex),
+      burns,
     });
     this.castle.hp = calc.castleHp;
     this.enemy.hp = calc.enemyHp;
+    applyBurns(this.columns, this.discard, calc.burned);
+    this.enemy.behaviorState = settleBehaviorAction(spec.behavior, this.enemy.behaviorState, enemyAction);
     if (calc.outcome === null) {
       this.stage = 'result';
     } else {
@@ -385,10 +406,11 @@ export class Game {
     }
     return {
       type: 'battle',
-      enemyAction: { kind: enemyAction.kind, amount: enemyAction.amount },
+      enemyAction: { ...enemyAction },
       events: calc.events,
       castleHp: calc.castleHp,
       enemyHp: calc.enemyHp,
+      enemyCharge: this.enemyCharge(),
       outcome: calc.outcome,
       defeat:
         calc.enemyDefeated && calc.outcome === null
@@ -424,7 +446,7 @@ export class Game {
       muscleLeft: this.gauges[this.config.muscleConversion.gauge],
       actionsMax: this.actionsMax,
       actionsLeft: this.actionsLeft,
-      enemyAction: { kind: this.enemy.intent.kind, amount: this.enemy.intent.amount },
+      enemyAction: { ...this.enemy.intent },
       enemyChanged,
     };
   }
