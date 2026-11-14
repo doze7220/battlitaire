@@ -1,6 +1,6 @@
 /**
  * 責務: 攻防の演出のシーン。結果を anim に渡して時間を進め、早送り・スキップ・決着後・敵を倒した後のタップを受け、timeScale を切り替えて戻すこと。
- * 終わったら次のフェーズへ進めて戻る／タイトルへ切り替え、見た目の値を view に渡して描くこと。
+ * 終わったら次のフェーズへ進めて戻る／タイトルへ切り替え、見た目の値を view に渡して描くこと（決着の表示（結果）を含む）。
  * 攻防のきっかけと決着の表示で効果音を鳴らすこと（soundCues.js）。背面の盤面のシーンへ札が燃える段の盤面の見た目を答えること。
  */
 import { Engine, Scene } from 'oz';
@@ -11,6 +11,7 @@ import { buildBattleTimeline } from '../anim/battleTimeline.js';
 import { BattleDirector } from '../anim/battleDirector.js';
 import { drawBattleShow } from '../view/battleShowView.js';
 import { drawBattleHud } from '../view/hudView.js';
+import { drawResult } from '../view/resultView.js';
 
 /** 等速の Engine.timeScale */
 const NORMAL_SCALE = 1;
@@ -128,7 +129,7 @@ export class BattleShowScene extends Scene {
   }
 
   /**
-   * 演出中の最上段と最下段を描く（状態は変えない）。
+   * 演出中の最上段と最下段を描き、決着したときは最後に画面全体へ結果の表示を重ねる（状態は変えない）。
    * @param {CanvasRenderingContext2D} ctx 描画先
    * @param {string} layer レイヤー名
    * @returns {void}
@@ -142,5 +143,8 @@ export class BattleShowScene extends Scene {
       showButtons: !look.finished,
       fastLabel: `×${BATTLE_ANIM.fastScale}`,
     });
+    if (look.finished && this.result.outcome !== null) {
+      drawResult(ctx, this.layout.result, this.result.outcome, this.game.gameStats());
+    }
   }
 }

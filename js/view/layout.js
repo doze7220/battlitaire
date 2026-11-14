@@ -82,7 +82,6 @@
  * @property {Rect} enemyBigInner 大きな敵の玉に内接する正方形の矩形（中心は enemyBig と同じ。シールドマークを玉からはみ出さずに並べる先）
  * @property {{ x: number, y: number }} enemyHealText 敵の回復の量の文字の中心（大きな敵の玉の真上、数え下ろしの枠との間）
  * @property {TroopLayout} troops 兵の配置
- * @property {{ x: number, textY: number, hintY: number }} outcome 決着の表示の位置（段の中央の x、「クリア」「負け」の文字の y、案内の y）
  * @property {{ x: number, titleY: number, nextY: number, hintY: number, maxW: number }} defeat 敵を倒したときの案内の位置（段の中央の x、「〜を倒した！」・「次は〜」・「タップで次へ」の y、文字の最大の幅）
  * @property {function(number, Rect=): Rect[]} shieldRects シールドマーク count 個の矩形（body の矩形の中の格子。body を省くと敵の矩形。最後の行は中央にそろえる）
  * @property {function(number): Array<{ x: number, footY: number, w: number, h: number }>} hordeSlots ゴブリンの兵 count 体の並び（後ろの列から順。x は中心、footY は足元の y）
@@ -208,10 +207,6 @@ const UNIT_ASPECT = 0.55;
 const BACK_ROW_RATIO = 0.12;
 /** 兵の間隔の、兵の幅に対する倍率 */
 const UNIT_SPACING = 1.15;
-/** 決着の「勝ち」「負け」の文字の y の、段の高さに対する割合 */
-const OUTCOME_TEXT_RATIO = 0.42;
-/** 決着の案内の文字の y の、段の高さに対する割合 */
-const OUTCOME_HINT_RATIO = 0.66;
 /** 敵を倒したときの「〜を倒した！」の y の、段の高さに対する割合 */
 const DEFEAT_TITLE_RATIO = 0.3;
 /** 敵を倒したときの「次は〜」の y の、段の高さに対する割合 */
@@ -425,11 +420,6 @@ function createBattleLayout(width) {
     enemyBigInner,
     enemyHealText,
     troops,
-    outcome: {
-      x: area.x + area.w / 2,
-      textY: area.y + area.h * OUTCOME_TEXT_RATIO,
-      hintY: area.y + area.h * OUTCOME_HINT_RATIO,
-    },
     defeat: {
       x: area.x + area.w / 2,
       titleY: area.y + area.h * DEFEAT_TITLE_RATIO,
