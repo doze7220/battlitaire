@@ -1,7 +1,7 @@
 /**
  * 責務: ゲーム全体の状態（山札・捨て札・列・手札・ゲージ・行動回数・フェーズと段階・城・敵）の保持と、
  * 問い合わせ・操作（置く・捨てる・放つ・手札に入れる・手札から置く・束を移す・攻防・次のフェーズ）の提供。
- * 操作は「何が起きたか」を返す。
+ * 敵の順番の中の今の敵（倒した敵の入れ替わりを含む）を持つ。操作は「何が起きたか」を返す。
  */
 
 import { RULES } from './config.js';
@@ -9,7 +9,9 @@ import { createDecks, takeTop, refillEmptyDecks } from './piles.js';
 import { createColumns, placeableColumnIndices, runStartIndex } from './columns.js';
 import { createHand, isEmptySlot, hasCardInSlot } from './hand.js';
 import { computeRelease } from './release.js';
-import { createCastle, createEnemy, planEnemyAction } from './combatants.js';
+import { createCastle, createEnemy } from './combatants.js';
+import { planBehaviorAction } from './enemyBehaviors.js';
+import { enemyTypeIdAt, enemySpecAt, isLastEnemy, nextEnemyName } from './enemyProgress.js';
 import { computeBattle } from './battle.js';
 import { computePhaseStart } from './phase.js';
 
@@ -21,7 +23,8 @@ import { computePhaseStart } from './phase.js';
  * @property {import('./battle.js').BattleEvent[]} events 出来事の並び（起きた順）
  * @property {number} castleHp 攻防の後の城の HP
  * @property {number} enemyHp 攻防の後の敵の HP
- * @property {'win'|'lose'|null} outcome 決着（決着していなければ null）
+ * @property {'win'|'lose'|null} outcome 決着（決着していなければ null。途中の敵を倒しただけなら null）
+ * @property {{ enemyName: string, nextEnemyName: string|null }|null} defeat 途中の敵を倒したときの倒した敵と次の敵の名前（そうでなければ null）
  */
 
 /**
@@ -35,6 +38,7 @@ import { computePhaseStart } from './phase.js';
  * @property {number} actionsMax このフェーズの行動回数
  * @property {number} actionsLeft 残りの行動回数（フェーズの頭では actionsMax と同じ）
  * @property {import('./combatants.js').EnemyAction} enemyAction 敵の次の行動の予告
+ * @property {boolean} enemyChanged このフェーズの頭で敵が入れ替わったか
  */
 
 /**
@@ -78,9 +82,21 @@ export class Game {
     this.outcome = null;
     /** @type {import('./combatants.js').Castle} 城 */
     this.castle = createCastle(config);
+    /** @type {number} いま戦っている敵の、`config.enemyOrder` の中の番号（0から） */
+    this.enemyIndex = 0;
     /** @type {import('./combatants.js').Enemy} 敵 */
-    this.enemy = createEnemy(config);
-    this.enemy.intent = planEnemyAction(config, random);
+    this.enemy = createEnemy(enemyTypeIdAt(config, 0), enemySpecAt(config, 0));
+    this.planIntent();
+  }
+
+  /**
+   * いまの敵の次の行動を、行動の決まりで決めて予告と決まりの状態に入れる（乱数は1回）。
+   */
+  planIntent() {
+    const spec = enemySpecAt(this.config, this.enemyIndex);
+    const { action, state } = planBehaviorAction(spec.behavior, this.enemy.behaviorState, this.random);
+    this.enemy.intent = action;
+    this.enemy.behaviorState = state;
   }
 
   /**
@@ -329,7 +345,8 @@ export class Game {
 
   /**
    * 攻防を計算し、城・敵の HP と段階を更新する。条件を満たさなければ何もしない。
-   * 決着しなければ段階は 'result'、決着したら 'over' になる。
+   * 決着しなければ段階は 'result'、決着したら 'over' になる（途中の敵を倒しただけなら 'result'）。
+   * 敵は入れ替えない（入れ替わりは次のフェーズの頭）。
    * @returns {BattleResult|null} 結果。攻防に入れなければ `null`
    */
   resolveBattle() {
@@ -343,6 +360,8 @@ export class Game {
       castleHp: this.castle.hp,
       castleMaxHp: this.castle.maxHp,
       enemyHp: this.enemy.hp,
+      enemyArmor: this.enemy.armor,
+      lastEnemy: isLastEnemy(this.config, this.enemyIndex),
     });
     this.castle.hp = calc.castleHp;
     this.enemy.hp = calc.enemyHp;
@@ -359,12 +378,16 @@ export class Game {
       castleHp: calc.castleHp,
       enemyHp: calc.enemyHp,
       outcome: calc.outcome,
+      defeat:
+        calc.enemyDefeated && calc.outcome === null
+          ? { enemyName: this.enemy.name, nextEnemyName: nextEnemyName(this.config, this.enemyIndex) }
+          : null,
     };
   }
 
   /**
-   * 次のフェーズを始める（ゲージの戻し・力こぶの換算・行動回数・敵の予告）。条件を満たさなければ何もしない。
-   * 山札・列・捨て札・城と敵の HP には触れない。
+   * 次のフェーズを始める（ゲージの戻し・力こぶの換算・行動回数・倒した敵の入れ替わり・敵の予告）。条件を満たさなければ何もしない。
+   * 倒した敵（HP 0）は次の敵（HP 最大）に入れ替わる。山札・列・捨て札・城の HP には触れない。
    * @returns {NextPhaseResult|null} 結果。進めなければ `null`
    */
   startNextPhase() {
@@ -374,7 +397,12 @@ export class Game {
     this.gauges = start.gauges;
     this.actionsMax = start.actions;
     this.actionsLeft = start.actions;
-    this.enemy.intent = planEnemyAction(this.config, this.random);
+    const enemyChanged = this.enemy.hp === 0;
+    if (enemyChanged) {
+      this.enemyIndex += 1;
+      this.enemy = createEnemy(enemyTypeIdAt(this.config, this.enemyIndex), enemySpecAt(this.config, this.enemyIndex));
+    }
+    this.planIntent();
     this.stage = 'planning';
     return {
       type: 'nextPhase',
@@ -385,6 +413,7 @@ export class Game {
       actionsMax: this.actionsMax,
       actionsLeft: this.actionsLeft,
       enemyAction: { kind: this.enemy.intent.kind, amount: this.enemy.intent.amount },
+      enemyChanged,
     };
   }
 }
