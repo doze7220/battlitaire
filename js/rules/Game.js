@@ -10,7 +10,7 @@ import { createColumns, placeableColumnIndices, runStartIndex } from './columns.
 import { createHand, isEmptySlot, hasCardInSlot } from './hand.js';
 import { computeRelease } from './release.js';
 import { createCastle, createEnemy } from './combatants.js';
-import { planBehaviorAction } from './enemyBehaviors.js';
+import { planBehaviorAction, behaviorCountdown, rollAttackHeal } from './enemyBehaviors.js';
 import { enemyTypeIdAt, enemySpecAt, isLastEnemy, nextEnemyName } from './enemyProgress.js';
 import { computeBattle } from './battle.js';
 import { computePhaseStart } from './phase.js';
@@ -97,6 +97,14 @@ export class Game {
     const { action, state } = planBehaviorAction(spec.behavior, this.enemy.behaviorState, this.random);
     this.enemy.intent = action;
     this.enemy.behaviorState = state;
+  }
+
+  /**
+   * いまの敵の攻撃までの残りフェーズ数（0 は攻撃するフェーズ）。数え下ろしを持たない敵は null。
+   * @returns {number|null} 残りフェーズ数。数え下ろしを持たなければ `null`
+   */
+  attackCountdown() {
+    return behaviorCountdown(enemySpecAt(this.config, this.enemyIndex).behavior, this.enemy.behaviorState);
   }
 
   /**
@@ -352,6 +360,8 @@ export class Game {
   resolveBattle() {
     if (!this.canResolveBattle()) return null;
     const enemyAction = this.enemy.intent;
+    const spec = enemySpecAt(this.config, this.enemyIndex);
+    const enemyHeal = rollAttackHeal(spec.behavior, enemyAction, this.random);
     const calc = computeBattle({
       attack: this.gauges.attack ?? 0,
       defense: this.gauges.defense ?? 0,
@@ -360,6 +370,8 @@ export class Game {
       castleHp: this.castle.hp,
       castleMaxHp: this.castle.maxHp,
       enemyHp: this.enemy.hp,
+      enemyMaxHp: this.enemy.maxHp,
+      enemyHeal,
       enemyArmor: this.enemy.armor,
       lastEnemy: isLastEnemy(this.config, this.enemyIndex),
     });
