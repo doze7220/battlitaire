@@ -1,5 +1,5 @@
 /**
- * 責務: 攻防の演出のシーン。結果を anim に渡して時間を進め、早送り・スキップ・決着後のタップを受け、timeScale を切り替えて戻すこと。
+ * 責務: 攻防の演出のシーン。結果を anim に渡して時間を進め、早送り・スキップ・決着後・敵を倒した後のタップを受け、timeScale を切り替えて戻すこと。
  * 終わったら次のフェーズへ進めて戻る／タイトルへ切り替え、見た目の値を view に渡して描くこと。
  * 攻防のきっかけと決着の表示で効果音を鳴らすこと（soundCues.js）。
  */
@@ -67,7 +67,7 @@ export class BattleShowScene extends Scene {
   }
 
   /**
-   * 演出の時計に dt を足し、その間に起きた攻防のきっかけと、決着の表示が出たとき（1回だけ）に効果音を鳴らす。終わったら等速に戻し、決着していなければ間の後に次のフェーズへ進めて戻る。
+   * 演出の時計に dt を足し、その間に起きた攻防のきっかけと、決着の表示が出たとき（1回だけ）に効果音を鳴らす。終わったら等速に戻し、決着も敵の撃破もしていなければ間の後に次のフェーズへ進めて戻る。
    * @param {number} dt 1ティックの長さ（ミリ秒）
    * @returns {void}
    */
@@ -82,7 +82,7 @@ export class BattleShowScene extends Scene {
       Engine.timeScale = NORMAL_SCALE;
       this.fast = false;
     }
-    if (this.result.outcome === null && this.director.isReadyToLeave() && this.game.canStartNextPhase()) {
+    if (this.result.outcome === null && this.result.defeat === null && this.director.isReadyToLeave() && this.game.canStartNextPhase()) {
       Engine.timeScale = NORMAL_SCALE;
       this.game.startNextPhase();
       Engine.popScene();
@@ -90,7 +90,7 @@ export class BattleShowScene extends Scene {
   }
 
   /**
-   * 押したとき（'down'）だけ反応する。終わっていれば決着のときタイトルへ、終わっていなければ早送り・スキップを調べる。
+   * 押したとき（'down'）だけ反応する。終わっていれば決着のときタイトルへ、敵を倒したときは次のフェーズへ進めて戻り（次の敵に入れ替わる）、終わっていなければ早送り・スキップを調べる。
    * @param {{ type: string, x: number, y: number }} pointer ポインタ入力
    * @returns {void}
    */
@@ -100,6 +100,10 @@ export class BattleShowScene extends Scene {
       if (this.game.isOver()) {
         Engine.timeScale = NORMAL_SCALE;
         Engine.changeScene(this.createTitle());
+      } else if (this.result.defeat !== null && this.game.canStartNextPhase()) {
+        Engine.timeScale = NORMAL_SCALE;
+        this.game.startNextPhase();
+        Engine.popScene();
       }
       return;
     }
