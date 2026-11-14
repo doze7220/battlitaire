@@ -1,6 +1,6 @@
 /**
  * 攻防の演出全体の管理。時計を進め、いまの段・終わったか・次へ進んでよいか・直前の進みの間に起きたきっかけを答え、
- * スキップで終わりへ移り、見た目の値（ブレスチャージの表示値・燃える段の盤面を含む）を作る。描画せず、ゲームの状態に触れない。
+ * スキップで終わりへ移り、見た目の値（燃える段の盤面を含む）を作る。描画せず、ゲームの状態に触れない。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
@@ -18,7 +18,6 @@ import { sampleBurnBoard } from './burnTrack.js';
  * @property {number} castleHp 表示する城の HP
  * @property {number} enemyHp 表示する敵の HP
  * @property {{amount: number, alpha: number}|null} enemyHealPop 敵の回復の量の浮き出し（なければ null）
- * @property {{current: number, max: number}|null} enemyCharge 表示する敵のブレスチャージ（持たない敵は null）
  * @property {string|null} stepType いま進行中の段の種類（なければ null）
  * @property {boolean} finished 演出が終わったか
  */
@@ -32,7 +31,7 @@ export class BattleDirector {
    * @param {import('./battleTimeline.js').BattleTimeline} options.timeline 時間割
    * @param {import('../rules/Game.js').BattleResult} options.result 攻防の結果（終わったときの HP に使う。読むだけ）
    * @param {import('../view/layout.js').TroopLayout} options.troopLayout 兵の配置
-   * @param {import('./battleSteps.js').BattleSnapshot} options.before 攻防の前の写し（チャージ・列。読むだけ）
+   * @param {import('./battleSteps.js').BattleSnapshot} options.before 攻防の前の写し（列。読むだけ）
    */
   constructor({ timeline, result, troopLayout, before }) {
     /** @type {import('./battleTimeline.js').BattleTimeline} 時間割 */
@@ -143,13 +142,11 @@ export class BattleDirector {
         }
       }
     }
-    const enemyCharge = !finished && this.clock < tl.enemyStrikeTime ? this.before.enemyCharge : this.result.enemyCharge;
     return {
       units,
       castleHp: finished ? this.result.castleHp : sampleHp(tl.castleHpStart, tl.castleHpChanges, this.clock),
       enemyHp: finished ? this.result.enemyHp : sampleHp(tl.enemyHpStart, tl.enemyHpChanges, this.clock),
       enemyHealPop,
-      enemyCharge,
       stepType: this.currentStepType(),
       finished,
     };

@@ -1,5 +1,5 @@
 /**
- * 段の並びから、段の時刻・兵の群れの動きの記録・HP の変化・数字の浮き出し・燃える札の記録・敵の攻撃が届いた時刻を組み立てて時間割にする。
+ * 段の並びから、段の時刻・兵の群れの動きの記録・HP の変化・数字の浮き出し・燃える札の記録を組み立てて時間割にする。
  * 描画も状態の変更も行わない。時間は BATTLE_ANIM、位置は TroopLayout・盤面の Layout から読む。
  */
 
@@ -23,7 +23,6 @@ import { burnStepDuration, createBurnTracks } from './burnTrack.js';
  * @property {import('./hpTrack.js').HpChange[]} enemyHpChanges 敵の HP の表示値の変化
  * @property {import('./popTrack.js').PopTrack[]} enemyHealPops 敵の回復の量の浮き出し
  * @property {import('./burnTrack.js').BurnTrack[]} burns 燃える札の記録（なければ空）
- * @property {number} enemyStrikeTime 敵の攻撃が城に届いた時刻（ms。城への当たりがなければ最後の敵兵の段の終わり、どちらもなければ 0）
  * @property {number} castleHpStart 城の HP の表示値の初期値
  * @property {number} enemyHpStart 敵の HP の表示値の初期値
  * @property {number} endTime 演出の終わりの時刻（ms）。段がなければ 0
@@ -39,8 +38,6 @@ import { burnStepDuration, createBurnTracks } from './burnTrack.js';
  * @property {number} castleShown 城の HP の今の表示値
  * @property {number} enemyShown 敵の HP の今の表示値
  * @property {import('./burnTrack.js').BurnTrack[]} burns 燃える札の記録
- * @property {number|null} castleStrikeTime 城への当たりの時刻（ms。まだなければ null）
- * @property {number|null} enemyFrontEnd 最後の敵兵の段（enemyMarch・block）の終わりの時刻（ms。まだなければ null）
  * @property {boolean} frontFaded 守備兵・敵兵の余りをすでに消し始めたか
  * @property {import('../view/layout.js').TroopLayout} layout 兵の配置
  * @property {import('../view/layout.js').Layout} boardLayout 盤面の配置（columnCardRects・discard だけ使う）
@@ -182,8 +179,6 @@ function addHit(state, kind, targetX, target, amount, t) {
     const to = state.castleShown - amount;
     state.castleChanges.push(createHpChange({ from: state.castleShown, to, start: t + T.hitMoveMs, duration: T.hpMs }));
     state.castleShown = to;
-    // 敵の攻撃が城に届いた時刻（城の HP の変わり始めと同じ式）。ブレスチャージの表示の切り替えに使う
-    if (state.castleStrikeTime === null) state.castleStrikeTime = t + T.hitMoveMs;
   } else {
     const to = state.enemyShown - amount;
     state.enemyChanges.push(createHpChange({ from: state.enemyShown, to, start: t + T.hitMoveMs, duration: T.hpMs }));
@@ -339,8 +334,6 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout) {
     castleShown: before.castleHp,
     enemyShown: before.enemyHp,
     burns: [],
-    castleStrikeTime: null,
-    enemyFrontEnd: null,
     frontFaded: false,
     layout: troopLayout,
     boardLayout,
@@ -358,7 +351,6 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout) {
     timed.push({ ...step, start: t, end: t + duration });
     t += duration;
     stepEnd = t;
-    if (step.type === 'enemyMarch' || step.type === 'block') state.enemyFrontEnd = t;
   });
   if (timed.length > 0) {
     for (const kind of ALL_KINDS) fadeLeftover(state, kind, stepEnd);
@@ -375,7 +367,6 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout) {
     enemyHpChanges: state.enemyChanges,
     enemyHealPops: state.enemyHealPops,
     burns: state.burns,
-    enemyStrikeTime: state.castleStrikeTime ?? state.enemyFrontEnd ?? 0,
     castleHpStart: before.castleHp,
     enemyHpStart: before.enemyHp,
     endTime,

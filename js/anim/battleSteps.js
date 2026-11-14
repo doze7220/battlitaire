@@ -11,7 +11,6 @@
  * @property {number} attack 攻防の前の攻撃ゲージの値（兵士の数）
  * @property {number} defense 攻防の前の防御ゲージの値（守備兵の数）
  * @property {Array<Array<*>>} columns 攻防の前の列ごとのカードの並びの写し（[0] が一番下）
- * @property {{current: number, max: number}|null} enemyCharge 攻防の前の敵のチャージ（持たない敵は null）
  */
 
 /**
@@ -50,7 +49,6 @@ export function snapshotBattle(game) {
     attack: game.gauges.attack ?? 0,
     defense: game.gauges.defense ?? 0,
     columns: game.columns.map((col) => col.slice()),
-    enemyCharge: game.enemyCharge(),
   };
 }
 
