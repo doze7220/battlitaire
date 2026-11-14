@@ -1,5 +1,5 @@
 /**
- * 責務: 盤面の画面配置（座標・大きさ。戦闘の段の兵の配置・数え下ろしの枠・大きな敵の玉・敵の回復の量の表示の位置・敵の図形の上のシールドマーク・ゴブリンの群れの並び・敵を倒したときの案内・早送りとスキップの矩形を含む）を一手に持ち、座標から「何に当たるか」を求める。
+ * 責務: 盤面の画面配置（座標・大きさ。戦闘の段の兵の配置・数え下ろしの枠（ブレスチャージも同じ枠）・大きな敵の玉とそれに内接する矩形・敵の回復の量の表示の位置・敵の図形の上のシールドマーク・ゴブリンの群れの並び・敵を倒したときの案内・早送りとスキップの矩形を含む）を一手に持ち、座標から「何に当たるか」を求める。
  * ルール層は import せず、数の情報は引数で受け取る。状態は変えない。
  */
 
@@ -79,6 +79,7 @@
  * @property {Rect} intent 敵の次の行動の予告の枠
  * @property {Rect} countdown 数え下ろしの枠（段の右上）
  * @property {Rect} enemyBig 大きな敵（巨人）の玉の矩形（丸を内接させる。地面に立ち、敵の矩形と中心の x が同じ）
+ * @property {Rect} enemyBigInner 大きな敵の玉に内接する正方形の矩形（中心は enemyBig と同じ。シールドマークを玉からはみ出さずに並べる先）
  * @property {{ x: number, y: number }} enemyHealText 敵の回復の量の文字の中心（大きな敵の玉の真上、数え下ろしの枠との間）
  * @property {TroopLayout} troops 兵の配置
  * @property {{ x: number, textY: number, hintY: number }} outcome 決着の表示の位置（段の中央の x、「クリア」「負け」の文字の y、案内の y）
@@ -271,6 +272,13 @@ function createBattleLayout(width) {
   const bigSize = Math.min(BIG_ENEMY_MAX_SIZE, groundY - (countdown.y + countdown.h + BODY_GAP));
   const enemyCx = enemy.x + enemy.w / 2;
   const enemyBig = { x: enemyCx - bigSize / 2, y: groundY - bigSize, w: bigSize, h: bigSize };
+  const innerSize = bigSize / Math.SQRT2;
+  const enemyBigInner = {
+    x: enemyCx - innerSize / 2,
+    y: enemyBig.y + (bigSize - innerSize) / 2,
+    w: innerSize,
+    h: innerSize,
+  };
   const enemyHealText = { x: enemyBig.x + enemyBig.w / 2, y: (countdown.y + countdown.h + enemyBig.y) / 2 };
 
   const fieldL = castle.x + castle.w + FIELD_GAP;
@@ -359,6 +367,7 @@ function createBattleLayout(width) {
     intent: { x: enemyHp.x, y: enemyHp.y + BOX_H + INFO_GAP_Y, w: ENEMY_INFO_W, h: BOX_H },
     countdown,
     enemyBig,
+    enemyBigInner,
     enemyHealText,
     troops,
     outcome: {

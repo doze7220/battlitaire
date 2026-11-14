@@ -1,5 +1,5 @@
 /**
- * 責務: 敵の行動・決着・敵を倒したときの案内・数え下ろし・回復の量を、画面に出す文字に直す。
+ * 責務: 敵の行動（爪・ブレスの種類を含む）・決着・敵を倒したときの案内・数え下ろし・ブレスチャージ・回復の量を、画面に出す文字に直す。
  * 計算はせず、量をそのまま文字にする。ルール層は実行時に import しない。
  */
 
@@ -20,6 +20,15 @@ const ACTION_LABELS = Object.freeze({
   attack: '攻撃',
   defend: '防御',
   windup: '振りかぶり',
+});
+
+/**
+ * 攻撃の中の種類（variant）→ 表示名の対応表。
+ * @type {Readonly<Record<string, string>>}
+ */
+const VARIANT_LABELS = Object.freeze({
+  claw: '爪',
+  breath: 'ブレス',
 });
 
 /**
@@ -61,12 +70,15 @@ export function nextEnemyText(enemyName) {
 /**
  * 敵の行動を「攻撃 10」のような文字にする。
  * @param {import('../rules/combatants.js').EnemyAction} action 敵の行動
- * @returns {string} 表示名と量の文字。種類が未知なら表示名は「？」
+ * @returns {string} 表示名と量の文字。variant が表にあればその表示名（「爪 10」「ブレス 35」）。種類が未知なら表示名は「？」
  */
 export function enemyActionText(action) {
-  const name = Object.prototype.hasOwnProperty.call(ACTION_LABELS, action.kind)
-    ? ACTION_LABELS[action.kind]
-    : UNKNOWN_ACTION_LABEL;
+  const hasVariant = typeof action.variant === 'string' && Object.prototype.hasOwnProperty.call(VARIANT_LABELS, action.variant);
+  const name = hasVariant
+    ? VARIANT_LABELS[action.variant]
+    : Object.prototype.hasOwnProperty.call(ACTION_LABELS, action.kind)
+      ? ACTION_LABELS[action.kind]
+      : UNKNOWN_ACTION_LABEL;
   if (AMOUNTLESS_KINDS.has(action.kind)) return name;
   return `${name} ${action.amount}`;
 }
@@ -78,6 +90,15 @@ export function enemyActionText(action) {
  */
 export function countdownText(countdown) {
   return countdown > 0 ? `攻撃まで あと${countdown}` : '攻撃！';
+}
+
+/**
+ * ブレスチャージを「ブレス 1/4」のような文字にする。
+ * @param {{ current: number, max: number }} charge チャージの現在値と満ちる数
+ * @returns {string} 「ブレス 現在値/満ちる数」
+ */
+export function chargeText({ current, max }) {
+  return `${VARIANT_LABELS.breath} ${current}/${max}`;
 }
 
 /**
