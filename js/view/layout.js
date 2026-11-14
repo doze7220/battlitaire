@@ -1,5 +1,5 @@
 /**
- * 責務: 盤面の画面配置（座標・大きさ。戦闘の段の兵の配置・敵の図形の上のシールドマーク・ゴブリンの群れの並び・敵を倒したときの案内・早送りとスキップの矩形を含む）を一手に持ち、座標から「何に当たるか」を求める。
+ * 責務: 盤面の画面配置（座標・大きさ。戦闘の段の兵の配置・数え下ろしの枠・大きな敵の玉・敵の回復の量の表示の位置・敵の図形の上のシールドマーク・ゴブリンの群れの並び・敵を倒したときの案内・早送りとスキップの矩形を含む）を一手に持ち、座標から「何に当たるか」を求める。
  * ルール層は import せず、数の情報は引数で受け取る。状態は変えない。
  */
 
@@ -77,10 +77,13 @@
  * @property {Rect} castleHp 城の HP の枠
  * @property {Rect} enemyHp 敵の HP の枠
  * @property {Rect} intent 敵の次の行動の予告の枠
+ * @property {Rect} countdown 数え下ろしの枠（段の右上）
+ * @property {Rect} enemyBig 大きな敵（巨人）の玉の矩形（丸を内接させる。地面に立ち、敵の矩形と中心の x が同じ）
+ * @property {{ x: number, y: number }} enemyHealText 敵の回復の量の文字の中心（大きな敵の玉の真上、数え下ろしの枠との間）
  * @property {TroopLayout} troops 兵の配置
  * @property {{ x: number, textY: number, hintY: number }} outcome 決着の表示の位置（段の中央の x、「クリア」「負け」の文字の y、案内の y）
  * @property {{ x: number, titleY: number, nextY: number, hintY: number, maxW: number }} defeat 敵を倒したときの案内の位置（段の中央の x、「〜を倒した！」・「次は〜」・「タップで次へ」の y、文字の最大の幅）
- * @property {function(number): Rect[]} shieldRects シールドマーク count 個の矩形（敵の矩形の中の格子。最後の行は中央にそろえる）
+ * @property {function(number, Rect=): Rect[]} shieldRects シールドマーク count 個の矩形（body の矩形の中の格子。body を省くと敵の矩形。最後の行は中央にそろえる）
  * @property {function(number): Array<{ x: number, footY: number, w: number, h: number }>} hordeSlots ゴブリンの兵 count 体の並び（後ろの列から順。x は中心、footY は足元の y）
  */
 
@@ -149,6 +152,10 @@ const CASTLE_W = 140;
 const CASTLE_MAX_H = 150;
 /** 敵の最大の大きさ */
 const ENEMY_MAX_SIZE = 120;
+/** 数え下ろしの枠の幅 */
+const COUNTDOWN_W = 220;
+/** 大きな敵（巨人）の玉の最大の大きさ */
+const BIG_ENEMY_MAX_SIZE = 160;
 /** 敵の右の余白 */
 const ENEMY_RIGHT = 40;
 /** 城の HP の枠の幅 */
@@ -260,6 +267,11 @@ function createBattleLayout(width) {
   const area = { x: 0, y: 0, w: width, h: BATTLE_H };
   const castle = { x: CASTLE_X, y: groundY - castleH, w: CASTLE_W, h: castleH };
   const enemy = { x: width - ENEMY_RIGHT - enemySize, y: groundY - enemySize, w: enemySize, h: enemySize };
+  const countdown = { x: width - SIDE_MARGIN - COUNTDOWN_W, y: BATTLE_TOP_PAD, w: COUNTDOWN_W, h: BOX_H };
+  const bigSize = Math.min(BIG_ENEMY_MAX_SIZE, groundY - (countdown.y + countdown.h + BODY_GAP));
+  const enemyCx = enemy.x + enemy.w / 2;
+  const enemyBig = { x: enemyCx - bigSize / 2, y: groundY - bigSize, w: bigSize, h: bigSize };
+  const enemyHealText = { x: enemyBig.x + enemyBig.w / 2, y: (countdown.y + countdown.h + enemyBig.y) / 2 };
 
   const fieldL = castle.x + castle.w + FIELD_GAP;
   const F = enemy.x - FIELD_GAP - fieldL;
@@ -287,21 +299,22 @@ function createBattleLayout(width) {
   };
 
   /**
-   * シールドマーク count 個の矩形を求める。敵の矩形の中に SHIELD_COLS 個ずつの格子で並べ、
-   * 格子全体を敵の矩形の中心にそろえる（最後の行が埋まらないときはその行を中央にそろえる）。
+   * シールドマーク count 個の矩形を求める。body の矩形の中に SHIELD_COLS 個ずつの格子で並べ、
+   * 格子全体を body の矩形の中心にそろえる（最後の行が埋まらないときはその行を中央にそろえる）。
    * @param {number} count シールドマークの数（常時防御力）
+   * @param {Rect} [body] 並べる先の矩形（省くと敵の矩形）
    * @returns {Rect[]} 各マークの矩形（左上の行から順。count が 0 以下なら空）
    */
-  function shieldRects(count) {
+  function shieldRects(count, body = enemy) {
     if (count <= 0) return [];
     const rows = Math.ceil(count / SHIELD_COLS);
-    const cell = Math.min(enemy.w / SHIELD_COLS, enemy.h / rows);
+    const cell = Math.min(body.w / SHIELD_COLS, body.h / rows);
     const size = cell * SHIELD_FILL;
-    const top = enemy.y + (enemy.h - cell * rows) / 2;
+    const top = body.y + (body.h - cell * rows) / 2;
     const rects = [];
     for (let r = 0; r < rows; r++) {
       const n = Math.min(SHIELD_COLS, count - r * SHIELD_COLS);
-      const left = enemy.x + (enemy.w - cell * n) / 2;
+      const left = body.x + (body.w - cell * n) / 2;
       for (let i = 0; i < n; i++) {
         rects.push({ x: left + cell * i + (cell - size) / 2, y: top + cell * r + (cell - size) / 2, w: size, h: size });
       }
@@ -344,6 +357,9 @@ function createBattleLayout(width) {
     castleHp: { x: SIDE_MARGIN, y: infoY, w: INFO_W, h: BOX_H },
     enemyHp,
     intent: { x: enemyHp.x, y: enemyHp.y + BOX_H + INFO_GAP_Y, w: ENEMY_INFO_W, h: BOX_H },
+    countdown,
+    enemyBig,
+    enemyHealText,
     troops,
     outcome: {
       x: area.x + area.w / 2,
