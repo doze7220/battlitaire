@@ -1,6 +1,6 @@
 /**
  * 攻防の前の値の写しと、攻防の出来事の並びから演出の段の並びを組み立てる。
- * ルールの判定や計算はせず、描画も状態の変更も行わない。
+ * 札が燃える出来事も段にする。ルールの判定や計算はせず、描画も状態の変更も行わない。
  */
 
 /**
@@ -10,13 +10,16 @@
  * @property {number} enemyHp 攻防の前の敵の HP
  * @property {number} attack 攻防の前の攻撃ゲージの値（兵士の数）
  * @property {number} defense 攻防の前の防御ゲージの値（守備兵の数）
+ * @property {Array<Array<*>>} columns 攻防の前の列ごとのカードの並びの写し（[0] が一番下）
+ * @property {{current: number, max: number}|null} enemyCharge 攻防の前の敵のチャージ（持たない敵は null）
  */
 
 /**
  * 演出の1段。
  * @typedef {Object} BattleStep
- * @property {'form'|'enemyMarch'|'block'|'castleHit'|'march'|'enemyBlock'|'armorBlock'|'enemyHit'|'heal'|'enemyHeal'} type 段の種類
- * @property {number} amount 量（`form` は 0）
+ * @property {'form'|'enemyMarch'|'block'|'castleHit'|'march'|'enemyBlock'|'armorBlock'|'enemyHit'|'heal'|'enemyHeal'|'burn'} type 段の種類
+ * @property {number} amount 量（`form` は 0、`burn` は燃える枚数）
+ * @property {Array<{columnIndex: number, cardIndex: number, card: *}>} [burns] `burn` のみ: 燃える札の並び（燃える順）
  * @property {number} [guards] `form` のみ: 守備兵の数
  * @property {number} [enemyGuards] `form` のみ: 敵の守りの数
  */
@@ -46,6 +49,8 @@ export function snapshotBattle(game) {
     enemyHp: game.enemy.hp,
     attack: game.gauges.attack ?? 0,
     defense: game.gauges.defense ?? 0,
+    columns: game.columns.map((col) => col.slice()),
+    enemyCharge: game.enemyCharge(),
   };
 }
 
@@ -84,6 +89,10 @@ export function buildBattleSteps(result, before) {
       marchDone = true;
     }
     if (event.type === 'win') break;
+    if (event.type === 'cardBurn') {
+      if (event.amount > 0) steps.push({ type: 'burn', amount: event.amount, burns: [...event.burns] });
+      continue;
+    }
     const stepType = EVENT_TO_STEP[event.type];
     if (stepType !== undefined && event.amount > 0) {
       steps.push({ type: stepType, amount: event.amount });

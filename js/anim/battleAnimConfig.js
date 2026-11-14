@@ -1,5 +1,5 @@
 /**
- * 攻防の演出の設定（段ごとの時間・段の間・換算の人数・早送りの倍率・終わりの後の間）を1か所に凍結して持つ。
+ * 攻防の演出の設定（段ごとの時間・段の間・換算の人数・早送りの倍率・終わりの後の間・燃える札の時間と明滅の回数）を1か所に凍結して持つ。
  * これらの数値は、ほかのファイルに書かない。
  */
 
@@ -16,6 +16,9 @@
  * @property {number} endDelayMs 演出が終わってから次のフェーズへ進むまでの間（ms。決着していないとき）。試遊で決め直す。
  * @property {number} unitSize 大きなユニット1体にまとめる人数（人）。試遊で決め直す。
  * @property {number} fastScale 早送りの倍率（`Engine.timeScale` の値）。試遊で決め直す。
+ * @property {number} burnFlashMs 燃える札1枚が明滅する時間（ms）。試遊で決め直す。
+ * @property {number} burnFlyMs 燃える札が捨て札へ飛ぶ時間（ms）。試遊で決め直す。
+ * @property {number} burnBlinks 燃える札1枚の明滅の回数（回）。試遊で決め直す。
  */
 
 /**
@@ -33,4 +36,7 @@ export const BATTLE_ANIM = Object.freeze({
   endDelayMs: 500,
   unitSize: 10,
   fastScale: 3,
+  burnFlashMs: 400,
+  burnFlyMs: 250,
+  burnBlinks: 2,
 });
