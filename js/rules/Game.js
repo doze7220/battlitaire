@@ -1,7 +1,7 @@
 /**
  * 責務: ゲーム全体の状態（山札・捨て札・列・手札・ゲージ・行動回数・フェーズと段階・城・敵）の保持と、
  * 問い合わせ・操作（置く・捨てる・放つ・手札に入れる・手札から置く・束を移す・攻防・次のフェーズ）の提供。
- * 敵の順番の中の今の敵（倒した敵の入れ替わりを含む）を持つ。攻防では行動に付く札の燃やしを列・捨て札に反映する。操作は「何が起きたか」を返す。
+ * 敵の順番の中の今の敵（倒した敵の入れ替わりを含む）と結果の集計（数え方は gameStats.js）を持つ。攻防では札の燃やしを反映する。操作は「何が起きたか」を返す。
  */
 
 import { RULES } from './config.js';
@@ -21,6 +21,7 @@ import { planActionBurns, applyBurns } from './cardBurn.js';
 import { enemyTypeIdAt, enemySpecAt, isLastEnemy, nextEnemyName } from './enemyProgress.js';
 import { computeBattle } from './battle.js';
 import { computePhaseStart } from './phase.js';
+import { createGameStats, tallyBattle } from './gameStats.js';
 
 /**
  * 「攻防」操作の結果。
@@ -94,7 +95,17 @@ export class Game {
     this.enemyIndex = 0;
     /** @type {import('./combatants.js').Enemy} 敵 */
     this.enemy = createEnemy(enemyTypeIdAt(config, 0), enemySpecAt(config, 0));
+    /** @type {import('./gameStats.js').GameStats} 結果の集計（攻防ごとに足す。新しいゲームで 0 から） */
+    this.stats = createGameStats();
     this.planIntent();
+  }
+
+  /**
+   * 結果の集計の写しを返す（書き換えてもゲームの状態に影響しない）。
+   * @returns {import('./gameStats.js').GameStats} かかったフェーズ数・敵に与えた総ダメージ・城が受けた総ダメージ・回復の合計
+   */
+  gameStats() {
+    return { ...this.stats };
   }
 
   /**
@@ -396,6 +407,7 @@ export class Game {
     });
     this.castle.hp = calc.castleHp;
     this.enemy.hp = calc.enemyHp;
+    this.stats = tallyBattle(this.stats, calc.events);
     applyBurns(this.columns, this.discard, calc.burned);
     this.enemy.behaviorState = settleBehaviorAction(spec.behavior, this.enemy.behaviorState, enemyAction);
     if (calc.outcome === null) {
