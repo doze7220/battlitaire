@@ -35,7 +35,7 @@ const EMPHASIS_FILL = 'rgba(150, 20, 20, 0.85)';
 /** 目立たせる枠の文字の色。 */
 const EMPHASIS_COLOR = '#ffe45c';
 /**
- * 予告の枠を目立たせる攻撃の種類（variant）の集合。
+ * 予告の枠を目立たせる行動の中の種類（variant）の集合。
  * @type {Set<string>}
  */
 const EMPHASIZED_VARIANTS = new Set(['breath']);
