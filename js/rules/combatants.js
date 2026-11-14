@@ -9,7 +9,7 @@ import { createBehaviorState } from './enemyBehaviors.js';
  * @typedef {Object} EnemyAction
  * @property {'attack'|'defend'|'windup'} kind 行動の種類（攻撃・防御・振りかぶり（行動しない。量は 0））
  * @property {number} amount 行動の量（攻撃なら攻撃の値、防御なら防御の値、振りかぶりなら 0）
- * @property {'claw'|'breath'} [variant] 攻撃の中の種類（任意。爪・ブレス。城へのダメージの扱いは種類で変わらない）
+ * @property {'claw'|'breath'|'inhale'} [variant] 行動の中の種類（任意。攻撃の爪・ブレス、振りかぶりの吸い込む。表示の違いだけで、城へのダメージ・行動の扱いは種類で変わらない）
  * @property {{ min: number, max: number }} [burn] 行動に付く列の札を燃やす効果の枚数の範囲（任意）
  */
 
@@ -29,7 +29,7 @@ import { createBehaviorState } from './enemyBehaviors.js';
  * @property {number} maxHp 最大 HP
  * @property {number} armor 常時防御力
  * @property {EnemyAction|null} intent 次の行動の予告（未決定なら null）
- * @property {object} behaviorState 行動の決まりの状態（weighted では {}、cycle では { countdown }、charge では { charge }）
+ * @property {object} behaviorState 行動の決まりの状態（weighted では {}、cycle では { countdown }、inhale では { lastVariant }）
  */
 
 /**

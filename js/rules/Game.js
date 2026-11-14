@@ -13,8 +13,6 @@ import { createCastle, createEnemy } from './combatants.js';
 import {
   planBehaviorAction,
   behaviorCountdown,
-  behaviorCharge,
-  settleBehaviorAction,
   rollAttackHeal,
 } from './enemyBehaviors.js';
 import { planActionBurns, applyBurns } from './cardBurn.js';
@@ -31,7 +29,6 @@ import { createGameStats, tallyBattle } from './gameStats.js';
  * @property {import('./battle.js').BattleEvent[]} events 出来事の並び（起きた順）
  * @property {number} castleHp 攻防の後の城の HP
  * @property {number} enemyHp 攻防の後の敵の HP
- * @property {{ current: number, max: number }|null} enemyCharge 攻防の後の敵のチャージ（持たない敵は null）
  * @property {'win'|'lose'|null} outcome 決着（決着していなければ null。途中の敵を倒しただけなら null）
  * @property {{ enemyName: string, nextEnemyName: string|null }|null} defeat 途中の敵を倒したときの倒した敵と次の敵の名前（そうでなければ null）
  */
@@ -124,14 +121,6 @@ export class Game {
    */
   attackCountdown() {
     return behaviorCountdown(enemySpecAt(this.config, this.enemyIndex).behavior, this.enemy.behaviorState);
-  }
-
-  /**
-   * いまの敵のチャージ（現在値と満ちる数）。チャージを持たない敵は null。
-   * @returns {{ current: number, max: number }|null} チャージ。持たなければ `null`
-   */
-  enemyCharge() {
-    return behaviorCharge(enemySpecAt(this.config, this.enemyIndex).behavior, this.enemy.behaviorState);
   }
 
   /**
@@ -381,8 +370,7 @@ export class Game {
   /**
    * 攻防を計算し、城・敵の HP と段階を更新する。条件を満たさなければ何もしない。
    * 決着しなければ段階は 'result'、決着したら 'over' になる（途中の敵を倒しただけなら 'result'）。
-   * 敵は入れ替えない（入れ替わりは次のフェーズの頭）。行動の `burn` があれば列の札を燃やして捨て札へ移し、
-   * 攻防の後の決まりの状態（チャージなど）に更新する。
+   * 敵は入れ替えない（入れ替わりは次のフェーズの頭）。行動の `burn` があれば列の札を燃やして捨て札へ移す。
    * @returns {BattleResult|null} 結果。攻防に入れなければ `null`
    */
   resolveBattle() {
@@ -409,7 +397,6 @@ export class Game {
     this.enemy.hp = calc.enemyHp;
     this.stats = tallyBattle(this.stats, calc.events);
     applyBurns(this.columns, this.discard, calc.burned);
-    this.enemy.behaviorState = settleBehaviorAction(spec.behavior, this.enemy.behaviorState, enemyAction);
     if (calc.outcome === null) {
       this.stage = 'result';
     } else {
@@ -422,7 +409,6 @@ export class Game {
       events: calc.events,
       castleHp: calc.castleHp,
       enemyHp: calc.enemyHp,
-      enemyCharge: this.enemyCharge(),
       outcome: calc.outcome,
       defeat:
         calc.enemyDefeated && calc.outcome === null
