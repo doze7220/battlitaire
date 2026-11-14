@@ -1,7 +1,7 @@
 /**
  * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面を描くこと。
  * 操作の結果を anim に渡して時間を進め、動いている間はタップを無視すること。行動終了のボタンで攻防を呼び、攻防の演出のシーンを積むこと。
- * 操作が成り立ったとき・行動終了・連鎖のきっかけで効果音を鳴らすこと（soundCues.js）。
+ * 操作が成り立ったとき・行動終了・連鎖のきっかけで効果音を鳴らすこと（soundCues.js）。積んだ演出のシーンから札が燃える段の盤面を読んで描くこと。
  */
 import { Engine, Scene } from 'oz';
 import { Game } from '../rules/Game.js';
@@ -47,6 +47,8 @@ export class BoardScene extends Scene {
     this.lastResult = null;
     /** @type {BoardAnimator|null} 盤面の動きの集まり（init で作る） */
     this.animator = null;
+    /** @type {BattleShowScene|null} 積んだ攻防の演出のシーン（なければ null。update の頭で外す） */
+    this.battleShow = null;
   }
 
   /**
@@ -65,6 +67,7 @@ export class BoardScene extends Scene {
     this.selection = null;
     this.lastResult = null;
     this.animator = new BoardAnimator();
+    this.battleShow = null;
   }
 
   /**
@@ -74,6 +77,7 @@ export class BoardScene extends Scene {
    * @returns {void}
    */
   update(dt) {
+    this.battleShow = null; // update は最前面のときだけ呼ばれる＝演出のシーンが外れた後
     this.animator.update(dt);
     for (const ordinal of this.animator.chainCuesInLastUpdate()) playChainSe(ordinal);
   }
@@ -96,14 +100,15 @@ export class BoardScene extends Scene {
         this.lastResult = game.resolveBattle();
         if (this.lastResult !== null) {
           playTurnEndSe(); // 行動終了（攻防に入った）の効果音
-          Engine.pushScene(new BattleShowScene({
+          this.battleShow = new BattleShowScene({
             layer: this.layer,
             game,
             layout: this.layout,
             before: battleBefore,
             result: this.lastResult,
             createTitle: this.createTitle,
-          }));
+          });
+          Engine.pushScene(this.battleShow);
         }
       }
       return;
@@ -129,6 +134,7 @@ export class BoardScene extends Scene {
   draw(ctx, layer) {
     if (layer !== this.layer) return;
     const game = this.game;
-    drawBoard(ctx, this.layout, game, boardUiFor(game, this.selection), this.animator.view());
+    const burn = this.battleShow === null ? null : this.battleShow.boardLook();
+    drawBoard(ctx, this.layout, game, boardUiFor(game, this.selection), this.animator.view(), burn);
   }
 }

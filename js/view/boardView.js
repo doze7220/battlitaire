@@ -1,9 +1,9 @@
 /**
  * 責務: 盤面全体の描画の取りまとめ（背景を塗り、戦闘の段（battleStageView.js）・ゲージ・山札・捨て札・列・手札・放つボタン・最下段（UI）の部品を配置に従って順に呼び、最後に動いているカードを手前に描く）。
- * ゲームの状態は読むだけで変えず、ルールの判定は行わない。動きの見た目の値（anim）は各部品へ渡すだけ。
+ * 札が燃える段は、渡された見た目の値で列・捨て札の枚数・明滅・飛ぶ札を差し替える。状態は読むだけで変えず、ルールの判定は行わない。
  */
 
-import { drawCardFace } from './cardView.js';
+import { drawCardFace, drawCardTint } from './cardView.js';
 import { drawDeck, drawDiscard } from './deckView.js';
 import { drawColumn, drawReleaseButton } from './columnView.js';
 import { drawHand } from './handView.js';
@@ -13,6 +13,8 @@ import { drawBattleStage } from './battleStageView.js';
 
 /** 盤面全体の背景の色。 */
 const BACKGROUND_COLOR = '#1f3a2e';
+/** 燃える札の明滅の色（赤）。 */
+const BURN_FLASH_COLOR = '#ff3b1f';
 
 /**
  * 盤面の描画に使う表示用の値。シーンが draw のたびにルール層の問い合わせから作る。
@@ -35,9 +37,10 @@ const BACKGROUND_COLOR = '#1f3a2e';
  * @param {import('../rules/Game.js').Game} game ゲームの状態（読み取り専用）
  * @param {BoardUi} ui 表示用の値
  * @param {import('../anim/boardAnimator.js').BoardAnimView} anim 動きの見た目の値（読むだけ）
+ * @param {import('../anim/burnTrack.js').BurnBoardLook|null} [burn] 札が燃える段の盤面の見た目（なければ null でルール層の盤面をそのまま描く）
  * @returns {void}
  */
-export function drawBoard(ctx, layout, game, ui, anim) {
+export function drawBoard(ctx, layout, game, ui, anim, burn = null) {
   ctx.save();
   ctx.fillStyle = BACKGROUND_COLOR;
   ctx.fillRect(0, 0, layout.screen.width, layout.screen.height);
@@ -54,12 +57,17 @@ export function drawBoard(ctx, layout, game, ui, anim) {
       flip: anim.deckFlips.get(d) ?? null,
     });
   }
-  drawDiscard(ctx, layout.discard, game.discard.length, anim.discardPending);
+  drawDiscard(ctx, layout.discard, game.discard.length, anim.discardPending + (burn === null ? 0 : burn.discardPending));
 
   for (let c = 0; c < layout.columns.length; c++) {
     const runFrom = ui.selectedRun !== null && ui.selectedRun.column === c ? ui.selectedRun.from : null;
-    drawColumn(ctx, layout.columns[c], game.columns[c], ui.placeableColumns.includes(c), runFrom, anim.hiddenCardIds);
+    const cards = burn === null ? game.columns[c] : burn.columns[c];
+    drawColumn(ctx, layout.columns[c], cards, ui.placeableColumns.includes(c), runFrom, anim.hiddenCardIds);
     drawReleaseButton(ctx, layout.releaseButtons[c], ui.releasable[c]);
+  }
+  if (burn !== null && burn.flash !== null) {
+    const r = burn.flash.rect;
+    drawCardTint(ctx, r.x, r.y, r.w, r.h, BURN_FLASH_COLOR, burn.flash.alpha);
   }
   drawHand(ctx, layout.hand, game.hand, { selectedSlot: ui.selectedHandSlot, holdSlots: ui.holdSlots,
     hiddenIds: anim.hiddenCardIds });
@@ -68,5 +76,10 @@ export function drawBoard(ctx, layout, game, ui, anim) {
 
   for (const f of anim.flying) {
     drawCardFace(ctx, f.x, f.y, f.w, f.h, f.card);
+  }
+  if (burn !== null) {
+    for (const f of burn.flying) {
+      drawCardFace(ctx, f.x, f.y, f.w, f.h, f.card);
+    }
   }
 }

@@ -1,5 +1,5 @@
 /**
- * 責務: カード1枚の表・裏・めくれ（横幅を縮めた表裏）・空き枠・強調の枠など、カード単位の見た目を描く。
+ * 責務: カード1枚の表・裏・めくれ（横幅を縮めた表裏）・空き枠・強調の枠・色の重ねなど、カード単位の見た目を描く。
  * 状態は変えず、ルール層は実行時に import しない。
  */
 
@@ -156,6 +156,26 @@ export function drawEmptySlot(ctx, x, y, w, h, label) {
     ctx.fillStyle = EMPTY_TEXT_COLOR;
     ctx.fillText(label, x + w / 2, y + h / 2);
   }
+  ctx.restore();
+}
+
+/**
+ * カードの角丸の形に色を重ねる（明滅などの色の重ね）。
+ * @param {CanvasRenderingContext2D} ctx 描画先
+ * @param {number} x 左端
+ * @param {number} y 上端
+ * @param {number} w 幅
+ * @param {number} h 高さ
+ * @param {string} color 重ねる色（CSS 色文字列）
+ * @param {number} alpha 濃さ（0〜1）
+ * @returns {void}
+ */
+export function drawCardTint(ctx, x, y, w, h, color, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  roundRectPath(ctx, x, y, w, h, CORNER_RADIUS);
+  ctx.fillStyle = color;
+  ctx.fill();
   ctx.restore();
 }
 

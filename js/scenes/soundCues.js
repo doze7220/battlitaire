@@ -30,6 +30,7 @@ export const BATTLE_CUE_SE = Object.freeze({
   enemyHit: 'enemyHit',
   heal: 'heal',
   enemyHeal: 'heal',
+  burn: 'discard',
 });
 
 /**

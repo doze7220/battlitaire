@@ -1,7 +1,7 @@
 /**
  * 責務: 攻防の演出のシーン。結果を anim に渡して時間を進め、早送り・スキップ・決着後・敵を倒した後のタップを受け、timeScale を切り替えて戻すこと。
  * 終わったら次のフェーズへ進めて戻る／タイトルへ切り替え、見た目の値を view に渡して描くこと。
- * 攻防のきっかけと決着の表示で効果音を鳴らすこと（soundCues.js）。
+ * 攻防のきっかけと決着の表示で効果音を鳴らすこと（soundCues.js）。背面の盤面のシーンへ札が燃える段の盤面の見た目を答えること。
  */
 import { Engine, Scene } from 'oz';
 import { playBattleCueSe, playOutcomeSe } from './soundCues.js';
@@ -60,10 +60,19 @@ export class BattleShowScene extends Scene {
     const troopLayout = this.layout.battle.troops;
     const steps = buildBattleSteps(this.result, this.before);
     this.director = new BattleDirector({
-      timeline: buildBattleTimeline(steps, this.before, troopLayout),
+      timeline: buildBattleTimeline(steps, this.before, troopLayout, this.layout),
       result: this.result,
       troopLayout,
+      before: this.before,
     });
+  }
+
+  /**
+   * 背面の盤面のシーンが読む、札が燃える段の盤面の見た目を答える（状態は変えない）。
+   * @returns {import('../anim/burnTrack.js').BurnBoardLook|null} 見た目（燃える段でなければ null）
+   */
+  boardLook() {
+    return this.director === null ? null : this.director.boardView();
   }
 
   /**
