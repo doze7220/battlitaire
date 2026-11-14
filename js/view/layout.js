@@ -1,5 +1,5 @@
 /**
- * 責務: 盤面の画面配置（座標・大きさ。戦闘の段の兵の配置・早送りとスキップの矩形を含む）を一手に持ち、座標から「何に当たるか」を求める。
+ * 責務: 盤面の画面配置（座標・大きさ。戦闘の段の兵の配置・敵の図形の上のシールドマーク・ゴブリンの群れの並び・敵を倒したときの案内・早送りとスキップの矩形を含む）を一手に持ち、座標から「何に当たるか」を求める。
  * ルール層は import せず、数の情報は引数で受け取る。状態は変えない。
  */
 
@@ -60,6 +60,7 @@
  * @property {number} defenseClashX 区画B: 敵兵が守備兵とぶつかる位置の中心 x
  * @property {number} offenseClashX 区画C: 兵士が敵の守りとぶつかる位置の中心 x
  * @property {number} enemyGuardX 区画D: 敵の守りが並ぶ・敵兵が出る位置の中心 x
+ * @property {number} armorHitX 兵士がシールドマークに当たる位置の x（敵の矩形の左端）
  * @property {number} castleHitX 城に当たる位置の x（城の中心）
  * @property {number} enemyHitX 敵に当たる位置の x（敵の中心）
  * @property {number} carpenterX 大工が現れる位置の x（城の中心）
@@ -77,7 +78,10 @@
  * @property {Rect} enemyHp 敵の HP の枠
  * @property {Rect} intent 敵の次の行動の予告の枠
  * @property {TroopLayout} troops 兵の配置
- * @property {{ x: number, textY: number, hintY: number }} outcome 決着の表示の位置（段の中央の x、「勝ち」「負け」の文字の y、案内の y）
+ * @property {{ x: number, textY: number, hintY: number }} outcome 決着の表示の位置（段の中央の x、「クリア」「負け」の文字の y、案内の y）
+ * @property {{ x: number, titleY: number, nextY: number, hintY: number, maxW: number }} defeat 敵を倒したときの案内の位置（段の中央の x、「〜を倒した！」・「次は〜」・「タップで次へ」の y、文字の最大の幅）
+ * @property {function(number): Rect[]} shieldRects シールドマーク count 個の矩形（敵の矩形の中の格子。最後の行は中央にそろえる）
+ * @property {function(number): Array<{ x: number, footY: number, w: number, h: number }>} hordeSlots ゴブリンの兵 count 体の並び（後ろの列から順。x は中心、footY は足元の y）
  */
 
 /**
@@ -147,8 +151,10 @@ const CASTLE_MAX_H = 150;
 const ENEMY_MAX_SIZE = 120;
 /** 敵の右の余白 */
 const ENEMY_RIGHT = 40;
-/** HP・予告の枠の幅 */
+/** 城の HP の枠の幅 */
 const INFO_W = 240;
+/** 敵の HP・予告の枠の幅（敵の名前が入るので城の枠より広い） */
+const ENEMY_INFO_W = 340;
 /** 地面の線と HP の枠の間隔 */
 const INFO_GAP = 8;
 /** HP の枠と予告の枠の間隔 */
@@ -171,6 +177,20 @@ const UNIT_SPACING = 1.15;
 const OUTCOME_TEXT_RATIO = 0.42;
 /** 決着の案内の文字の y の、段の高さに対する割合 */
 const OUTCOME_HINT_RATIO = 0.66;
+/** 敵を倒したときの「〜を倒した！」の y の、段の高さに対する割合 */
+const DEFEAT_TITLE_RATIO = 0.3;
+/** 敵を倒したときの「次は〜」の y の、段の高さに対する割合 */
+const DEFEAT_NEXT_RATIO = 0.5;
+/** 敵を倒したときの「タップで次へ」の y の、段の高さに対する割合 */
+const DEFEAT_HINT_RATIO = 0.7;
+/** シールドマークの格子の1行の最大の個数 */
+const SHIELD_COLS = 5;
+/** シールドマークの大きさの、格子の1マスに対する割合 */
+const SHIELD_FILL = 0.8;
+/** ゴブリンの群れを並べる列の数 */
+const HORDE_ROWS = 2;
+/** ゴブリンの群れの後ろの列ごとの足元の上がりの、小さな兵の高さに対する割合 */
+const HORDE_ROW_RISE = 0.35;
 
 /** 最下段の行（行動の枠・行動終了）の上の余白 */
 const UI_PAD_TOP = 16;
@@ -236,7 +256,7 @@ function createBattleLayout(width) {
   const castleH = Math.min(CASTLE_MAX_H, groundY - bodyTop);
   const enemySize = Math.min(ENEMY_MAX_SIZE, groundY - bodyTop);
   const infoY = groundY + INFO_GAP;
-  const enemyHp = { x: width - SIDE_MARGIN - INFO_W, y: infoY, w: INFO_W, h: BOX_H };
+  const enemyHp = { x: width - SIDE_MARGIN - ENEMY_INFO_W, y: infoY, w: ENEMY_INFO_W, h: BOX_H };
   const area = { x: 0, y: 0, w: width, h: BATTLE_H };
   const castle = { x: CASTLE_X, y: groundY - castleH, w: CASTLE_W, h: castleH };
   const enemy = { x: width - ENEMY_RIGHT - enemySize, y: groundY - enemySize, w: enemySize, h: enemySize };
@@ -260,10 +280,60 @@ function createBattleLayout(width) {
     defenseClashX: fieldL + (3 * F) / 8,
     offenseClashX: fieldL + (5 * F) / 8,
     enemyGuardX: fieldL + (7 * F) / 8,
+    armorHitX: enemy.x,
     castleHitX: castle.x + castle.w / 2,
     enemyHitX: enemy.x + enemy.w / 2,
     carpenterX: castle.x + castle.w / 2,
   };
+
+  /**
+   * シールドマーク count 個の矩形を求める。敵の矩形の中に SHIELD_COLS 個ずつの格子で並べ、
+   * 格子全体を敵の矩形の中心にそろえる（最後の行が埋まらないときはその行を中央にそろえる）。
+   * @param {number} count シールドマークの数（常時防御力）
+   * @returns {Rect[]} 各マークの矩形（左上の行から順。count が 0 以下なら空）
+   */
+  function shieldRects(count) {
+    if (count <= 0) return [];
+    const rows = Math.ceil(count / SHIELD_COLS);
+    const cell = Math.min(enemy.w / SHIELD_COLS, enemy.h / rows);
+    const size = cell * SHIELD_FILL;
+    const top = enemy.y + (enemy.h - cell * rows) / 2;
+    const rects = [];
+    for (let r = 0; r < rows; r++) {
+      const n = Math.min(SHIELD_COLS, count - r * SHIELD_COLS);
+      const left = enemy.x + (enemy.w - cell * n) / 2;
+      for (let i = 0; i < n; i++) {
+        rects.push({ x: left + cell * i + (cell - size) / 2, y: top + cell * r + (cell - size) / 2, w: size, h: size });
+      }
+    }
+    return rects;
+  }
+
+  /**
+   * ゴブリンの兵の群れの並びを求める。敵の矩形の横幅に HORDE_ROWS 列で並べ、
+   * 前の列の足元が地面、後ろの列ほど HORDE_ROW_RISE ずつ上げ、半区間ずらす。
+   * @param {number} count 兵の数
+   * @returns {Array<{ x: number, footY: number, w: number, h: number }>} 後ろの列から順の各兵（x は中心、footY は足元の y。count が 0 以下なら空）
+   */
+  function hordeSlots(count) {
+    if (count <= 0) return [];
+    const perRow = Math.ceil(count / HORDE_ROWS);
+    const seg = enemy.w / perRow;
+    const slots = [];
+    for (let row = HORDE_ROWS - 1; row >= 0; row--) {
+      const n = Math.max(0, Math.min(perRow, count - row * perRow));
+      const shift = row === 0 ? 0 : seg / 2;
+      for (let i = 0; i < n; i++) {
+        slots.push({
+          x: enemy.x + seg * (i + 0.5) + shift,
+          footY: groundY - troops.smallH * HORDE_ROW_RISE * row,
+          w: troops.smallW,
+          h: troops.smallH,
+        });
+      }
+    }
+    return slots;
+  }
 
   return {
     area,
@@ -273,13 +343,22 @@ function createBattleLayout(width) {
     phase,
     castleHp: { x: SIDE_MARGIN, y: infoY, w: INFO_W, h: BOX_H },
     enemyHp,
-    intent: { x: enemyHp.x, y: enemyHp.y + BOX_H + INFO_GAP_Y, w: INFO_W, h: BOX_H },
+    intent: { x: enemyHp.x, y: enemyHp.y + BOX_H + INFO_GAP_Y, w: ENEMY_INFO_W, h: BOX_H },
     troops,
     outcome: {
       x: area.x + area.w / 2,
       textY: area.y + area.h * OUTCOME_TEXT_RATIO,
       hintY: area.y + area.h * OUTCOME_HINT_RATIO,
     },
+    defeat: {
+      x: area.x + area.w / 2,
+      titleY: area.y + area.h * DEFEAT_TITLE_RATIO,
+      nextY: area.y + area.h * DEFEAT_NEXT_RATIO,
+      hintY: area.y + area.h * DEFEAT_HINT_RATIO,
+      maxW: area.w - SIDE_MARGIN * 2,
+    },
+    shieldRects,
+    hordeSlots,
   };
 }
 
