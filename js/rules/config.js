@@ -1,4 +1,4 @@
-/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・倍率の式の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・常時防御力・行動の決まり（重みによる抽選・周期の攻撃と攻撃の直後の回復））と敵の順番、力こぶの換算）を1か所に集める設定ファイル。 */
+/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・倍率の式の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・常時防御力・行動の決まり（重みによる抽選・周期の攻撃と攻撃の直後の回復・ブレスチャージ（爪・ブレス・燃やす札の枚数）））と敵の順番、力こぶの換算）を1か所に集める設定ファイル。 */
 
 /**
  * 敵の行動の種類ごとの量と重み。
@@ -16,9 +16,33 @@
  */
 
 /**
+ * 燃やす札の枚数の範囲。
+ * @typedef {Object} BurnSpec
+ * @property {number} min 燃やす札の最小の枚数。
+ * @property {number} max 燃やす札の最大の枚数（min 以上の整数）。
+ */
+
+/**
+ * ブレスチャージの爪の攻撃の設定。
+ * @typedef {Object} ChargeStrikeSpec
+ * @property {number} amount 爪の攻撃力。
+ */
+
+/**
+ * ブレスチャージのブレスの攻撃の設定。
+ * @typedef {Object} ChargeBreathSpec
+ * @property {number} amount ブレスの攻撃力。
+ * @property {Readonly<BurnSpec>} burn ブレスで燃やす札の枚数の範囲。
+ */
+
+/**
  * 敵の行動の決まりの設定。
  * @typedef {Object} EnemyBehaviorSpec
- * @property {'weighted'|'cycle'} type 行動の決まりの種類（'weighted'＝重みによる抽選、'cycle'＝周期の攻撃）。
+ * @property {'weighted'|'cycle'|'charge'} type 行動の決まりの種類（'weighted'＝重みによる抽選、'cycle'＝周期の攻撃、'charge'＝ブレスチャージ）。
+ * @property {Readonly<ChargeStrikeSpec>} [claw] 爪の攻撃（'charge' のみ）。
+ * @property {Readonly<ChargeBreathSpec>} [breath] ブレスの攻撃と燃やす札（'charge' のみ）。
+ * @property {number} [chargeMax] チャージの満ちる数（'charge' のみ）。
+ * @property {number} [breathChance] 満ちているとき、フェーズごとにブレスを予告する確率（0〜1。'charge' のみ）。
  * @property {readonly Readonly<EnemyActionSpec>[]} [actions] 予告する行動の種類ごとの量と重み（'weighted' のみ）。
  * @property {number} [cycleLength] 1周期のフェーズ数。最後のフェーズで攻撃、ほかは振りかぶり（'cycle' のみ。1以上の整数）。
  * @property {number} [attack] 周期の最後のフェーズの攻撃の量（'cycle' のみ）。
@@ -107,11 +131,11 @@ export const RULES = Object.freeze({
       maxHp: 120,
       armor: 15,
       behavior: Object.freeze({
-        type: 'weighted',
-        actions: Object.freeze([
-          Object.freeze({ kind: 'attack', amount: 20, weight: 2 }),
-          Object.freeze({ kind: 'defend', amount: 15, weight: 1 }),
-        ]),
+        type: 'charge',
+        claw: Object.freeze({ amount: 10 }),
+        breath: Object.freeze({ amount: 35, burn: Object.freeze({ min: 4, max: 6 }) }),
+        chargeMax: 4,
+        breathChance: 0.5,
       }),
     }),
   }),

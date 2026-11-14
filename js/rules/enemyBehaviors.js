@@ -1,5 +1,5 @@
 /**
- * 責務: 敵の行動の決まり（種類ごとの状態の初期値・次の行動の決め方・数え下ろしの問い合わせ）の表と呼び分け、攻撃の直後の回復の抽選。
+ * 責務: 敵の行動の決まり（種類ごとの状態の初期値・次の行動の決め方・攻防後の状態・数え下ろしとチャージの問い合わせ）の表と呼び分け、攻撃の直後の回復の抽選。
  * 渡された乱数だけを使う純粋な関数（ルール層）。
  */
 
@@ -23,9 +23,12 @@ export function pickWeighted(actions, random) {
 
 /**
  * 行動の決まりの種類ごとの、状態の初期値・次の行動の決め方・数え下ろしの問い合わせの表。
+ * settle は行動の攻防が行われた後の状態、charge はブレスチャージの問い合わせ（持たない決まりは null）。
  * @type {Readonly<Object<string, {
  *   initialState: (behavior: any) => object,
  *   planNext: (behavior: any, state: object, random: () => number) => { action: import('./combatants.js').EnemyAction, state: object },
+ *   settle: (behavior: any, state: object, action: import('./combatants.js').EnemyAction) => object,
+ *   charge: (behavior: any, state: object) => { current: number, max: number }|null,
  *   countdown: (behavior: any, state: object) => number|null
  * }>>}
  */
@@ -36,6 +39,8 @@ const BEHAVIORS = Object.freeze({
       action: pickWeighted(behavior.actions, random),
       state,
     }),
+    settle: (behavior, state) => state,
+    charge: () => null,
     countdown: () => null,
   }),
   cycle: Object.freeze({
@@ -47,14 +52,40 @@ const BEHAVIORS = Object.freeze({
         countdown === 0 ? { kind: 'attack', amount: behavior.attack } : { kind: 'windup', amount: 0 };
       return { action, state: { countdown } };
     },
+    settle: (behavior, state) => state,
+    charge: () => null,
     countdown: (behavior, state) => state.countdown,
+  }),
+  charge: Object.freeze({
+    initialState: () => ({ charge: 0 }),
+    planNext: (behavior, state, random) => {
+      const claw = { kind: 'attack', amount: behavior.claw.amount, variant: 'claw' };
+      if (state.charge < behavior.chargeMax) return { action: claw, state };
+      if (random() < behavior.breathChance) {
+        const action = {
+          kind: 'attack',
+          amount: behavior.breath.amount,
+          variant: 'breath',
+          burn: behavior.breath.burn,
+        };
+        return { action, state };
+      }
+      return { action: claw, state };
+    },
+    settle: (behavior, state, action) => {
+      if (action.variant === 'claw') return { charge: Math.min(state.charge + 1, behavior.chargeMax) };
+      if (action.variant === 'breath') return { charge: 0 };
+      return state;
+    },
+    charge: (behavior, state) => ({ current: state.charge, max: behavior.chargeMax }),
+    countdown: () => null,
   }),
 });
 
 /**
  * 種類に対応する決まりの実装を引く。
  * @param {{ type: string }} behavior 行動の決まりの設定
- * @returns {{ initialState: Function, planNext: Function, countdown: Function }} 決まりの実装
+ * @returns {{ initialState: Function, planNext: Function, settle: Function, charge: Function, countdown: Function }} 決まりの実装
  * @throws {Error} 未知の種類のとき
  */
 function lookupBehavior(behavior) {
@@ -94,6 +125,29 @@ export function planBehaviorAction(behavior, state, random) {
  */
 export function behaviorCountdown(behavior, state) {
   return lookupBehavior(behavior).countdown(behavior, state);
+}
+
+/**
+ * 行動の攻防が行われた後の決まりの状態を求める。引数の状態は書き換えず、新しい状態（または同じ状態）を返す。
+ * @param {{ type: string }} behavior 行動の決まりの設定
+ * @param {object} state いまの決まりの状態
+ * @param {import('./combatants.js').EnemyAction} action 行われた敵の行動
+ * @returns {object} 攻防の後の決まりの状態
+ * @throws {Error} 未知の種類のとき
+ */
+export function settleBehaviorAction(behavior, state, action) {
+  return lookupBehavior(behavior).settle(behavior, state, action);
+}
+
+/**
+ * ブレスチャージの現在値と満ちる数を答える。
+ * @param {{ type: string }} behavior 行動の決まりの設定
+ * @param {object} state いまの決まりの状態
+ * @returns {{ current: number, max: number }|null} チャージ。持たない決まりは null
+ * @throws {Error} 未知の種類のとき
+ */
+export function behaviorCharge(behavior, state) {
+  return lookupBehavior(behavior).charge(behavior, state);
 }
 
 /**
