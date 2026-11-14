@@ -1,5 +1,5 @@
 /**
- * 責務: 敵の行動（爪・ブレスの種類を含む）・決着・敵を倒したときの案内・数え下ろし・ブレスチャージ・回復の量を、画面に出す文字に直す。
+ * 責務: 敵の行動（爪・ブレスの種類を含む）・決着・結果の集計の見出し・タップでタイトルへの案内・敵を倒したときの案内・数え下ろし・ブレスチャージ・回復の量を、画面に出す文字に直す。
  * 計算はせず、量をそのまま文字にする。ルール層は実行時に import しない。
  */
 
@@ -37,6 +37,26 @@ const VARIANT_LABELS = Object.freeze({
  */
 const AMOUNTLESS_KINDS = new Set(['windup']);
 
+/**
+ * 結果の集計の項目 → 見出し文字の対応表。
+ * @type {Readonly<Record<string, string>>}
+ */
+const RESULT_STAT_LABELS = Object.freeze({
+  phases: 'かかったフェーズ数',
+  damageDealt: '敵に与えた総ダメージ',
+  damageTaken: '城が受けた総ダメージ',
+  healed: '回復の合計',
+});
+
+/**
+ * 結果の集計の項目を表示する順の並び。
+ * @type {ReadonlyArray<string>}
+ */
+const RESULT_STAT_ORDER = Object.freeze(['phases', 'damageDealt', 'damageTaken', 'healed']);
+
+/** 結果の表示を閉じる案内の文字 */
+const RESULT_HINT_TEXT = 'タップでタイトルへ';
+
 /** 未知の行動の種類の表示名 */
 const UNKNOWN_ACTION_LABEL = '？';
 
@@ -47,6 +67,23 @@ const UNKNOWN_ACTION_LABEL = '？';
  */
 export function outcomeText(outcome) {
   return Object.prototype.hasOwnProperty.call(OUTCOME_LABELS, outcome) ? OUTCOME_LABELS[outcome] : '';
+}
+
+/**
+ * 結果の集計を、見出しと数字の文字の4行にする。
+ * @param {import('../rules/gameStats.js').GameStats} stats 結果の集計
+ * @returns {Array<{ label: string, value: string }>} 表示順の行。value は数字をそのまま文字にしたもの
+ */
+export function resultStatLines(stats) {
+  return RESULT_STAT_ORDER.map((key) => ({ label: RESULT_STAT_LABELS[key], value: String(stats[key]) }));
+}
+
+/**
+ * 結果の表示を閉じる案内の文字にする。
+ * @returns {string} 「タップでタイトルへ」
+ */
+export function resultHintText() {
+  return RESULT_HINT_TEXT;
 }
 
 /**
