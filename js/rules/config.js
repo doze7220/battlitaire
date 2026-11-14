@@ -1,4 +1,4 @@
-/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・倍率の式の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・常時防御力・行動の決まり）と敵の順番、力こぶの換算）を1か所に集める設定ファイル。 */
+/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・倍率の式の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・常時防御力・行動の決まり（重みによる抽選・周期の攻撃と攻撃の直後の回復））と敵の順番、力こぶの換算）を1か所に集める設定ファイル。 */
 
 /**
  * 敵の行動の種類ごとの量と重み。
@@ -9,10 +9,20 @@
  */
 
 /**
+ * 攻撃の直後の回復の設定。
+ * @typedef {Object} AttackHealSpec
+ * @property {number} chance 回復する確率（0〜1）。
+ * @property {number} amount 回復の量。
+ */
+
+/**
  * 敵の行動の決まりの設定。
  * @typedef {Object} EnemyBehaviorSpec
- * @property {string} type 行動の決まりの種類（今は 'weighted'＝重みによる抽選だけ）。
- * @property {readonly Readonly<EnemyActionSpec>[]} actions 予告する行動の種類ごとの量と重み。
+ * @property {'weighted'|'cycle'} type 行動の決まりの種類（'weighted'＝重みによる抽選、'cycle'＝周期の攻撃）。
+ * @property {readonly Readonly<EnemyActionSpec>[]} [actions] 予告する行動の種類ごとの量と重み（'weighted' のみ）。
+ * @property {number} [cycleLength] 1周期のフェーズ数。最後のフェーズで攻撃、ほかは振りかぶり（'cycle' のみ。1以上の整数）。
+ * @property {number} [attack] 周期の最後のフェーズの攻撃の量（'cycle' のみ）。
+ * @property {Readonly<AttackHealSpec>} [attackHeal] 攻撃の直後の回復（任意。書かなければ回復しない）。
  */
 
 /**
@@ -86,11 +96,10 @@ export const RULES = Object.freeze({
       maxHp: 80,
       armor: 8,
       behavior: Object.freeze({
-        type: 'weighted',
-        actions: Object.freeze([
-          Object.freeze({ kind: 'attack', amount: 15, weight: 2 }),
-          Object.freeze({ kind: 'defend', amount: 15, weight: 1 }),
-        ]),
+        type: 'cycle',
+        cycleLength: 4,
+        attack: 40,
+        attackHeal: Object.freeze({ chance: 0.25, amount: 20 }),
       }),
     }),
     dragon: Object.freeze({

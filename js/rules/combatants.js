@@ -7,8 +7,8 @@ import { createBehaviorState } from './enemyBehaviors.js';
 /**
  * 敵の行動（予告にも使う）。
  * @typedef {Object} EnemyAction
- * @property {'attack'|'defend'} kind 行動の種類（攻撃・防御）
- * @property {number} amount 行動の量（攻撃なら攻撃の値、防御なら防御の値）
+ * @property {'attack'|'defend'|'windup'} kind 行動の種類（攻撃・防御・振りかぶり（行動しない。量は 0））
+ * @property {number} amount 行動の量（攻撃なら攻撃の値、防御なら防御の値、振りかぶりなら 0）
  */
 
 /**
@@ -27,7 +27,7 @@ import { createBehaviorState } from './enemyBehaviors.js';
  * @property {number} maxHp 最大 HP
  * @property {number} armor 常時防御力
  * @property {EnemyAction|null} intent 次の行動の予告（未決定なら null）
- * @property {object} behaviorState 行動の決まりの状態（weighted では {}）
+ * @property {object} behaviorState 行動の決まりの状態（weighted では {}、cycle では { countdown }）
  */
 
 /**
