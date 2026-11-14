@@ -15,7 +15,7 @@
 /**
  * 演出の1段。
  * @typedef {Object} BattleStep
- * @property {'form'|'enemyMarch'|'block'|'castleHit'|'march'|'enemyBlock'|'armorBlock'|'enemyHit'|'heal'} type 段の種類
+ * @property {'form'|'enemyMarch'|'block'|'castleHit'|'march'|'enemyBlock'|'armorBlock'|'enemyHit'|'heal'|'enemyHeal'} type 段の種類
  * @property {number} amount 量（`form` は 0）
  * @property {number} [guards] `form` のみ: 守備兵の数
  * @property {number} [enemyGuards] `form` のみ: 敵の守りの数
@@ -32,6 +32,7 @@ const EVENT_TO_STEP = {
   enemyArmorBlock: 'armorBlock',
   enemyDamage: 'enemyHit',
   heal: 'heal',
+  enemyHeal: 'enemyHeal',
 };
 
 /**

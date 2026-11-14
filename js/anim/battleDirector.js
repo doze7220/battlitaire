@@ -6,6 +6,7 @@
 import { BATTLE_ANIM } from './battleAnimConfig.js';
 import { sampleSquadTrack } from './squadTrack.js';
 import { sampleHp } from './hpTrack.js';
+import { samplePopTrack } from './popTrack.js';
 import { formationUnits } from './troopFormation.js';
 import { buildBattleCues } from './battleCues.js';
 
@@ -15,6 +16,7 @@ import { buildBattleCues } from './battleCues.js';
  * @property {import('./troopFormation.js').UnitLook[]} units 描く兵（後ろの列から順）
  * @property {number} castleHp 表示する城の HP
  * @property {number} enemyHp 表示する敵の HP
+ * @property {{amount: number, alpha: number}|null} enemyHealPop 敵の回復の量の浮き出し（なければ null）
  * @property {string|null} stepType いま進行中の段の種類（なければ null）
  * @property {boolean} finished 演出が終わったか
  */
@@ -116,10 +118,21 @@ export class BattleDirector {
         if (sample !== null) units.push(...formationUnits(sample, this.troopLayout, BATTLE_ANIM.unitSize));
       }
     }
+    let enemyHealPop = null;
+    if (!finished) {
+      for (const track of tl.enemyHealPops) {
+        const pop = samplePopTrack(track, this.clock);
+        if (pop !== null) {
+          enemyHealPop = pop;
+          break;
+        }
+      }
+    }
     return {
       units,
       castleHp: finished ? this.result.castleHp : sampleHp(tl.castleHpStart, tl.castleHpChanges, this.clock),
       enemyHp: finished ? this.result.enemyHp : sampleHp(tl.enemyHpStart, tl.enemyHpChanges, this.clock),
+      enemyHealPop,
       stepType: this.currentStepType(),
       finished,
     };

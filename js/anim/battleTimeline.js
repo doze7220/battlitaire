@@ -1,11 +1,12 @@
 /**
- * 段の並びから、段の時刻・兵の群れの動きの記録・HP の変化を組み立てて時間割にする。
+ * 段の並びから、段の時刻・兵の群れの動きの記録・HP の変化・数字の浮き出しを組み立てて時間割にする。
  * 描画も状態の変更も行わない。時間は BATTLE_ANIM、位置は TroopLayout から読む。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
 import { addSquadKey, createSquadTrack, lastSquadKey, squadTrackEnd } from './squadTrack.js';
 import { createHpChange } from './hpTrack.js';
+import { createPopTrack, popTrackEnd } from './popTrack.js';
 
 /**
  * 時刻つきの段。BattleStep に start・end（ms）を足したもの。
@@ -19,6 +20,7 @@ import { createHpChange } from './hpTrack.js';
  * @property {import('./squadTrack.js').SquadTrack[]} squads 群れの動きの記録（キーのあるものだけ）
  * @property {import('./hpTrack.js').HpChange[]} castleHpChanges 城の HP の表示値の変化
  * @property {import('./hpTrack.js').HpChange[]} enemyHpChanges 敵の HP の表示値の変化
+ * @property {import('./popTrack.js').PopTrack[]} enemyHealPops 敵の回復の量の浮き出し
  * @property {number} castleHpStart 城の HP の表示値の初期値
  * @property {number} enemyHpStart 敵の HP の表示値の初期値
  * @property {number} endTime 演出の終わりの時刻（ms）。段がなければ 0
@@ -30,6 +32,7 @@ import { createHpChange } from './hpTrack.js';
  * @property {Object<string, import('./squadTrack.js').SquadTrack>} tracks 種類ごとの群れの記録
  * @property {import('./hpTrack.js').HpChange[]} castleChanges 城の HP の変化
  * @property {import('./hpTrack.js').HpChange[]} enemyChanges 敵の HP の変化
+ * @property {import('./popTrack.js').PopTrack[]} enemyHealPops 敵の回復の量の浮き出し
  * @property {number} castleShown 城の HP の今の表示値
  * @property {number} enemyShown 敵の HP の今の表示値
  * @property {boolean} frontFaded 守備兵・敵兵の余りをすでに消し始めたか
@@ -40,7 +43,7 @@ import { createHpChange } from './hpTrack.js';
 const ALL_KINDS = ['guard', 'enemyGuard', 'enemy', 'soldier', 'carpenter'];
 
 /** 守備兵・敵兵の余りを消し始める段（最初に来たもの）。 */
-const FRONT_FADE_STEPS = new Set(['march', 'enemyBlock', 'armorBlock', 'enemyHit', 'heal']);
+const FRONT_FADE_STEPS = new Set(['march', 'enemyBlock', 'armorBlock', 'enemyHit', 'heal', 'enemyHeal']);
 
 /**
  * 群れの記録を（なければ作って）返す。
@@ -236,6 +239,30 @@ function addHeal(state, step, t) {
 }
 
 /**
+ * 巨人が回復し、敵の HP の表示が増えて、量が浮き出る段。
+ * 回復の時刻（`t + formMs`）は `battleCues.js` の `CUE_OFFSET_MS.enemyHeal` と合わせること。
+ * @param {BuildState} state 組み立て中の状態
+ * @param {import('./battleSteps.js').BattleStep} step 段
+ * @param {number} t 開始時刻（ms）
+ * @returns {number} 段の長さ（ms）
+ */
+function addEnemyHeal(state, step, t) {
+  const T = BATTLE_ANIM;
+  state.enemyHealPops.push(
+    createPopTrack(step.amount, [
+      { time: t, alpha: 0 },
+      { time: t + T.formMs, alpha: 1 },
+      { time: t + T.formMs + T.hpMs, alpha: 1 },
+      { time: t + T.formMs + T.hpMs + T.fadeMs, alpha: 0 },
+    ]),
+  );
+  const to = state.enemyShown + step.amount;
+  state.enemyChanges.push(createHpChange({ from: state.enemyShown, to, start: t + T.formMs, duration: T.hpMs }));
+  state.enemyShown = to;
+  return T.formMs + T.hpMs + T.fadeMs;
+}
+
+/**
  * 段の種類ごとの組み立て。段の開始時刻を受け取り、段の長さを返す。
  * @type {Object<string, (state: BuildState, step: import('./battleSteps.js').BattleStep, t: number) => number>}
  */
@@ -249,6 +276,7 @@ const STEP_BUILDERS = {
   armorBlock: addArmorBlock,
   enemyHit: (state, step, t) => addHit(state, 'soldier', state.layout.enemyHitX, 'enemy', step.amount, t),
   heal: addHeal,
+  enemyHeal: addEnemyHeal,
 };
 
 /**
@@ -283,6 +311,7 @@ export function buildBattleTimeline(steps, before, troopLayout) {
     tracks: {},
     castleChanges: [],
     enemyChanges: [],
+    enemyHealPops: [],
     castleShown: before.castleHp,
     enemyShown: before.enemyHp,
     frontFaded: false,
@@ -308,11 +337,13 @@ export function buildBattleTimeline(steps, before, troopLayout) {
   const squads = ALL_KINDS.filter((kind) => state.tracks[kind]).map((kind) => state.tracks[kind]);
   let endTime = stepEnd;
   for (const track of squads) endTime = Math.max(endTime, squadTrackEnd(track));
+  for (const track of state.enemyHealPops) endTime = Math.max(endTime, popTrackEnd(track));
   return {
     steps: timed,
     squads,
     castleHpChanges: state.castleChanges,
     enemyHpChanges: state.enemyChanges,
+    enemyHealPops: state.enemyHealPops,
     castleHpStart: before.castleHp,
     enemyHpStart: before.enemyHp,
     endTime,
