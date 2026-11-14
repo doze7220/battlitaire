@@ -1,5 +1,5 @@
 /**
- * 責務: 兵（小さな兵・大きなユニット。守備兵・兵士・大工・敵兵・敵の守り）の仮の図形を描く。
+ * 責務: 兵（小さな兵・大きなユニット。守備兵・兵士・大工・敵兵・敵の守り・ゴブリン）の仮の図形を描く。
  * 状態は変えず、ルール層・anim は実行時に import しない。
  */
 
@@ -20,6 +20,7 @@ const TROOP_STYLES = Object.freeze({
   carpenter: Object.freeze({ color: '#5cbf6a', item: 'hammer', facing: 1 }),
   enemy: Object.freeze({ color: '#e05050', item: 'spear', facing: -1 }),
   enemyGuard: Object.freeze({ color: '#9a5cc8', item: 'shield', facing: -1 }),
+  goblin: Object.freeze({ color: '#7a9a3a', item: 'spear', facing: -1 }),
 });
 
 /** 持ち物（盾・槍・槌）と旗の竿の色。旗の三角は FLAG_COLOR で塗る。 */

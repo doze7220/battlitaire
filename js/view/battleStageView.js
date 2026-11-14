@@ -1,10 +1,11 @@
 /**
- * 責務: 最上段（戦闘）の描画（背景・地面の線・城と敵の仮の図形・フェーズ・城と敵の HP・敵の予告）。
+ * 責務: 最上段（戦闘）の描画（背景・地面の線・城の仮の図形・敵の図形（enemyView.js）・フェーズ・城の HP・敵の名前と HP・敵の予告）。
  * 状態は変えず、ルール層は実行時に import しない。
  */
 
 import { roundRectPath } from './cardView.js';
 import { enemyActionText } from './battleText.js';
+import { drawEnemyFigure } from './enemyView.js';
 
 /** 空の色。 */
 const SKY_COLOR = '#2a3a5c';
@@ -16,8 +17,6 @@ const GROUND_LINE_COLOR = '#8a7a6a';
 const GROUND_LINE_WIDTH = 3;
 /** 城の仮の図形の色。 */
 const CASTLE_COLOR = '#9aa3b5';
-/** 敵の仮の図形の色。 */
-const ENEMY_COLOR = '#b5463f';
 /** 城の上辺の狭間の数。 */
 const MERLON_COUNT = 3;
 /** 狭間1つの幅の、城の幅に対する割合。 */
@@ -39,15 +38,13 @@ const TEXT_FONT = 'bold 24px sans-serif';
 const PHASE_LABEL = 'フェーズ';
 /** 城の HP の枠の見出し。 */
 const CASTLE_LABEL = '城 HP';
-/** 敵の HP の枠の見出し。 */
-const ENEMY_LABEL = '敵 HP';
 /** 予告の枠の見出し。 */
 const INTENT_LABEL = '次の行動';
 /** 予告がないときに出す文字。 */
 const NO_INTENT_TEXT = '－';
 
 /**
- * 枠を1つ描き、左寄せで文字を出す。
+ * 枠を1つ描き、左寄せで文字を出す（文字は枠の幅からはみ出さないよう最大の幅を渡す）。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').Rect} rect 枠の矩形
  * @param {string} text 出す文字
@@ -62,7 +59,7 @@ function drawBox(ctx, rect, text) {
   ctx.font = TEXT_FONT;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText(text, rect.x + BOX_PADDING_X, rect.y + rect.h / 2);
+  ctx.fillText(text, rect.x + BOX_PADDING_X, rect.y + rect.h / 2, rect.w - BOX_PADDING_X * 2);
   ctx.restore();
 }
 
@@ -108,34 +105,19 @@ function drawCastleShape(ctx, castle) {
 }
 
 /**
- * 敵の仮の図形（矩形に内接する丸）を描く。
- * @param {CanvasRenderingContext2D} ctx 描画先
- * @param {import('./layout.js').Rect} enemy 敵の矩形
- * @returns {void}
- */
-function drawEnemyShape(ctx, enemy) {
-  ctx.save();
-  ctx.fillStyle = ENEMY_COLOR;
-  ctx.beginPath();
-  ctx.arc(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, Math.min(enemy.w, enemy.h) / 2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-}
-
-/**
  * 最上段（戦闘）を描く。引数は読むだけで書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
- * @param {{ phase: number, castle: import('../rules/combatants.js').Castle, enemy: import('../rules/combatants.js').Enemy }} state 表示する状態
+ * @param {{ phase: number, castle: { hp: number, maxHp: number }, enemy: { typeId: string, name: string, hp: number, maxHp: number, armor: number, intent: import('../rules/combatants.js').EnemyAction|null }, shieldFlash?: boolean }} state 表示する状態（shieldFlash: シールドマークを明るく描くか。省くと false）
  * @returns {void}
  */
-export function drawBattleStage(ctx, battleLayout, { phase, castle, enemy }) {
+export function drawBattleStage(ctx, battleLayout, { phase, castle, enemy, shieldFlash = false }) {
   drawBackground(ctx, battleLayout);
   drawCastleShape(ctx, battleLayout.castle);
-  drawEnemyShape(ctx, battleLayout.enemy);
+  drawEnemyFigure(ctx, battleLayout, enemy, { shieldFlash });
   drawBox(ctx, battleLayout.phase, `${PHASE_LABEL} ${phase}`);
   drawBox(ctx, battleLayout.castleHp, `${CASTLE_LABEL} ${castle.hp} / ${castle.maxHp}`);
-  drawBox(ctx, battleLayout.enemyHp, `${ENEMY_LABEL} ${enemy.hp} / ${enemy.maxHp}`);
+  drawBox(ctx, battleLayout.enemyHp, `${enemy.name} ${enemy.hp} / ${enemy.maxHp}`);
   const intentText = enemy.intent === null ? NO_INTENT_TEXT : enemyActionText(enemy.intent);
   drawBox(ctx, battleLayout.intent, `${INTENT_LABEL} ${intentText}`);
 }
