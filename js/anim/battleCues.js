@@ -9,18 +9,20 @@ import { BATTLE_ANIM } from './battleAnimConfig.js';
  * 音を合わせるきっかけ。
  * @typedef {Object} BattleCue
  * @property {number} time きっかけの時刻（演出の時計の ms）
- * @property {string} type 段の種類（'block'・'enemyBlock'・'castleHit'・'enemyHit'・'heal'）
+ * @property {string} type 段の種類（'block'・'enemyBlock'・'armorBlock'・'castleHit'・'enemyHit'・'heal'）
  */
 
 /**
  * 段の種類 → 段の開始 `start` からきっかけまでの時間（ms）の、凍結した対応表（値は関数ではなく数値）。
  * 当たり・修理の式は `battleTimeline.js` の `addHit`（`start + hitMoveMs`）・`addHeal`（`start + formMs`）と同じ。
- * 注意: `battleTimeline.js` の `addHit`・`addHeal` の時刻を変えるときは、ここも合わせて直すこと。
+ * 常時防御力の相殺の式は `addArmorBlock` の当たりの時刻（`start + hitMoveMs`）と同じ。
+ * 注意: `battleTimeline.js` の `addHit`・`addHeal`・`addArmorBlock` の時刻を変えるときは、ここも合わせて直すこと。
  * @type {Readonly<Record<string, number>>}
  */
 const CUE_OFFSET_MS = Object.freeze({
   block: 0,
   enemyBlock: 0,
+  armorBlock: BATTLE_ANIM.hitMoveMs,
   castleHit: BATTLE_ANIM.hitMoveMs,
   enemyHit: BATTLE_ANIM.hitMoveMs,
   heal: BATTLE_ANIM.formMs,

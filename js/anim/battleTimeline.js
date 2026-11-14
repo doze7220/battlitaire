@@ -40,7 +40,7 @@ import { createHpChange } from './hpTrack.js';
 const ALL_KINDS = ['guard', 'enemyGuard', 'enemy', 'soldier', 'carpenter'];
 
 /** 守備兵・敵兵の余りを消し始める段（最初に来たもの）。 */
-const FRONT_FADE_STEPS = new Set(['march', 'enemyBlock', 'enemyHit', 'heal']);
+const FRONT_FADE_STEPS = new Set(['march', 'enemyBlock', 'armorBlock', 'enemyHit', 'heal']);
 
 /**
  * 群れの記録を（なければ作って）返す。
@@ -195,6 +195,26 @@ function addMarch(state, step, t) {
 }
 
 /**
+ * 兵士が敵のシールドマークまで進み、当たって量だけ消える段（常時防御力）。HP は変わらない。
+ * 当たりの時刻（`t + hitMoveMs`）は `battleCues.js` の `CUE_OFFSET_MS.armorBlock` と合わせること。
+ * @param {BuildState} state 組み立て中の状態
+ * @param {import('./battleSteps.js').BattleStep} step 段
+ * @param {number} t 開始時刻（ms）
+ * @returns {number} 段の長さ（ms）
+ */
+function addArmorBlock(state, step, t) {
+  const T = BATTLE_ANIM;
+  const now = nowOf(state, 'soldier');
+  if (now !== null) {
+    const armorX = state.layout.armorHitX;
+    key(state, 'soldier', t, now.x, now.count, 1);
+    key(state, 'soldier', t + T.hitMoveMs, armorX, now.count, 1);
+    key(state, 'soldier', t + T.hitMoveMs + T.clashMs / 2, armorX, Math.max(0, now.count - step.amount), 1);
+  }
+  return T.hitMoveMs + T.clashMs;
+}
+
+/**
  * 大工が現れて城を直し、消える段。
  * @param {BuildState} state 組み立て中の状態
  * @param {import('./battleSteps.js').BattleStep} step 段
@@ -226,6 +246,7 @@ const STEP_BUILDERS = {
   castleHit: (state, step, t) => addHit(state, 'enemy', state.layout.castleHitX, 'castle', step.amount, t),
   march: addMarch,
   enemyBlock: (state, step, t) => addClash(state, ['soldier', 'enemyGuard'], step.amount, t),
+  armorBlock: addArmorBlock,
   enemyHit: (state, step, t) => addHit(state, 'soldier', state.layout.enemyHitX, 'enemy', step.amount, t),
   heal: addHeal,
 };
