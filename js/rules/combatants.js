@@ -1,6 +1,8 @@
 /**
- * 責務: 城・敵の状態の生成と、敵の次の行動の決定（渡された乱数で。ルール層。画面・エンジンには触れない）。
+ * 責務: 城・敵の状態の生成（敵は種類の設定から作る。ルール層。画面・エンジンには触れない）。
  */
+
+import { createBehaviorState } from './enemyBehaviors.js';
 
 /**
  * 敵の行動（予告にも使う）。
@@ -19,9 +21,13 @@
 /**
  * 敵の状態。
  * @typedef {Object} Enemy
+ * @property {string} typeId 敵の種類の識別子
+ * @property {string} name 敵の名前
  * @property {number} hp 現在の HP
  * @property {number} maxHp 最大 HP
+ * @property {number} armor 常時防御力
  * @property {EnemyAction|null} intent 次の行動の予告（未決定なら null）
+ * @property {object} behaviorState 行動の決まりの状態（weighted では {}）
  */
 
 /**
@@ -34,29 +40,19 @@ export function createCastle(config) {
 }
 
 /**
- * 敵の初期状態を作る（予告はまだ決めない）。
- * @param {{ enemyMaxHp: number }} config ルールの設定
- * @returns {Enemy} HP が最大で、予告が null の敵
+ * 敵の初期状態を種類の設定から作る（予告はまだ決めない）。
+ * @param {string} typeId 敵の種類の識別子
+ * @param {import('./config.js').EnemySpec} spec 敵の種類の設定
+ * @returns {Enemy} HP が最大で、予告が null、決まりの状態が初期値の敵
  */
-export function createEnemy(config) {
-  return { hp: config.enemyMaxHp, maxHp: config.enemyMaxHp, intent: null };
-}
-
-/**
- * 敵の次の行動を、設定の重みと渡された乱数で決める。`random()` は1回だけ呼ぶ。
- * @param {{ enemyActions: ReadonlyArray<{ kind: string, amount: number, weight: number }> }} config ルールの設定
- * @param {() => number} random 0以上1未満を返す乱数の関数
- * @returns {EnemyAction} 新しい行動オブジェクト（重みは含まない）
- */
-export function planEnemyAction(config, random) {
-  const specs = config.enemyActions;
-  const total = specs.reduce((sum, spec) => sum + spec.weight, 0);
-  const r = random() * total;
-  let acc = 0;
-  for (const spec of specs) {
-    acc += spec.weight;
-    if (acc > r) return { kind: spec.kind, amount: spec.amount };
-  }
-  const last = specs[specs.length - 1];
-  return { kind: last.kind, amount: last.amount };
+export function createEnemy(typeId, spec) {
+  return {
+    typeId,
+    name: spec.name,
+    hp: spec.maxHp,
+    maxHp: spec.maxHp,
+    armor: spec.armor,
+    intent: null,
+    behaviorState: createBehaviorState(spec.behavior),
+  };
 }
