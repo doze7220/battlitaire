@@ -81,7 +81,7 @@ function drawEnemyHealPop(ctx, battleLayout, pop) {
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
  * @param {import('../rules/Game.js').Game} game ルール層のゲーム（フェーズ・最大 HP・攻防をした敵の種類・名前・常時防御力を読む）
  * @param {import('../rules/Game.js').BattleResult} result 攻防の結果（敵の行動・敵を倒したときの案内を読む）
- * @param {{ units: Array<object>, castleHp: number, enemyHp: number, finished: boolean, stepType: string|null, enemyHealPop: { amount: number, alpha: number }|null, enemyCharge: { current: number, max: number }|null }} look 演出の見た目の値（BattleLook）
+ * @param {{ units: Array<object>, castleHp: number, enemyHp: number, finished: boolean, stepType: string|null, enemyHealPop: { amount: number, alpha: number }|null }} look 演出の見た目の値（BattleLook）
  * @returns {void}
  */
 export function drawBattleShow(ctx, battleLayout, game, result, look) {
@@ -98,7 +98,6 @@ export function drawBattleShow(ctx, battleLayout, game, result, look) {
     },
     shieldFlash: look.stepType === ARMOR_BLOCK_STEP,
     countdown: game.attackCountdown(),
-    charge: look.enemyCharge,
   });
   drawTroops(ctx, look.units);
   if (look.enemyHealPop !== null) drawEnemyHealPop(ctx, battleLayout, look.enemyHealPop);

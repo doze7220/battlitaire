@@ -1,10 +1,10 @@
 /**
- * 責務: 最上段（戦闘）の描画（背景・地面の線・城の仮の図形・敵の図形（enemyView.js）・フェーズ・城の HP・敵の名前と HP・敵の予告（爪・ブレスの種類を目立たせる）・数え下ろし・ブレスチャージ）。
+ * 責務: 最上段（戦闘）の描画（背景・地面の線・城の仮の図形・敵の図形（enemyView.js）・フェーズ・城の HP・敵の名前と HP・敵の予告（爪・ブレスの種類を目立たせる）・数え下ろし）。
  * 状態は変えず、ルール層は実行時に import しない。
  */
 
 import { roundRectPath } from './cardView.js';
-import { enemyActionText, countdownText, chargeText } from './battleText.js';
+import { enemyActionText, countdownText } from './battleText.js';
 import { drawEnemyFigure } from './enemyView.js';
 
 /** 空の色。 */
@@ -120,10 +120,10 @@ function drawCastleShape(ctx, castle) {
  * 最上段（戦闘）を描く。引数は読むだけで書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
- * @param {{ phase: number, castle: { hp: number, maxHp: number }, enemy: { typeId: string, name: string, hp: number, maxHp: number, armor: number, intent: import('../rules/combatants.js').EnemyAction|null }, shieldFlash?: boolean, countdown?: number|null, charge?: { current: number, max: number }|null }} state 表示する状態（shieldFlash: シールドマークを明るく描くか。省くと false。countdown: 攻撃までの残りフェーズ数。null か省くと数え下ろしを描かない。charge: ブレスチャージ。数え下ろしがないときだけ同じ枠に描く。null か省くと描かない）
+ * @param {{ phase: number, castle: { hp: number, maxHp: number }, enemy: { typeId: string, name: string, hp: number, maxHp: number, armor: number, intent: import('../rules/combatants.js').EnemyAction|null }, shieldFlash?: boolean, countdown?: number|null }} state 表示する状態（shieldFlash: シールドマークを明るく描くか。省くと false。countdown: 攻撃までの残りフェーズ数。null か省くと数え下ろしを描かない）
  * @returns {void}
  */
-export function drawBattleStage(ctx, battleLayout, { phase, castle, enemy, shieldFlash = false, countdown = null, charge = null }) {
+export function drawBattleStage(ctx, battleLayout, { phase, castle, enemy, shieldFlash = false, countdown = null }) {
   drawBackground(ctx, battleLayout);
   drawCastleShape(ctx, battleLayout.castle);
   drawEnemyFigure(ctx, battleLayout, enemy, { shieldFlash });
@@ -135,7 +135,5 @@ export function drawBattleStage(ctx, battleLayout, { phase, castle, enemy, shiel
   drawBox(ctx, battleLayout.intent, `${INTENT_LABEL} ${intentText}`, emphasized ? EMPHASIS_STYLE : undefined);
   if (countdown !== null) {
     drawBox(ctx, battleLayout.countdown, countdownText(countdown));
-  } else if (charge !== null) {
-    drawBox(ctx, battleLayout.countdown, chargeText(charge), charge.current >= charge.max ? EMPHASIS_STYLE : undefined);
   }
 }
