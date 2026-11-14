@@ -1,6 +1,6 @@
 /**
  * 責務: 盤面の画面配置（座標・大きさ。戦闘の段の兵の配置・数え下ろしの枠（ブレスチャージも同じ枠）・大きな敵の玉とそれに内接する矩形・敵の回復の量の表示の位置・敵の図形の上のシールドマーク・ゴブリンの群れの並び・敵を倒したときの案内・早送りとスキップの矩形を含む）を一手に持ち、座標から「何に当たるか」を求める。
- * ルール層は import せず、数の情報は引数で受け取る。状態は変えない。
+ * タイトル画面・結果の表示（決着）の配置と当たりも持つ。ルール層は import せず、数の情報は引数で受け取る。状態は変えない。
  */
 
 /**
@@ -89,6 +89,32 @@
  */
 
 /**
+ * 決着の表示（結果）の配置。
+ * @typedef {Object} ResultLayout
+ * @property {Rect} curtain 暗幕（画面全体）
+ * @property {Rect} panel 結果の板（画面の中央）
+ * @property {number} x 板の中央の x
+ * @property {number} outcomeY 「クリア」「負け」の文字の中心 y
+ * @property {number} labelX 見出しの左端 x（左寄せ）
+ * @property {number} valueX 数字の右端 x（右寄せ）
+ * @property {number} labelMaxW 見出しの最大の幅
+ * @property {number} valueMaxW 数字の最大の幅
+ * @property {function(number): number} rowY i 行目の数字の行の中心 y
+ * @property {number} hintY 案内の中心 y
+ * @property {number} maxW 大きな文字と案内の最大の幅
+ */
+
+/**
+ * タイトル画面の配置。
+ * @typedef {Object} TitleLayout
+ * @property {{ width: number, height: number }} screen 画面の大きさ（背景を塗る範囲）
+ * @property {{ x: number, y: number, maxW: number }} title ゲーム名の中心と最大の幅
+ * @property {Rect} startButton 「はじめる」ボタンの矩形
+ * @property {number} startTextMaxW ボタンの文字の最大の幅
+ * @property {function(number, number): ('start'|null)} titleHitTest 座標から、ボタンに当たったものを返す
+ */
+
+/**
  * 盤面の配置。
  * @typedef {Object} Layout
  * @property {{ width: number, height: number }} screen 画面の大きさ
@@ -104,6 +130,7 @@
  * @property {BattleLayout} battle 最上段（戦闘）
  * @property {{ fastForward: Rect, skip: Rect }} battleControls 攻防の演出中の最下段の「早送り」「スキップ」の矩形（`hud.actionEnd` を左右に2分割）
  * @property {function(number, number): Rect[]} columnCardRects 列の番号と枚数から、下から順の各カードの矩形（長い列の詰めを含む）
+ * @property {ResultLayout} result 決着の表示（結果）の配置
  * @property {function(number, number, number[]=): (Hit|null)} hitTest 座標（と列ごとのカードの枚数）から当たったものを返す
  * @property {function(number, number): ('fastForward'|'skip'|null)} battleHitTest 座標から、演出中のボタン（早送り・スキップ）に当たったものを返す
  */
@@ -212,6 +239,34 @@ const UI_GAP_X = 12;
 const UI_LEFT_W = 200;
 /** 行動終了の高さ */
 const ACTION_END_H = 100;
+
+/** タイトル画面のゲーム名の中心 y の、画面の高さに対する割合 */
+const TITLE_TEXT_RATIO = 0.36;
+/** タイトル画面の「はじめる」ボタンの幅 */
+const TITLE_BUTTON_W = 360;
+/** タイトル画面の「はじめる」ボタンの高さ */
+const TITLE_BUTTON_H = 120;
+/** タイトル画面の「はじめる」ボタンの上端 y の、画面の高さに対する割合 */
+const TITLE_BUTTON_RATIO = 0.58;
+/** 「はじめる」ボタンの文字の左右の余白 */
+const TITLE_BUTTON_PAD_X = 24;
+
+/** 結果の板の幅 */
+const RESULT_PANEL_W = 600;
+/** 結果の板の高さ */
+const RESULT_PANEL_H = 620;
+/** 板の上端から「クリア」「負け」の文字の中心までの距離 */
+const RESULT_OUTCOME_DY = 110;
+/** 結果の板の左右の余白 */
+const RESULT_PAD_X = 40;
+/** 結果の数字の欄の幅（右寄せ） */
+const RESULT_VALUE_W = 140;
+/** 板の上端から結果の最初の行の中心までの距離 */
+const RESULT_ROW_TOP_DY = 230;
+/** 結果の行どうしの間隔（中心から中心） */
+const RESULT_ROW_GAP = 76;
+/** 板の上端から「タップでタイトルへ」の中心までの距離 */
+const RESULT_HINT_DY = 540;
 
 /**
  * 点が矩形の中にあるか（右端・下端は含まない）。
@@ -523,5 +578,70 @@ export function createLayout({ screen, deckCount, columnCount, handSize, gaugeCo
     return null;
   }
 
-  return { screen, sections, card: { w: cardW, h: cardH }, gauges, decks, discard, columns, hand, releaseButtons, hud, battle, battleControls, columnCardRects, hitTest, battleHitTest };
+  const result = createResultLayout(screen);
+
+  return { screen, sections, card: { w: cardW, h: cardH }, gauges, decks, discard, columns, hand, releaseButtons, hud, battle, battleControls, result, columnCardRects, hitTest, battleHitTest };
+}
+
+/**
+ * 決着の表示（結果）の配置を作る。
+ * @param {{ width: number, height: number }} screen 画面の大きさ
+ * @returns {ResultLayout} 結果の表示の配置
+ */
+function createResultLayout(screen) {
+  const W = screen.width;
+  const H = screen.height;
+  const panel = {
+    x: (W - RESULT_PANEL_W) / 2,
+    y: (H - RESULT_PANEL_H) / 2,
+    w: RESULT_PANEL_W,
+    h: RESULT_PANEL_H,
+  };
+  return {
+    curtain: { x: 0, y: 0, w: W, h: H },
+    panel,
+    x: panel.x + panel.w / 2,
+    outcomeY: panel.y + RESULT_OUTCOME_DY,
+    labelX: panel.x + RESULT_PAD_X,
+    valueX: panel.x + panel.w - RESULT_PAD_X,
+    labelMaxW: panel.w - RESULT_PAD_X * 2 - RESULT_VALUE_W,
+    valueMaxW: RESULT_VALUE_W,
+    rowY: (i) => panel.y + RESULT_ROW_TOP_DY + RESULT_ROW_GAP * i,
+    hintY: panel.y + RESULT_HINT_DY,
+    maxW: panel.w - RESULT_PAD_X * 2,
+  };
+}
+
+/**
+ * タイトル画面の配置を作る。
+ * @param {{ width: number, height: number }} screen 画面の大きさ
+ * @returns {TitleLayout} タイトル画面の配置
+ */
+export function createTitleLayout(screen) {
+  const W = screen.width;
+  const H = screen.height;
+  const startButton = {
+    x: (W - TITLE_BUTTON_W) / 2,
+    y: H * TITLE_BUTTON_RATIO,
+    w: TITLE_BUTTON_W,
+    h: TITLE_BUTTON_H,
+  };
+
+  /**
+   * 座標から、タイトル画面のボタンに当たったものを返す。
+   * @param {number} x x 座標
+   * @param {number} y y 座標
+   * @returns {'start'|null} 当たったもの。なければ null
+   */
+  function titleHitTest(x, y) {
+    return inRect(startButton, x, y) ? 'start' : null;
+  }
+
+  return {
+    screen,
+    title: { x: W / 2, y: H * TITLE_TEXT_RATIO, maxW: W - SIDE_MARGIN * 2 },
+    startButton,
+    startTextMaxW: TITLE_BUTTON_W - TITLE_BUTTON_PAD_X * 2,
+    titleHitTest,
+  };
 }
