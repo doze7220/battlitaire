@@ -73,6 +73,7 @@ export class BoardScene extends Scene {
   /**
    * 動きの時計に dt（ミリ秒）を足して進める（timeScale は update の呼ばれる回数に反映されるので掛けない。ルール層の状態は変えない）。
    * 進めた直後に、その間に着いた連鎖の序数ごとに連鎖の効果音を鳴らす。
+   * 頭で `this.battleShow` を外す（update は最前面のときだけ呼ばれるので、攻防の演出のシーンが外れた後になる）。
    * @param {number} dt 1ティックの長さ（ミリ秒）
    * @returns {void}
    */
@@ -127,6 +128,7 @@ export class BoardScene extends Scene {
 
   /**
    * ルール層の問い合わせと anim の見た目の値から盤面を描く（状態は変えない）。
+   * 攻防の演出のシーンを積んでいれば、その `boardLook()`（燃える段の盤面の見た目。なければ null）を読んで `drawBoard` に渡す。
    * @param {CanvasRenderingContext2D} ctx 描画先
    * @param {string} layer レイヤー名
    * @returns {void}
