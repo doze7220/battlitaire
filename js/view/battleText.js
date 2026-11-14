@@ -1,5 +1,5 @@
 /**
- * 責務: 敵の行動・決着・敵を倒したときの案内を、画面に出す文字に直す。
+ * 責務: 敵の行動・決着・敵を倒したときの案内・数え下ろし・回復の量を、画面に出す文字に直す。
  * 計算はせず、量をそのまま文字にする。ルール層は実行時に import しない。
  */
 
@@ -19,7 +19,14 @@ const OUTCOME_LABELS = Object.freeze({
 const ACTION_LABELS = Object.freeze({
   attack: '攻撃',
   defend: '防御',
+  windup: '振りかぶり',
 });
+
+/**
+ * 量を出さない敵の行動の種類の集合（表示名だけを出す）。
+ * @type {Set<string>}
+ */
+const AMOUNTLESS_KINDS = new Set(['windup']);
 
 /** 未知の行動の種類の表示名 */
 const UNKNOWN_ACTION_LABEL = '？';
@@ -60,5 +67,24 @@ export function enemyActionText(action) {
   const name = Object.prototype.hasOwnProperty.call(ACTION_LABELS, action.kind)
     ? ACTION_LABELS[action.kind]
     : UNKNOWN_ACTION_LABEL;
+  if (AMOUNTLESS_KINDS.has(action.kind)) return name;
   return `${name} ${action.amount}`;
+}
+
+/**
+ * 攻撃までの数え下ろしを表示文字にする。
+ * @param {number} countdown 攻撃までの残りフェーズ数（0 は攻撃するフェーズ）
+ * @returns {string} 1以上は「攻撃まで あとN」、0 は「攻撃！」
+ */
+export function countdownText(countdown) {
+  return countdown > 0 ? `攻撃まで あと${countdown}` : '攻撃！';
+}
+
+/**
+ * 回復の量を「+20」のような文字にする。
+ * @param {number} amount 回復の量
+ * @returns {string} 「+量」
+ */
+export function healAmountText(amount) {
+  return `+${amount}`;
 }

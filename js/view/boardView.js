@@ -43,7 +43,7 @@ export function drawBoard(ctx, layout, game, ui, anim) {
   ctx.fillRect(0, 0, layout.screen.width, layout.screen.height);
   ctx.restore();
 
-  drawBattleStage(ctx, layout.battle, { phase: game.phase, castle: game.castle, enemy: game.enemy });
+  drawBattleStage(ctx, layout.battle, { phase: game.phase, castle: game.castle, enemy: game.enemy, countdown: game.attackCountdown() });
 
   drawGauges(ctx, layout.gauges, game.gauges, anim.gaugeValues);
 

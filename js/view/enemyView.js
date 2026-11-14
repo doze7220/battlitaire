@@ -1,5 +1,5 @@
 /**
- * 責務: 戦闘の段の敵の仮の図形（巨人・ドラゴンの玉、ゴブリンの軍勢の兵の群れ）と、常時防御力のシールドマークを描く。
+ * 責務: 戦闘の段の敵の仮の図形（巨人の大きな玉・ドラゴンの玉、ゴブリンの軍勢の兵の群れ）と、常時防御力のシールドマークを描く。
  * 状態は変えず、ルール層・anim は実行時に import しない。
  */
 
@@ -27,6 +27,7 @@ const SHIELD_SHOULDER_RATIO = 0.55;
  * @typedef {object} EnemyLook
  * @property {'horde'|'orb'} shape 図形の種類（兵の群れ・玉）
  * @property {string} [color] 玉の色（玉のとき）
+ * @property {'normal'|'big'} [size] 玉の大きさ（省くと normal。big は大きな敵の矩形に描く）
  */
 
 /**
@@ -35,7 +36,7 @@ const SHIELD_SHOULDER_RATIO = 0.55;
  */
 const ENEMY_LOOKS = Object.freeze({
   goblins: Object.freeze({ shape: 'horde' }),
-  giant: Object.freeze({ shape: 'orb', color: '#5c9a4a' }),
+  giant: Object.freeze({ shape: 'orb', color: '#3fa34d', size: 'big' }),
   dragon: Object.freeze({ shape: 'orb', color: '#c0392b' }),
 });
 
@@ -111,10 +112,11 @@ function drawShieldMark(ctx, rect, flash) {
 export function drawEnemyFigure(ctx, battleLayout, enemy, { shieldFlash }) {
   ctx.save();
   const look = Object.prototype.hasOwnProperty.call(ENEMY_LOOKS, enemy.typeId) ? ENEMY_LOOKS[enemy.typeId] : null;
+  const body = look !== null && look.size === 'big' ? battleLayout.enemyBig : battleLayout.enemy;
   if (look !== null && look.shape === 'horde') drawHorde(ctx, battleLayout);
-  else drawOrb(ctx, battleLayout.enemy, look !== null ? look.color : DEFAULT_ORB_COLOR);
+  else drawOrb(ctx, body, look !== null ? look.color : DEFAULT_ORB_COLOR);
   if (enemy.armor > 0) {
-    for (const rect of battleLayout.shieldRects(enemy.armor)) drawShieldMark(ctx, rect, shieldFlash);
+    for (const rect of battleLayout.shieldRects(enemy.armor, body)) drawShieldMark(ctx, rect, shieldFlash);
   }
   ctx.restore();
 }
