@@ -1,11 +1,11 @@
 /**
- * 責務: 攻防の演出中の最上段の描画の取りまとめ（HP の表示値を差し替えた戦闘の段・兵・決着の表示・敵を倒したときの案内）。
+ * 責務: 攻防の演出中の最上段の描画の取りまとめ（HP の表示値を差し替えた戦闘の段・兵・敵の回復の量・決着の表示・敵を倒したときの案内）。
  * 状態は変えず、ルール層・anim は実行時に import しない。
  */
 
 import { drawBattleStage } from './battleStageView.js';
 import { drawTroops } from './troopView.js';
-import { outcomeText, defeatText, nextEnemyText } from './battleText.js';
+import { outcomeText, defeatText, nextEnemyText, healAmountText } from './battleText.js';
 
 /** 決着の表示の暗幕の色。 */
 const CURTAIN_FILL = 'rgba(0, 0, 0, 0.55)';
@@ -31,6 +31,10 @@ const DEFEAT_NEXT_FONT = 'bold 36px sans-serif';
 const DEFEAT_HINT_TEXT = 'タップで次へ';
 /** シールドマークが光る段の種類（BattleLook.stepType の値）。 */
 const ARMOR_BLOCK_STEP = 'armorBlock';
+/** 敵の回復の量のフォント。 */
+const ENEMY_HEAL_FONT = 'bold 40px sans-serif';
+/** 敵の回復の量の文字の色（緑）。 */
+const ENEMY_HEAL_COLOR = '#6ee07a';
 
 /**
  * 決着の表示（暗幕・大きな勝ち負け・案内）を描く。
@@ -84,12 +88,31 @@ function drawDefeat(ctx, battleLayout, defeat) {
 }
 
 /**
+ * 敵の回復の量（緑の「+20」）を巨人の玉の上に描く。
+ * @param {CanvasRenderingContext2D} ctx 描画先
+ * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
+ * @param {{ amount: number, alpha: number }} pop 回復の量と濃さ（BattleLook.enemyHealPop の null でない値）
+ * @returns {void}
+ */
+function drawEnemyHealPop(ctx, battleLayout, pop) {
+  const pos = battleLayout.enemyHealText;
+  ctx.save();
+  ctx.globalAlpha = pop.alpha;
+  ctx.font = ENEMY_HEAL_FONT;
+  ctx.fillStyle = ENEMY_HEAL_COLOR;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(healAmountText(pop.amount), pos.x, pos.y);
+  ctx.restore();
+}
+
+/**
  * 演出中の最上段を描く。引数は読むだけで書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
  * @param {import('../rules/Game.js').Game} game ルール層のゲーム（フェーズ・最大 HP・攻防をした敵の種類・名前・常時防御力を読む）
  * @param {import('../rules/Game.js').BattleResult} result 攻防の結果（敵の行動・決着・敵を倒したときの案内を読む）
- * @param {{ units: Array<object>, castleHp: number, enemyHp: number, finished: boolean, stepType: string|null }} look 演出の見た目の値（BattleLook）
+ * @param {{ units: Array<object>, castleHp: number, enemyHp: number, finished: boolean, stepType: string|null, enemyHealPop: { amount: number, alpha: number }|null }} look 演出の見た目の値（BattleLook）
  * @returns {void}
  */
 export function drawBattleShow(ctx, battleLayout, game, result, look) {
@@ -105,8 +128,10 @@ export function drawBattleShow(ctx, battleLayout, game, result, look) {
       intent: result.enemyAction,
     },
     shieldFlash: look.stepType === ARMOR_BLOCK_STEP,
+    countdown: game.attackCountdown(),
   });
   drawTroops(ctx, look.units);
+  if (look.enemyHealPop !== null) drawEnemyHealPop(ctx, battleLayout, look.enemyHealPop);
   if (look.finished && result.outcome !== null) drawOutcome(ctx, battleLayout, result.outcome);
   else if (look.finished && result.defeat !== null) drawDefeat(ctx, battleLayout, result.defeat);
 }
