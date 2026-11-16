@@ -4,13 +4,15 @@
  */
 
 import { suitLook } from './suitStyle.js';
+import { drawSpriteCentered } from './spriteView.js';
 
 const CORNER_RADIUS = 8;
 const FACE_FILL = '#fdfaf0';
 const FACE_STROKE = '#333333';
 const FACE_LINE_WIDTH = 2;
 const RANK_FONT = 'bold 24px sans-serif';
-const EMOJI_FONT = '40px sans-serif';
+/** カードの短い辺に対する、スートの絵の長い辺の割合 */
+const SUIT_ART_RATIO = 0.5;
 const RANK_OFFSET_X = 8;
 const RANK_OFFSET_Y = 6;
 const EMPTY_STROKE = '#8a9a8a';
@@ -46,7 +48,7 @@ export function roundRectPath(ctx, x, y, w, h, r) {
 }
 
 /**
- * カードの表（角丸の枠・左上に数字・中央にスートの絵文字）を描く。
+ * カードの表（角丸の枠・左上に数字・中央にスートのスプライト）を描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {number} x 左端
  * @param {number} y 上端
@@ -71,11 +73,11 @@ export function drawCardFace(ctx, x, y, w, h, card) {
   ctx.font = RANK_FONT;
   ctx.fillText(String(card.rank), x + RANK_OFFSET_X, y + RANK_OFFSET_Y);
 
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.font = EMOJI_FONT;
-  ctx.fillText(look.emoji, x + w / 2, y + h / 2);
   ctx.restore();
+
+  if (look.sprite !== null) {
+    drawSpriteCentered(ctx, look.sprite, x + w / 2, y + h / 2, Math.min(w, h) * SUIT_ART_RATIO);
+  }
 }
 
 /**

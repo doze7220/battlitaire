@@ -46,7 +46,7 @@ const RESULT_STAT_LABELS = Object.freeze({
   phases: 'かかったフェーズ数',
   damageDealt: '敵に与えた総ダメージ',
   damageTaken: '城が受けた総ダメージ',
-  healed: '回復の合計',
+  healed: '修理の合計',
 });
 
 /**
