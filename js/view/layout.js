@@ -82,7 +82,6 @@ import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * 城の左側は後で自軍の兵が並ぶ場所として空けておく）。
  * @typedef {Object} BattleLayout
  * @property {Rect} area 段全体
- * @property {number} groundY 地面の線の y（兵の足元の基準）
  * @property {Rect} castle 城の絵の矩形
  * @property {Rect} enemy ゴブリンの群れの矩形（絵を持たない敵のシールドマークの既定の並べ先・兵の当たる位置の基準でもある）
  * @property {Object<string, EnemyFigure>} enemyFigures 敵の種類の識別子 → 敵の絵の配置（凍結。絵を持たない敵は含まれない）
@@ -91,8 +90,6 @@ import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * @property {Rect} enemyHp 敵の HP の枠
  * @property {Rect} intent 敵の次の行動の予告の枠
  * @property {Rect} countdown 数え下ろしの枠（段の右上）
- * @property {Rect} enemyBig 大きな敵（巨人）の玉の矩形（丸を内接させる。地面に立ち、敵の矩形と中心の x が同じ）
- * @property {Rect} enemyBigInner 大きな敵の玉に内接する正方形の矩形（中心は enemyBig と同じ。シールドマークを玉からはみ出さずに並べる先）
  * @property {{ x: number, y: number }} enemyHealText 絵を持たない敵の回復の量の文字の中心（群れの矩形の上寄り）
  * @property {TroopLayout} troops 兵の配置
  * @property {{ x: number, titleY: number, nextY: number, hintY: number, maxW: number }} defeat 敵を倒したときの案内の位置（段の中央の x、「〜を倒した！」・「次は〜」・「タップで次へ」の y、文字の最大の幅）
@@ -212,8 +209,6 @@ const ENEMY_HEAL_TEXT_RATIO = 0.15;
 const ENEMY_MAX_SIZE = 120;
 /** 数え下ろしの枠の幅 */
 const COUNTDOWN_W = 220;
-/** 大きな敵（巨人）の玉の最大の大きさ */
-const BIG_ENEMY_MAX_SIZE = 160;
 /** 城の HP の枠の幅 */
 const INFO_W = 240;
 /** 敵の HP・予告の枠の幅（敵の名前が入るので城の枠より広い） */
@@ -373,16 +368,6 @@ function createBattleLayout(width) {
     });
   }
   Object.freeze(enemyFigures);
-  const bigSize = Math.min(BIG_ENEMY_MAX_SIZE, groundY - (countdown.y + countdown.h + BODY_GAP));
-  const enemyCx = enemy.x + enemy.w / 2;
-  const enemyBig = { x: enemyCx - bigSize / 2, y: groundY - bigSize, w: bigSize, h: bigSize };
-  const innerSize = bigSize / Math.SQRT2;
-  const enemyBigInner = {
-    x: enemyCx - innerSize / 2,
-    y: enemyBig.y + (bigSize - innerSize) / 2,
-    w: innerSize,
-    h: innerSize,
-  };
   const enemyHealText = { x: enemy.x + enemy.w / 2, y: enemy.y + enemy.h * ENEMY_HEAL_TEXT_RATIO };
 
   const fieldL = castle.x + castle.w + FIELD_GAP;
@@ -462,7 +447,6 @@ function createBattleLayout(width) {
 
   return {
     area,
-    groundY,
     castle,
     enemy,
     phase,
@@ -470,8 +454,6 @@ function createBattleLayout(width) {
     enemyHp,
     intent: { x: enemyHp.x, y: enemyHp.y + BOX_H + INFO_GAP_Y, w: ENEMY_INFO_W, h: BOX_H },
     countdown,
-    enemyBig,
-    enemyBigInner,
     enemyFigures,
     enemyHealText,
     troops,
