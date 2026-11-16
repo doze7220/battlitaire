@@ -57,14 +57,18 @@ function drawDefeat(ctx, battleLayout, defeat) {
 }
 
 /**
- * 敵の回復の量（緑の「+20」）を巨人の玉の上に描く。
+ * 敵の回復の量（緑の「+20」）を敵の絵の上に描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
+ * @param {string} typeId 攻防をした敵の種類の識別子（絵を持つ敵なら enemyFigures の healText、なければ enemyHealText に描く）
  * @param {{ amount: number, alpha: number }} pop 回復の量と濃さ（BattleLook.enemyHealPop の null でない値）
  * @returns {void}
  */
-function drawEnemyHealPop(ctx, battleLayout, pop) {
-  const pos = battleLayout.enemyHealText;
+function drawEnemyHealPop(ctx, battleLayout, typeId, pop) {
+  const figures = battleLayout.enemyFigures;
+  const pos = Object.prototype.hasOwnProperty.call(figures, typeId)
+    ? figures[typeId].healText
+    : battleLayout.enemyHealText;
   ctx.save();
   ctx.globalAlpha = pop.alpha;
   ctx.font = ENEMY_HEAL_FONT;
@@ -100,6 +104,6 @@ export function drawBattleShow(ctx, battleLayout, game, result, look) {
     countdown: game.attackCountdown(),
   });
   drawTroops(ctx, look.units);
-  if (look.enemyHealPop !== null) drawEnemyHealPop(ctx, battleLayout, look.enemyHealPop);
+  if (look.enemyHealPop !== null) drawEnemyHealPop(ctx, battleLayout, game.enemy.typeId, look.enemyHealPop);
   if (look.finished && result.defeat !== null) drawDefeat(ctx, battleLayout, result.defeat);
 }
