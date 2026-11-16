@@ -1,7 +1,9 @@
 /**
- * 責務: 盤面の画面配置（座標・大きさ。戦闘の段の兵の配置・数え下ろしの枠・大きな敵の玉とそれに内接する矩形・敵の回復の量の表示の位置・敵の図形の上のシールドマーク・ゴブリンの群れの並び・敵を倒したときの案内・早送りとスキップの矩形を含む）を一手に持ち、座標から「何に当たるか」を求める。
- * タイトル画面・結果の表示（決着）の配置と当たりも持つ。ルール層は import せず、数の情報は引数で受け取る。状態は変えない。
+ * 責務: 盤面の画面配置（座標・大きさ。戦闘の段の兵の配置・数え下ろしの枠・城の絵の矩形・敵の絵（巨人・ドラゴン）の矩形とシールドマークを並べる矩形・敵の回復の量の表示の位置・ゴブリンの群れの並び・敵を倒したときの案内・早送りとスキップの矩形を含む）を一手に持ち、座標から「何に当たるか」を求める。
+ * タイトル画面・結果の表示（決着）の配置と当たりも持つ。ルール層は import せず、数の情報は引数で受け取る。状態は変えない。絵の縦横比は spriteView.js から得る。
  */
+
+import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
 
 /**
  * 矩形。
@@ -67,12 +69,23 @@
  */
 
 /**
- * 最上段（戦闘）の配置。サイドビューの見立てで、左に城、右に敵。
+ * 敵の絵（巨人・ドラゴン）1体の配置。
+ * @typedef {Object} EnemyFigure
+ * @property {string} sprite スプライトの識別子（SPRITE_IDS の値）
+ * @property {Rect} rect 絵の矩形（足元が地面）
+ * @property {Rect} shieldArea シールドマークを並べる矩形
+ * @property {{ x: number, y: number }} healText 敵の回復の量の文字の中心
+ */
+
+/**
+ * 最上段（戦闘）の配置。クオータービュー（斜め上から見下ろした地面。地面は回さず、左に城、右に敵。
+ * 城の左側は後で自軍の兵が並ぶ場所として空けておく）。
  * @typedef {Object} BattleLayout
  * @property {Rect} area 段全体
  * @property {number} groundY 地面の線の y（兵の足元の基準）
- * @property {Rect} castle 城の仮の図形の矩形
- * @property {Rect} enemy 敵の仮の図形の矩形（丸を内接させる）
+ * @property {Rect} castle 城の絵の矩形
+ * @property {Rect} enemy ゴブリンの群れの矩形（絵を持たない敵のシールドマークの既定の並べ先・兵の当たる位置の基準でもある）
+ * @property {Object<string, EnemyFigure>} enemyFigures 敵の種類の識別子 → 敵の絵の配置（凍結。絵を持たない敵は含まれない）
  * @property {Rect} phase 「フェーズ N」の枠
  * @property {Rect} castleHp 城の HP の枠
  * @property {Rect} enemyHp 敵の HP の枠
@@ -80,10 +93,10 @@
  * @property {Rect} countdown 数え下ろしの枠（段の右上）
  * @property {Rect} enemyBig 大きな敵（巨人）の玉の矩形（丸を内接させる。地面に立ち、敵の矩形と中心の x が同じ）
  * @property {Rect} enemyBigInner 大きな敵の玉に内接する正方形の矩形（中心は enemyBig と同じ。シールドマークを玉からはみ出さずに並べる先）
- * @property {{ x: number, y: number }} enemyHealText 敵の回復の量の文字の中心（大きな敵の玉の真上、数え下ろしの枠との間）
+ * @property {{ x: number, y: number }} enemyHealText 絵を持たない敵の回復の量の文字の中心（群れの矩形の上寄り）
  * @property {TroopLayout} troops 兵の配置
  * @property {{ x: number, titleY: number, nextY: number, hintY: number, maxW: number }} defeat 敵を倒したときの案内の位置（段の中央の x、「〜を倒した！」・「次は〜」・「タップで次へ」の y、文字の最大の幅）
- * @property {function(number, Rect=): Rect[]} shieldRects シールドマーク count 個の矩形（body の矩形の中の格子。body を省くと敵の矩形。最後の行は中央にそろえる）
+ * @property {function(number, Rect=): Rect[]} shieldRects シールドマーク count 個の矩形（body の矩形の中の格子。body を省くと群れの矩形。最後の行は中央にそろえる）
  * @property {function(number): Array<{ x: number, footY: number, w: number, h: number }>} hordeSlots ゴブリンの兵 count 体の並び（後ろの列から順。x は中心、footY は足元の y）
  */
 
@@ -171,20 +184,36 @@ const BATTLE_TOP_PAD = 12;
 const GROUND_OFFSET = 100;
 /** フェーズの枠と城・敵の上端の最小の間隔 */
 const BODY_GAP = 16;
-/** 城の左端 x */
-const CASTLE_X = 40;
-/** 城の幅 */
-const CASTLE_W = 140;
-/** 城の最大の高さ */
-const CASTLE_MAX_H = 150;
+/** 城の絵の中心の x（段の左端から約 1/3。試遊で動かす1か所） */
+const CASTLE_CX = 240;
+/** 城の絵の高さ（大きさを変える1か所） */
+const CASTLE_H = 190;
+/** 敵の中心の x（ゴブリンの群れの矩形と、巨人・ドラゴンの絵の中心） */
+const ENEMY_CX = 620;
+/**
+ * 敵の種類の識別子ごとの絵の設定。height は絵の高さ、shield はシールドマークを並べる矩形（絵の矩形に対する割合。
+ * cx・cy は中心、w・h は幅・高さ）。
+ */
+const ENEMY_FIGURES = Object.freeze({
+  giant: Object.freeze({
+    sprite: SPRITE_IDS.giant,
+    height: 200,
+    shield: Object.freeze({ cx: 0.41, cy: 0.39, w: 0.7, h: 0.3 }),
+  }),
+  dragon: Object.freeze({
+    sprite: SPRITE_IDS.dragon,
+    height: 200,
+    shield: Object.freeze({ cx: 0.47, cy: 0.49, w: 0.6, h: 0.3 }),
+  }),
+});
+/** 敵の回復の量の文字の中心 y の、絵（群れの矩形）の上端からの距離の、高さに対する割合 */
+const ENEMY_HEAL_TEXT_RATIO = 0.15;
 /** 敵の最大の大きさ */
 const ENEMY_MAX_SIZE = 120;
 /** 数え下ろしの枠の幅 */
 const COUNTDOWN_W = 220;
 /** 大きな敵（巨人）の玉の最大の大きさ */
 const BIG_ENEMY_MAX_SIZE = 160;
-/** 敵の右の余白 */
-const ENEMY_RIGHT = 40;
 /** 城の HP の枠の幅 */
 const INFO_W = 240;
 /** 敵の HP・予告の枠の幅（敵の名前が入るので城の枠より広い） */
@@ -303,7 +332,9 @@ export function columnCardYs(columnLayout, count) {
 }
 
 /**
- * 最上段（戦闘）の配置を作る。地面の線は段の下端から GROUND_OFFSET 上、城・敵はその上に立つ。
+ * 最上段（戦闘）の配置を作る。地面の基準は段の下端から GROUND_OFFSET 上、城・敵の絵はその上に足元をそろえて立つ。
+ * 城の絵は CASTLE_CX、敵の中心は ENEMY_CX。巨人・ドラゴンの絵は ENEMY_FIGURES の表で大きさと
+ * シールドマークの並べ先を決める。
  * @param {number} width 画面の幅
  * @returns {BattleLayout} 戦闘の段の配置
  */
@@ -311,14 +342,37 @@ function createBattleLayout(width) {
   const phase = { x: (width - PHASE_BOX_W) / 2, y: BATTLE_TOP_PAD, w: PHASE_BOX_W, h: BOX_H };
   const groundY = BATTLE_H - GROUND_OFFSET;
   const bodyTop = phase.y + phase.h + BODY_GAP;
-  const castleH = Math.min(CASTLE_MAX_H, groundY - bodyTop);
   const enemySize = Math.min(ENEMY_MAX_SIZE, groundY - bodyTop);
   const infoY = groundY + INFO_GAP;
   const enemyHp = { x: width - SIDE_MARGIN - ENEMY_INFO_W, y: infoY, w: ENEMY_INFO_W, h: BOX_H };
   const area = { x: 0, y: 0, w: width, h: BATTLE_H };
-  const castle = { x: CASTLE_X, y: groundY - castleH, w: CASTLE_W, h: castleH };
-  const enemy = { x: width - ENEMY_RIGHT - enemySize, y: groundY - enemySize, w: enemySize, h: enemySize };
+  const castle = spriteFitRect(SPRITE_IDS.castle, CASTLE_CX, groundY, Math.min(CASTLE_H, groundY - bodyTop));
+  const enemy = { x: ENEMY_CX - enemySize / 2, y: groundY - enemySize, w: enemySize, h: enemySize };
   const countdown = { x: width - SIDE_MARGIN - COUNTDOWN_W, y: BATTLE_TOP_PAD, w: COUNTDOWN_W, h: BOX_H };
+  /** @type {Object<string, EnemyFigure>} */
+  const enemyFigures = {};
+  for (const [typeId, def] of Object.entries(ENEMY_FIGURES)) {
+    const rect = spriteFitRect(
+      def.sprite,
+      ENEMY_CX,
+      groundY,
+      Math.min(def.height, groundY - (countdown.y + countdown.h)),
+    );
+    const sw = rect.w * def.shield.w;
+    const sh = rect.h * def.shield.h;
+    enemyFigures[typeId] = Object.freeze({
+      sprite: def.sprite,
+      rect,
+      shieldArea: {
+        x: rect.x + rect.w * def.shield.cx - sw / 2,
+        y: rect.y + rect.h * def.shield.cy - sh / 2,
+        w: sw,
+        h: sh,
+      },
+      healText: { x: rect.x + rect.w / 2, y: rect.y + rect.h * ENEMY_HEAL_TEXT_RATIO },
+    });
+  }
+  Object.freeze(enemyFigures);
   const bigSize = Math.min(BIG_ENEMY_MAX_SIZE, groundY - (countdown.y + countdown.h + BODY_GAP));
   const enemyCx = enemy.x + enemy.w / 2;
   const enemyBig = { x: enemyCx - bigSize / 2, y: groundY - bigSize, w: bigSize, h: bigSize };
@@ -329,7 +383,7 @@ function createBattleLayout(width) {
     w: innerSize,
     h: innerSize,
   };
-  const enemyHealText = { x: enemyBig.x + enemyBig.w / 2, y: (countdown.y + countdown.h + enemyBig.y) / 2 };
+  const enemyHealText = { x: enemy.x + enemy.w / 2, y: enemy.y + enemy.h * ENEMY_HEAL_TEXT_RATIO };
 
   const fieldL = castle.x + castle.w + FIELD_GAP;
   const F = enemy.x - FIELD_GAP - fieldL;
@@ -360,7 +414,7 @@ function createBattleLayout(width) {
    * シールドマーク count 個の矩形を求める。body の矩形の中に SHIELD_COLS 個ずつの格子で並べ、
    * 格子全体を body の矩形の中心にそろえる（最後の行が埋まらないときはその行を中央にそろえる）。
    * @param {number} count シールドマークの数（常時防御力）
-   * @param {Rect} [body] 並べる先の矩形（省くと敵の矩形）
+   * @param {Rect} [body] 並べる先の矩形（省くと群れの矩形）
    * @returns {Rect[]} 各マークの矩形（左上の行から順。count が 0 以下なら空）
    */
   function shieldRects(count, body = enemy) {
@@ -418,6 +472,7 @@ function createBattleLayout(width) {
     countdown,
     enemyBig,
     enemyBigInner,
+    enemyFigures,
     enemyHealText,
     troops,
     defeat: {
