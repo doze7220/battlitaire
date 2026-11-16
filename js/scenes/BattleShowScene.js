@@ -63,7 +63,6 @@ export class BattleShowScene extends Scene {
     this.director = new BattleDirector({
       timeline: buildBattleTimeline(steps, this.before, troopLayout, this.layout),
       result: this.result,
-      troopLayout,
       before: this.before,
     });
   }

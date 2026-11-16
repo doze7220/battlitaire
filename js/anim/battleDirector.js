@@ -1,20 +1,21 @@
 /**
  * 攻防の演出全体の管理。時計を進め、いまの段・終わったか・次へ進んでよいか・直前の進みの間に起きたきっかけを答え、
- * スキップで終わりへ移り、見た目の値（燃える段の盤面を含む）を作る。描画せず、ゲームの状態に触れない。
+ * スキップで終わりへ移り、見た目の値（兵全員・人数・燃える段の盤面を含む）を作る。描画せず、ゲームの状態に触れない。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
-import { sampleSquadTrack } from './squadTrack.js';
 import { sampleHp } from './hpTrack.js';
 import { samplePopTrack } from './popTrack.js';
-import { formationUnits } from './troopFormation.js';
+import { TroopSwarm } from './troopSwarm.js';
+import { sampleTroopCounts } from './troopCounter.js';
 import { buildBattleCues } from './battleCues.js';
 import { sampleBurnBoard } from './burnTrack.js';
 
 /**
  * 描画用の見た目の値。
  * @typedef {Object} BattleLook
- * @property {import('./troopFormation.js').UnitLook[]} units 描く兵（後ろの列から順）
+ * @property {import('./troopSwarm.js').TroopSwarmLook} troops 兵全員の見た目（読むだけ。毎回同じ入れ物）
+ * @property {{attack: number, defense: number, heal: number}} troopCounts 攻撃・防御・修理の人数の表示値
  * @property {number} castleHp 表示する城の HP
  * @property {number} enemyHp 表示する敵の HP
  * @property {{amount: number, alpha: number}|null} enemyHealPop 敵の回復の量の浮き出し（なければ null）
@@ -30,16 +31,13 @@ export class BattleDirector {
    * @param {Object} options
    * @param {import('./battleTimeline.js').BattleTimeline} options.timeline 時間割
    * @param {import('../rules/Game.js').BattleResult} options.result 攻防の結果（終わったときの HP に使う。読むだけ）
-   * @param {import('../view/layout.js').TroopLayout} options.troopLayout 兵の配置
    * @param {import('./battleSteps.js').BattleSnapshot} options.before 攻防の前の写し（列。読むだけ）
    */
-  constructor({ timeline, result, troopLayout, before }) {
+  constructor({ timeline, result, before }) {
     /** @type {import('./battleTimeline.js').BattleTimeline} 時間割 */
     this.timeline = timeline;
     /** @type {import('../rules/Game.js').BattleResult} 攻防の結果 */
     this.result = result;
-    /** @type {import('../view/layout.js').TroopLayout} 兵の配置 */
-    this.troopLayout = troopLayout;
     /** @type {import('./battleSteps.js').BattleSnapshot} 攻防の前の写し */
     this.before = before;
     /** @type {number} 演出の時計（ms） */
@@ -50,6 +48,9 @@ export class BattleDirector {
     this.cues = buildBattleCues(timeline.steps);
     /** @type {boolean} スキップされたか */
     this.skipped = false;
+    /** @type {TroopSwarm} 兵全員の見た目の入れ物（名簿は読むだけ） */
+    this.swarm = new TroopSwarm(timeline.roster.units);
+    this.swarm.sample(this.clock);
   }
 
   /**
@@ -60,6 +61,7 @@ export class BattleDirector {
   update(ms) {
     this.prevClock = this.clock;
     this.clock += ms;
+    this.swarm.sample(this.clock);
   }
 
   /**
@@ -79,6 +81,7 @@ export class BattleDirector {
     this.clock = Math.max(this.clock, this.timeline.endTime);
     // 飛ばした段のきっかけを、次の問い合わせで出さない
     this.prevClock = this.clock;
+    this.swarm.sample(this.clock);
   }
 
   /**
@@ -125,13 +128,6 @@ export class BattleDirector {
   view() {
     const finished = this.isFinished();
     const tl = this.timeline;
-    const units = [];
-    if (!finished) {
-      for (const track of tl.squads) {
-        const sample = sampleSquadTrack(track, this.clock);
-        if (sample !== null) units.push(...formationUnits(sample, this.troopLayout, BATTLE_ANIM.unitSize));
-      }
-    }
     let enemyHealPop = null;
     if (!finished) {
       for (const track of tl.enemyHealPops) {
@@ -143,7 +139,8 @@ export class BattleDirector {
       }
     }
     return {
-      units,
+      troops: this.swarm,
+      troopCounts: sampleTroopCounts(tl.troopCounter, this.clock),
       castleHp: finished ? this.result.castleHp : sampleHp(tl.castleHpStart, tl.castleHpChanges, this.clock),
       enemyHp: finished ? this.result.enemyHp : sampleHp(tl.enemyHpStart, tl.enemyHpChanges, this.clock),
       enemyHealPop,

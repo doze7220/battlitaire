@@ -1,20 +1,19 @@
 /**
- * 攻防の演出の設定（段ごとの時間・段の間・換算の人数・早送りの倍率・終わりの後の間・燃える札の時間と明滅の回数）を1か所に凍結して持つ。
- * これらの数値は、ほかのファイルに書かない。
+ * 攻防の演出の設定（段ごとの時間・段の間・兵の動き（弾む・揺れる・跳ねて落ちる・ずらし・城へ入る／帰る）・早送りの倍率・
+ * 終わりの後の間・燃える札の時間と明滅の回数）を1か所に凍結して持つ。これらの数値は、ほかのファイルに書かない。
  */
 
 /**
  * 攻防の演出の設定。時間の単位はミリ秒。
  * @typedef {Object} BattleAnimConfig
- * @property {number} formMs 守り（守備兵・敵の守り）が並ぶ時間、大工が現れる時間（ms）。試遊で決め直す。
- * @property {number} marchMs 敵兵・兵士が出てからぶつかる位置まで進む時間（ms）。試遊で決め直す。
- * @property {number} clashMs ぶつかって消える段の時間（ms。中間で数が減る）。試遊で決め直す。
- * @property {number} hitMoveMs 残った兵が城・敵に当たるまで進む時間（ms）。試遊で決め直す。
- * @property {number} hpMs HP の表示が変わる時間（ms。大工が直す時間も同じ）。試遊で決め直す。
- * @property {number} fadeMs 余った兵・大工が消える時間（ms）。試遊で決め直す。
+ * @property {number} formMs 自軍の兵（攻撃・防御・修理）と敵の守りが陣地で現れる（濃くなる）時間（ms）。試遊で決め直す。
+ * @property {number} marchMs 敵兵・攻撃の兵が、相打ちの相手の前（相手のいない兵は進む先）まで1体ずつ進む時間（ms。前から出る遅れは別）。試遊で決め直す。
+ * @property {number} clashMs 相打ちの段で、最後の組が跳ねて落ち始めてから段が終わるまでの間（ms）。試遊で決め直す。
+ * @property {number} hitMoveMs 残った兵が城・敵に当たる位置まで1体ずつ移動する時間（ms。着いた兵から跳ねて落ちる）。試遊で決め直す。
+ * @property {number} hpMs HP の表示が変わる時間の下限（ms。兵が当たる・城に入る間が長ければそちらに合わせる）。試遊で決め直す。
+ * @property {number} fadeMs 敵の回復の量の浮き出し・敵の側の余った兵が薄れて消える時間（ms）。試遊で決め直す。
  * @property {number} stepGapMs 段と段の間（ms）。試遊で決め直す。
  * @property {number} endDelayMs 演出が終わってから次のフェーズへ進むまでの間（ms。決着していないとき）。試遊で決め直す。
- * @property {number} unitSize 大きなユニット1体にまとめる人数（人）。試遊で決め直す。
  * @property {number} fastScale 早送りの倍率（`Engine.timeScale` の値）。試遊で決め直す。
  * @property {number} burnFlashMs 燃える札1枚が明滅する時間（ms）。試遊で決め直す。
  * @property {number} burnFlyMs 燃える札が捨て札へ飛ぶ時間（ms）。試遊で決め直す。
@@ -48,7 +47,6 @@ export const BATTLE_ANIM = Object.freeze({
   fadeMs: 250,
   stepGapMs: 150,
   endDelayMs: 500,
-  unitSize: 10,
   fastScale: 3,
   burnFlashMs: 400,
   burnFlyMs: 250,
