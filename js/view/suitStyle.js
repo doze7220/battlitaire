@@ -1,5 +1,5 @@
 /**
- * 責務: スートごとの絵（スプライトの識別子）・色と、ゲージの表示名の対応表を持ち、識別子から見た目を引く。
+ * 責務: スートごとの絵（スプライトの識別子）・色と、ゲージの表示名・ゲージの絵の対応表を持ち、識別子から見た目を引く。
  * ルール層は import せず、識別子の文字列をキーにする。
  */
 
@@ -45,6 +45,25 @@ export const GAUGE_LABELS = Object.freeze({
  * @type {string}
  */
 export const DEFAULT_GAUGE_LABEL = '？';
+
+/**
+ * ゲージの識別子 → スートの絵（スプライトの識別子）の対応表（攻撃・防御・修理のみ）。
+ * @type {Readonly<Object<string, string>>}
+ */
+export const GAUGE_SPRITES = Object.freeze({
+  attack: SPRITE_IDS.sword,
+  defense: SPRITE_IDS.shield,
+  heal: SPRITE_IDS.hammer,
+});
+
+/**
+ * ゲージの識別子からスートの絵（スプライトの識別子）を返す。未知の識別子は null。
+ * @param {string} gauge ゲージの識別子
+ * @returns {string|null} スプライトの識別子
+ */
+export function gaugeSprite(gauge) {
+  return Object.prototype.hasOwnProperty.call(GAUGE_SPRITES, gauge) ? GAUGE_SPRITES[gauge] : null;
+}
 
 /**
  * スートの識別子から見た目を返す。未知の識別子は既定の見た目を返す。

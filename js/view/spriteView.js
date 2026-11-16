@@ -135,3 +135,29 @@ export function drawSpriteCentered(ctx, id, cx, cy, size) {
   e.sprite.draw(ctx);
   ctx.restore();
 }
+
+/**
+ * 兵1体（体の絵＋持ち物の絵）を、足元を (x, footY) にそろえて描く。tilt が 0 でなければ足元を軸に傾ける。
+ * 兵1体ごとにオブジェクトを作らないよう、引数は位置で受ける。
+ * @param {CanvasRenderingContext2D} ctx 描画先
+ * @param {string} bodyId 体の絵の識別子（SPRITE_IDS の値）
+ * @param {string|null} itemId 持ち物の絵の識別子（null なら描かない）
+ * @param {number} x 足元の x
+ * @param {number} footY 足元の y
+ * @param {number} size 体の直径（長い方の辺）
+ * @param {number} tilt 傾き（rad。足元を軸）
+ * @param {number} itemSize 持ち物の大きさ（長い方の辺）
+ * @param {number} itemDX 持ち物の中心の x のずれ（体の中心から。前＝右が正）
+ * @param {number} itemDY 持ち物の中心の y のずれ（体の中心から。下が正）
+ * @returns {void}
+ */
+export function drawTroopFigure(ctx, bodyId, itemId, x, footY, size, tilt, itemSize, itemDX, itemDY) {
+  ctx.save();
+  ctx.translate(x, footY);
+  if (tilt !== 0) ctx.rotate(tilt);
+  drawSpriteCentered(ctx, bodyId, 0, -size / 2, size);
+  if (itemId !== null) {
+    drawSpriteCentered(ctx, itemId, itemDX, -size / 2 + itemDY, itemSize);
+  }
+  ctx.restore();
+}
