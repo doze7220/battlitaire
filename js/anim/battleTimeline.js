@@ -1,24 +1,38 @@
 /**
- * 段の並びから、段の時刻・兵の群れの動きの記録・HP の変化・数字の浮き出し・燃える札の記録を組み立てて時間割にする。
- * 描画も状態の変更も行わない。時間は BATTLE_ANIM、位置は TroopLayout・盤面の Layout から読む。
+ * 段の並びから、段の時刻・兵の名簿（1人＝1体）・HP の変化・数字の浮き出し・燃える札の記録・音のきっかけの時刻を組み立てて時間割にする。
+ * きっかけの時刻の式はここだけにある。描画も状態の変更も行わない。
+ * 時間は BATTLE_ANIM、位置は TroopLayout・盤面の Layout から読む。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
-import { addSquadKey, createSquadTrack, lastSquadKey, squadTrackEnd } from './squadTrack.js';
 import { createHpChange } from './hpTrack.js';
 import { createPopTrack, popTrackEnd } from './popTrack.js';
-import { burnStepDuration, createBurnTracks } from './burnTrack.js';
+import { burnCardOffsets, burnStepDuration, createBurnTracks } from './burnTrack.js';
+import {
+  chargeTo,
+  clashPairs,
+  createTroopRoster,
+  enterCastle,
+  fadeTroops,
+  finishTroops,
+  marchSquad,
+  rosterEndTime,
+  rosterEndTimes,
+  spawnTroops,
+} from './troopRoster.js';
+import { createTroopCounter } from './troopCounter.js';
 
 /**
- * 時刻つきの段。BattleStep に start・end（ms）を足したもの。
- * @typedef {import('./battleSteps.js').BattleStep & {start: number, end: number}} TimedStep
+ * 時刻つきの段。BattleStep に start・end（ms）と、音のきっかけの時刻 cueTimes（絶対時刻 ms。なければ空）を足したもの。
+ * @typedef {import('./battleSteps.js').BattleStep & {start: number, end: number, cueTimes: number[]}} TimedStep
  */
 
 /**
  * 攻防の演出の時間割。
  * @typedef {Object} BattleTimeline
  * @property {TimedStep[]} steps 時刻つきの段
- * @property {import('./squadTrack.js').SquadTrack[]} squads 群れの動きの記録（キーのあるものだけ）
+ * @property {import('./troopRoster.js').TroopRoster} roster 兵1体ずつの名簿
+ * @property {import('./troopCounter.js').TroopCounter} troopCounter 攻撃・防御・修理の人数の表示値
  * @property {import('./hpTrack.js').HpChange[]} castleHpChanges 城の HP の表示値の変化
  * @property {import('./hpTrack.js').HpChange[]} enemyHpChanges 敵の HP の表示値の変化
  * @property {import('./popTrack.js').PopTrack[]} enemyHealPops 敵の回復の量の浮き出し
@@ -31,78 +45,23 @@ import { burnStepDuration, createBurnTracks } from './burnTrack.js';
 /**
  * 組み立て中の状態。
  * @typedef {Object} BuildState
- * @property {Object<string, import('./squadTrack.js').SquadTrack>} tracks 種類ごとの群れの記録
+ * @property {import('./troopRoster.js').TroopRoster} roster 兵の名簿
  * @property {import('./hpTrack.js').HpChange[]} castleChanges 城の HP の変化
  * @property {import('./hpTrack.js').HpChange[]} enemyChanges 敵の HP の変化
  * @property {import('./popTrack.js').PopTrack[]} enemyHealPops 敵の回復の量の浮き出し
  * @property {number} castleShown 城の HP の今の表示値
  * @property {number} enemyShown 敵の HP の今の表示値
  * @property {import('./burnTrack.js').BurnTrack[]} burns 燃える札の記録
- * @property {boolean} frontFaded 守備兵・敵兵の余りをすでに消し始めたか
- * @property {import('../view/layout.js').TroopLayout} layout 兵の配置
+ * @property {boolean} frontFaded 敵兵の余りをすでに消し始めたか
+ * @property {number[]} cueTimes いま組み立てている段の音のきっかけの時刻（絶対 ms。段ごとに空にして、builder が足す）
  * @property {import('../view/layout.js').Layout} boardLayout 盤面の配置（columnCardRects・discard だけ使う）
  */
 
-/** 群れの種類の全部。 */
-const ALL_KINDS = ['guard', 'enemyGuard', 'enemy', 'soldier', 'carpenter'];
-
-/** 守備兵・敵兵の余りを消し始める段（最初に来たもの）。 */
+/** 敵兵の余りを消し始める段（最初に来たもの）。 */
 const FRONT_FADE_STEPS = new Set(['march', 'enemyBlock', 'armorBlock', 'enemyHit', 'heal', 'enemyHeal', 'burn']);
 
 /**
- * 群れの記録を（なければ作って）返す。
- * @param {BuildState} state 組み立て中の状態
- * @param {import('./squadTrack.js').SquadKind} kind 群れの種類
- * @returns {import('./squadTrack.js').SquadTrack} 記録
- */
-function trackOf(state, kind) {
-  if (!state.tracks[kind]) state.tracks[kind] = createSquadTrack(kind);
-  return state.tracks[kind];
-}
-
-/**
- * 群れの記録に点を足す。
- * @param {BuildState} state 組み立て中の状態
- * @param {import('./squadTrack.js').SquadKind} kind 群れの種類
- * @param {number} time 時刻（ms）
- * @param {number} x 中心の x
- * @param {number} count 数
- * @param {number} alpha 濃さ
- * @returns {void}
- */
-function key(state, kind, time, x, count, alpha) {
-  addSquadKey(trackOf(state, kind), { time, x, count, alpha });
-}
-
-/**
- * 余った群れを fadeMs かけて消す記録を足す（時刻の位置は進めない）。
- * @param {BuildState} state 組み立て中の状態
- * @param {import('./squadTrack.js').SquadKind} kind 群れの種類
- * @param {number} time 消し始める時刻（ms）
- * @returns {void}
- */
-function fadeLeftover(state, kind, time) {
-  const track = state.tracks[kind];
-  if (!track) return;
-  const last = lastSquadKey(track);
-  if (last === null || last.count <= 0 || last.alpha <= 0) return;
-  addSquadKey(track, { time, x: last.x, count: last.count, alpha: 1 });
-  addSquadKey(track, { time: time + BATTLE_ANIM.fadeMs, x: last.x, count: last.count, alpha: 0 });
-}
-
-/**
- * 群れの最後の点の位置と数を返す。記録がなければ null。
- * @param {BuildState} state 組み立て中の状態
- * @param {import('./squadTrack.js').SquadKind} kind 群れの種類
- * @returns {import('./squadTrack.js').SquadKey|null} 最後の点
- */
-function nowOf(state, kind) {
-  const track = state.tracks[kind];
-  return track ? lastSquadKey(track) : null;
-}
-
-/**
- * 守りが並ぶ段。
+ * 守りが並ぶ段（自軍の兵と敵の守りが陣地に現れる）。
  * @param {BuildState} state 組み立て中の状態
  * @param {import('./battleSteps.js').BattleStep} step 段
  * @param {number} t 開始時刻（ms）
@@ -110,57 +69,71 @@ function nowOf(state, kind) {
  */
 function addForm(state, step, t) {
   const T = BATTLE_ANIM;
-  const guards = step.guards ?? 0;
-  const enemyGuards = step.enemyGuards ?? 0;
-  if (guards > 0) {
-    key(state, 'guard', t, state.layout.guardX, guards, 0);
-    key(state, 'guard', t + T.formMs, state.layout.guardX, guards, 1);
-  }
-  if (enemyGuards > 0) {
-    key(state, 'enemyGuard', t, state.layout.enemyGuardX, enemyGuards, 0);
-    key(state, 'enemyGuard', t + T.formMs, state.layout.enemyGuardX, enemyGuards, 1);
-  }
+  const troops = step.troops ?? { attack: 0, defense: 0, heal: 0 };
+  spawnTroops(state.roster, 'attack', troops.attack, t, T.formMs);
+  spawnTroops(state.roster, 'defense', troops.defense, t, T.formMs);
+  spawnTroops(state.roster, 'heal', troops.heal, t, T.formMs);
+  spawnTroops(state.roster, 'enemyGuard', step.enemyGuards ?? 0, t, T.formMs);
   return T.formMs;
 }
 
 /**
- * 敵兵が出てぶつかる位置まで進む段。
+ * 敵兵が出て、防御の兵とぶつかる位置まで進む段。
  * @param {BuildState} state 組み立て中の状態
  * @param {import('./battleSteps.js').BattleStep} step 段
  * @param {number} t 開始時刻（ms）
  * @returns {number} 段の長さ（ms）
  */
 function addEnemyMarch(state, step, t) {
-  const T = BATTLE_ANIM;
-  key(state, 'enemy', t, state.layout.enemyGuardX, step.amount, 1);
-  key(state, 'enemy', t + T.marchMs, state.layout.defenseClashX, step.amount, 1);
-  return T.marchMs;
+  spawnTroops(state.roster, 'enemy', step.amount, t, 0);
+  return marchSquad(state.roster, {
+    kind: 'enemy',
+    partnerKind: 'defense',
+    pairs: step.pairs ?? 0,
+    dir: -1,
+    advanceX: state.roster.layout.enemyAdvanceX,
+    t,
+  });
 }
 
 /**
- * 2つの群れがぶつかって、中間で同じ数だけ減る段。
+ * 相打ちの段の、ぶつかって落ち始める時刻。段の始め t と、組になる2体（相手が決まっていて、まだ終わっていない兵と、その相手）の
+ * 行進が終わる時刻（freeAt）の遅い方。行進の段の長さには「遅れの広がり」が含まれるのでふつうは t のままだが、
+ * 組の片方の行進が終わる前に落ちて2体の時刻がずれることがないよう、ここで必ず行進の後にそろえる。
  * @param {BuildState} state 組み立て中の状態
- * @param {import('./squadTrack.js').SquadKind[]} kinds ぶつかる2つの群れ
- * @param {number} amount 減る数
+ * @param {string} kind 落ちる側の種類
+ * @param {number} t 段の始め（ms）
+ * @returns {number} ぶつかる時刻（ms。t 以上）
+ */
+function clashStartOf(state, kind, t) {
+  let start = t;
+  for (const unit of state.roster.ranked[kind] ?? []) {
+    const partner = unit.partner;
+    if (unit.end !== null || partner === null || partner.end !== null) continue;
+    start = Math.max(start, unit.freeAt, partner.freeAt);
+  }
+  return start;
+}
+
+/**
+ * 相打ちの段。組になった2体が、双方の行進が終わった後に、跳ねて落ちる。きっかけは最初の組がぶつかる時刻。
+ * @param {BuildState} state 組み立て中の状態
+ * @param {string} kind 落ちる側の種類（'enemy'・'attack'）
+ * @param {number} amount 相打ちの組の数
  * @param {number} t 開始時刻（ms）
  * @returns {number} 段の長さ（ms）
  */
-function addClash(state, kinds, amount, t) {
-  const T = BATTLE_ANIM;
-  const tm = t + T.clashMs / 2;
-  for (const kind of kinds) {
-    const now = nowOf(state, kind);
-    if (now === null) continue;
-    key(state, kind, t, now.x, now.count, 1);
-    key(state, kind, tm, now.x, Math.max(0, now.count - amount), 1);
-  }
-  return T.clashMs;
+function addClash(state, kind, amount, t) {
+  const start = clashStartOf(state, kind, t);
+  const spread = clashPairs(state.roster, kind, amount, start);
+  state.cueTimes.push(start);
+  return start - t + spread + BATTLE_ANIM.clashMs;
 }
 
 /**
- * 残った兵が目標へ進んで当たって消え、HP の表示が減る段（城・敵で共通）。
+ * 敵兵・攻撃の兵が当たる位置へ進んで跳ねて落ち、HP の表示が減る段（城・敵で共通）。
  * @param {BuildState} state 組み立て中の状態
- * @param {import('./squadTrack.js').SquadKind} kind 当たる群れ
+ * @param {string} kind 当たる側の種類（'enemy'・'attack'）
  * @param {number} targetX 当たる位置の x
  * @param {'castle'|'enemy'} target 減る HP
  * @param {number} amount 減る量
@@ -169,41 +142,44 @@ function addClash(state, kinds, amount, t) {
  */
 function addHit(state, kind, targetX, target, amount, t) {
   const T = BATTLE_ANIM;
-  const now = nowOf(state, kind);
-  if (now !== null) {
-    key(state, kind, t, now.x, now.count, 1);
-    key(state, kind, t + T.hitMoveMs, targetX, now.count, 1);
-    key(state, kind, t + T.hitMoveMs, targetX, 0, 0);
-  }
+  const arrivals = chargeTo(state.roster, kind, Infinity, targetX, t, T.hitMoveMs);
+  const first = arrivals.length > 0 ? arrivals[0] : t + T.hitMoveMs;
+  const last = arrivals.length > 0 ? arrivals[arrivals.length - 1] : first;
+  const hpDuration = Math.max(T.hpMs, last - first);
   if (target === 'castle') {
     const to = state.castleShown - amount;
-    state.castleChanges.push(createHpChange({ from: state.castleShown, to, start: t + T.hitMoveMs, duration: T.hpMs }));
+    state.castleChanges.push(createHpChange({ from: state.castleShown, to, start: first, duration: hpDuration }));
     state.castleShown = to;
   } else {
     const to = state.enemyShown - amount;
-    state.enemyChanges.push(createHpChange({ from: state.enemyShown, to, start: t + T.hitMoveMs, duration: T.hpMs }));
+    state.enemyChanges.push(createHpChange({ from: state.enemyShown, to, start: first, duration: hpDuration }));
     state.enemyShown = to;
   }
-  return T.hitMoveMs + T.hpMs;
+  state.cueTimes.push(first);
+  return first + hpDuration - t;
 }
 
 /**
- * 兵士が出てぶつかる位置まで進む段。
+ * 攻撃の兵が出て、敵の守りとぶつかる位置まで進む段。
  * @param {BuildState} state 組み立て中の状態
  * @param {import('./battleSteps.js').BattleStep} step 段
  * @param {number} t 開始時刻（ms）
  * @returns {number} 段の長さ（ms）
  */
 function addMarch(state, step, t) {
-  const T = BATTLE_ANIM;
-  key(state, 'soldier', t, state.layout.guardX, step.amount, 1);
-  key(state, 'soldier', t + T.marchMs, state.layout.offenseClashX, step.amount, 1);
-  return T.marchMs;
+  return marchSquad(state.roster, {
+    kind: 'attack',
+    partnerKind: 'enemyGuard',
+    pairs: step.pairs ?? 0,
+    dir: 1,
+    advanceX: state.roster.layout.attackAdvanceX,
+    t,
+  });
 }
 
 /**
- * 兵士が敵のシールドマークまで進み、当たって量だけ消える段（常時防御力）。HP は変わらない。
- * 当たりの時刻（`t + hitMoveMs`）は `battleCues.js` の `CUE_OFFSET_MS.armorBlock` と合わせること。
+ * 攻撃の兵が敵のシールドマークまで進み、当たって量だけ跳ねて落ちる段（常時防御力）。HP は変わらない。
+ * きっかけは最初の兵が当たる位置に着いた時刻。
  * @param {BuildState} state 組み立て中の状態
  * @param {import('./battleSteps.js').BattleStep} step 段
  * @param {number} t 開始時刻（ms）
@@ -211,18 +187,16 @@ function addMarch(state, step, t) {
  */
 function addArmorBlock(state, step, t) {
   const T = BATTLE_ANIM;
-  const now = nowOf(state, 'soldier');
-  if (now !== null) {
-    const armorX = state.layout.armorHitX;
-    key(state, 'soldier', t, now.x, now.count, 1);
-    key(state, 'soldier', t + T.hitMoveMs, armorX, now.count, 1);
-    key(state, 'soldier', t + T.hitMoveMs + T.clashMs / 2, armorX, Math.max(0, now.count - step.amount), 1);
-  }
-  return T.hitMoveMs + T.clashMs;
+  const arrivals = chargeTo(state.roster, 'attack', step.amount, state.roster.layout.armorHitX, t, T.hitMoveMs);
+  const first = arrivals.length > 0 ? arrivals[0] : t + T.hitMoveMs;
+  const last = arrivals.length > 0 ? arrivals[arrivals.length - 1] : first;
+  state.cueTimes.push(first);
+  return last - t + T.clashMs;
 }
 
 /**
- * 大工が現れて城を直し、消える段。
+ * 修理の兵が城へ入って消え、城の HP の表示が増える段。HP は1体目が着いた時刻から、量番目の兵が着いた時刻までかけて増える。
+ * きっかけは最初の兵が城に入った時刻。
  * @param {BuildState} state 組み立て中の状態
  * @param {import('./battleSteps.js').BattleStep} step 段
  * @param {number} t 開始時刻（ms）
@@ -230,21 +204,21 @@ function addArmorBlock(state, step, t) {
  */
 function addHeal(state, step, t) {
   const T = BATTLE_ANIM;
-  const x = state.layout.carpenterX;
-  const h = step.amount;
-  key(state, 'carpenter', t, x, h, 0);
-  key(state, 'carpenter', t + T.formMs, x, h, 1);
-  key(state, 'carpenter', t + T.formMs + T.hpMs, x, h, 1);
-  key(state, 'carpenter', t + T.formMs + T.hpMs + T.fadeMs, x, h, 0);
-  const to = state.castleShown + h;
-  state.castleChanges.push(createHpChange({ from: state.castleShown, to, start: t + T.formMs, duration: T.hpMs }));
+  const arrivals = enterCastle(state.roster, 'heal', t, T.healMoveMs);
+  const first = arrivals.length > 0 ? arrivals[0] : t + T.healMoveMs;
+  const last = arrivals.length > 0 ? arrivals[arrivals.length - 1] : first;
+  const amountIndex = Math.min(step.amount, arrivals.length) - 1;
+  const amountAt = amountIndex >= 0 ? arrivals[amountIndex] : first;
+  const hpDuration = Math.max(T.hpMs, amountAt - first);
+  const to = state.castleShown + step.amount;
+  state.castleChanges.push(createHpChange({ from: state.castleShown, to, start: first, duration: hpDuration }));
   state.castleShown = to;
-  return T.formMs + T.hpMs + T.fadeMs;
+  state.cueTimes.push(first);
+  return Math.max(first + hpDuration, last) - t;
 }
 
 /**
- * 巨人が回復し、敵の HP の表示が増えて、量が浮き出る段。
- * 回復の時刻（`t + formMs`）は `battleCues.js` の `CUE_OFFSET_MS.enemyHeal` と合わせること。
+ * 巨人が回復し、敵の HP の表示が増えて、量が浮き出る段。きっかけは回復の時刻（`t + formMs`）。
  * @param {BuildState} state 組み立て中の状態
  * @param {import('./battleSteps.js').BattleStep} step 段
  * @param {number} t 開始時刻（ms）
@@ -263,11 +237,12 @@ function addEnemyHeal(state, step, t) {
   const to = state.enemyShown + step.amount;
   state.enemyChanges.push(createHpChange({ from: state.enemyShown, to, start: t + T.formMs, duration: T.hpMs }));
   state.enemyShown = to;
+  state.cueTimes.push(t + T.formMs);
   return T.formMs + T.hpMs + T.fadeMs;
 }
 
 /**
- * 札が燃える段。1枚ごとの記録を作る（時刻の式は `burnTrack.js` の `burnCardOffsets` だけにある）。
+ * 札が燃える段。1枚ごとの記録を作り、きっかけは1枚ごとの飛び立ちの時刻（式は `burnTrack.js` の `burnCardOffsets` だけにある）。
  * @param {BuildState} state 組み立て中の状態
  * @param {import('./battleSteps.js').BattleStep} step 段
  * @param {number} t 開始時刻（ms）
@@ -276,29 +251,30 @@ function addEnemyHeal(state, step, t) {
 function addBurn(state, step, t) {
   const burns = step.burns ?? [];
   state.burns.push(...createBurnTracks(burns, t, state.boardLayout));
+  for (let k = 0; k < step.amount; k++) state.cueTimes.push(t + burnCardOffsets(k).fly);
   return burnStepDuration(burns.length);
 }
 
 /**
- * 段の種類ごとの組み立て。段の開始時刻を受け取り、段の長さを返す。
+ * 段の種類ごとの組み立て。段の開始時刻を受け取り、段の長さを返す（きっかけの時刻は `state.cueTimes` に足す）。
  * @type {Object<string, (state: BuildState, step: import('./battleSteps.js').BattleStep, t: number) => number>}
  */
 const STEP_BUILDERS = {
   form: addForm,
   enemyMarch: addEnemyMarch,
-  block: (state, step, t) => addClash(state, ['guard', 'enemy'], step.amount, t),
-  castleHit: (state, step, t) => addHit(state, 'enemy', state.layout.castleHitX, 'castle', step.amount, t),
+  block: (state, step, t) => addClash(state, 'enemy', step.amount, t),
+  castleHit: (state, step, t) => addHit(state, 'enemy', state.roster.layout.castleHitX, 'castle', step.amount, t),
   march: addMarch,
-  enemyBlock: (state, step, t) => addClash(state, ['soldier', 'enemyGuard'], step.amount, t),
+  enemyBlock: (state, step, t) => addClash(state, 'attack', step.amount, t),
   armorBlock: addArmorBlock,
-  enemyHit: (state, step, t) => addHit(state, 'soldier', state.layout.enemyHitX, 'enemy', step.amount, t),
+  enemyHit: (state, step, t) => addHit(state, 'attack', state.roster.layout.enemyHitX, 'enemy', step.amount, t),
   heal: addHeal,
   enemyHeal: addEnemyHeal,
   burn: addBurn,
 };
 
 /**
- * 段の始まりで、使われずに余った群れを消し始める。
+ * 段の始まりで、使われずに余った敵の側の兵を薄れて消し始める（自軍の余りは最後に城へ帰る）。
  * @param {BuildState} state 組み立て中の状態
  * @param {string} type 段の種類
  * @param {number} t 段の開始時刻（ms）
@@ -307,12 +283,10 @@ const STEP_BUILDERS = {
 function fadeLeftoversAtStart(state, type, t) {
   if (!state.frontFaded && FRONT_FADE_STEPS.has(type)) {
     state.frontFaded = true;
-    fadeLeftover(state, 'guard', t);
-    fadeLeftover(state, 'enemy', t);
+    fadeTroops(state.roster, 'enemy', t);
   }
   if (type === 'heal') {
-    fadeLeftover(state, 'enemyGuard', t);
-    fadeLeftover(state, 'soldier', t);
+    fadeTroops(state.roster, 'enemyGuard', t);
   }
 }
 
@@ -327,7 +301,7 @@ function fadeLeftoversAtStart(state, type, t) {
 export function buildBattleTimeline(steps, before, troopLayout, boardLayout) {
   /** @type {BuildState} */
   const state = {
-    tracks: {},
+    roster: createTroopRoster(troopLayout),
     castleChanges: [],
     enemyChanges: [],
     enemyHealPops: [],
@@ -335,7 +309,7 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout) {
     enemyShown: before.enemyHp,
     burns: [],
     frontFaded: false,
-    layout: troopLayout,
+    cueTimes: [],
     boardLayout,
   };
   /** @type {TimedStep[]} */
@@ -347,22 +321,25 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout) {
     if (builder === undefined) throw new Error(`buildBattleTimeline: unknown step type ${step.type}`);
     if (index > 0) t += BATTLE_ANIM.stepGapMs;
     fadeLeftoversAtStart(state, step.type, t);
+    state.cueTimes = [];
     const duration = builder(state, step, t);
-    timed.push({ ...step, start: t, end: t + duration });
+    timed.push({ ...step, start: t, end: t + duration, cueTimes: state.cueTimes });
     t += duration;
     stepEnd = t;
   });
-  if (timed.length > 0) {
-    for (const kind of ALL_KINDS) fadeLeftover(state, kind, stepEnd);
-  }
-  const squads = ALL_KINDS.filter((kind) => state.tracks[kind]).map((kind) => state.tracks[kind]);
-  let endTime = stepEnd;
-  for (const track of squads) endTime = Math.max(endTime, squadTrackEnd(track));
+  if (timed.length > 0) finishTroops(state.roster, stepEnd);
+  const troopCounter = createTroopCounter([
+    { role: 'attack', initial: before.attack, times: rosterEndTimes(state.roster, 'attack') },
+    { role: 'defense', initial: before.defense, times: rosterEndTimes(state.roster, 'defense') },
+    { role: 'heal', initial: before.heal, times: rosterEndTimes(state.roster, 'heal') },
+  ]);
+  let endTime = Math.max(stepEnd, rosterEndTime(state.roster));
   for (const track of state.enemyHealPops) endTime = Math.max(endTime, popTrackEnd(track));
   for (const burn of state.burns) endTime = Math.max(endTime, burn.tween.delay + burn.tween.duration);
   return {
     steps: timed,
-    squads,
+    roster: state.roster,
+    troopCounter,
     castleHpChanges: state.castleChanges,
     enemyHpChanges: state.enemyChanges,
     enemyHealPops: state.enemyHealPops,

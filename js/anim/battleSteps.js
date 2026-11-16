@@ -8,8 +8,9 @@
  * @typedef {Object} BattleSnapshot
  * @property {number} castleHp 攻防の前の城の HP
  * @property {number} enemyHp 攻防の前の敵の HP
- * @property {number} attack 攻防の前の攻撃ゲージの値（兵士の数）
- * @property {number} defense 攻防の前の防御ゲージの値（守備兵の数）
+ * @property {number} attack 攻防の前の攻撃ゲージの値（攻撃の兵の数）
+ * @property {number} defense 攻防の前の防御ゲージの値（防御の兵の数）
+ * @property {number} heal 攻防の前の修理ゲージの値（修理の兵の数）
  * @property {Array<Array<*>>} columns 攻防の前の列ごとのカードの並びの写し（[0] が一番下）
  */
 
@@ -19,8 +20,9 @@
  * @property {'form'|'enemyMarch'|'block'|'castleHit'|'march'|'enemyBlock'|'armorBlock'|'enemyHit'|'heal'|'enemyHeal'|'burn'} type 段の種類
  * @property {number} amount 量（`form` は 0、`burn` は燃える枚数）
  * @property {Array<{columnIndex: number, cardIndex: number, card: *}>} [burns] `burn` のみ: 燃える札の並び（燃える順）
- * @property {number} [guards] `form` のみ: 守備兵の数
+ * @property {{attack: number, defense: number, heal: number}} [troops] `form` のみ: 自軍の兵の数（攻撃・防御・修理）
  * @property {number} [enemyGuards] `form` のみ: 敵の守りの数
+ * @property {number} [pairs] `enemyMarch` のみ: 防御の兵と相打ちになる組の数（`block` の量。なければ 0）。`march` のみ: 敵の守りと相打ちになる組の数（`enemyBlock` の量。なければ 0）
  */
 
 /** 「自軍の突撃」を、その直前に差し込む出来事の種類。 */
@@ -48,6 +50,7 @@ export function snapshotBattle(game) {
     enemyHp: game.enemy.hp,
     attack: game.gauges.attack ?? 0,
     defense: game.gauges.defense ?? 0,
+    heal: game.gauges.heal ?? 0,
     columns: game.columns.map((col) => col.slice()),
   };
 }
@@ -66,13 +69,17 @@ export function buildBattleSteps(result, before) {
 
   const enemyAttack = events.find((e) => e.type === 'enemyAttack');
   const enemyDefend = events.find((e) => e.type === 'enemyDefend');
-  const guards = before.defense;
   const enemyGuards = enemyDefend ? enemyDefend.amount : 0;
-  if (guards > 0 || enemyGuards > 0) {
-    steps.push({ type: 'form', amount: 0, guards, enemyGuards });
+  if (before.attack > 0 || before.defense > 0 || before.heal > 0 || enemyGuards > 0) {
+    const troops = { attack: before.attack, defense: before.defense, heal: before.heal };
+    steps.push({ type: 'form', amount: 0, troops, enemyGuards });
   }
+  const blockEvent = events.find((e) => e.type === 'block');
+  const enemyBlockEvent = events.find((e) => e.type === 'enemyBlock');
+  const blockPairs = blockEvent ? blockEvent.amount : 0;
+  const enemyBlockPairs = enemyBlockEvent ? enemyBlockEvent.amount : 0;
   if (enemyAttack && enemyAttack.amount > 0) {
-    steps.push({ type: 'enemyMarch', amount: enemyAttack.amount });
+    steps.push({ type: 'enemyMarch', amount: enemyAttack.amount, pairs: blockPairs });
   }
 
   let marchDone = before.attack <= 0;
@@ -83,7 +90,7 @@ export function buildBattleSteps(result, before) {
       break;
     }
     if (!marchDone && MARCH_BEFORE.has(event.type)) {
-      steps.push({ type: 'march', amount: before.attack });
+      steps.push({ type: 'march', amount: before.attack, pairs: enemyBlockPairs });
       marchDone = true;
     }
     if (event.type === 'win') break;
@@ -97,7 +104,7 @@ export function buildBattleSteps(result, before) {
     }
   }
   if (!marchDone && !stoppedByLose) {
-    steps.push({ type: 'march', amount: before.attack });
+    steps.push({ type: 'march', amount: before.attack, pairs: enemyBlockPairs });
   }
   return steps;
 }
