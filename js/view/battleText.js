@@ -58,6 +58,9 @@ const RESULT_STAT_ORDER = Object.freeze(['phases', 'damageDealt', 'damageTaken',
 /** 結果の表示を閉じる案内の文字 */
 const RESULT_HINT_TEXT = 'タップでタイトルへ';
 
+/** 敵を倒したときの、タップで次へ進む案内の文字 */
+const DEFEAT_HINT_TEXT = 'タップで次へ';
+
 /** 未知の行動の種類の表示名 */
 const UNKNOWN_ACTION_LABEL = '？';
 
@@ -94,6 +97,14 @@ export function resultHintText() {
  */
 export function defeatText(enemyName) {
   return `${enemyName}を倒した！`;
+}
+
+/**
+ * 敵を倒したときの、タップで次へ進む案内の文字にする。
+ * @returns {string} 「タップで次へ」
+ */
+export function defeatHintText() {
+  return DEFEAT_HINT_TEXT;
 }
 
 /**
