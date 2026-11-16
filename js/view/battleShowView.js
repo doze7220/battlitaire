@@ -1,11 +1,13 @@
 /**
- * 責務: 攻防の演出中の最上段の描画の取りまとめ（HP の表示値を差し替えた戦闘の段・兵・敵の回復の量・敵を倒したときの案内）。
+ * 責務: 攻防の演出中の最上段の描画の取りまとめ（HP の表示値を差し替えた戦闘の段・兵（段の中で切り抜く）・人数の表示・敵の回復の量・
+ * 敵を倒したときの案内・常時防御力の段のシールドマークの光り）。
  * 状態は変えず、ルール層・anim は実行時に import しない。
  */
 
 import { drawBattleStage } from './battleStageView.js';
-import { drawTroops } from './troopView.js';
-import { defeatText, nextEnemyText, healAmountText } from './battleText.js';
+import { drawTroopSwarm } from './troopView.js';
+import { drawTroopCounter } from './troopCountView.js';
+import { defeatText, nextEnemyText, healAmountText, defeatHintText } from './battleText.js';
 
 /** 敵を倒したときの案内の暗幕の色。 */
 const CURTAIN_FILL = 'rgba(0, 0, 0, 0.55)';
@@ -19,8 +21,6 @@ const OUTCOME_HINT_COLOR = '#f0f0f0';
 const DEFEAT_TITLE_FONT = 'bold 52px sans-serif';
 /** 敵を倒したときの「次は〜」のフォント。 */
 const DEFEAT_NEXT_FONT = 'bold 36px sans-serif';
-/** 敵を倒したときの案内の文字。 */
-const DEFEAT_HINT_TEXT = 'タップで次へ';
 /** シールドマークが光る段の種類（BattleLook.stepType の値）。 */
 const ARMOR_BLOCK_STEP = 'armorBlock';
 /** 敵の回復の量のフォント。 */
@@ -52,7 +52,7 @@ function drawDefeat(ctx, battleLayout, defeat) {
   }
   ctx.font = OUTCOME_HINT_FONT;
   ctx.fillStyle = OUTCOME_HINT_COLOR;
-  ctx.fillText(DEFEAT_HINT_TEXT, pos.x, pos.hintY, pos.maxW);
+  ctx.fillText(defeatHintText(), pos.x, pos.hintY, pos.maxW);
   ctx.restore();
 }
 
@@ -85,7 +85,7 @@ function drawEnemyHealPop(ctx, battleLayout, typeId, pop) {
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
  * @param {import('../rules/Game.js').Game} game ルール層のゲーム（フェーズ・最大 HP・攻防をした敵の種類・名前・常時防御力を読む）
  * @param {import('../rules/Game.js').BattleResult} result 攻防の結果（敵の行動・敵を倒したときの案内を読む）
- * @param {{ units: Array<object>, castleHp: number, enemyHp: number, finished: boolean, stepType: string|null, enemyHealPop: { amount: number, alpha: number }|null }} look 演出の見た目の値（BattleLook）
+ * @param {{ troops: import('../anim/troopSwarm.js').TroopSwarmLook, troopCounts: { attack: number, defense: number, heal: number }, castleHp: number, enemyHp: number, finished: boolean, stepType: string|null, enemyHealPop: { amount: number, alpha: number }|null }} look 演出の見た目の値（BattleLook）
  * @returns {void}
  */
 export function drawBattleShow(ctx, battleLayout, game, result, look) {
@@ -103,7 +103,13 @@ export function drawBattleShow(ctx, battleLayout, game, result, look) {
     shieldFlash: look.stepType === ARMOR_BLOCK_STEP,
     countdown: game.attackCountdown(),
   });
-  drawTroops(ctx, look.units);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(battleLayout.area.x, battleLayout.area.y, battleLayout.area.w, battleLayout.area.h);
+  ctx.clip();
+  drawTroopSwarm(ctx, look.troops, battleLayout.troops.size);
+  ctx.restore();
+  drawTroopCounter(ctx, battleLayout.troopCounter, look.troopCounts);
   if (look.enemyHealPop !== null) drawEnemyHealPop(ctx, battleLayout, game.enemy.typeId, look.enemyHealPop);
   if (look.finished && result.defeat !== null) drawDefeat(ctx, battleLayout, result.defeat);
 }

@@ -3,7 +3,7 @@
  * 状態は変えず、ルール層・anim は実行時に import しない。
  */
 
-import { drawTroops } from './troopView.js';
+import { drawTroop } from './troopView.js';
 import { SPRITE_IDS, drawSpriteFit, drawSpriteCentered } from './spriteView.js';
 
 /** ゴブリンの群れの兵の数（HP とは連動しない）。 */
@@ -22,16 +22,9 @@ const HORDE_ENEMIES = new Set(['goblins']);
  * @returns {void}
  */
 function drawHorde(ctx, battleLayout) {
-  const units = battleLayout.hordeSlots(HORDE_COUNT).map((slot) => ({
-    kind: HORDE_KIND,
-    big: false,
-    x: slot.x,
-    footY: slot.footY,
-    w: slot.w,
-    h: slot.h,
-    alpha: 1,
-  }));
-  drawTroops(ctx, units);
+  for (const slot of battleLayout.hordeSlots(HORDE_COUNT)) {
+    drawTroop(ctx, HORDE_KIND, slot.x, slot.footY, slot.size, 0, 1);
+  }
 }
 
 /**

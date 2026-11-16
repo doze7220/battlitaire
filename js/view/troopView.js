@@ -1,46 +1,82 @@
 /**
- * 責務: 兵（小さな兵・大きなユニット。守備兵・兵士・大工・敵兵・敵の守り・ゴブリン）のスプライトを描く。
+ * 責務: 兵（攻撃・防御・修理の兵、敵兵・敵の守り・ゴブリン）を1体ずつ、体と持ち物のスプライトで描く。
  * 状態は変えず、ルール層・anim は実行時に import しない。
  */
 
-import { SPRITE_IDS, drawSpriteFit } from './spriteView.js';
+import { SPRITE_IDS, drawTroopFigure } from './spriteView.js';
+import { gaugeSprite } from './suitStyle.js';
 
-/** 兵の種類 → 絵（スプライトの識別子）の表。自軍は白い丸、敵の側は緑の丸。 */
-const TROOP_SPRITES = Object.freeze({
-  guard: SPRITE_IDS.soldier,
-  soldier: SPRITE_IDS.soldier,
-  carpenter: SPRITE_IDS.soldier,
-  enemy: SPRITE_IDS.goblin,
-  enemyGuard: SPRITE_IDS.goblin,
-  goblin: SPRITE_IDS.goblin,
+/** 持ち物の大きさの、体の直径に対する割合。 */
+const ITEM_SIZE_RATIO = 0.7;
+/** 持ち物の横のずれ（前＝右へ）の、体の直径に対する割合。 */
+const ITEM_DX_RATIO = 0.35;
+/** 持ち物の縦のずれ（下へ）の、体の直径に対する割合。 */
+const ITEM_DY_RATIO = 0.1;
+
+/**
+ * 兵の見た目（体の絵と持ち物の絵。スプライトの識別子。持ち物なしは null）。
+ * @typedef {Object} TroopLook
+ * @property {string} body 体の絵
+ * @property {string|null} item 持ち物の絵
+ */
+
+/**
+ * 兵の種類 → 見た目の表。自軍は白い丸に剣・盾・ハンマー、敵の側は緑の丸（持ち物なし）。
+ * @type {Readonly<Object<string, TroopLook>>}
+ */
+const TROOP_LOOKS = Object.freeze({
+  attack: Object.freeze({ body: SPRITE_IDS.soldier, item: gaugeSprite('attack') }),
+  defense: Object.freeze({ body: SPRITE_IDS.soldier, item: gaugeSprite('defense') }),
+  heal: Object.freeze({ body: SPRITE_IDS.soldier, item: gaugeSprite('heal') }),
+  enemy: Object.freeze({ body: SPRITE_IDS.goblin, item: null }),
+  enemyGuard: Object.freeze({ body: SPRITE_IDS.goblin, item: null }),
+  goblin: Object.freeze({ body: SPRITE_IDS.goblin, item: null }),
 });
 
 /**
- * 兵・ユニット1体を描く。大きなユニットも同じ（unit.w・unit.h が大きいだけ）。
+ * 兵1体を描く。位置・大きさは引数で受ける（兵1体ごとにオブジェクトを作らないため）。
  * @param {CanvasRenderingContext2D} ctx 描画先
- * @param {{ kind: string, big: boolean, x: number, footY: number, w: number, h: number, alpha: number }} unit 1体の見た目
+ * @param {string} kind 兵の種類（'attack'・'defense'・'heal'・'enemy'・'enemyGuard'・'goblin'）
+ * @param {number} x 足元の中心 x
+ * @param {number} footY 足元の y
+ * @param {number} size 体の直径
+ * @param {number} tilt 足元を軸にした傾き（ラジアン）
+ * @param {number} alpha 濃さ（0〜1）
  * @returns {void}
+ * @throws {Error} 未知の種類のとき
  */
-function drawUnit(ctx, unit) {
-  const sprite = TROOP_SPRITES[unit.kind];
-  if (sprite === undefined) throw new Error(`未知の兵の種類: ${unit.kind}`);
+export function drawTroop(ctx, kind, x, footY, size, tilt, alpha) {
+  const look = Object.prototype.hasOwnProperty.call(TROOP_LOOKS, kind) ? TROOP_LOOKS[kind] : undefined;
+  if (look === undefined) throw new Error(`未知の兵の種類: ${kind}`);
   ctx.save();
-  ctx.globalAlpha = unit.alpha;
-  drawSpriteFit(ctx, sprite, {
-    x: unit.x - unit.w / 2,
-    y: unit.footY - unit.h,
-    w: unit.w,
-    h: unit.h,
-  });
+  ctx.globalAlpha = alpha;
+  drawTroopFigure(
+    ctx,
+    look.body,
+    look.item,
+    x,
+    footY,
+    size,
+    tilt,
+    size * ITEM_SIZE_RATIO,
+    size * ITEM_DX_RATIO,
+    size * ITEM_DY_RATIO,
+  );
   ctx.restore();
 }
 
 /**
- * 兵・ユニットを並び順どおりに描く（後ろの列から前の列へ）。引数は読むだけで書き換えない。
+ * 兵の名簿の見た目を、order の順（奥から手前）に、見えている兵だけ描く。読むだけで書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
- * @param {ReadonlyArray<{ kind: string, big: boolean, x: number, footY: number, w: number, h: number, alpha: number }>} units 描く兵の見た目（UnitLook の配列）
+ * @param {import('../anim/troopSwarm.js').TroopSwarmLook} troops 名簿の見た目
+ * @param {number} size 兵の大きさ（直径）
  * @returns {void}
  */
-export function drawTroops(ctx, units) {
-  for (const unit of units) drawUnit(ctx, unit);
+export function drawTroopSwarm(ctx, troops, size) {
+  const { count, kinds, order, visible, x, footY, tilt, alpha } = troops;
+  for (let n = 0; n < count; n++) {
+    const i = order[n];
+    if (visible[i] === 0) continue;
+    drawTroop(ctx, kinds[i], x[i], footY[i], size, tilt[i], alpha[i]);
+  }
 }

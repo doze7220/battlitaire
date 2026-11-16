@@ -1,5 +1,5 @@
 /**
- * 責務: 盤面の画面配置（座標・大きさ。戦闘の段の兵の配置・数え下ろしの枠・城の絵の矩形・敵の絵（巨人・ドラゴン）の矩形とシールドマークを並べる矩形・敵の回復の量の表示の位置・ゴブリンの群れの並び・敵を倒したときの案内・早送りとスキップの矩形を含む）を一手に持ち、座標から「何に当たるか」を求める。
+ * 責務: 盤面の画面配置（座標・大きさ。戦闘の段の兵の陣地・大きさ・当たる位置・人数の表示の位置・数え下ろしの枠・城の絵の矩形・敵の絵（巨人・ドラゴン）の矩形とシールドマークを並べる矩形・敵の回復の量の表示の位置・ゴブリンの群れの並び・敵を倒したときの案内・早送りとスキップの矩形を含む）を一手に持ち、座標から「何に当たるか」を求める。
  * タイトル画面・結果の表示（決着）の配置と当たりも持つ。ルール層は import せず、数の情報は引数で受け取る。状態は変えない。絵の縦横比は spriteView.js から得る。
  */
 
@@ -48,24 +48,19 @@ import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
  */
 
 /**
- * 戦闘の段での兵の配置。城の前から敵の前までを4つの区画に分け、その中心の x を持つ。
+ * 戦闘の段での兵の配置。陣地は兵の足元の中心が入る矩形で、兵1体の大きさ・当たる位置・落ちて消える y を持つ。
  * @typedef {Object} TroopLayout
- * @property {number} groundY 小さな兵（前の列）の足元の y
- * @property {number} backFootY 大きなユニット（後ろの列）の足元の y
- * @property {number} zoneW 1つの区画に収める群れの幅
- * @property {number} smallW 小さな兵の幅
- * @property {number} smallH 小さな兵の高さ
- * @property {number} bigW 大きなユニットの幅
- * @property {number} bigH 大きなユニットの高さ
- * @property {number} spacing 兵の間隔の、兵の幅に対する倍率
- * @property {number} guardX 区画A: 守備兵が並ぶ・兵士が出る位置の中心 x
- * @property {number} defenseClashX 区画B: 敵兵が守備兵とぶつかる位置の中心 x
- * @property {number} offenseClashX 区画C: 兵士が敵の守りとぶつかる位置の中心 x
- * @property {number} enemyGuardX 区画D: 敵の守りが並ぶ・敵兵が出る位置の中心 x
- * @property {number} armorHitX 兵士がシールドマークに当たる位置の x（敵の矩形の左端）
- * @property {number} castleHitX 城に当たる位置の x（城の中心）
+ * @property {number} size 兵の大きさ（直径）
+ * @property {{ attack: Rect, defense: Rect, heal: Rect, enemy: Rect }} camps 役割ごとの陣地（敵兵・敵の守りは enemy を共用）
+ * @property {number} blockStepX 相打ちの相手が前へ踏み出す距離
+ * @property {number} contactGap 相打ちでぶつかる2体の間隔
+ * @property {number} attackAdvanceX 相打ちの相手のいない攻撃の兵が進む距離
+ * @property {number} enemyAdvanceX 相打ちにならない敵兵が左へ進む距離
+ * @property {number} castleHitX 城に当たる位置の x（城の右端の少し内側）
+ * @property {number} armorHitX 攻撃の兵がシールドマークに当たる位置の x（敵の矩形の左端）
  * @property {number} enemyHitX 敵に当たる位置の x（敵の中心）
- * @property {number} carpenterX 大工が現れる位置の x（城の中心）
+ * @property {number} castleEntryX 修理の兵・帰る兵が城に入って消える位置の x（城の中心）
+ * @property {number} fallOutY 落ちる兵の足元がこれより下に来たら消える y
  */
 
 /**
@@ -79,7 +74,7 @@ import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
 
 /**
  * 最上段（戦闘）の配置。クオータービュー（斜め上から見下ろした地面。地面は回さず、左に城、右に敵。
- * 城の左側は後で自軍の兵が並ぶ場所として空けておく）。
+ * 兵の陣地は右から防御 → 城 → 攻撃 → 修理の並び）。
  * @typedef {Object} BattleLayout
  * @property {Rect} area 段全体
  * @property {Rect} castle 城の絵の矩形
@@ -92,9 +87,10 @@ import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * @property {Rect} countdown 数え下ろしの枠（段の右上）
  * @property {{ x: number, y: number }} enemyHealText 絵を持たない敵の回復の量の文字の中心（群れの矩形の上寄り）
  * @property {TroopLayout} troops 兵の配置
+ * @property {{ box: Rect, iconSize: number, items: Array<{ iconX: number, iconY: number, textX: number, textY: number }> }} troopCounter 人数の表示の配置（枠・アイコンの大きさ・攻撃・防御・修理の順の各項目のアイコン中心と文字の左端・中心 y）
  * @property {{ x: number, titleY: number, nextY: number, hintY: number, maxW: number }} defeat 敵を倒したときの案内の位置（段の中央の x、「〜を倒した！」・「次は〜」・「タップで次へ」の y、文字の最大の幅）
  * @property {function(number, Rect=): Rect[]} shieldRects シールドマーク count 個の矩形（body の矩形の中の格子。body を省くと群れの矩形。最後の行は中央にそろえる）
- * @property {function(number): Array<{ x: number, footY: number, w: number, h: number }>} hordeSlots ゴブリンの兵 count 体の並び（後ろの列から順。x は中心、footY は足元の y）
+ * @property {function(number): Array<{ x: number, footY: number, size: number }>} hordeSlots ゴブリンの兵 count 体の並び（後ろの列から順。x は中心、footY は足元の y、size は兵の大きさ）
  */
 
 /**
@@ -217,20 +213,39 @@ const ENEMY_INFO_W = 340;
 const INFO_GAP = 8;
 /** HP の枠と予告の枠の間隔 */
 const INFO_GAP_Y = 4;
-/** 城・敵と、兵が動く場の端の間隔 */
-const FIELD_GAP = 12;
-/** 区画の幅から引く余白（群れが区画に収まる幅 = 区画の幅 − この値） */
-const ZONE_PAD = 8;
-/** 小さな兵の高さの、城・敵の立つ高さ（地面から体の上端まで）に対する割合 */
-const SMALL_UNIT_RATIO = 0.2;
-/** 大きなユニットの高さの、城・敵の立つ高さに対する割合 */
-const BIG_UNIT_RATIO = 0.36;
-/** 兵の幅の、高さに対する割合 */
-const UNIT_ASPECT = 0.55;
-/** 後ろの列の足元が、地面より上にある高さの、城・敵の立つ高さに対する割合 */
-const BACK_ROW_RATIO = 0.12;
-/** 兵の間隔の、兵の幅に対する倍率 */
-const UNIT_SPACING = 1.15;
+/** 兵の大きさ（直径）。試遊で決め直す1か所 */
+const TROOP_SIZE = 24;
+/** 役割ごとの陣地の x と幅（段の左端からの絶対値。兵の足元の中心が入る範囲。試遊で動かす）。enemy は敵兵・敵の守りが共用する */
+const TROOP_CAMPS_X = Object.freeze({
+  heal: Object.freeze({ x: 20, w: 80 }),
+  attack: Object.freeze({ x: 100, w: 90 }),
+  defense: Object.freeze({ x: 300, w: 100 }),
+  enemy: Object.freeze({ x: 470, w: 80 }),
+});
+/** 陣地の y の範囲の、地面の線から上へ取る長さ（試遊で決め直す） */
+const CAMP_FOOT_ABOVE = 48;
+/** 陣地の y の範囲の、地面の線から下へ取る長さ（試遊で決め直す） */
+const CAMP_FOOT_BELOW = 2;
+/** 相打ちの相手が前へ踏み出す距離（試遊で決め直す） */
+const BLOCK_STEP_X = 30;
+/** 相打ちでぶつかる2体の間隔（試遊で決め直す） */
+const CONTACT_GAP = 20;
+/** 相打ちの相手のいない攻撃の兵が進む距離（試遊で決め直す） */
+const ATTACK_ADVANCE_X = 250;
+/** 相打ちにならない敵兵が左へ進む距離（試遊で決め直す） */
+const ENEMY_ADVANCE_X = 60;
+/** 城に当たる位置の、城の右端からの内側への距離（試遊で決め直す） */
+const CASTLE_HIT_INSET = 10;
+/** 人数の表示の枠の幅 */
+const TROOP_COUNTER_W = 230;
+/** 人数の表示のアイコンの大きさ */
+const TROOP_COUNTER_ICON = 24;
+/** 人数の表示の枠の左右の余白 */
+const TROOP_COUNTER_PAD_X = 10;
+/** 人数の表示のアイコンと文字の間隔 */
+const TROOP_COUNTER_TEXT_GAP = 4;
+/** 人数の表示の項目の数（攻撃・防御・修理） */
+const TROOP_COUNTER_ITEMS = 3;
 /** 敵を倒したときの「〜を倒した！」の y の、段の高さに対する割合 */
 const DEFEAT_TITLE_RATIO = 0.3;
 /** 敵を倒したときの「次は〜」の y の、段の高さに対する割合 */
@@ -243,7 +258,7 @@ const SHIELD_COLS = 5;
 const SHIELD_FILL = 0.8;
 /** ゴブリンの群れを並べる列の数 */
 const HORDE_ROWS = 2;
-/** ゴブリンの群れの後ろの列ごとの足元の上がりの、小さな兵の高さに対する割合 */
+/** ゴブリンの群れの後ろの列ごとの足元の上がりの、兵の大きさに対する割合 */
 const HORDE_ROW_RISE = 0.35;
 
 /** 最下段の行（行動の枠・行動終了）の上の余白 */
@@ -370,30 +385,48 @@ function createBattleLayout(width) {
   Object.freeze(enemyFigures);
   const enemyHealText = { x: enemy.x + enemy.w / 2, y: enemy.y + enemy.h * ENEMY_HEAL_TEXT_RATIO };
 
-  const fieldL = castle.x + castle.w + FIELD_GAP;
-  const F = enemy.x - FIELD_GAP - fieldL;
-  const span = groundY - bodyTop;
-  const smallH = span * SMALL_UNIT_RATIO;
-  const bigH = span * BIG_UNIT_RATIO;
+  const campTop = groundY - CAMP_FOOT_ABOVE;
+  const campH = CAMP_FOOT_ABOVE + CAMP_FOOT_BELOW;
+  /**
+   * 役割の陣地の矩形を作る。
+   * @param {{ x: number, w: number }} def TROOP_CAMPS_X の項目
+   * @returns {Rect} 陣地の矩形
+   */
+  const campRect = (def) => ({ x: def.x, y: campTop, w: def.w, h: campH });
   /** @type {TroopLayout} */
   const troops = {
-    groundY,
-    backFootY: groundY - span * BACK_ROW_RATIO,
-    zoneW: F / 4 - ZONE_PAD,
-    smallW: smallH * UNIT_ASPECT,
-    smallH,
-    bigW: bigH * UNIT_ASPECT,
-    bigH,
-    spacing: UNIT_SPACING,
-    guardX: fieldL + F / 8,
-    defenseClashX: fieldL + (3 * F) / 8,
-    offenseClashX: fieldL + (5 * F) / 8,
-    enemyGuardX: fieldL + (7 * F) / 8,
+    size: TROOP_SIZE,
+    camps: {
+      attack: campRect(TROOP_CAMPS_X.attack),
+      defense: campRect(TROOP_CAMPS_X.defense),
+      heal: campRect(TROOP_CAMPS_X.heal),
+      enemy: campRect(TROOP_CAMPS_X.enemy),
+    },
+    blockStepX: BLOCK_STEP_X,
+    contactGap: CONTACT_GAP,
+    attackAdvanceX: ATTACK_ADVANCE_X,
+    enemyAdvanceX: ENEMY_ADVANCE_X,
+    castleHitX: castle.x + castle.w - CASTLE_HIT_INSET,
     armorHitX: enemy.x,
-    castleHitX: castle.x + castle.w / 2,
     enemyHitX: enemy.x + enemy.w / 2,
-    carpenterX: castle.x + castle.w / 2,
+    castleEntryX: castle.x + castle.w / 2,
+    fallOutY: BATTLE_H + TROOP_SIZE,
   };
+
+  const counterBox = { x: SIDE_MARGIN, y: BATTLE_TOP_PAD, w: TROOP_COUNTER_W, h: BOX_H };
+  const counterItemW = (counterBox.w - TROOP_COUNTER_PAD_X * 2) / TROOP_COUNTER_ITEMS;
+  const counterItems = [];
+  for (let i = 0; i < TROOP_COUNTER_ITEMS; i++) {
+    const iconX = counterBox.x + TROOP_COUNTER_PAD_X + counterItemW * i + TROOP_COUNTER_ICON / 2;
+    const centerY = counterBox.y + counterBox.h / 2;
+    counterItems.push({
+      iconX,
+      iconY: centerY,
+      textX: iconX + TROOP_COUNTER_ICON / 2 + TROOP_COUNTER_TEXT_GAP,
+      textY: centerY,
+    });
+  }
+  const troopCounter = { box: counterBox, iconSize: TROOP_COUNTER_ICON, items: counterItems };
 
   /**
    * シールドマーク count 個の矩形を求める。body の矩形の中に SHIELD_COLS 個ずつの格子で並べ、
@@ -423,7 +456,7 @@ function createBattleLayout(width) {
    * ゴブリンの兵の群れの並びを求める。敵の矩形の横幅に HORDE_ROWS 列で並べ、
    * 前の列の足元が地面、後ろの列ほど HORDE_ROW_RISE ずつ上げ、半区間ずらす。
    * @param {number} count 兵の数
-   * @returns {Array<{ x: number, footY: number, w: number, h: number }>} 後ろの列から順の各兵（x は中心、footY は足元の y。count が 0 以下なら空）
+   * @returns {Array<{ x: number, footY: number, size: number }>} 後ろの列から順の各兵（x は中心、footY は足元の y、size は兵の大きさ。count が 0 以下なら空）
    */
   function hordeSlots(count) {
     if (count <= 0) return [];
@@ -436,9 +469,8 @@ function createBattleLayout(width) {
       for (let i = 0; i < n; i++) {
         slots.push({
           x: enemy.x + seg * (i + 0.5) + shift,
-          footY: groundY - troops.smallH * HORDE_ROW_RISE * row,
-          w: troops.smallW,
-          h: troops.smallH,
+          footY: groundY - TROOP_SIZE * HORDE_ROW_RISE * row,
+          size: TROOP_SIZE,
         });
       }
     }
@@ -457,6 +489,7 @@ function createBattleLayout(width) {
     enemyFigures,
     enemyHealText,
     troops,
+    troopCounter,
     defeat: {
       x: area.x + area.w / 2,
       titleY: area.y + area.h * DEFEAT_TITLE_RATIO,
