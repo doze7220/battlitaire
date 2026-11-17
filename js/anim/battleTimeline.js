@@ -308,6 +308,17 @@ function addBurn(state, step, t) {
 }
 
 /**
+ * ための段（巨人の振りかぶり・ドラゴンの吸い込み）。長さ `BATTLE_ANIM.chargeMs` を返すだけで、きっかけの時刻はない。
+ * @param {BuildState} state 組み立て中の状態
+ * @param {import('./battleSteps.js').BattleStep} step 段
+ * @param {number} t 開始時刻（ms）
+ * @returns {number} 段の長さ（ms）
+ */
+function addCharge(state, step, t) {
+  return BATTLE_ANIM.chargeMs;
+}
+
+/**
  * 段の種類ごとの組み立て。段の開始時刻を受け取り、段の長さを返す（きっかけの時刻は `state.cueTimes` に足す）。
  * @type {Object<string, (state: BuildState, step: import('./battleSteps.js').BattleStep, t: number) => number>}
  */
@@ -325,6 +336,7 @@ const STEP_BUILDERS = {
   heal: addHeal,
   enemyHeal: addEnemyHeal,
   burn: addBurn,
+  charge: addCharge,
 };
 
 /**
