@@ -1,7 +1,7 @@
 /**
- * 攻防の演出の設定（段ごとの時間・段の間・兵の動き（弾む・揺れる・跳ねて落ちる・ずらし・城へ入る／帰る）・早送りの倍率・
- * 終わりの後の間・燃える札の時間と明滅の回数・段取りの間に兵が家へ跳ぶ時間とずらし）を1か所に凍結して持つ。
- * これらの数値は、ほかのファイルに書かない。
+ * 攻防の演出の設定（段ごとの時間・段の間・兵の動き・早送りの倍率・終わりの後の間・燃える札の時間と明滅・炎の大きさ・
+ * 段取りの間に兵が家へ跳ぶ時間とずらし・敵の側の兵が現れる時間・打撃の間隔・ヒットマークの時間と大きさ）を
+ * 1か所に凍結して持つ。これらの数値は、ほかのファイルに書かない。
  */
 
 /**
@@ -36,6 +36,12 @@
  * @property {number} landMs 段取りの間、弾けた玉から出た兵が家へ跳ぶ時間（ms）。試遊で決め直す。
  * @property {number} landStaggerMs 段取りの間、兵が1体ずつ飛び出すときの1体ごとの遅れ（ms）。試遊で決め直す。
  * @property {number} landStaggerMaxMs 段取りの間、飛び出す遅れの広がり全体の上限（ms）。試遊で決め直す。
+ * @property {number} enterMs 敵の側の兵（ゴブリン・炎）が画面の外・ドラゴンの口から陣地の家まで動く時間（ms。前から出る遅れは別）。試遊で決め直す。
+ * @property {number} strikeStaggerMs 飛ぶもののない打撃で、防御の兵・城に1つずつ当たる間隔の上限（ms）。試遊で決め直す。
+ * @property {number} strikeStaggerMaxMs 打撃の間隔の広がり全体の上限（ms）。試遊で決め直す。
+ * @property {number} hitMarkMs ヒットマークが出てから消えるまでの時間（ms）。試遊で決め直す。
+ * @property {number} hitMarkSize ヒットマークの大きさ（px。絵の長い方の辺）。試遊で決め直す。
+ * @property {number} burnFireRatio 燃える札の上に出す炎の大きさの、札の幅に対する割合。試遊で決め直す。
  */
 
 /**
@@ -72,4 +78,10 @@ export const BATTLE_ANIM = Object.freeze({
   landMs: 400,
   landStaggerMs: 10,
   landStaggerMaxMs: 300,
+  enterMs: 600,
+  strikeStaggerMs: 90,
+  strikeStaggerMaxMs: 1200,
+  hitMarkMs: 250,
+  hitMarkSize: 40,
+  burnFireRatio: 0.6,
 });

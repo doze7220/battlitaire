@@ -13,6 +13,8 @@ import suitSword from 'assets/sprites/suit_sword.js';
 import suitShield from 'assets/sprites/suit_shield.js';
 import suitHammer from 'assets/sprites/suit_hammer.js';
 import suitGold from 'assets/sprites/suit_gold.js';
+import effectFire from 'assets/sprites/effect_fire.js';
+import effectHit from 'assets/sprites/effect_hit.js';
 
 /**
  * 矩形。
@@ -25,7 +27,7 @@ import suitGold from 'assets/sprites/suit_gold.js';
 
 /**
  * スプライトの識別子（呼ぶ側はこの定数で絵を指す）。
- * @type {Readonly<{background: string, castle: string, giant: string, dragon: string, soldier: string, goblin: string, sword: string, shield: string, hammer: string, gold: string}>}
+ * @type {Readonly<{background: string, castle: string, giant: string, dragon: string, soldier: string, goblin: string, sword: string, shield: string, hammer: string, gold: string, fire: string, hit: string}>}
  */
 export const SPRITE_IDS = Object.freeze({
   background: 'background',
@@ -38,6 +40,8 @@ export const SPRITE_IDS = Object.freeze({
   shield: 'shield',
   hammer: 'hammer',
   gold: 'gold',
+  fire: 'fire',
+  hit: 'hit',
 });
 
 /**
@@ -65,6 +69,8 @@ const SPRITE_TABLE = Object.freeze({
   [SPRITE_IDS.shield]: Object.freeze({ sprite: suitShield, minX: -80.5, maxX: 80.5, minY: -100.5, maxY: 100.5 }),
   [SPRITE_IDS.hammer]: Object.freeze({ sprite: suitHammer, minX: -60.5, maxX: 60.5, minY: -90.5, maxY: 90.5 }),
   [SPRITE_IDS.gold]: Object.freeze({ sprite: suitGold, minX: -70.5, maxX: 70.5, minY: -89.5, maxY: 85.5 }),
+  [SPRITE_IDS.fire]: Object.freeze({ sprite: effectFire, minX: -84, maxX: 85, minY: -99, maxY: 92 }),
+  [SPRITE_IDS.hit]: Object.freeze({ sprite: effectHit, minX: -99, maxX: 99, minY: -99, maxY: 99 }),
 });
 
 /**
