@@ -1,11 +1,11 @@
 /**
- * 兵1体ずつの名簿（TroopRoster）を作り、段ごとに兵へ移動の脚と終わり方を割り当てる。段取りの間に兵を陣地の中心から家へ跳ばせて足す。
- * 前から遅らせる式（出る・相打ちで落ちる・家へ跳ぶ）はここの1か所だけに置く。乱数は使わない。
+ * 兵1体ずつの名簿を作り、段ごとに兵へ脚と終わり方を割り当てる（画面の外から出す・置く・行進・当たる・落とす・城へ入る・右へ帰す・家へ跳ばす）。
+ * 前から遅らせる式はここだけに置く。乱数は使わない。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
 import { campSlot } from './campSlots.js';
-import { addTroopLeg, createTroopUnit, setTroopEnd } from './troopMotion.js';
+import { addTroopLeg, createTroopUnit, setTroopEnd, troopHitEnd } from './troopMotion.js';
 
 /**
  * 兵の名簿。攻防の始めに1回作り、段ごとに脚と終わり方を足していく。
@@ -25,7 +25,14 @@ const CAMP_OF = Object.freeze({
   heal: 'heal',
   enemy: 'enemy',
   enemyGuard: 'enemy',
+  flame: 'enemy',
 });
+
+/**
+ * 最後に右の画面の外へ帰って消える、敵の側の種類（HP の群れ・シールドは含まない）。
+ * @type {readonly string[]}
+ */
+const ENEMY_RUNNERS = Object.freeze(['enemy', 'enemyGuard', 'flame']);
 
 /**
  * 自軍の兵の種類（前＝x の大きい方）。段取りの間の兵の種類にも使う。
@@ -35,13 +42,14 @@ export const OWN_KINDS = Object.freeze(['attack', 'defense', 'heal']);
 
 /**
  * 前から k 番目（0 から、n 体のうち）の遅れ（ms）。全体の広がりには上限がある。
+ * 遅れの式の1か所。打撃の時刻（`enemyAttacks.js`）からも使う。
  * @param {number} k 前から何番目か（0 から）
  * @param {number} n 全体の数
  * @param {number} staggerMs 1体ごとの遅れ（ms）
  * @param {number} maxMs 広がり全体の上限（ms）
  * @returns {number} 遅れ（ms）
  */
-function staggerDelay(k, n, staggerMs, maxMs) {
+export function staggerDelay(k, n, staggerMs, maxMs) {
   if (n <= 1) return 0;
   return (k / (n - 1)) * Math.min(staggerMs * (n - 1), maxMs);
 }
@@ -149,25 +157,136 @@ export function spawnTroops(roster, kind, count, t, appearMs) {
  * @throws {Error} 未知の種類のとき
  */
 export function landTroops(roster, kind, count, fromX, fromY, t, moveMs) {
+  const { landStaggerMs, landStaggerMaxMs } = BATTLE_ANIM;
+  return jumpTroops('landTroops', roster, kind, count, fromX, fromY, t, moveMs, landStaggerMs, landStaggerMaxMs);
+}
+
+/**
+ * 種類の兵を count 体、(fromX, fromY) から家へ1本の脚で動かして足す（landTroops・enterTroops の共通部分）。
+ * @param {string} name 呼び出し元の名前（Error の文の頭）
+ * @param {TroopRoster} roster 名簿
+ * @param {string} kind 種類
+ * @param {number} count 人数（0 以下なら何もしない）
+ * @param {number} fromX 飛び出す位置の x
+ * @param {number|null} fromY 飛び出す位置の足元の y（null なら兵ごとの家の y）
+ * @param {number} t 動き始める時刻（ms）
+ * @param {number} moveMs 家へ動く時間（ms）
+ * @param {number} staggerMs 1体ごとの遅れ（ms）
+ * @param {number} maxMs 遅れの広がり全体の上限（ms）
+ * @returns {number} 全員が家に着く時刻（ms。count が 0 以下なら t）
+ * @throws {Error} 未知の種類のとき
+ */
+function jumpTroops(name, roster, kind, count, fromX, fromY, t, moveMs, staggerMs, maxMs) {
   const campName = CAMP_OF[kind];
-  if (campName === undefined) throw new Error(`landTroops: 未知の種類 ${kind}`);
+  if (campName === undefined) throw new Error(`${name}: 未知の種類 ${kind}`);
   const camp = roster.layout.camps[campName];
   const list = roster.ranked[kind] || (roster.ranked[kind] = []);
   const first = list.length;
-  const { landStaggerMs, landStaggerMaxMs } = BATTLE_ANIM;
   for (let i = 0; i < count; i++) {
     const index = first + i;
     const home = campSlot(camp, index);
-    const start = t + staggerDelay(i, count, landStaggerMs, landStaggerMaxMs);
+    const start = t + staggerDelay(i, count, staggerMs, maxMs);
     const unit = createTroopUnit(kind, index, home.x, home.y, start, 0);
     unit.x = fromX;
-    unit.y = fromY;
+    unit.y = fromY === null ? home.y : fromY;
     addTroopLeg(unit, start, home.x, home.y, moveMs);
     roster.units.push(unit);
     list.push(unit);
   }
   sortRanked(list, kind);
-  return count <= 0 ? t : t + spreadOf(count, landStaggerMs, landStaggerMaxMs) + moveMs;
+  return count <= 0 ? t : t + spreadOf(count, staggerMs, maxMs) + moveMs;
+}
+
+/**
+ * 敵の側の兵を count 体、画面の外・口（fromX, fromY）から陣地の家へ跳ねながら動かして足す。
+ * @param {TroopRoster} roster 名簿
+ * @param {string} kind 種類（enemy・enemyGuard・flame）
+ * @param {number} count 人数（0 以下なら何もしない）
+ * @param {number} fromX 出る位置の x
+ * @param {number|null} fromY 出る位置の足元の y（null なら兵ごとの家の y）
+ * @param {number} t 出始める時刻（ms）
+ * @param {number} moveMs 家へ動く時間（ms）
+ * @returns {number} 全員が家に着く時刻（ms。count が 0 以下なら t）
+ * @throws {Error} 未知の種類のとき
+ */
+export function enterTroops(roster, kind, count, fromX, fromY, t, moveMs) {
+  const { moveStaggerMs, moveStaggerMaxMs } = BATTLE_ANIM;
+  return jumpTroops('enterTroops', roster, kind, count, fromX, fromY, t, moveMs, moveStaggerMs, moveStaggerMaxMs);
+}
+
+/**
+ * 種類の兵を、決まった足元の位置に時刻 t から置く。渡した順を前からの並びにする（並べ替えない。陣地は使わない）。
+ * @param {TroopRoster} roster 名簿
+ * @param {string} kind 種類
+ * @param {Array<{x: number, y: number, size?: number}>} points 足元の位置と描く大きさ（前から）
+ * @param {number} t 現れる時刻（ms）
+ * @returns {void}
+ */
+export function placeTroops(roster, kind, points, t) {
+  const list = roster.ranked[kind] || (roster.ranked[kind] = []);
+  const first = list.length;
+  for (let k = 0; k < points.length; k++) {
+    const p = points[k];
+    const unit = createTroopUnit(kind, first + k, p.x, p.y, t, 0);
+    unit.size = p.size ?? 0;
+    roster.units.push(unit);
+    list.push(unit);
+  }
+}
+
+/**
+ * まだ終わっていない kind の兵を前から times.length 体選び、k 番目を times[k]（と動きの終わりの遅い方）に落とす。
+ * @param {TroopRoster} roster 名簿
+ * @param {string} kind 種類
+ * @param {number[]} times 落とす時刻（ms。前から順）
+ * @returns {import('./troopMotion.js').TroopUnit[]} 選んだ兵（前から）
+ * @throws {Error} 兵が足りないとき
+ */
+export function popTroops(roster, kind, times) {
+  const active = activeOf(roster, kind);
+  if (times.length > active.length) {
+    throw new Error(`popTroops: ${kind} が足りません（必要 ${times.length}、いる ${active.length}）`);
+  }
+  const chosen = active.slice(0, times.length);
+  for (let k = 0; k < chosen.length; k++) {
+    const unit = chosen[k];
+    setTroopEnd(unit, troopHitEnd(kind), Math.max(times[k], unit.freeAt), roster.layout.fallOutY);
+  }
+  return chosen;
+}
+
+/**
+ * kind の前から count 体と partnerKind の前から同じ数が1対1の組になり、kind が相手の手前へ進んで着いた時刻に2体とも終わる。
+ * @param {TroopRoster} roster 名簿
+ * @param {string} kind 進む側の種類
+ * @param {string} partnerKind 相手の種類
+ * @param {number} count 組の数
+ * @param {number} t 段の始め（ms）
+ * @param {number} moveMs 進む時間（ms）
+ * @returns {number[]} 着く時刻の昇順の配列
+ * @throws {Error} どちらかの兵が足りないとき
+ */
+export function chargePairs(roster, kind, partnerKind, count, t, moveMs) {
+  const m = Math.max(0, count);
+  const squad = activeOf(roster, kind);
+  const partners = activeOf(roster, partnerKind);
+  if (m > squad.length || m > partners.length) {
+    throw new Error(
+      `chargePairs: 組の数 ${m} に対して兵が足りません（${kind}=${squad.length}, ${partnerKind}=${partners.length}）`,
+    );
+  }
+  const arrivals = [];
+  for (let k = 0; k < m; k++) {
+    const unit = squad[k];
+    const partner = partners[k];
+    const side = partner.x >= unit.x ? 1 : -1;
+    const start = Math.max(t + moveDelay(k, m), unit.freeAt);
+    addTroopLeg(unit, start, partner.x - side * roster.layout.contactGap, unit.y, moveMs);
+    setTroopEnd(unit, troopHitEnd(kind), unit.freeAt, roster.layout.fallOutY);
+    setTroopEnd(partner, troopHitEnd(partnerKind), Math.max(unit.freeAt, partner.freeAt), roster.layout.fallOutY);
+    arrivals.push(unit.freeAt);
+  }
+  return arrivals.sort((a, b) => a - b);
 }
 
 /**
@@ -228,8 +347,8 @@ export function clashPairs(roster, kind, amount, t) {
     const unit = chosen[k];
     const partner = unit.partner;
     const time = t + fallDelay(k, m);
-    setTroopEnd(unit, 'fall', Math.max(time, unit.freeAt), roster.layout.fallOutY);
-    setTroopEnd(partner, 'fall', Math.max(time, partner.freeAt), roster.layout.fallOutY);
+    setTroopEnd(unit, troopHitEnd(unit.kind), Math.max(time, unit.freeAt), roster.layout.fallOutY);
+    setTroopEnd(partner, troopHitEnd(partner.kind), Math.max(time, partner.freeAt), roster.layout.fallOutY);
   }
   return spreadOf(m, fallStaggerMs, fallStaggerMaxMs);
 }
@@ -252,7 +371,7 @@ export function chargeTo(roster, kind, count, targetX, t, moveMs) {
     const unit = chosen[k];
     const start = Math.max(t + moveDelay(k, m), unit.freeAt);
     addTroopLeg(unit, start, targetX, unit.y, moveMs);
-    setTroopEnd(unit, 'fall', unit.freeAt, roster.layout.fallOutY);
+    setTroopEnd(unit, troopHitEnd(kind), unit.freeAt, roster.layout.fallOutY);
     arrivals.push(unit.freeAt);
   }
   return arrivals.sort((a, b) => a - b);
@@ -294,7 +413,27 @@ export function fadeTroops(roster, kind, t) {
 }
 
 /**
- * 最後に、使われなかった兵の終わり方を決める。自軍は城へ帰って消え、敵の側は薄れて消える。
+ * まだ終わっていない kind の兵を全員、前から遅らせて右の画面の外（toX）へ走らせ、着いた時刻に消す。
+ * @param {TroopRoster} roster 名簿
+ * @param {string} kind 種類
+ * @param {number} toX 行き先の x（画面の外）
+ * @param {number} t 走り始める時刻（ms）
+ * @param {number} moveMs 移動の時間（ms）
+ * @returns {void}
+ */
+export function exitTroops(roster, kind, toX, t, moveMs) {
+  const chosen = activeOf(roster, kind);
+  const m = chosen.length;
+  for (let k = 0; k < m; k++) {
+    const unit = chosen[k];
+    const start = Math.max(t + moveDelay(k, m), unit.freeAt);
+    addTroopLeg(unit, start, toX, unit.y, moveMs);
+    setTroopEnd(unit, 'vanish', unit.freeAt, roster.layout.fallOutY);
+  }
+}
+
+/**
+ * 最後に、使われなかった兵の終わり方を決める。自軍は城へ帰って消え、敵の側（群れ・シールドを除く）は右の画面の外へ走って消える。
  * @param {TroopRoster} roster 名簿
  * @param {number} t 最後の段が終わった時刻（ms）
  * @returns {void}
@@ -303,8 +442,9 @@ export function finishTroops(roster, t) {
   for (const kind of OWN_KINDS) {
     enterCastle(roster, kind, t, BATTLE_ANIM.returnMs);
   }
-  fadeTroops(roster, 'enemy', t);
-  fadeTroops(roster, 'enemyGuard', t);
+  for (const kind of ENEMY_RUNNERS) {
+    exitTroops(roster, kind, roster.layout.offscreenX, t, BATTLE_ANIM.returnMs);
+  }
 }
 
 /**
