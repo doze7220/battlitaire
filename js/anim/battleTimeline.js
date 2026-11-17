@@ -1,7 +1,7 @@
 /**
  * 段の並びから、段の時刻・兵の名簿（1人＝1体）・HP の変化・数字の浮き出し・燃える札の記録・音のきっかけの時刻を組み立てて時間割にする。
  * きっかけの時刻の式はここだけにある。描画も状態の変更も行わない。
- * 時間は BATTLE_ANIM、位置は TroopLayout・盤面の Layout から読む。
+ * 段取りの間に待っていた自軍の兵の引き継ぎも行う。時間は BATTLE_ANIM、位置は TroopLayout・盤面の Layout から読む。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
@@ -16,6 +16,7 @@ import {
   fadeTroops,
   finishTroops,
   marchSquad,
+  OWN_KINDS,
   rosterEndTime,
   rosterEndTimes,
   spawnTroops,
@@ -61,7 +62,7 @@ import { createTroopCounter } from './troopCounter.js';
 const FRONT_FADE_STEPS = new Set(['march', 'enemyBlock', 'armorBlock', 'enemyHit', 'heal', 'enemyHeal', 'burn']);
 
 /**
- * 守りが並ぶ段（自軍の兵と敵の守りが陣地に現れる）。
+ * 敵の守りが陣地に現れる段。
  * @param {BuildState} state 組み立て中の状態
  * @param {import('./battleSteps.js').BattleStep} step 段
  * @param {number} t 開始時刻（ms）
@@ -69,10 +70,6 @@ const FRONT_FADE_STEPS = new Set(['march', 'enemyBlock', 'armorBlock', 'enemyHit
  */
 function addForm(state, step, t) {
   const T = BATTLE_ANIM;
-  const troops = step.troops ?? { attack: 0, defense: 0, heal: 0 };
-  spawnTroops(state.roster, 'attack', troops.attack, t, T.formMs);
-  spawnTroops(state.roster, 'defense', troops.defense, t, T.formMs);
-  spawnTroops(state.roster, 'heal', troops.heal, t, T.formMs);
   spawnTroops(state.roster, 'enemyGuard', step.enemyGuards ?? 0, t, T.formMs);
   return T.formMs;
 }
@@ -291,14 +288,15 @@ function fadeLeftoversAtStart(state, type, t) {
 }
 
 /**
- * 段の並びから時間割を組み立てる。
+ * 段の並びから時間割を組み立てる。段取りの間に待っていた自軍の兵を、時刻 0 から同じ家に置く。
  * @param {import('./battleSteps.js').BattleStep[]} steps 段の並び
  * @param {import('./battleSteps.js').BattleSnapshot} before 攻防の前の値
  * @param {import('../view/layout.js').TroopLayout} troopLayout 兵の配置
  * @param {import('../view/layout.js').Layout} boardLayout 盤面の配置（燃える札の位置に使う）
+ * @param {{attack: number, defense: number, heal: number}} waiting 段取りの間に待っていた兵の数（家の番号は 0 から数−1。`before` の値と同じでなければ Error）
  * @returns {BattleTimeline} 時間割
  */
-export function buildBattleTimeline(steps, before, troopLayout, boardLayout) {
+export function buildBattleTimeline(steps, before, troopLayout, boardLayout, waiting) {
   /** @type {BuildState} */
   const state = {
     roster: createTroopRoster(troopLayout),
@@ -312,6 +310,14 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout) {
     cueTimes: [],
     boardLayout,
   };
+  let waitingTotal = 0;
+  for (const kind of OWN_KINDS) {
+    if (waiting[kind] !== before[kind]) {
+      throw new Error(`buildBattleTimeline: 待っていた兵の数 ${kind}=${waiting[kind]} が攻防の前の値 ${before[kind]} と違います`);
+    }
+    spawnTroops(state.roster, kind, waiting[kind], 0, 0);
+    waitingTotal += waiting[kind];
+  }
   /** @type {TimedStep[]} */
   const timed = [];
   let t = 0;
@@ -327,7 +333,7 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout) {
     t += duration;
     stepEnd = t;
   });
-  if (timed.length > 0) finishTroops(state.roster, stepEnd);
+  if (timed.length > 0 || waitingTotal > 0) finishTroops(state.roster, stepEnd);
   const troopCounter = createTroopCounter([
     { role: 'attack', initial: before.attack, times: rosterEndTimes(state.roster, 'attack') },
     { role: 'defense', initial: before.defense, times: rosterEndTimes(state.roster, 'defense') },

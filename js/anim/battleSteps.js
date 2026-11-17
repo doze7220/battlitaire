@@ -20,8 +20,7 @@
  * @property {'form'|'enemyMarch'|'block'|'castleHit'|'march'|'enemyBlock'|'armorBlock'|'enemyHit'|'heal'|'enemyHeal'|'burn'} type 段の種類
  * @property {number} amount 量（`form` は 0、`burn` は燃える枚数）
  * @property {Array<{columnIndex: number, cardIndex: number, card: *}>} [burns] `burn` のみ: 燃える札の並び（燃える順）
- * @property {{attack: number, defense: number, heal: number}} [troops] `form` のみ: 自軍の兵の数（攻撃・防御・修理）
- * @property {number} [enemyGuards] `form` のみ: 敵の守りの数
+ * @property {number} [enemyGuards] `form` のみ: 現れる敵の守りの数
  * @property {number} [pairs] `enemyMarch` のみ: 防御の兵と相打ちになる組の数（`block` の量。なければ 0）。`march` のみ: 敵の守りと相打ちになる組の数（`enemyBlock` の量。なければ 0）
  */
 
@@ -70,9 +69,8 @@ export function buildBattleSteps(result, before) {
   const enemyAttack = events.find((e) => e.type === 'enemyAttack');
   const enemyDefend = events.find((e) => e.type === 'enemyDefend');
   const enemyGuards = enemyDefend ? enemyDefend.amount : 0;
-  if (before.attack > 0 || before.defense > 0 || before.heal > 0 || enemyGuards > 0) {
-    const troops = { attack: before.attack, defense: before.defense, heal: before.heal };
-    steps.push({ type: 'form', amount: 0, troops, enemyGuards });
+  if (enemyGuards > 0) {
+    steps.push({ type: 'form', amount: 0, enemyGuards });
   }
   const blockEvent = events.find((e) => e.type === 'block');
   const enemyBlockEvent = events.find((e) => e.type === 'enemyBlock');

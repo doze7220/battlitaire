@@ -1,7 +1,7 @@
 /**
  * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面を描くこと。
- * 操作の結果を anim に渡して時間を進め（放つ演出 ReleaseShow の時計を含む）、札が動いている間はタップを無視すること。行動終了のボタンで攻防を呼び、攻防の演出のシーンを積むこと。
- * 操作が成り立ったとき・行動終了・放つ演出の連鎖のきっかけで効果音を鳴らすこと（soundCues.js）。積んだ演出のシーンから札が燃える段の盤面を読んで描くこと。
+ * 操作の結果を anim に渡して時間を進め（ReleaseShow の時計を含む）、札が動いている間はタップを無視し、行動終了で玉・兵が着くのを待ってから攻防に入り待っていた兵の数を演出のシーンへ渡すこと。
+ * 操作・行動終了・連鎖のきっかけで効果音を鳴らすこと（soundCues.js）。積んだ演出のシーンから札が燃える段の盤面を読んで描くこと。
  */
 import { Engine, Scene } from 'oz';
 import { Game } from '../rules/Game.js';
@@ -53,6 +53,8 @@ export class BoardScene extends Scene {
     this.battleShow = null;
     /** @type {ReleaseShow|null} 放つ演出（玉・段取りの間の兵。init で作る） */
     this.releaseShow = null;
+    /** @type {boolean} 「行動終了」を押して、玉・兵が着くのを待っているか（待つ間はタップを無視する） */
+    this.pendingBattle = false;
   }
 
   /**
@@ -73,6 +75,7 @@ export class BoardScene extends Scene {
     this.animator = new BoardAnimator();
     this.battleShow = null;
     this.releaseShow = new ReleaseShow(this.layout.battle.troops);
+    this.pendingBattle = false;
   }
 
   /**
@@ -87,6 +90,35 @@ export class BoardScene extends Scene {
     this.animator.update(dt);
     this.releaseShow.update(dt);
     for (const ordinal of this.releaseShow.chainCuesInLastUpdate()) playChainSe(ordinal);
+    if (this.pendingBattle && !this.releaseShow.isBusy()) {
+      this.pendingBattle = false;
+      this.startBattle();
+    }
+  }
+
+  /**
+   * 攻防に入る（攻防の前の値の写し → 待っている兵の数 → 攻防の解決 → 行動終了の音 → 放つ演出の作り直し → 攻防の演出のシーンを積む）。
+   * 攻防を解決できなければ何もしない。
+   * @returns {void}
+   */
+  startBattle() {
+    const game = this.game;
+    const battleBefore = snapshotBattle(game);
+    const waiting = this.releaseShow.waitingCounts();
+    this.lastResult = game.resolveBattle();
+    if (this.lastResult === null) return;
+    playTurnEndSe(); // 行動終了（攻防に入った）の効果音
+    this.releaseShow = new ReleaseShow(this.layout.battle.troops); // 次のフェーズは兵のいない状態から
+    this.battleShow = new BattleShowScene({
+      layer: this.layer,
+      game,
+      layout: this.layout,
+      before: battleBefore,
+      result: this.lastResult,
+      createTitle: this.createTitle,
+      waiting,
+    });
+    Engine.pushScene(this.battleShow);
   }
 
   /**
@@ -97,26 +129,14 @@ export class BoardScene extends Scene {
    */
   onPointer(pointer) {
     if (pointer.type !== 'down') return;
-    if (this.animator.isBusy() || this.releaseShow.isHoldingCards()) return;
+    if (this.pendingBattle || this.animator.isBusy() || this.releaseShow.isHoldingCards()) return;
     const game = this.game;
     const hit = this.layout.hitTest(pointer.x, pointer.y, game.columns.map((col) => col.length));
     if (game.isOutOfActions()) {
       this.selection = null;
       if (hit !== null && hit.kind === 'actionEnd' && game.canResolveBattle()) {
-        const battleBefore = snapshotBattle(game);
-        this.lastResult = game.resolveBattle();
-        if (this.lastResult !== null) {
-          playTurnEndSe(); // 行動終了（攻防に入った）の効果音
-          this.battleShow = new BattleShowScene({
-            layer: this.layer,
-            game,
-            layout: this.layout,
-            before: battleBefore,
-            result: this.lastResult,
-            createTitle: this.createTitle,
-          });
-          Engine.pushScene(this.battleShow);
-        }
+        if (this.releaseShow.isBusy()) this.pendingBattle = true;
+        else this.startBattle();
       }
       return;
     }

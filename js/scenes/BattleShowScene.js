@@ -24,6 +24,7 @@ const NORMAL_SCALE = 1;
  * @property {import('../anim/battleSteps.js').BattleSnapshot} before 攻防の前の値の写し
  * @property {import('../rules/Game.js').BattleResult} result game.resolveBattle() の戻り値
  * @property {() => Scene} createTitle タイトルの画面のシーンを作る関数
+ * @property {{attack: number, defense: number, heal: number}} waiting 段取りの間に陣地で待っていた兵の数（時間割へ引き継ぐ）
  */
 
 /** 攻防の出来事を最上段の兵の動きで見せ、終わったら次のフェーズ／タイトルへ進むシーン（盤面のシーンの上に積む） */
@@ -31,7 +32,7 @@ export class BattleShowScene extends Scene {
   /**
    * @param {BattleShowOptions} options オプション
    */
-  constructor({ layer, game, layout, before, result, createTitle }) {
+  constructor({ layer, game, layout, before, result, createTitle, waiting }) {
     super();
     /** @type {string} 描くレイヤー名 */
     this.layer = layer;
@@ -45,6 +46,8 @@ export class BattleShowScene extends Scene {
     this.result = result;
     /** @type {() => Scene} タイトルの画面のシーンを作る関数 */
     this.createTitle = createTitle;
+    /** @type {{attack: number, defense: number, heal: number}} 段取りの間に待っていた兵の数 */
+    this.waiting = waiting;
     /** @type {BattleDirector|null} 演出全体の管理（init で作る） */
     this.director = null;
     /** @type {boolean} 早送り中か */
@@ -54,14 +57,14 @@ export class BattleShowScene extends Scene {
   }
 
   /**
-   * 演出の管理を作る（シーンの操作・timeScale の変更はしない）。
+   * 演出の管理を作る（シーンの操作・timeScale の変更はしない）。待っていた兵の数を時間割へ渡す。
    * @returns {void}
    */
   init() {
     const troopLayout = this.layout.battle.troops;
     const steps = buildBattleSteps(this.result, this.before);
     this.director = new BattleDirector({
-      timeline: buildBattleTimeline(steps, this.before, troopLayout, this.layout),
+      timeline: buildBattleTimeline(steps, this.before, troopLayout, this.layout, this.waiting),
       result: this.result,
       before: this.before,
     });
