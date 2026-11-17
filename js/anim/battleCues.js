@@ -7,7 +7,7 @@
  * 音を合わせるきっかけ。
  * @typedef {Object} BattleCue
  * @property {number} time きっかけの時刻（演出の時計の ms）
- * @property {string} type 段の種類（'block'・'enemyBlock'・'armorBlock'・'castleHit'・'enemyHit'・'heal'・'enemyHeal'・'burn'）
+ * @property {string} type 段の種類（'block'・'enemyBlock'・'armorBlock'・'castleHit'・'enemyHit'・'heal'・'enemyHeal'・'burn'・'strikeBlock'・'strikeCastle'）
  */
 
 /**

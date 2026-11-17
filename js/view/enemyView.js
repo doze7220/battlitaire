@@ -1,5 +1,5 @@
 /**
- * 責務: 戦闘の段の敵の絵（巨人・ドラゴンのスプライト、ゴブリンの軍勢の兵の群れ）と、常時防御力のシールドマーク（盾のスプライト）を描く。
+ * 責務: 戦闘の段の敵の絵（巨人・ドラゴン。攻防中は倒れる動きのずれで段の中に切り抜く）と、段取りの間の群れ・シールドマークを描く。
  * 状態は変えず、ルール層・anim は実行時に import しない。
  */
 
@@ -8,8 +8,6 @@ import { SPRITE_IDS, drawSpriteFit, drawSpriteCentered } from './spriteView.js';
 
 /** 群れの兵の種類（troopView.js の種類）。 */
 const HORDE_KIND = 'goblin';
-/** シールドマークが光るときに重ねて描く絵の不透明度。 */
-const SHIELD_FLASH_ALPHA = 0.8;
 /** 群れで描く敵の種類の識別子。 */
 const HORDE_ENEMIES = new Set(['goblins']);
 
@@ -32,45 +30,51 @@ function drawHorde(ctx, battleLayout, count) {
 }
 
 /**
- * シールドマーク（盾のスプライト）を1つ描く。光らせるときは同じ絵を加算合成で重ねる。
+ * シールドマーク（盾のスプライト）を1つ描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').Rect} rect マークの矩形
- * @param {boolean} flash 光らせるか
  * @returns {void}
  */
-function drawShieldMark(ctx, rect, flash) {
-  const cx = rect.x + rect.w / 2;
-  const cy = rect.y + rect.h / 2;
-  drawSpriteCentered(ctx, SPRITE_IDS.shield, cx, cy, rect.w);
-  if (flash) {
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = SHIELD_FLASH_ALPHA;
-    drawSpriteCentered(ctx, SPRITE_IDS.shield, cx, cy, rect.w);
-    ctx.restore();
-  }
+function drawShieldMark(ctx, rect) {
+  drawSpriteCentered(ctx, SPRITE_IDS.shield, rect.x + rect.w / 2, rect.y + rect.h / 2, rect.w);
 }
 
 /**
- * 敵の絵（スプライトまたは兵の群れ）と、常時防御力の数のシールドマークを描く。引数は読むだけで書き換えない。
+ * 敵の絵を描く。段取りの間（figure が null）は絵または兵の群れと常時防御力のシールドマークを描き、
+ * 攻防の演出中は絵だけを倒れる動きのずれで段の中に切り抜いて描く（群れ・シールドは名簿の1体として別に描かれる）。
+ * 引数は読むだけで書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
  * @param {{ typeId: string, armor: number, hp: number }} enemy 描く敵（種類の識別子・常時防御力・HP。群れの数は HP）
- * @param {{ shieldFlash: boolean }} options 表示の指定（shieldFlash: シールドマークを明るく描くか）
+ * @param {{ visible: boolean, dy: number }|null} [figure] 倒れる絵の見た目（EnemyFigureLook）。null か省くと段取りの絵
  * @returns {void}
  */
-export function drawEnemyFigure(ctx, battleLayout, enemy, { shieldFlash }) {
+export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null) {
+  const hasFigure = Object.prototype.hasOwnProperty.call(battleLayout.enemyFigures, enemy.typeId);
   ctx.save();
+  if (figure !== null) {
+    if (hasFigure && figure.visible) {
+      const fig = battleLayout.enemyFigures[enemy.typeId];
+      const { area } = battleLayout;
+      ctx.beginPath();
+      ctx.rect(area.x, area.y, area.w, area.h);
+      ctx.clip();
+      ctx.translate(0, figure.dy);
+      drawSpriteFit(ctx, fig.sprite, fig.rect);
+    }
+    ctx.restore();
+    return;
+  }
   let shieldBody = battleLayout.enemy;
-  if (Object.prototype.hasOwnProperty.call(battleLayout.enemyFigures, enemy.typeId)) {
-    const figure = battleLayout.enemyFigures[enemy.typeId];
-    drawSpriteFit(ctx, figure.sprite, figure.rect);
-    shieldBody = figure.shieldArea;
+  if (hasFigure) {
+    const fig = battleLayout.enemyFigures[enemy.typeId];
+    drawSpriteFit(ctx, fig.sprite, fig.rect);
+    shieldBody = fig.shieldArea;
   } else if (HORDE_ENEMIES.has(enemy.typeId)) {
     drawHorde(ctx, battleLayout, enemy.hp);
   }
   if (enemy.armor > 0) {
-    for (const rect of battleLayout.shieldRects(enemy.armor, shieldBody)) drawShieldMark(ctx, rect, shieldFlash);
+    for (const rect of battleLayout.shieldRects(enemy.armor, shieldBody)) drawShieldMark(ctx, rect);
   }
   ctx.restore();
 }

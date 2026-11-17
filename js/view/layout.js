@@ -59,8 +59,6 @@ import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * @property {number} castleHitX 城に当たる位置の x（城の右端の少し内側）
  * @property {number} offscreenX 敵の側の兵が現れる・帰る画面の外の x（段の右端 + 兵の大きさ）
  * @property {Rect} castleHitArea 城の打撃のヒットマークを出す範囲（城の絵の矩形の内側）
- * @property {number} armorHitX 攻撃の兵がシールドマークに当たる位置の x（敵の矩形の左端）
- * @property {number} enemyHitX 敵に当たる位置の x（敵の中心）
  * @property {number} castleEntryX 修理の兵・帰る兵が城に入って消える位置の x（城の中心）
  * @property {number} fallOutY 落ちる兵の足元がこれより下に来たら消える y
  */
@@ -431,8 +429,6 @@ function createBattleLayout(width) {
       w: castle.w * CASTLE_HIT_AREA.w,
       h: castle.h * CASTLE_HIT_AREA.h,
     },
-    armorHitX: enemy.x,
-    enemyHitX: enemy.x + enemy.w / 2,
     castleEntryX: castle.x + castle.w / 2,
     fallOutY: BATTLE_H + TROOP_SIZE,
   };
