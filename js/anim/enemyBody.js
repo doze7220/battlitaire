@@ -1,0 +1,171 @@
+/**
+ * 敵の体（ゴブリンの群れ・シールドを名簿へ置く、攻撃の兵が当たる・シールドが剥がれる、倒れたとき絵が跳ねて落ちる記録）と、
+ * 時計からの絵の見た目を求める。体の見せ方ごとの違いはこのファイルの表で分ける。描画も状態の変更もしない。
+ */
+
+import { BATTLE_ANIM } from './battleAnimConfig.js';
+import { enemyBodyStyle } from './enemyShows.js';
+import { createTroopUnit, sampleTroop, setTroopEnd } from './troopMotion.js';
+import { chargePairs, chargeTo, placeTroops, popTroops } from './troopRoster.js';
+
+/**
+ * 敵の体の記録。
+ * @typedef {Object} EnemyBody
+ * @property {'horde'|'figure'} style 体の見せ方
+ * @property {number|null} hitX 絵に当たる位置の x（群れは null）
+ * @property {number} armorHitX シールドに当たる位置の x
+ * @property {import('./troopMotion.js').TroopUnit|null} fall 倒れる動きだけに使う1体（群れは null。名簿には入れない）
+ * @property {number} fallOutY 絵が消える足元の y（群れは 0）
+ */
+
+/**
+ * 倒れる絵の見た目（描画が読む）。
+ * @typedef {Object} EnemyFigureLook
+ * @property {boolean} visible 描くか
+ * @property {number} dy 足元の y のずれ
+ */
+
+/**
+ * 体の見せ方ごとの準備。群れ・絵を名簿へ置き、体の記録の一部とシールドの並べ先を返す。
+ * @type {Readonly<Record<string, function(import('./troopRoster.js').TroopRoster, import('../view/layout.js').BattleLayout, string, number): {body: EnemyBody, shieldArea: import('../view/layout.js').Rect}>>}
+ */
+const BODY_SETUPS = Object.freeze({
+  horde: (roster, battleLayout, typeId, hp) => {
+    const slots = battleLayout.hordeSlots(hp);
+    const points = [];
+    for (let i = slots.length - 1; i >= 0; i--) {
+      points.push({ x: slots[i].x, y: slots[i].footY, size: slots[i].size });
+    }
+    placeTroops(roster, 'goblin', points, 0);
+    return {
+      body: {
+        style: 'horde',
+        hitX: null,
+        armorHitX: battleLayout.enemy.x - roster.layout.contactGap,
+        fall: null,
+        fallOutY: 0,
+      },
+      shieldArea: battleLayout.enemy,
+    };
+  },
+  figure: (roster, battleLayout, typeId) => {
+    const figures = battleLayout.enemyFigures;
+    if (!Object.prototype.hasOwnProperty.call(figures, typeId)) {
+      throw new Error(`enemyBody: 絵を持たない敵 ${typeId}`);
+    }
+    const figure = figures[typeId];
+    return {
+      body: {
+        style: 'figure',
+        hitX: figure.hitX,
+        armorHitX: figure.hitX,
+        fall: createTroopUnit('figure', 0, figure.rect.x + figure.rect.w / 2, figure.rect.y + figure.rect.h, 0, 0),
+        fallOutY: battleLayout.area.y + battleLayout.area.h + figure.rect.h,
+      },
+      shieldArea: figure.shieldArea,
+    };
+  },
+});
+
+/**
+ * 体の見せ方ごとの、攻撃の兵が敵に当たる動き（着く時刻の昇順を返す）。
+ * @type {Readonly<Record<string, function(EnemyBody, import('./troopRoster.js').TroopRoster, number, number): number[]>>}
+ */
+const BODY_HITS = Object.freeze({
+  horde: (body, roster, count, t) => chargePairs(roster, 'attack', 'goblin', count, t, BATTLE_ANIM.hitMoveMs),
+  figure: (body, roster, count, t) => chargeTo(roster, 'attack', count, body.hitX, t, BATTLE_ANIM.hitMoveMs),
+});
+
+/**
+ * 敵の体を作り、群れ（ゴブリン）とシールドを時刻 0 から名簿へ置く。
+ * 落とす順は、群れは番号の大きい方から、シールドは左の列から（同じ列は上から）。
+ * @param {import('./troopRoster.js').TroopRoster} roster 名簿
+ * @param {import('../view/layout.js').BattleLayout} battleLayout 最上段の配置
+ * @param {string} typeId 敵の種類の識別子
+ * @param {number} hp 攻防の前の敵の HP（群れの数）
+ * @param {number} armor 攻防の前の常時防御力（シールドの数）
+ * @returns {EnemyBody} 敵の体の記録
+ * @throws {Error} 絵を持たない敵を絵の見せ方で作るとき
+ */
+export function createEnemyBody(roster, battleLayout, typeId, hp, armor) {
+  const style = enemyBodyStyle(typeId);
+  const { body, shieldArea } = BODY_SETUPS[style](roster, battleLayout, typeId, hp);
+  if (armor > 0) {
+    const points = battleLayout.shieldRects(armor, shieldArea).map((r) => ({
+      x: r.x + r.w / 2,
+      y: r.y + r.h,
+      size: r.w,
+    }));
+    points.sort((a, b) => a.x - b.x || a.y - b.y);
+    placeTroops(roster, 'shield', points, 0);
+  }
+  return body;
+}
+
+/**
+ * 攻撃の兵を count 体、シールドに当たる位置へ進め、着いた時刻に兵と前からのシールドを1つずつ跳ねて落とす（HP は変わらない）。
+ * @param {EnemyBody} body 敵の体
+ * @param {import('./troopRoster.js').TroopRoster} roster 名簿
+ * @param {number} count 剥がす数
+ * @param {number} t 段の始め（ms）
+ * @returns {number[]} 着く時刻（ms）の昇順
+ * @throws {Error} シールドが足りないとき
+ */
+export function hitEnemyArmor(body, roster, count, t) {
+  const arrivals = chargeTo(roster, 'attack', count, body.armorHitX, t, BATTLE_ANIM.hitMoveMs);
+  popTroops(roster, 'shield', arrivals);
+  return arrivals;
+}
+
+/**
+ * 攻撃の兵を count 体、敵に当たる位置へ進める（群れは1対1で2体とも落ち、絵は着いた時刻に兵が落ちる）。
+ * @param {EnemyBody} body 敵の体
+ * @param {import('./troopRoster.js').TroopRoster} roster 名簿
+ * @param {number} count 当たる数
+ * @param {number} t 段の始め（ms）
+ * @returns {number[]} 着く時刻（ms）の昇順
+ * @throws {Error} 群れの数が足りないとき
+ */
+export function hitEnemyBody(body, roster, count, t) {
+  return BODY_HITS[body.style](body, roster, count, t);
+}
+
+/**
+ * 倒れたとき、絵が跳ねて落ちる終わり方を記録する（群れは `enemyHit` で全部落ちているので何もしない）。
+ * @param {EnemyBody} body 敵の体
+ * @param {number} time 倒れる（HP が 0 になる）時刻（ms）
+ * @returns {void}
+ */
+export function defeatEnemyBody(body, time) {
+  if (body.fall !== null && body.fall.end === null) {
+    setTroopEnd(body.fall, 'fall', time, body.fallOutY);
+  }
+}
+
+/**
+ * 倒れる絵が見えなくなる時刻を返す。
+ * @param {EnemyBody} body 敵の体
+ * @returns {number} 時刻（ms。倒れる絵がなければ 0）
+ */
+export function enemyBodyEnd(body) {
+  return body.fall !== null && body.fall.end !== null ? body.fall.end.doneAt : 0;
+}
+
+/**
+ * 時計からの絵の見た目を `out` に書き込む（オブジェクトを作らない）。
+ * @param {EnemyBody} body 敵の体
+ * @param {number} clock 時計の値（ms）
+ * @param {EnemyFigureLook} out 書き込み先
+ * @param {import('./troopMotion.js').TroopSample} scratch 呼ぶ側が持つ作業用の入れ物
+ * @returns {void}
+ */
+export function sampleEnemyFigure(body, clock, out, scratch) {
+  if (body.fall === null) {
+    out.visible = false;
+    out.dy = 0;
+    return;
+  }
+  sampleTroop(body.fall, clock, scratch);
+  out.visible = scratch.visible;
+  out.dy = scratch.visible ? scratch.footY - body.fall.homeY : 0;
+}
