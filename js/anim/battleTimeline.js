@@ -345,6 +345,7 @@ const STEP_BUILDERS = {
 
 /**
  * 段の並びから時間割を組み立てる。段取りの間に待っていた自軍の兵と、敵の体（群れ・シールド）を、時刻 0 から置く。
+ * 段ごとに、その段で終わり方が決まった兵とヒットマークから当たりの記録（`impacts`）も作る（時刻は名簿・打撃の値を写す）。
  * `parallel` の段は直前の段と同じ時刻に始め、時計を進めない。使われなかった兵は最後の段（`parallel` の段を含む）の終わりから帰る。
  * @param {import('./battleSteps.js').BattleStep[]} steps 段の並び
  * @param {import('./battleSteps.js').BattleSnapshot} before 攻防の前の値
