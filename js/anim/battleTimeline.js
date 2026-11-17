@@ -1,5 +1,5 @@
 /**
- * 段の並びから、段の時刻（同時に始める段を含む）・兵の名簿・敵の体・ヒットマーク・HP の変化・浮き出し・燃える札・音のきっかけの時刻を組み立てて時間割にする。
+ * 段の並びから、段の時刻（同時に始める段を含む）・兵の名簿・敵の体・ヒットマーク・当たりの記録・HP の変化・浮き出し・燃える札・音のきっかけの時刻を組み立てて時間割にする。
  * きっかけの時刻の式はここだけにある。描画も状態の変更も行わない。待っていた自軍の兵の引き継ぎも行う。
  */
 
@@ -23,6 +23,7 @@ import { createTroopCounter } from './troopCounter.js';
 import { enterEnemyTroops, strikeCastle, strikeTroops } from './enemyAttacks.js';
 import { createEnemyBody, defeatEnemyBody, enemyBodyEnd, hitEnemyArmor, hitEnemyBody } from './enemyBody.js';
 import { createHitMarkList, hitMarksEnd } from './hitMarks.js';
+import { createImpactLog, recordStepImpacts, watchStep } from './impactLog.js';
 
 /**
  * 時刻つきの段。BattleStep に start・end（ms）と、音のきっかけの時刻 cueTimes（絶対時刻 ms。なければ空）を足したもの。
@@ -41,6 +42,7 @@ import { createHitMarkList, hitMarksEnd } from './hitMarks.js';
  * @property {import('./burnTrack.js').BurnTrack[]} burns 燃える札の記録（なければ空）
  * @property {import('./enemyBody.js').EnemyBody} body 敵の体（群れ・シールド・倒れる絵）の記録
  * @property {import('./hitMarks.js').HitMarkList} hitMarks ヒットマークの記録
+ * @property {import('./impactLog.js').ImpactLog} impacts 当たりの記録（時刻・位置・種類・大きな一撃か・段の番号）
  * @property {number} castleHpStart 城の HP の表示値の初期値
  * @property {number} enemyHpStart 敵の HP の表示値の初期値
  * @property {number} endTime 演出の終わりの時刻（ms）。段がなければ 0
@@ -58,6 +60,7 @@ import { createHitMarkList, hitMarksEnd } from './hitMarks.js';
  * @property {import('./burnTrack.js').BurnTrack[]} burns 燃える札の記録
  * @property {import('./enemyBody.js').EnemyBody|null} body 敵の体（名簿の用意の後に作る）
  * @property {import('./hitMarks.js').HitMarkList} hitMarks ヒットマークの記録
+ * @property {import('./impactLog.js').ImpactLog} impacts 当たりの記録
  * @property {string} typeId 敵の種類の識別子
  * @property {number[]} cueTimes いま組み立てている段の音のきっかけの時刻（絶対 ms。段ごとに空にして、builder が足す）
  * @property {import('../view/layout.js').Layout} boardLayout 盤面の配置（columnCardRects・discard と、敵の体・敵の側の兵の出る位置の battle を使う）
@@ -361,6 +364,7 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout, wai
     burns: [],
     body: null,
     hitMarks: createHitMarkList(),
+    impacts: createImpactLog(),
     typeId: before.enemyTypeId,
     cueTimes: [],
     boardLayout,
@@ -383,7 +387,9 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout, wai
     if (builder === undefined) throw new Error(`buildBattleTimeline: unknown step type ${step.type}`);
     if (index > 0 && steps[index - 1].parallel !== true) t += BATTLE_ANIM.stepGapMs;
     state.cueTimes = [];
+    const watch = watchStep(state.roster, state.hitMarks);
     const duration = builder(state, step, t);
+    recordStepImpacts(state.impacts, watch, step, index, state.body.style);
     timed.push({ ...step, start: t, end: t + duration, cueTimes: state.cueTimes });
     if (step.parallel === true) {
       parallelEnd = Math.max(parallelEnd, t + duration);
@@ -412,6 +418,7 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout, wai
     burns: state.burns,
     body: state.body,
     hitMarks: state.hitMarks,
+    impacts: state.impacts,
     castleHpStart: before.castleHp,
     enemyHpStart: before.enemyHp,
     endTime,
