@@ -1,5 +1,5 @@
 /**
- * 責務: 戦闘の段の敵の絵（巨人・ドラゴン。攻防中は倒れる動きのずれで段の中に切り抜く）と、段取りの間の群れ・シールドマークを描く。
+ * 責務: 戦闘の段の敵の絵（巨人・ドラゴン。攻防中は倒れる動きのずれ・ための姿勢で段の中に切り抜く）と、段取りの間の群れ・シールドマークを描く。
  * 状態は変えず、ルール層・anim は実行時に import しない。
  */
 
@@ -47,9 +47,10 @@ function drawShieldMark(ctx, rect) {
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
  * @param {{ typeId: string, armor: number, hp: number }} enemy 描く敵（種類の識別子・常時防御力・HP。群れの数は HP）
  * @param {{ visible: boolean, dy: number }|null} [figure] 倒れる絵の見た目（EnemyFigureLook）。null か省くと段取りの絵
+ * @param {{ tilt: number, scaleX: number, scaleY: number }|null} [pose] ための姿勢（ChargePoseLook。攻防の演出中の絵を足元を軸に傾け・伸ばす）。null か省くと姿勢なし
  * @returns {void}
  */
-export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null) {
+export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = null) {
   const hasFigure = Object.prototype.hasOwnProperty.call(battleLayout.enemyFigures, enemy.typeId);
   ctx.save();
   if (figure !== null) {
@@ -60,6 +61,14 @@ export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null) {
       ctx.rect(area.x, area.y, area.w, area.h);
       ctx.clip();
       ctx.translate(0, figure.dy);
+      if (pose !== null && (pose.tilt !== 0 || pose.scaleX !== 1 || pose.scaleY !== 1)) {
+        const footX = fig.rect.x + fig.rect.w / 2;
+        const footY = fig.rect.y + fig.rect.h;
+        ctx.translate(footX, footY);
+        ctx.rotate(pose.tilt);
+        ctx.scale(pose.scaleX, pose.scaleY);
+        ctx.translate(-footX, -footY);
+      }
       drawSpriteFit(ctx, fig.sprite, fig.rect);
     }
     ctx.restore();

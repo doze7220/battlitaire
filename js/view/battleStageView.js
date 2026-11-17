@@ -73,13 +73,13 @@ function drawBackground(ctx, battleLayout) {
  * 最上段（戦闘）を描く。引数は読むだけで書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
- * @param {{ phase: number, castle: { hp: number, maxHp: number }, enemy: { typeId: string, name: string, hp: number, maxHp: number, armor: number, intent: import('../rules/combatants.js').EnemyAction|null }, figure?: { visible: boolean, dy: number }|null, countdown?: number|null }} state 表示する状態（figure: 攻防の演出中の敵の絵の見た目（倒れる動き）。null か省くと段取りの絵。countdown: 攻撃までの残りフェーズ数。null か省くと数え下ろしを描かない）
+ * @param {{ phase: number, castle: { hp: number, maxHp: number }, enemy: { typeId: string, name: string, hp: number, maxHp: number, armor: number, intent: import('../rules/combatants.js').EnemyAction|null }, figure?: { visible: boolean, dy: number }|null, countdown?: number|null, pose?: { tilt: number, scaleX: number, scaleY: number }|null }} state 表示する状態（figure: 攻防の演出中の敵の絵の見た目（倒れる動き）。null か省くと段取りの絵。countdown: 攻撃までの残りフェーズ数。null か省くと数え下ろしを描かない。pose: ための姿勢（ChargePoseLook）。null か省くと姿勢なし）
  * @returns {void}
  */
-export function drawBattleStage(ctx, battleLayout, { phase, castle, enemy, figure = null, countdown = null }) {
+export function drawBattleStage(ctx, battleLayout, { phase, castle, enemy, figure = null, countdown = null, pose = null }) {
   drawBackground(ctx, battleLayout);
   drawSpriteFit(ctx, SPRITE_IDS.castle, battleLayout.castle);
-  drawEnemyFigure(ctx, battleLayout, enemy, figure);
+  drawEnemyFigure(ctx, battleLayout, enemy, figure, pose);
   drawBox(ctx, battleLayout.phase, `${PHASE_LABEL} ${phase}`);
   drawBox(ctx, battleLayout.castleHp, `${CASTLE_LABEL} ${castle.hp} / ${castle.maxHp}`);
   drawBox(ctx, battleLayout.enemyHp, `${enemy.name} ${enemy.hp} / ${enemy.maxHp}`);

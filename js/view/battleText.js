@@ -1,5 +1,5 @@
 /**
- * 責務: 敵の行動（爪・吸い込む・ブレスの種類を含む）・決着・結果の集計の見出し・タップでタイトルへの案内・敵を倒したときの案内・数え下ろし・回復の量・放った区切りの式を、画面に出す文字に直す。
+ * 責務: 敵の行動（爪・吸い込む・ブレスの種類を含む）・決着・結果の集計の見出し・タップでタイトルへの案内・敵を倒したときの案内・数え下ろし・回復の量・当たりのダメージの数字・放った区切りの式を、画面に出す文字に直す。
  * 計算はせず、量をそのまま文字にする。ルール層は実行時に import しない。
  */
 
@@ -60,6 +60,9 @@ const RESULT_HINT_TEXT = 'タップでタイトルへ';
 
 /** 敵を倒したときの、タップで次へ進む案内の文字 */
 const DEFEAT_HINT_TEXT = 'タップで次へ';
+
+/** 当たり1回で減る HP の表示の文字 */
+const DAMAGE_POP_TEXT = '-1';
 
 /** 未知の行動の種類の表示名 */
 const UNKNOWN_ACTION_LABEL = '？';
@@ -148,6 +151,14 @@ export function countdownText(countdown) {
  */
 export function healAmountText(amount) {
   return `+${amount}`;
+}
+
+/**
+ * 当たり1回で減る HP の表示を「-1」の文字にする。
+ * @returns {string} 「-1」
+ */
+export function damagePopText() {
+  return DAMAGE_POP_TEXT;
 }
 
 /**

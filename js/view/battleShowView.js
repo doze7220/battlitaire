@@ -1,5 +1,5 @@
 /**
- * 責務: 攻防の演出中の最上段の描画の取りまとめ（HP の表示値を差し替えた戦闘の段・倒れる絵・兵とヒットマーク（段の中で切り抜く）・
+ * 責務: 攻防の演出中の最上段の描画の取りまとめ（揺らして段の中で切り抜く戦闘の段・倒れる絵・兵・ヒットマーク・エフェクト、段の暗さと光、
  * 人数の表示・敵の回復の量・敵を倒したときの案内）。
  * 状態は変えず、ルール層・anim は実行時に import しない。
  */
@@ -7,6 +7,7 @@
 import { drawBattleStage } from './battleStageView.js';
 import { drawTroopSwarm } from './troopView.js';
 import { drawHitMarks } from './hitMarkView.js';
+import { drawImpactFx, drawStageOverlay } from './battleFxView.js';
 import { drawTroopCounter } from './troopCountView.js';
 import { defeatText, nextEnemyText, healAmountText, defeatHintText } from './battleText.js';
 
@@ -88,6 +89,12 @@ function drawEnemyHealPop(ctx, battleLayout, typeId, pop) {
  * @returns {void}
  */
 export function drawBattleShow(ctx, battleLayout, game, result, look) {
+  const { area } = battleLayout;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(area.x, area.y, area.w, area.h);
+  ctx.clip();
+  ctx.translate(look.stage.shakeX, look.stage.shakeY);
   drawBattleStage(ctx, battleLayout, {
     phase: game.phase,
     castle: { hp: look.castleHp, maxHp: game.castle.maxHp },
@@ -101,14 +108,13 @@ export function drawBattleShow(ctx, battleLayout, game, result, look) {
     },
     figure: look.figure,
     countdown: game.attackCountdown(),
+    pose: look.pose,
   });
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(battleLayout.area.x, battleLayout.area.y, battleLayout.area.w, battleLayout.area.h);
-  ctx.clip();
   drawTroopSwarm(ctx, look.troops, battleLayout.troops.size);
   drawHitMarks(ctx, look.hitMarks);
+  drawImpactFx(ctx, look.fx);
   ctx.restore();
+  drawStageOverlay(ctx, area, look.stage);
   drawTroopCounter(ctx, battleLayout.troopCounter, look.troopCounts);
   if (look.enemyHealPop !== null) drawEnemyHealPop(ctx, battleLayout, game.enemy.typeId, look.enemyHealPop);
   if (look.finished && result.defeat !== null) drawDefeat(ctx, battleLayout, result.defeat);
