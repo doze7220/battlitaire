@@ -1,13 +1,18 @@
 /**
  * 攻防の前の値の写しと、攻防の出来事の並びから演出の段の並びを組み立てる。
- * 札が燃える出来事も段にする。ルールの判定や計算はせず、描画も状態の変更も行わない。
+ * 敵の攻撃の段は敵ごとの見せ方の表から作り、札が燃える段は敵の攻撃と同時に始める。
+ * ルールの判定や計算はせず、描画も状態の変更も行わない。
  */
+
+import { enemyAttackShow } from './enemyShows.js';
 
 /**
  * 攻防の前の値の写し。
  * @typedef {Object} BattleSnapshot
  * @property {number} castleHp 攻防の前の城の HP
  * @property {number} enemyHp 攻防の前の敵の HP
+ * @property {string} enemyTypeId 攻防をする敵の種類の識別子
+ * @property {number} enemyArmor 攻防の前の常時防御力
  * @property {number} attack 攻防の前の攻撃ゲージの値（攻撃の兵の数）
  * @property {number} defense 攻防の前の防御ゲージの値（防御の兵の数）
  * @property {number} heal 攻防の前の修理ゲージの値（修理の兵の数）
@@ -17,11 +22,14 @@
 /**
  * 演出の1段。
  * @typedef {Object} BattleStep
- * @property {'form'|'enemyMarch'|'block'|'castleHit'|'march'|'enemyBlock'|'armorBlock'|'enemyHit'|'heal'|'enemyHeal'|'burn'} type 段の種類
+ * @property {'form'|'enemyMarch'|'block'|'castleHit'|'strikeBlock'|'strikeCastle'|'march'|'enemyBlock'|'armorBlock'|'enemyHit'|'heal'|'enemyHeal'|'burn'} type 段の種類
  * @property {number} amount 量（`form` は 0、`burn` は燃える枚数）
  * @property {Array<{columnIndex: number, cardIndex: number, card: *}>} [burns] `burn` のみ: 燃える札の並び（燃える順）
  * @property {number} [enemyGuards] `form` のみ: 現れる敵の守りの数
  * @property {number} [pairs] `enemyMarch` のみ: 防御の兵と相打ちになる組の数（`block` の量。なければ 0）。`march` のみ: 敵の守りと相打ちになる組の数（`enemyBlock` の量。なければ 0）
+ * @property {'enemy'|'flame'} [kind] `enemyMarch`・`block`・`castleHit` のみ: 敵の側の兵の種類
+ * @property {'offscreen'|'mouth'} [from] `enemyMarch` のみ: 敵の側の兵の出る場所
+ * @property {boolean} [parallel] `burn` のみ: true なら次の段と同時に始める
  */
 
 /** 「自軍の突撃」を、その直前に差し込む出来事の種類。 */
@@ -29,8 +37,6 @@ const MARCH_BEFORE = new Set(['enemyBlock', 'enemyArmorBlock', 'enemyDamage', 'h
 
 /** 出来事の種類から、量をそのまま持つ段の種類への対応。 */
 const EVENT_TO_STEP = {
-  block: 'block',
-  castleDamage: 'castleHit',
   enemyBlock: 'enemyBlock',
   enemyArmorBlock: 'armorBlock',
   enemyDamage: 'enemyHit',
@@ -47,6 +53,8 @@ export function snapshotBattle(game) {
   return {
     castleHp: game.castle.hp,
     enemyHp: game.enemy.hp,
+    enemyTypeId: game.enemy.typeId,
+    enemyArmor: game.enemy.armor,
     attack: game.gauges.attack ?? 0,
     defense: game.gauges.defense ?? 0,
     heal: game.gauges.heal ?? 0,
@@ -65,6 +73,7 @@ export function buildBattleSteps(result, before) {
   /** @type {BattleStep[]} */
   const steps = [];
   const events = result.events;
+  const show = enemyAttackShow(before.enemyTypeId, result.enemyAction.variant);
 
   const enemyAttack = events.find((e) => e.type === 'enemyAttack');
   const enemyDefend = events.find((e) => e.type === 'enemyDefend');
@@ -76,8 +85,16 @@ export function buildBattleSteps(result, before) {
   const enemyBlockEvent = events.find((e) => e.type === 'enemyBlock');
   const blockPairs = blockEvent ? blockEvent.amount : 0;
   const enemyBlockPairs = enemyBlockEvent ? enemyBlockEvent.amount : 0;
+  const burnEvent = events.find((e) => e.type === 'cardBurn' && e.amount > 0);
+  let burnPlaced = false;
   if (enemyAttack && enemyAttack.amount > 0) {
-    steps.push({ type: 'enemyMarch', amount: enemyAttack.amount, pairs: blockPairs });
+    if (burnEvent) {
+      steps.push({ type: 'burn', amount: burnEvent.amount, burns: [...burnEvent.burns], parallel: true });
+      burnPlaced = true;
+    }
+    if (show.unit !== null) {
+      steps.push({ type: 'enemyMarch', amount: enemyAttack.amount, pairs: blockPairs, kind: show.unit, from: show.from });
+    }
   }
 
   let marchDone = before.attack <= 0;
@@ -93,7 +110,14 @@ export function buildBattleSteps(result, before) {
     }
     if (event.type === 'win') break;
     if (event.type === 'cardBurn') {
-      if (event.amount > 0) steps.push({ type: 'burn', amount: event.amount, burns: [...event.burns] });
+      if (event.amount > 0 && !burnPlaced) {
+        steps.push({ type: 'burn', amount: event.amount, burns: [...event.burns] });
+      }
+      continue;
+    }
+    if (event.amount > 0 && (event.type === 'block' || event.type === 'castleDamage')) {
+      const type = event.type === 'block' ? show.blockStep : show.castleStep;
+      steps.push(show.unit !== null ? { type, amount: event.amount, kind: show.unit } : { type, amount: event.amount });
       continue;
     }
     const stepType = EVENT_TO_STEP[event.type];

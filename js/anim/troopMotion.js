@@ -1,6 +1,6 @@
 /**
  * 兵1体の動きの記録（脚・終わり方）の作成と追記、時計からの1体の見た目（位置・傾き・濃さ）を求める。
- * 弾む・揺れる・跳ねて落ちる・薄れる・城に入って消えるの式はここだけに置く。
+ * 弾む・揺れる・跳ねて落ちる・その場で消えるの式はここだけに置く。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
@@ -37,7 +37,7 @@ const VANISH_ON_HIT_KINDS = new Set(['flame']);
 /**
  * 終わり方。
  * @typedef {Object} TroopEnd
- * @property {'fall'|'vanish'|'fade'} type 'fall'＝跳ねて落ちる／'vanish'＝その場で見えなくなる（城に入る）／'fade'＝薄れて消える
+ * @property {'fall'|'vanish'} type 'fall'＝跳ねて落ちる／'vanish'＝その場で見えなくなる（城に入る・画面の外へ出る・炎が当たる）
  * @property {number} time 終わり方の始まる時刻（ms）
  * @property {number} doneAt 見えなくなる時刻（ms）
  * @property {number} x 始まる位置の x
@@ -148,7 +148,7 @@ export function fallDuration(startY, fallOutY) {
 /**
  * 兵に終わり方を決める。位置はいまいる位置（`unit.x`・`unit.y`）。
  * @param {TroopUnit} unit 兵
- * @param {'fall'|'vanish'|'fade'} type 終わり方
+ * @param {'fall'|'vanish'} type 終わり方
  * @param {number} time 終わり方の始まる時刻（ms）
  * @param {number} fallOutY 落ちる兵が消える y（'fall' のときだけ使う）
  * @returns {void}
@@ -161,8 +161,6 @@ export function setTroopEnd(unit, type, time, fallOutY) {
   let doneAt;
   if (type === 'fall') {
     doneAt = time + fallDuration(unit.y, fallOutY);
-  } else if (type === 'fade') {
-    doneAt = time + BATTLE_ANIM.fadeMs;
   } else if (type === 'vanish') {
     doneAt = time;
   } else {
@@ -197,23 +195,18 @@ export function sampleTroop(unit, clock, out) {
     out.visible = true;
     out.x = end.x;
     out.sortY = end.y;
-    if (end.type === 'fade') {
-      out.footY = end.y;
-      out.alpha = 1 - (clock - end.time) / BATTLE_ANIM.fadeMs;
+    const { popHeight, popMs, fallAccel } = BATTLE_ANIM;
+    const tau = clock - end.time;
+    let dy;
+    if (tau <= popMs) {
+      const v0 = (2 * popHeight) / popMs;
+      const g1 = (2 * popHeight) / (popMs * popMs);
+      dy = -(v0 * tau - (g1 * tau * tau) / 2);
     } else {
-      const { popHeight, popMs, fallAccel } = BATTLE_ANIM;
-      const tau = clock - end.time;
-      let dy;
-      if (tau <= popMs) {
-        const v0 = (2 * popHeight) / popMs;
-        const g1 = (2 * popHeight) / (popMs * popMs);
-        dy = -(v0 * tau - (g1 * tau * tau) / 2);
-      } else {
-        const d = tau - popMs;
-        dy = -popHeight + (fallAccel * d * d) / 2;
-      }
-      out.footY = end.y + dy;
+      const d = tau - popMs;
+      dy = -popHeight + (fallAccel * d * d) / 2;
     }
+    out.footY = end.y + dy;
     return;
   }
 

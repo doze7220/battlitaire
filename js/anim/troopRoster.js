@@ -400,19 +400,6 @@ export function enterCastle(roster, kind, t, moveMs) {
 }
 
 /**
- * まだ終わっていない kind の兵を全員、薄れて消えさせる（始まりは t と、その兵の動きが終わる時刻の遅い方）。
- * @param {TroopRoster} roster 名簿
- * @param {string} kind 種類
- * @param {number} t 薄れ始める時刻（ms）
- * @returns {void}
- */
-export function fadeTroops(roster, kind, t) {
-  for (const unit of activeOf(roster, kind)) {
-    setTroopEnd(unit, 'fade', Math.max(t, unit.freeAt), roster.layout.fallOutY);
-  }
-}
-
-/**
  * まだ終わっていない kind の兵を全員、前から遅らせて右の画面の外（toX）へ走らせ、着いた時刻に消す。
  * @param {TroopRoster} roster 名簿
  * @param {string} kind 種類
