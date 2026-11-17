@@ -1,5 +1,5 @@
 /**
- * 札が燃える段の、1枚ごとの時刻（明滅・飛び立ち・着く）と移動の記録の組み立てと、時計からの盤面の見た目を求める。
+ * 札が燃える段の、1枚ごとの時刻（明滅・飛び立ち・着く）と移動の記録の組み立てと、時計からの盤面の見た目（明滅は札の上の炎の大きさを含む）を求める。
  * 描画も状態の変更も行わない。燃える段の時刻の式はこのファイルの1か所だけに置く。
  */
 
@@ -26,7 +26,7 @@ import { createCardTween, sampleCardTween } from './cardTween.js';
  * @typedef {Object} BurnBoardLook
  * @property {Array<Array<*>>} columns 飛び立った札を除いた列ごとのカードの並び
  * @property {Array<{card: *, x: number, y: number, w: number, h: number}>} flying 飛んでいる札
- * @property {{rect: Rect, alpha: number}|null} flash 明滅中の札の矩形と赤の濃さ（なければ null）
+ * @property {{rect: Rect, alpha: number, fireSize: number}|null} flash 明滅中の札の矩形・赤の濃さ・札の上の炎の大きさ（なければ null）
  * @property {number} discardPending 捨て札にまだ着いていない枚数
  */
 
@@ -106,6 +106,7 @@ export function sampleBurnBoard(tracks, beforeColumns, clock) {
       const progress = (clock - t.flashStart) / (delay - t.flashStart);
       flash = {
         rect: t.from,
+        fireSize: t.from.w * BATTLE_ANIM.burnFireRatio,
         alpha: 0.5 - 0.5 * Math.cos(2 * Math.PI * BATTLE_ANIM.burnBlinks * progress),
       };
     }

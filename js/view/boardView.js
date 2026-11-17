@@ -1,6 +1,6 @@
 /**
  * 責務: 盤面全体の描画の取りまとめ（背景を塗り、戦闘の段（battleStageView.js。段取りの間の兵は段の中で切り抜く）・ゲージ・山札・捨て札・列・手札・放つボタン・最下段（UI）の部品を配置に従って順に呼び、玉に変わる前の札・動いているカード・玉と式を手前に描く）。
- * 札が燃える段は、渡された見た目の値で列・捨て札の枚数・明滅・飛ぶ札を差し替える。状態は読むだけで変えず、ルールの判定は行わない。
+ * 札が燃える段は、渡された見た目の値で列・捨て札の枚数・明滅と札の上の炎・飛ぶ札を差し替える。状態は読むだけで変えず、ルールの判定は行わない。
  */
 
 import { drawCardFace, drawCardTint } from './cardView.js';
@@ -10,6 +10,7 @@ import { drawHand } from './handView.js';
 import { drawHud } from './hudView.js';
 import { drawGauges } from './gaugeView.js';
 import { drawBattleStage } from './battleStageView.js';
+import { SPRITE_IDS, drawSpriteCentered } from './spriteView.js';
 import { drawTroopSwarm } from './troopView.js';
 import { drawReleaseCards, drawReleaseOrbs } from './orbView.js';
 
@@ -77,6 +78,7 @@ export function drawBoard(ctx, layout, game, ui, anim, release, burn = null) {
   if (burn !== null && burn.flash !== null) {
     const r = burn.flash.rect;
     drawCardTint(ctx, r.x, r.y, r.w, r.h, BURN_FLASH_COLOR, burn.flash.alpha);
+    drawSpriteCentered(ctx, SPRITE_IDS.fire, r.x + r.w / 2, r.y + r.h / 2, burn.flash.fireSize);
   }
   drawReleaseCards(ctx, release.cards);
   drawHand(ctx, layout.hand, game.hand, { selectedSlot: ui.selectedHandSlot, holdSlots: ui.holdSlots,
