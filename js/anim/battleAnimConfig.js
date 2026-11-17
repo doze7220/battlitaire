@@ -1,6 +1,7 @@
 /**
  * 攻防の演出の設定（段ごとの時間・段の間・兵の動き（弾む・揺れる・跳ねて落ちる・ずらし・城へ入る／帰る）・早送りの倍率・
- * 終わりの後の間・燃える札の時間と明滅の回数）を1か所に凍結して持つ。これらの数値は、ほかのファイルに書かない。
+ * 終わりの後の間・燃える札の時間と明滅の回数・段取りの間に兵が家へ跳ぶ時間とずらし）を1か所に凍結して持つ。
+ * これらの数値は、ほかのファイルに書かない。
  */
 
 /**
@@ -32,6 +33,9 @@
  * @property {number} fallStaggerMaxMs 前から順に跳ねて落ちるときの、遅れの広がり全体の上限（ms）。試遊で決め直す。
  * @property {number} healMoveMs 修理の兵が城へ入るまで移動する時間（ms）。試遊で決め直す。
  * @property {number} returnMs 使われなかった兵が城へ帰るまで移動する時間（ms）。試遊で決め直す。
+ * @property {number} landMs 段取りの間、弾けた玉から出た兵が家へ跳ぶ時間（ms）。試遊で決め直す。
+ * @property {number} landStaggerMs 段取りの間、兵が1体ずつ飛び出すときの1体ごとの遅れ（ms）。試遊で決め直す。
+ * @property {number} landStaggerMaxMs 段取りの間、飛び出す遅れの広がり全体の上限（ms）。試遊で決め直す。
  */
 
 /**
@@ -65,4 +69,7 @@ export const BATTLE_ANIM = Object.freeze({
   fallStaggerMaxMs: 250,
   healMoveMs: 600,
   returnMs: 450,
+  landMs: 400,
+  landStaggerMs: 10,
+  landStaggerMaxMs: 300,
 });
