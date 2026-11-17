@@ -1,5 +1,5 @@
 /**
- * 責務: 敵の行動（爪・吸い込む・ブレスの種類を含む）・決着・結果の集計の見出し・タップでタイトルへの案内・敵を倒したときの案内・数え下ろし・回復の量を、画面に出す文字に直す。
+ * 責務: 敵の行動（爪・吸い込む・ブレスの種類を含む）・決着・結果の集計の見出し・タップでタイトルへの案内・敵を倒したときの案内・数え下ろし・回復の量・放った区切りの式を、画面に出す文字に直す。
  * 計算はせず、量をそのまま文字にする。ルール層は実行時に import しない。
  */
 
@@ -148,4 +148,15 @@ export function countdownText(countdown) {
  */
 export function healAmountText(amount) {
   return `+${amount}`;
+}
+
+/**
+ * 放った区切りの式を「12 ×3 = 36」のような文字にする。
+ * @param {number} sum 区切りの合計
+ * @param {number} multiplier 倍率
+ * @param {number} amount 加算量
+ * @returns {string} 「合計 ×倍率 = 加算量」
+ */
+export function releaseFormulaText(sum, multiplier, amount) {
+  return `${sum} ×${multiplier} = ${amount}`;
 }
