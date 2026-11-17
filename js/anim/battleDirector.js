@@ -58,7 +58,7 @@ export class BattleDirector {
     /** @type {import('./enemyBody.js').EnemyFigureLook} 倒れる絵の見た目の入れ物 */
     this.figure = { visible: false, dy: 0 };
     /** @type {import('./troopMotion.js').TroopSample} 倒れる絵を求める作業用の入れ物 */
-    this.figureScratch = { visible: false, x: 0, footY: 0, sortY: 0, tilt: 0, alpha: 1 };
+    this.figureScratch = { visible: false, x: 0, footY: 0, sortY: 0, tilt: 0, alpha: 1, idle: false };
     this.sampleLooks();
   }
 

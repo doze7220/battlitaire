@@ -54,12 +54,15 @@ export class CampTroops {
   }
 
   /**
-   * 時計の値で見た目を書き込む。全員が家に着いた後は書き直さない。
+   * 時計の値で見た目を書き込む。全員が家に着いた後は呼吸の伸び縮みだけを書く。
    * @param {number} clock 時計の値（ms）
    * @returns {void}
    */
   sample(clock) {
-    if (!this.dirty) return;
+    if (!this.dirty) {
+      this.swarm.breathe(clock);
+      return;
+    }
     this.swarm.sample(clock);
     if (clock >= this.settledAt) this.dirty = false;
   }

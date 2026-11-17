@@ -1,6 +1,6 @@
 /**
- * 兵1体の動きの記録（脚・終わり方）の作成と追記、時計からの1体の見た目（位置・傾き・濃さ）を求める。
- * 弾む・揺れる・跳ねて落ちる・その場で消えるの式はここだけに置く。
+ * 兵1体の動きの記録（脚・終わり方）の作成と追記、時計からの1体の見た目（位置・傾き・濃さ・待っているか）を求める。
+ * 弾む・揺れる・跳ねて落ちる・その場で消える・踏み込み（加速）の式はここだけに置く。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
@@ -24,6 +24,12 @@ const GLIDE_KINDS = new Set(['flame']);
 const VANISH_ON_HIT_KINDS = new Set(['flame']);
 
 /**
+ * 当たる脚で踏み込む（加速する）種類。
+ * @type {ReadonlySet<string>}
+ */
+const RUSH_KINDS = new Set(['attack']);
+
+/**
  * 移動の区間（脚）。位置は直線で補間する。
  * @typedef {Object} TroopLeg
  * @property {number} start 脚の始まりの時刻（ms）
@@ -32,6 +38,7 @@ const VANISH_ON_HIT_KINDS = new Set(['flame']);
  * @property {number} fromY 元の足元の y
  * @property {number} toX 行き先の x
  * @property {number} toY 行き先の足元の y
+ * @property {boolean} rush true なら敵へ踏み込む脚（進み具合を `rushPower` で累乗して加速する）
  */
 
 /**
@@ -72,6 +79,7 @@ const VANISH_ON_HIT_KINDS = new Set(['flame']);
  * @property {number} sortY 描く順に使う地面の上の y（持ち上がり・跳ね・落ちを含まない）
  * @property {number} tilt 傾き（rad。足元を軸）
  * @property {number} alpha 濃さ（0〜1）
+ * @property {boolean} idle 家の位置で止まって待っているか（見えていて、終わり方が始まっておらず、脚の途中でない）
  */
 
 /**
@@ -118,7 +126,7 @@ export function addTroopLeg(unit, start, toX, toY, duration) {
     throw new Error(`addTroopLeg: start(${start}) が freeAt(${unit.freeAt}) より前です`);
   }
   const end = start + duration;
-  unit.legs.push({ start, end, fromX: unit.x, fromY: unit.y, toX, toY });
+  unit.legs.push({ start, end, fromX: unit.x, fromY: unit.y, toX, toY, rush: false });
   unit.x = toX;
   unit.y = toY;
   unit.freeAt = end;
@@ -147,6 +155,7 @@ export function fallDuration(startY, fallOutY) {
 
 /**
  * 兵に終わり方を決める。位置はいまいる位置（`unit.x`・`unit.y`）。
+ * 'fall' で踏み込む種類（`RUSH_KINDS`）の最後の脚が終わり方の時刻ちょうどに終わり、右（敵の方）へ進む脚なら、その脚を `rush` にする。
  * @param {TroopUnit} unit 兵
  * @param {'fall'|'vanish'} type 終わり方
  * @param {number} time 終わり方の始まる時刻（ms）
@@ -161,6 +170,10 @@ export function setTroopEnd(unit, type, time, fallOutY) {
   let doneAt;
   if (type === 'fall') {
     doneAt = time + fallDuration(unit.y, fallOutY);
+    const last = unit.legs.length > 0 ? unit.legs[unit.legs.length - 1] : null;
+    if (RUSH_KINDS.has(unit.kind) && last !== null && last.end === time && last.toX > last.fromX) {
+      last.rush = true;
+    }
   } else if (type === 'vanish') {
     doneAt = time;
   } else {
@@ -184,6 +197,7 @@ export function sampleTroop(unit, clock, out) {
   }
 
   out.visible = false;
+  out.idle = false;
   out.tilt = 0;
   out.alpha = 1;
   if (clock < unit.appearAt) return;
@@ -218,6 +232,7 @@ export function sampleTroop(unit, clock, out) {
   let x = unit.homeX;
   let y = unit.homeY;
   let lift = 0;
+  let moving = false;
   const legs = unit.legs;
   for (let i = 0; i < legs.length; i++) {
     const leg = legs[i];
@@ -229,8 +244,10 @@ export function sampleTroop(unit, clock, out) {
     if (clock < leg.start) break;
     const length = leg.end - leg.start;
     const u = (clock - leg.start) / length;
-    x = leg.fromX + (leg.toX - leg.fromX) * u;
-    y = leg.fromY + (leg.toY - leg.fromY) * u;
+    moving = true;
+    const e = leg.rush ? u ** BATTLE_ANIM.rushPower : u;
+    x = leg.fromX + (leg.toX - leg.fromX) * e;
+    y = leg.fromY + (leg.toY - leg.fromY) * e;
     if (unit.glide) {
       lift = 0;
       out.tilt = 0;
@@ -246,4 +263,5 @@ export function sampleTroop(unit, clock, out) {
   out.x = x;
   out.sortY = y;
   out.footY = y - lift;
+  out.idle = !moving && x === unit.homeX && y === unit.homeY;
 }
