@@ -1,7 +1,7 @@
 /**
  * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面を描くこと。
- * 操作の結果を anim に渡して時間を進め、動いている間はタップを無視すること。行動終了のボタンで攻防を呼び、攻防の演出のシーンを積むこと。
- * 操作が成り立ったとき・行動終了・連鎖のきっかけで効果音を鳴らすこと（soundCues.js）。積んだ演出のシーンから札が燃える段の盤面を読んで描くこと。
+ * 操作の結果を anim に渡して時間を進め（放つ演出 ReleaseShow の時計を含む）、札が動いている間はタップを無視すること。行動終了のボタンで攻防を呼び、攻防の演出のシーンを積むこと。
+ * 操作が成り立ったとき・行動終了・放つ演出の連鎖のきっかけで効果音を鳴らすこと（soundCues.js）。積んだ演出のシーンから札が燃える段の盤面を読んで描くこと。
  */
 import { Engine, Scene } from 'oz';
 import { Game } from '../rules/Game.js';
@@ -10,6 +10,8 @@ import { snapshotBattle } from '../anim/battleSteps.js';
 import { createLayout } from '../view/layout.js';
 import { drawBoard } from '../view/boardView.js';
 import { BoardAnimator } from '../anim/boardAnimator.js';
+import { ReleaseShow } from '../anim/releaseShow.js';
+import { releaseGeometry } from '../view/releaseLayout.js';
 import { snapshotBoard, buildPlanningMotion } from '../anim/planningMotion.js';
 import { applyTap, boardUiFor } from './boardSelection.js';
 import { playPlanningSe, playTurnEndSe, playChainSe } from './soundCues.js';
@@ -49,6 +51,8 @@ export class BoardScene extends Scene {
     this.animator = null;
     /** @type {BattleShowScene|null} 積んだ攻防の演出のシーン（なければ null。update の頭で外す） */
     this.battleShow = null;
+    /** @type {ReleaseShow|null} 放つ演出（玉・段取りの間の兵。init で作る） */
+    this.releaseShow = null;
   }
 
   /**
@@ -68,11 +72,12 @@ export class BoardScene extends Scene {
     this.lastResult = null;
     this.animator = new BoardAnimator();
     this.battleShow = null;
+    this.releaseShow = new ReleaseShow(this.layout.battle.troops);
   }
 
   /**
    * 動きの時計に dt（ミリ秒）を足して進める（timeScale は update の呼ばれる回数に反映されるので掛けない。ルール層の状態は変えない）。
-   * 進めた直後に、その間に着いた連鎖の序数ごとに連鎖の効果音を鳴らす。
+   * 放つ演出の時計も進め、進めた直後に、その間に玉に変わった札の序数ごとに連鎖の効果音を鳴らす。
    * 頭で `this.battleShow` を外す（update は最前面のときだけ呼ばれるので、攻防の演出のシーンが外れた後になる）。
    * @param {number} dt 1ティックの長さ（ミリ秒）
    * @returns {void}
@@ -80,18 +85,19 @@ export class BoardScene extends Scene {
   update(dt) {
     this.battleShow = null; // update は最前面のときだけ呼ばれる＝演出のシーンが外れた後
     this.animator.update(dt);
-    for (const ordinal of this.animator.chainCuesInLastUpdate()) playChainSe(ordinal);
+    this.releaseShow.update(dt);
+    for (const ordinal of this.releaseShow.chainCuesInLastUpdate()) playChainSe(ordinal);
   }
 
   /**
-   * 押したとき（'down'）だけ、動いている間は無視し、当たった場所に応じてルール層の操作を呼ぶ（選択の扱いは boardSelection.js）。
+   * 押したとき（'down'）だけ、札の動き・山札のめくれ・玉に変わる前の札が残っている間は無視し、当たった場所に応じてルール層の操作を呼ぶ（選択の扱いは boardSelection.js）。
    * 操作が成り立ったとき・行動終了で攻防に入ったときに効果音を鳴らす（soundCues.js）。
    * @param {{ type: string, x: number, y: number }} pointer ポインタ入力
    * @returns {void}
    */
   onPointer(pointer) {
     if (pointer.type !== 'down') return;
-    if (this.animator.isBusy()) return;
+    if (this.animator.isBusy() || this.releaseShow.isHoldingCards()) return;
     const game = this.game;
     const hit = this.layout.hitTest(pointer.x, pointer.y, game.columns.map((col) => col.length));
     if (game.isOutOfActions()) {
@@ -123,6 +129,18 @@ export class BoardScene extends Scene {
     if (step.result !== null) {
       this.lastResult = step.result;
       this.animator.start(buildPlanningMotion(step.result, before, snapshotBoard(game), this.layout));
+      if (step.result.type === 'release') {
+        this.releaseShow.start(
+          step.result,
+          releaseGeometry(
+            this.layout,
+            step.result.columnIndex,
+            step.result.cards.length,
+            step.result.segments.map((s) => s.gauge),
+            Object.keys(game.gauges),
+          ),
+        );
+      }
     }
   }
 
@@ -137,6 +155,6 @@ export class BoardScene extends Scene {
     if (layer !== this.layer) return;
     const game = this.game;
     const burn = this.battleShow === null ? null : this.battleShow.boardLook();
-    drawBoard(ctx, this.layout, game, boardUiFor(game, this.selection), this.animator.view(), burn);
+    drawBoard(ctx, this.layout, game, boardUiFor(game, this.selection), this.animator.view(), this.releaseShow.view(game.gauges), burn);
   }
 }

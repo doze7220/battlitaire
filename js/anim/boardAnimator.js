@@ -1,11 +1,10 @@
 /**
  * 責務: 盤面の動きの集まりを持ち、時計を進め、動いているか（終わったか）を答え、描画用の見た目の値を作る。
- * 直前の時計の進みの間に着いた連鎖の何枚目かも答える。描画はせず、ゲームの状態にもルール層にも触れない。
+ * 描画はせず、ゲームの状態にもルール層にも触れない。
  */
 
 import { cardTweenEnd, sampleCardTween } from './cardTween.js';
 import { deckFlipEnd, sampleDeckFlip } from './deckFlip.js';
-import { gaugeCountEnd, sampleGaugeCount } from './gaugeCount.js';
 
 /**
  * 飛んでいるカード1枚の描画用の値。
@@ -31,7 +30,6 @@ import { gaugeCountEnd, sampleGaugeCount } from './gaugeCount.js';
  * @property {Set<number>} hiddenCardIds 列・手札の描画で隠すカードの ID（先が列・手札で着いていないもの）
  * @property {number} discardPending 捨て札へ向かっていてまだ着いていない枚数
  * @property {Map<number, FlipLook>} deckFlips めくれ中の山札の番号 -> 見え方
- * @property {Object<string, number>} gaugeValues 数え上げ中のゲージの識別子 -> 表示する値
  */
 
 /**
@@ -57,16 +55,6 @@ export class BoardAnimator {
      * @type {import('./planningMotion.js').Motion|null}
      */
     this.motion = null;
-    /**
-     * 直前の `update` の前の時計（ms）。連鎖のきっかけの区間を答えるためだけに使う。
-     * @type {number}
-     */
-    this.prevClock = 0;
-    /**
-     * 連鎖のきっかけの時刻（ms、昇順）。動きを捨てても残す。
-     * @type {number[]}
-     */
-    this.chainTimes = [];
   }
 
   /**
@@ -76,13 +64,10 @@ export class BoardAnimator {
    */
   start(motion) {
     this.clock = 0;
-    this.prevClock = 0;
-    this.chainTimes = [...(motion.chainTimes ?? [])];
     this.motion = motion;
     let end = 0;
     for (const t of motion.tweens) end = Math.max(end, cardTweenEnd(t));
     for (const f of motion.flips) end = Math.max(end, deckFlipEnd(f));
-    for (const c of motion.counts) end = Math.max(end, gaugeCountEnd(c));
     this.endTime = end;
   }
 
@@ -92,23 +77,8 @@ export class BoardAnimator {
    * @returns {void}
    */
   update(ms) {
-    this.prevClock = this.clock;
     this.clock += ms;
     if (this.clock >= this.endTime) this.motion = null;
-  }
-
-  /**
-   * 直前の `update` の間（前の時計より後、今の時計まで）に着いた連鎖の序数を答える（状態は変えない）。
-   * @returns {number[]} 連鎖の何枚目か（1 始まり）の昇順の配列
-   */
-  chainCuesInLastUpdate() {
-    /** @type {number[]} */
-    const ordinals = [];
-    for (let i = 0; i < this.chainTimes.length; i++) {
-      const t = this.chainTimes[i];
-      if (this.prevClock < t && t <= this.clock) ordinals.push(i + 1);
-    }
-    return ordinals;
   }
 
   /**
@@ -130,7 +100,6 @@ export class BoardAnimator {
       hiddenCardIds: new Set(),
       discardPending: 0,
       deckFlips: new Map(),
-      gaugeValues: {},
     };
     const m = this.motion;
     if (m === null) return v;
@@ -144,9 +113,6 @@ export class BoardAnimator {
     for (const f of m.flips) {
       const s = sampleDeckFlip(f, this.clock);
       if (s !== null) v.deckFlips.set(f.deckIndex, { scaleX: s.scaleX, faceUp: s.faceUp });
-    }
-    for (const c of m.counts) {
-      v.gaugeValues[c.gauge] = sampleGaugeCount(c, this.clock);
     }
     return v;
   }
