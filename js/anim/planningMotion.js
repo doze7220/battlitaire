@@ -11,7 +11,6 @@ import { createDeckFlip } from './deckFlip.js';
  * 操作の前後に読む盤面の写し。
  * @typedef {Object} BoardSnapshot
  * @property {number[]} columnLengths 列ごとのカードの枚数
- * @property {Object<string, number>} gauges ゲージの識別子ごとの値
  * @property {number[]} deckVisibleCounts 山札ごとの見えるカードの枚数
  */
 
@@ -30,7 +29,6 @@ import { createDeckFlip } from './deckFlip.js';
 export function snapshotBoard(game) {
   return {
     columnLengths: game.columns.map((col) => col.length),
-    gauges: { ...game.gauges },
     deckVisibleCounts: game.decks.map((_, d) => game.visibleCards(d).length),
   };
 }
