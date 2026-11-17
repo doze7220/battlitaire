@@ -16,6 +16,7 @@ import { sampleTroop } from './troopMotion.js';
  * @property {Float64Array} footY 足元の y（跳ね・落ちを含む）
  * @property {Float64Array} tilt 傾き（rad）
  * @property {Float64Array} alpha 濃さ（0〜1）
+ * @property {Float64Array} size 兵ごとの描く大きさ（0 なら配置の大きさ）
  */
 
 /**
@@ -41,6 +42,8 @@ export class TroopSwarm {
     this.tilt = new Float64Array(n);
     /** @type {Float64Array} 濃さ */
     this.alpha = new Float64Array(n);
+    /** @type {Float64Array} 兵ごとの描く大きさ（0 なら配置の大きさ。作るときだけ書く） */
+    this.size = new Float64Array(n);
     /** @type {Float64Array} 描く順に使う地面の上の y */
     this.sortY = new Float64Array(n);
     /** @type {Uint8Array} 見えるか */
@@ -50,6 +53,7 @@ export class TroopSwarm {
     for (let i = 0; i < n; i++) {
       this.order[i] = i;
       this.sortY[i] = units[i].homeY;
+      this.size[i] = units[i].size;
     }
     /** @type {import('./troopMotion.js').TroopSample} sampleTroop 用の入れ物 */
     this._out = { visible: false, x: 0, footY: 0, sortY: 0, tilt: 0, alpha: 1 };

@@ -6,9 +6,22 @@
 import { BATTLE_ANIM } from './battleAnimConfig.js';
 
 /**
- * 兵の種類。自軍はゲージの識別子（attack・defense・heal）、敵の側は enemy・enemyGuard、ゴブリンの軍勢の絵は goblin。
- * @typedef {'attack'|'defense'|'heal'|'enemy'|'enemyGuard'|'goblin'} TroopKind
+ * 兵の種類。自軍はゲージの識別子（attack・defense・heal）、敵の側は enemy・enemyGuard、goblin＝ゴブリンの軍勢の HP の群れ、
+ * shield＝巨人・ドラゴンのシールド、flame＝ブレスの炎、figure＝巨人・ドラゴンの絵（倒れる動きだけに使い、名簿には入れない）。
+ * @typedef {'attack'|'defense'|'heal'|'enemy'|'enemyGuard'|'goblin'|'shield'|'flame'|'figure'} TroopKind
  */
+
+/**
+ * 弾みも揺れもなく真っすぐ進む種類。
+ * @type {ReadonlySet<string>}
+ */
+const GLIDE_KINDS = new Set(['flame']);
+
+/**
+ * 当たったときに跳ねて落ちずに、その場で消える種類。
+ * @type {ReadonlySet<string>}
+ */
+const VANISH_ON_HIT_KINDS = new Set(['flame']);
 
 /**
  * 移動の区間（脚）。位置は直線で補間する。
@@ -40,6 +53,8 @@ import { BATTLE_ANIM } from './battleAnimConfig.js';
  * @property {number} homeY 家の足元の y
  * @property {number} appearAt 現れ始める時刻（ms）
  * @property {number} appearMs 現れる（濃くなる）時間（ms。0 ならすぐ）
+ * @property {number} size 描く大きさ（0 なら配置の兵の大きさ）
+ * @property {boolean} glide true なら弾み・揺れなしで真っすぐ動く
  * @property {TroopLeg[]} legs 移動の区間の並び（時刻の昇順）
  * @property {TroopEnd|null} end 終わり方（まだなら null）
  * @property {number} x 作るときだけ使う。最後の脚の行き先の x（いまいる位置）
@@ -77,6 +92,8 @@ export function createTroopUnit(kind, index, homeX, homeY, appearAt, appearMs) {
     homeY,
     appearAt,
     appearMs,
+    size: 0,
+    glide: GLIDE_KINDS.has(kind),
     legs: [],
     end: null,
     x: homeX,
@@ -105,6 +122,15 @@ export function addTroopLeg(unit, start, toX, toY, duration) {
   unit.x = toX;
   unit.y = toY;
   unit.freeAt = end;
+}
+
+/**
+ * 種類ごとの、当たったときの終わり方を返す（炎はその場で消え、ほかは跳ねて落ちる）。
+ * @param {TroopKind} kind 兵の種類
+ * @returns {'fall'|'vanish'} 終わり方
+ */
+export function troopHitEnd(kind) {
+  return VANISH_ON_HIT_KINDS.has(kind) ? 'vanish' : 'fall';
 }
 
 /**
@@ -212,7 +238,10 @@ export function sampleTroop(unit, clock, out) {
     const u = (clock - leg.start) / length;
     x = leg.fromX + (leg.toX - leg.fromX) * u;
     y = leg.fromY + (leg.toY - leg.fromY) * u;
-    if (style === 'hop') {
+    if (unit.glide) {
+      lift = 0;
+      out.tilt = 0;
+    } else if (style === 'hop') {
       const n = Math.max(1, Math.round(length / BATTLE_ANIM.hopPeriodMs));
       lift = BATTLE_ANIM.hopHeight * Math.abs(Math.sin(Math.PI * n * u));
     } else {
