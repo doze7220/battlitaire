@@ -1,6 +1,6 @@
 /**
- * 兵1体ずつの名簿（TroopRoster）を作り、段ごとに兵へ移動の脚と終わり方を割り当てる。
- * 前から遅らせる式（出る・相打ちで落ちる）はここの1か所だけに置く。乱数は使わない。
+ * 兵1体ずつの名簿（TroopRoster）を作り、段ごとに兵へ移動の脚と終わり方を割り当てる。段取りの間に兵を陣地の中心から家へ跳ばせて足す。
+ * 前から遅らせる式（出る・相打ちで落ちる・家へ跳ぶ）はここの1か所だけに置く。乱数は使わない。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
@@ -28,10 +28,10 @@ const CAMP_OF = Object.freeze({
 });
 
 /**
- * 自軍の兵の種類（前＝x の大きい方）。
+ * 自軍の兵の種類（前＝x の大きい方）。段取りの間の兵の種類にも使う。
  * @type {readonly string[]}
  */
-const OWN_KINDS = Object.freeze(['attack', 'defense', 'heal']);
+export const OWN_KINDS = Object.freeze(['attack', 'defense', 'heal']);
 
 /**
  * 前から k 番目（0 から、n 体のうち）の遅れ（ms）。全体の広がりには上限がある。
@@ -78,6 +78,17 @@ function spreadOf(n, staggerMs, maxMs) {
 }
 
 /**
+ * 種類の前からの並びを並べ替える（自軍は家の x の大きい順、敵の側は小さい順、同じなら番号順）。
+ * @param {import('./troopMotion.js').TroopUnit[]} list 並べ替える並び（その場で並べ替える）
+ * @param {string} kind 種類
+ * @returns {void}
+ */
+function sortRanked(list, kind) {
+  const sign = OWN_KINDS.includes(kind) ? -1 : 1;
+  list.sort((a, b) => sign * (a.homeX - b.homeX) || a.index - b.index);
+}
+
+/**
  * 種類の前からの並び（まだ終わりが決まっていない兵だけ）を返す。
  * @param {TroopRoster} roster 名簿
  * @param {string} kind 種類
@@ -121,8 +132,42 @@ export function spawnTroops(roster, kind, count, t, appearMs) {
     roster.units.push(unit);
     list.push(unit);
   }
-  const sign = OWN_KINDS.includes(kind) ? -1 : 1;
-  list.sort((a, b) => sign * (a.homeX - b.homeX) || a.index - b.index);
+  sortRanked(list, kind);
+}
+
+/**
+ * 段取りの間に、種類の兵を count 体、陣地の中心（fromX, fromY）から家へ跳ばせて足す。
+ * 兵は t（に1体ごとの遅れ）から家へ 1本の脚で動く。家の番号は、その種類のすでにいる兵の続き。
+ * @param {TroopRoster} roster 名簿
+ * @param {string} kind 種類（attack・defense・heal・enemy・enemyGuard）
+ * @param {number} count 人数（0 以下なら何もしない）
+ * @param {number} fromX 飛び出す位置の x
+ * @param {number} fromY 飛び出す位置の足元の y
+ * @param {number} t 跳び始める時刻（ms）
+ * @param {number} moveMs 家へ跳ぶ時間（ms）
+ * @returns {number} 全員が家に着く時刻（ms。count が 0 以下なら t）
+ * @throws {Error} 未知の種類のとき
+ */
+export function landTroops(roster, kind, count, fromX, fromY, t, moveMs) {
+  const campName = CAMP_OF[kind];
+  if (campName === undefined) throw new Error(`landTroops: 未知の種類 ${kind}`);
+  const camp = roster.layout.camps[campName];
+  const list = roster.ranked[kind] || (roster.ranked[kind] = []);
+  const first = list.length;
+  const { landStaggerMs, landStaggerMaxMs } = BATTLE_ANIM;
+  for (let i = 0; i < count; i++) {
+    const index = first + i;
+    const home = campSlot(camp, index);
+    const start = t + staggerDelay(i, count, landStaggerMs, landStaggerMaxMs);
+    const unit = createTroopUnit(kind, index, home.x, home.y, start, 0);
+    unit.x = fromX;
+    unit.y = fromY;
+    addTroopLeg(unit, start, home.x, home.y, moveMs);
+    roster.units.push(unit);
+    list.push(unit);
+  }
+  sortRanked(list, kind);
+  return count <= 0 ? t : t + spreadOf(count, landStaggerMs, landStaggerMaxMs) + moveMs;
 }
 
 /**
