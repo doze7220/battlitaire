@@ -6,8 +6,6 @@
 import { drawTroop } from './troopView.js';
 import { SPRITE_IDS, drawSpriteFit, drawSpriteCentered } from './spriteView.js';
 
-/** ゴブリンの群れの兵の数（HP とは連動しない）。 */
-const HORDE_COUNT = 12;
 /** 群れの兵の種類（troopView.js の種類）。 */
 const HORDE_KIND = 'goblin';
 /** シールドマークが光るときに重ねて描く絵の不透明度。 */
@@ -16,14 +14,20 @@ const SHIELD_FLASH_ALPHA = 0.8;
 const HORDE_ENEMIES = new Set(['goblins']);
 
 /**
- * ゴブリンの軍勢の兵の群れを描く。
+ * ゴブリンの軍勢の兵の群れ（HP の数）を、奥の行から順に描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
+ * @param {number} count 群れの兵の数（敵の HP）
  * @returns {void}
  */
-function drawHorde(ctx, battleLayout) {
-  for (const slot of battleLayout.hordeSlots(HORDE_COUNT)) {
-    drawTroop(ctx, HORDE_KIND, slot.x, slot.footY, slot.size, 0, 1);
+function drawHorde(ctx, battleLayout, count) {
+  const slots = battleLayout.hordeSlots(count);
+  let maxRow = 0;
+  for (const slot of slots) maxRow = Math.max(maxRow, slot.row);
+  for (let row = maxRow; row >= 0; row--) {
+    for (const slot of slots) {
+      if (slot.row === row) drawTroop(ctx, HORDE_KIND, slot.x, slot.footY, slot.size, 0, 1);
+    }
   }
 }
 
@@ -51,7 +55,7 @@ function drawShieldMark(ctx, rect, flash) {
  * 敵の絵（スプライトまたは兵の群れ）と、常時防御力の数のシールドマークを描く。引数は読むだけで書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
- * @param {{ typeId: string, armor: number }} enemy 描く敵（種類の識別子と常時防御力）
+ * @param {{ typeId: string, armor: number, hp: number }} enemy 描く敵（種類の識別子・常時防御力・HP。群れの数は HP）
  * @param {{ shieldFlash: boolean }} options 表示の指定（shieldFlash: シールドマークを明るく描くか）
  * @returns {void}
  */
@@ -63,7 +67,7 @@ export function drawEnemyFigure(ctx, battleLayout, enemy, { shieldFlash }) {
     drawSpriteFit(ctx, figure.sprite, figure.rect);
     shieldBody = figure.shieldArea;
   } else if (HORDE_ENEMIES.has(enemy.typeId)) {
-    drawHorde(ctx, battleLayout);
+    drawHorde(ctx, battleLayout, enemy.hp);
   }
   if (enemy.armor > 0) {
     for (const rect of battleLayout.shieldRects(enemy.armor, shieldBody)) drawShieldMark(ctx, rect, shieldFlash);

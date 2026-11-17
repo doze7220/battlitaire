@@ -1,5 +1,5 @@
 /**
- * 責務: 盤面の画面配置（座標・大きさ。戦闘の段の兵の陣地・大きさ・当たる位置・人数の表示の位置・数え下ろしの枠・城の絵の矩形・敵の絵（巨人・ドラゴン）の矩形とシールドマークを並べる矩形・敵の回復の量の表示の位置・ゴブリンの群れの並び・敵を倒したときの案内・早送りとスキップの矩形を含む）を一手に持ち、座標から「何に当たるか」を求める。
+ * 責務: 盤面の画面配置（戦闘の段の兵の陣地・敵ごとの当たる位置・炎の出る位置・画面の外の x・城の打撃の範囲・人数の表示・城と敵の絵の矩形・ゴブリンの群れの並び・敵を倒したときの案内・早送りとスキップの矩形を含む）を一手に持ち、座標から「何に当たるか」を求める。
  * タイトル画面・結果の表示（決着）の配置と当たりも持つ。ルール層は import せず、数の情報は引数で受け取る。状態は変えない。絵の縦横比は spriteView.js から得る。
  */
 
@@ -57,6 +57,8 @@ import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * @property {number} attackAdvanceX 相打ちの相手のいない攻撃の兵が進む距離
  * @property {number} enemyAdvanceX 相打ちにならない敵兵が左へ進む距離
  * @property {number} castleHitX 城に当たる位置の x（城の右端の少し内側）
+ * @property {number} offscreenX 敵の側の兵が現れる・帰る画面の外の x（段の右端 + 兵の大きさ）
+ * @property {Rect} castleHitArea 城の打撃のヒットマークを出す範囲（城の絵の矩形の内側）
  * @property {number} armorHitX 攻撃の兵がシールドマークに当たる位置の x（敵の矩形の左端）
  * @property {number} enemyHitX 敵に当たる位置の x（敵の中心）
  * @property {number} castleEntryX 修理の兵・帰る兵が城に入って消える位置の x（城の中心）
@@ -69,6 +71,8 @@ import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * @property {string} sprite スプライトの識別子（SPRITE_IDS の値）
  * @property {Rect} rect 絵の矩形（足元が地面）
  * @property {Rect} shieldArea シールドマークを並べる矩形
+ * @property {number} hitX 攻撃の兵が当たって止まる足元の x（`rect.x + rect.w × hit`）
+ * @property {{ x: number, y: number }|null} mouth 炎が出る口の位置（口のない敵は null）
  * @property {{ x: number, y: number }} healText 敵の回復の量の文字の中心
  */
 
@@ -90,7 +94,7 @@ import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * @property {{ box: Rect, iconSize: number, items: Array<{ iconX: number, iconY: number, textX: number, textY: number }> }} troopCounter 人数の表示の配置（枠・アイコンの大きさ・攻撃・防御・修理の順の各項目のアイコン中心と文字の左端・中心 y）
  * @property {{ x: number, titleY: number, nextY: number, hintY: number, maxW: number }} defeat 敵を倒したときの案内の位置（段の中央の x、「〜を倒した！」・「次は〜」・「タップで次へ」の y、文字の最大の幅）
  * @property {function(number, Rect=): Rect[]} shieldRects シールドマーク count 個の矩形（body の矩形の中の格子。body を省くと群れの矩形。最後の行は中央にそろえる）
- * @property {function(number): Array<{ x: number, footY: number, size: number }>} hordeSlots ゴブリンの兵 count 体の並び（後ろの列から順。x は中心、footY は足元の y、size は兵の大きさ）
+ * @property {function(number): Array<{ x: number, footY: number, size: number, row: number }>} hordeSlots ゴブリンの兵 count 体の並び（番号の順。x は中心、footY は足元の y、size は兵の大きさ、row は行（0 が前＝地面））
  */
 
 /**
@@ -185,20 +189,27 @@ const CASTLE_H = 190;
 const ENEMY_CX = 620;
 /**
  * 敵の種類の識別子ごとの絵の設定。height は絵の高さ、shield はシールドマークを並べる矩形（絵の矩形に対する割合。
- * cx・cy は中心、w・h は幅・高さ）。
+ * cx・cy は中心、w・h は幅・高さ）、hit は攻撃の兵が当たって止まる x の絵の矩形の幅に対する割合（左端から。試遊で決め直す）、
+ * mouth は炎が出る位置の絵の矩形に対する割合 {x, y}（口のない敵は null。試遊で決め直す）。
  */
 const ENEMY_FIGURES = Object.freeze({
   giant: Object.freeze({
     sprite: SPRITE_IDS.giant,
     height: 200,
     shield: Object.freeze({ cx: 0.41, cy: 0.39, w: 0.7, h: 0.3 }),
+    hit: 0.15,
+    mouth: null,
   }),
   dragon: Object.freeze({
     sprite: SPRITE_IDS.dragon,
     height: 200,
     shield: Object.freeze({ cx: 0.47, cy: 0.49, w: 0.6, h: 0.3 }),
+    hit: 0.15,
+    mouth: Object.freeze({ x: 0.03, y: 0.3 }),
   }),
 });
+/** 城の打撃のヒットマークを出す範囲の、城の絵の矩形に対する割合（x・y は左上、w・h は幅・高さ。試遊で決め直す） */
+const CASTLE_HIT_AREA = Object.freeze({ x: 0.15, y: 0.3, w: 0.7, h: 0.5 });
 /** 敵の回復の量の文字の中心 y の、絵（群れの矩形）の上端からの距離の、高さに対する割合 */
 const ENEMY_HEAL_TEXT_RATIO = 0.15;
 /** 敵の最大の大きさ */
@@ -256,8 +267,12 @@ const DEFEAT_HINT_RATIO = 0.7;
 const SHIELD_COLS = 5;
 /** シールドマークの大きさの、格子の1マスに対する割合 */
 const SHIELD_FILL = 0.8;
-/** ゴブリンの群れを並べる列の数 */
-const HORDE_ROWS = 2;
+/** ゴブリンの群れの行の数（前＝地面の行から奥へ。試遊で決め直す） */
+const HORDE_ROWS = 5;
+/** ゴブリンの群れの列の間隔（試遊で決め直す） */
+const HORDE_COL_STEP = 14;
+/** ゴブリンの群れの右端の列の足元の中心の x（試遊で決め直す） */
+const HORDE_RIGHT_X = 690;
 /** ゴブリンの群れの後ろの列ごとの足元の上がりの、兵の大きさに対する割合 */
 const HORDE_ROW_RISE = 0.35;
 
@@ -380,6 +395,8 @@ function createBattleLayout(width) {
         h: sh,
       },
       healText: { x: rect.x + rect.w / 2, y: rect.y + rect.h * ENEMY_HEAL_TEXT_RATIO },
+      hitX: rect.x + rect.w * def.hit,
+      mouth: def.mouth === null ? null : { x: rect.x + rect.w * def.mouth.x, y: rect.y + rect.h * def.mouth.y },
     });
   }
   Object.freeze(enemyFigures);
@@ -407,6 +424,13 @@ function createBattleLayout(width) {
     attackAdvanceX: ATTACK_ADVANCE_X,
     enemyAdvanceX: ENEMY_ADVANCE_X,
     castleHitX: castle.x + castle.w - CASTLE_HIT_INSET,
+    offscreenX: area.x + area.w + TROOP_SIZE,
+    castleHitArea: {
+      x: castle.x + castle.w * CASTLE_HIT_AREA.x,
+      y: castle.y + castle.h * CASTLE_HIT_AREA.y,
+      w: castle.w * CASTLE_HIT_AREA.w,
+      h: castle.h * CASTLE_HIT_AREA.h,
+    },
     armorHitX: enemy.x,
     enemyHitX: enemy.x + enemy.w / 2,
     castleEntryX: castle.x + castle.w / 2,
@@ -453,26 +477,24 @@ function createBattleLayout(width) {
   }
 
   /**
-   * ゴブリンの兵の群れの並びを求める。敵の矩形の横幅に HORDE_ROWS 列で並べ、
-   * 前の列の足元が地面、後ろの列ほど HORDE_ROW_RISE ずつ上げ、半区間ずらす。
+   * ゴブリンの兵の群れの並びを求める。i 番目の位置は i だけで決まり、数 count によらない
+   * （番号の大きい方から減らせば、残りの位置は動かない）。HORDE_ROWS 行ずつ右端の列から左へ並べ、
+   * 前の行（row 0）の足元が地面、奥の行ほど HORDE_ROW_RISE ずつ上げ、奇数の行は半列ずらす。
    * @param {number} count 兵の数
-   * @returns {Array<{ x: number, footY: number, size: number }>} 後ろの列から順の各兵（x は中心、footY は足元の y、size は兵の大きさ。count が 0 以下なら空）
+   * @returns {Array<{ x: number, footY: number, size: number, row: number }>} 番号の順の各兵（x は中心、footY は足元の y、size は兵の大きさ、row は行（0 が前＝地面）。count が 0 以下なら空）
    */
   function hordeSlots(count) {
     if (count <= 0) return [];
-    const perRow = Math.ceil(count / HORDE_ROWS);
-    const seg = enemy.w / perRow;
     const slots = [];
-    for (let row = HORDE_ROWS - 1; row >= 0; row--) {
-      const n = Math.max(0, Math.min(perRow, count - row * perRow));
-      const shift = row === 0 ? 0 : seg / 2;
-      for (let i = 0; i < n; i++) {
-        slots.push({
-          x: enemy.x + seg * (i + 0.5) + shift,
-          footY: groundY - TROOP_SIZE * HORDE_ROW_RISE * row,
-          size: TROOP_SIZE,
-        });
-      }
+    for (let i = 0; i < count; i++) {
+      const col = Math.floor(i / HORDE_ROWS);
+      const row = i % HORDE_ROWS;
+      slots.push({
+        x: HORDE_RIGHT_X - col * HORDE_COL_STEP - (row % 2) * HORDE_COL_STEP / 2,
+        footY: groundY - TROOP_SIZE * HORDE_ROW_RISE * row,
+        size: TROOP_SIZE,
+        row,
+      });
     }
     return slots;
   }
