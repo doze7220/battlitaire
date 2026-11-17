@@ -60,7 +60,7 @@ import { createHitMarkList, hitMarksEnd } from './hitMarks.js';
  * @property {import('./hitMarks.js').HitMarkList} hitMarks ヒットマークの記録
  * @property {string} typeId 敵の種類の識別子
  * @property {number[]} cueTimes いま組み立てている段の音のきっかけの時刻（絶対 ms。段ごとに空にして、builder が足す）
- * @property {import('../view/layout.js').Layout} boardLayout 盤面の配置（columnCardRects・discard だけ使う）
+ * @property {import('../view/layout.js').Layout} boardLayout 盤面の配置（columnCardRects・discard と、敵の体・敵の側の兵の出る位置の battle を使う）
  */
 
 /**
@@ -333,7 +333,7 @@ const STEP_BUILDERS = {
  * @param {import('./battleSteps.js').BattleStep[]} steps 段の並び
  * @param {import('./battleSteps.js').BattleSnapshot} before 攻防の前の値
  * @param {import('../view/layout.js').TroopLayout} troopLayout 兵の配置
- * @param {import('../view/layout.js').Layout} boardLayout 盤面の配置（燃える札の位置に使う）
+ * @param {import('../view/layout.js').Layout} boardLayout 盤面の配置（燃える札の位置と、敵の体・敵の側の兵の出る位置 battle に使う）
  * @param {{attack: number, defense: number, heal: number}} waiting 段取りの間に待っていた兵の数（家の番号は 0 から数−1。`before` の値と同じでなければ Error）
  * @returns {BattleTimeline} 時間割
  */

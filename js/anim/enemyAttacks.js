@@ -65,7 +65,8 @@ export function strikeTimes(count, t) {
  * @param {string} kind 打たれる兵の種類
  * @param {number} count 打たれる数
  * @param {number} t 段の始め（ms）
- * @returns {number[]} 打たれた時刻（ms）の昇順
+ * @returns {number[]} 打たれた時刻（ms）。k 番目の兵が打たれる時刻で、必ず昇順とは限らない
+ *   （兵の終わりは max(打撃の時刻, 兵の freeAt)。打撃の段では防御の兵が家で止まっているので実際は昇順になる）
  * @throws {Error} 兵が足りないとき
  */
 export function strikeTroops(roster, marks, kind, count, t) {
