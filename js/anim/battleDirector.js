@@ -1,9 +1,10 @@
 /**
- * 攻防の演出全体の管理。時計を進め、終わったか・次へ進んでよいか・直前の進みの間に起きたきっかけを答え、
+ * 攻防の演出全体の管理。時計を進め（ヒットストップ：壁の時計から演出の時計を求める）、終わったか・次へ進んでよいか・直前の進みの間に起きたきっかけを答え、
  * スキップで終わりへ移り、見た目の値（兵全員・ヒットマーク・倒れる絵・人数・燃える段の盤面を含む）を作る。描画せず、ゲームの状態に触れない。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
+import { createHitStops, showTimeAt, wallTimeAt } from './hitStop.js';
 import { sampleHp } from './hpTrack.js';
 import { samplePopTrack } from './popTrack.js';
 import { TroopSwarm } from './troopSwarm.js';
@@ -43,7 +44,11 @@ export class BattleDirector {
     this.result = result;
     /** @type {import('./battleSteps.js').BattleSnapshot} 攻防の前の写し */
     this.before = before;
-    /** @type {number} 演出の時計（ms） */
+    /** @type {number} 壁の時計（ms）。`dt` を足して進め、ヒットストップの間も進む */
+    this.wall = 0;
+    /** @type {import('./hitStop.js').HitStops} ヒットストップの並び */
+    this.stops = createHitStops(timeline.impacts);
+    /** @type {number} 演出の時計（ms。時間割の時刻。壁の時計からヒットストップの並びで求める） */
     this.clock = 0;
     /** @type {number} 直前の update の前の時計（ms）。きっかけの区間を答えるためだけに使う */
     this.prevClock = 0;
@@ -79,7 +84,8 @@ export class BattleDirector {
    */
   update(ms) {
     this.prevClock = this.clock;
-    this.clock += ms;
+    this.wall += ms;
+    this.clock = showTimeAt(this.stops, this.wall);
     this.sampleLooks();
   }
 
@@ -97,6 +103,7 @@ export class BattleDirector {
    */
   skip() {
     this.skipped = true;
+    this.wall = Math.max(this.wall, wallTimeAt(this.stops, this.timeline.endTime));
     this.clock = Math.max(this.clock, this.timeline.endTime);
     // 飛ばした段のきっかけを、次の問い合わせで出さない
     this.prevClock = this.clock;
