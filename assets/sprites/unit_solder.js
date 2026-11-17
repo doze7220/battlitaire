@@ -7,10 +7,10 @@ const spriteData = {
   "format": "oz-vector-editor-sprite",
   "formatVersion": 2,
   "bounds": {
-    "minX": -99,
-    "minY": -98,
-    "maxX": 99,
-    "maxY": 98
+    "minX": -101,
+    "minY": -100,
+    "maxX": 101,
+    "maxY": 100
   },
   "elements": [
     {
@@ -24,7 +24,7 @@ const spriteData = {
       "endAngle": 6.283185307179586,
       "closed": true,
       "strokeColor": "#000000",
-      "strokeWidth": 2,
+      "strokeWidth": 6,
       "fillColor": "#ffffff"
     }
   ],
@@ -58,7 +58,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 2,
+        "strokeWidth": 6,
         "fillColor": "#ffffff"
       }
     ]
