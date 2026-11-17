@@ -24,6 +24,7 @@ import { enterEnemyTroops, strikeCastle, strikeTroops } from './enemyAttacks.js'
 import { createEnemyBody, defeatEnemyBody, enemyBodyEnd, hitEnemyArmor, hitEnemyBody } from './enemyBody.js';
 import { createHitMarkList, hitMarksEnd } from './hitMarks.js';
 import { createImpactLog, recordStepImpacts, watchStep } from './impactLog.js';
+import { battleFxEnd } from './battleFx.js';
 
 /**
  * 時刻つきの段。BattleStep に start・end（ms）と、音のきっかけの時刻 cueTimes（絶対時刻 ms。なければ空）を足したもの。
@@ -45,7 +46,7 @@ import { createImpactLog, recordStepImpacts, watchStep } from './impactLog.js';
  * @property {import('./impactLog.js').ImpactLog} impacts 当たりの記録（時刻・位置・種類・大きな一撃か・段の番号）
  * @property {number} castleHpStart 城の HP の表示値の初期値
  * @property {number} enemyHpStart 敵の HP の表示値の初期値
- * @property {number} endTime 演出の終わりの時刻（ms）。段がなければ 0
+ * @property {number} endTime 演出の終わりの時刻（ms。エフェクトが消える時刻を含む）。段がなければ 0
  */
 
 /**
@@ -408,6 +409,7 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout, wai
   for (const track of state.enemyHealPops) endTime = Math.max(endTime, popTrackEnd(track));
   for (const burn of state.burns) endTime = Math.max(endTime, burn.tween.delay + burn.tween.duration);
   endTime = Math.max(endTime, enemyBodyEnd(state.body), hitMarksEnd(state.hitMarks));
+  endTime = Math.max(endTime, battleFxEnd(state.impacts, timed));
   return {
     steps: timed,
     roster: state.roster,

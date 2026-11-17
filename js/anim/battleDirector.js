@@ -1,6 +1,6 @@
 /**
  * 攻防の演出全体の管理。時計を進め（ヒットストップ：壁の時計から演出の時計を求める）、終わったか・次へ進んでよいか・直前の進みの間に起きたきっかけを答え、
- * スキップで終わりへ移り、見た目の値（兵全員・ヒットマーク・倒れる絵・人数・燃える段の盤面を含む）を作る。描画せず、ゲームの状態に触れない。
+ * スキップで終わりへ移り、見た目の値（兵全員・ヒットマーク・倒れる絵・人数・燃える段の盤面・エフェクトを含む）を作る。描画せず、ゲームの状態に触れない。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
@@ -13,6 +13,7 @@ import { buildBattleCues } from './battleCues.js';
 import { sampleBurnBoard } from './burnTrack.js';
 import { HitMarkSwarm } from './hitMarks.js';
 import { sampleEnemyFigure } from './enemyBody.js';
+import { BattleFx } from './battleFx.js';
 
 /**
  * 描画用の見た目の値。
@@ -20,6 +21,9 @@ import { sampleEnemyFigure } from './enemyBody.js';
  * @property {import('./troopSwarm.js').TroopSwarmLook} troops 兵全員の見た目（読むだけ。毎回同じ入れ物）
  * @property {import('./hitMarks.js').HitMarkLook} hitMarks ヒットマークの見た目（読むだけ。毎回同じ入れ物）
  * @property {import('./enemyBody.js').EnemyFigureLook} figure 倒れる絵の見た目（読むだけ。毎回同じ入れ物）
+ * @property {import('./impactFx.js').ImpactFxLook} fx 当たりの光・数字・粒の見た目（読むだけ。毎回同じ入れ物）
+ * @property {import('./stageFx.js').StageFxLook} stage 戦闘の段の揺れ・暗さ・撃つ瞬間の光（読むだけ。毎回同じ入れ物）
+ * @property {import('./chargeShow.js').ChargePoseLook} pose ための姿勢（読むだけ。毎回同じ入れ物）
  * @property {{attack: number, defense: number, heal: number}} troopCounts 攻撃・防御・修理の人数の表示値
  * @property {number} castleHp 表示する城の HP
  * @property {number} enemyHp 表示する敵の HP
@@ -64,6 +68,8 @@ export class BattleDirector {
     this.figure = { visible: false, dy: 0 };
     /** @type {import('./troopMotion.js').TroopSample} 倒れる絵を求める作業用の入れ物 */
     this.figureScratch = { visible: false, x: 0, footY: 0, sortY: 0, tilt: 0, alpha: 1, idle: false };
+    /** @type {BattleFx} 攻防のエフェクトの見た目の入れ物 */
+    this.fx = new BattleFx(timeline);
     this.sampleLooks();
   }
 
@@ -74,6 +80,7 @@ export class BattleDirector {
   sampleLooks() {
     this.swarm.sample(this.clock);
     this.marks.sample(this.clock);
+    this.fx.sample(this.clock, this.wall);
     sampleEnemyFigure(this.timeline.body, this.clock, this.figure, this.figureScratch);
   }
 
@@ -157,6 +164,9 @@ export class BattleDirector {
       troops: this.swarm,
       hitMarks: this.marks,
       figure: this.figure,
+      fx: this.fx.impacts,
+      stage: this.fx.stage,
+      pose: this.fx.pose,
       troopCounts: sampleTroopCounts(tl.troopCounter, this.clock),
       castleHp: finished ? this.result.castleHp : sampleHp(tl.castleHpStart, tl.castleHpChanges, this.clock),
       enemyHp: finished ? this.result.enemyHp : sampleHp(tl.enemyHpStart, tl.enemyHpChanges, this.clock),
