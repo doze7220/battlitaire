@@ -24,7 +24,7 @@ function drawHorde(ctx, battleLayout, count) {
   for (const slot of slots) maxRow = Math.max(maxRow, slot.row);
   for (let row = maxRow; row >= 0; row--) {
     for (const slot of slots) {
-      if (slot.row === row) drawTroop(ctx, HORDE_KIND, slot.x, slot.footY, slot.size, 0, 1);
+      if (slot.row === row) drawTroop(ctx, HORDE_KIND, slot.x, slot.footY, slot.size, 0, 1, 1, 1);
     }
   }
 }

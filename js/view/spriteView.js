@@ -155,12 +155,15 @@ export function drawSpriteCentered(ctx, id, cx, cy, size) {
  * @param {number} itemSize 持ち物の大きさ（長い方の辺）
  * @param {number} itemDX 持ち物の中心の x のずれ（体の中心から。前＝右が正）
  * @param {number} itemDY 持ち物の中心の y のずれ（体の中心から。下が正）
+ * @param {number} scaleX 横の伸び縮み（1 で元の大きさ。足元が軸）
+ * @param {number} scaleY 縦の伸び縮み（1 で元の大きさ。足元が軸）
  * @returns {void}
  */
-export function drawTroopFigure(ctx, bodyId, itemId, x, footY, size, tilt, itemSize, itemDX, itemDY) {
+export function drawTroopFigure(ctx, bodyId, itemId, x, footY, size, tilt, itemSize, itemDX, itemDY, scaleX, scaleY) {
   ctx.save();
   ctx.translate(x, footY);
   if (tilt !== 0) ctx.rotate(tilt);
+  if (scaleX !== 1 || scaleY !== 1) ctx.scale(scaleX, scaleY);
   drawSpriteCentered(ctx, bodyId, 0, -size / 2, size);
   if (itemId !== null) {
     drawSpriteCentered(ctx, itemId, itemDX, -size / 2 + itemDY, itemSize);

@@ -45,10 +45,12 @@ const TROOP_LOOKS = Object.freeze({
  * @param {number} size 体の直径
  * @param {number} tilt 足元を軸にした傾き（ラジアン）
  * @param {number} alpha 濃さ（0〜1）
+ * @param {number} scaleX 横の伸び縮み（1 で元の大きさ。足元が軸）
+ * @param {number} scaleY 縦の伸び縮み（1 で元の大きさ。足元が軸）
  * @returns {void}
  * @throws {Error} 未知の種類のとき
  */
-export function drawTroop(ctx, kind, x, footY, size, tilt, alpha) {
+export function drawTroop(ctx, kind, x, footY, size, tilt, alpha, scaleX, scaleY) {
   const look = Object.prototype.hasOwnProperty.call(TROOP_LOOKS, kind) ? TROOP_LOOKS[kind] : undefined;
   if (look === undefined) throw new Error(`未知の兵の種類: ${kind}`);
   ctx.save();
@@ -64,6 +66,8 @@ export function drawTroop(ctx, kind, x, footY, size, tilt, alpha) {
     size * ITEM_SIZE_RATIO,
     size * ITEM_DX_RATIO,
     size * ITEM_DY_RATIO,
+    scaleX,
+    scaleY,
   );
   ctx.restore();
 }
@@ -76,10 +80,10 @@ export function drawTroop(ctx, kind, x, footY, size, tilt, alpha) {
  * @returns {void}
  */
 export function drawTroopSwarm(ctx, troops, size) {
-  const { count, kinds, order, visible, x, footY, tilt, alpha, size: sizes } = troops;
+  const { count, kinds, order, visible, x, footY, tilt, alpha, size: sizes, scaleX, scaleY } = troops;
   for (let n = 0; n < count; n++) {
     const i = order[n];
     if (visible[i] === 0) continue;
-    drawTroop(ctx, kinds[i], x[i], footY[i], sizes[i] > 0 ? sizes[i] : size, tilt[i], alpha[i]);
+    drawTroop(ctx, kinds[i], x[i], footY[i], sizes[i] > 0 ? sizes[i] : size, tilt[i], alpha[i], scaleX[i], scaleY[i]);
   }
 }
