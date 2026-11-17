@@ -1,7 +1,6 @@
 /**
- * 攻防の演出の設定（段ごとの時間・段の間・兵の動き・早送りの倍率・終わりの後の間・燃える札の時間と明滅・炎の大きさ・
- * 段取りの間に兵が家へ跳ぶ時間とずらし・敵の側の兵が現れる時間・打撃の間隔・ヒットマークの時間と大きさ）を
- * 1か所に凍結して持つ。これらの数値は、ほかのファイルに書かない。
+ * 攻防の演出の設定（段・兵の動き・早送り・燃える札・段取りの間・敵の側の兵・打撃・ヒットマークの時間と大きさ、
+ * 攻防のエフェクトの値）を1か所に凍結して持つ。これらの数値は、ほかのファイルに書かない。
  */
 
 /**
@@ -42,6 +41,34 @@
  * @property {number} hitMarkMs ヒットマークが出てから消えるまでの時間（ms）。試遊で決め直す。
  * @property {number} hitMarkSize ヒットマークの大きさ（px。絵の長い方の辺）。試遊で決め直す。
  * @property {number} burnFireRatio 燃える札の上に出す炎の大きさの、札の幅に対する割合。試遊で決め直す。
+ * @property {number} hitStopMs 普通の当たり1回のヒットストップ（ms）。試遊で決め直す。
+ * @property {number} hitStopCapMs 普通の段の中で止まる時間の合計の上限（ms）。試遊で決め直す。
+ * @property {number} heavyStopMs 大きな一撃の当たり1回のヒットストップ（ms）。試遊で決め直す。
+ * @property {number} heavyStopCapMs 大きな一撃の段の中で止まる時間の合計の上限（ms）。試遊で決め直す。
+ * @property {number} flashMs 当たりの白い光が出てから消えるまで（ms）。試遊で決め直す。
+ * @property {number} flashSize 白い光の最大の直径（px）。試遊で決め直す。
+ * @property {number} damagePopMs 「-1」が浮いて消えるまで（ms）。試遊で決め直す。
+ * @property {number} damagePopRise 「-1」が浮き上がる高さ（px）。試遊で決め直す。
+ * @property {number} damagePopSize 「-1」の文字の大きさ（px）。試遊で決め直す。
+ * @property {number} sparkCount ダメージの当たり1回の粒の数。試遊で決め直す。
+ * @property {number} repairSparkCount 修理の兵1体の粒の数。試遊で決め直す。
+ * @property {number} sparkMs 粒が消えるまで（ms）。試遊で決め直す。
+ * @property {number} sparkSpeed 粒の速さの最大（px/ms）。試遊で決め直す。
+ * @property {number} sparkGravity 粒の落ちる加速（px/ms²。修理の粒は上へ）。試遊で決め直す。
+ * @property {number} sparkSize 粒の大きさ（px。正方形の辺）。試遊で決め直す。
+ * @property {number} sparkMax 同時に見える粒の数の上限。試遊で決め直す。
+ * @property {number} shakeAmp 揺れの強さ（px）。試遊で決め直す。
+ * @property {number} shakeMs 大きな一撃の当たりから揺れが収まるまで（ms）。試遊で決め直す。
+ * @property {number} shakePeriodMs 揺れの1往復（ms）。試遊で決め直す。
+ * @property {number} breathDepth 呼吸の深さ（縦の伸び縮みの割合）。試遊で決め直す。
+ * @property {number} breathPeriodMs 呼吸の1回（ms）。試遊で決め直す。
+ * @property {number} rushPower 踏み込みの加速の強さ（進み具合の累乗。1 で等速）。試遊で決め直す。
+ * @property {number} chargeMs ための段の長さ（ms）。試遊で決め直す。
+ * @property {number} chargeLean ための動きで後ろへ反る角度（rad）。試遊で決め直す。
+ * @property {number} chargeSwell ための動きで膨らむ割合。試遊で決め直す。
+ * @property {number} chargeDim ための段で戦闘の段が暗くなる濃さ（0〜1）。試遊で決め直す。
+ * @property {number} fireFlashMs 撃つ瞬間の段の光が消えるまで（ms）。試遊で決め直す。
+ * @property {number} fireFlashAlpha 撃つ瞬間の段の光の濃さ（0〜1）。試遊で決め直す。
  */
 
 /**
@@ -84,4 +111,32 @@ export const BATTLE_ANIM = Object.freeze({
   hitMarkMs: 250,
   hitMarkSize: 40,
   burnFireRatio: 0.6,
+  hitStopMs: 30,
+  hitStopCapMs: 150,
+  heavyStopMs: 90,
+  heavyStopCapMs: 450,
+  flashMs: 120,
+  flashSize: 30,
+  damagePopMs: 600,
+  damagePopRise: 28,
+  damagePopSize: 22,
+  sparkCount: 4,
+  repairSparkCount: 3,
+  sparkMs: 350,
+  sparkSpeed: 0.15,
+  sparkGravity: 0.0006,
+  sparkSize: 4,
+  sparkMax: 160,
+  shakeAmp: 7,
+  shakeMs: 260,
+  shakePeriodMs: 45,
+  breathDepth: 0.05,
+  breathPeriodMs: 1600,
+  rushPower: 2.2,
+  chargeMs: 900,
+  chargeLean: 0.12,
+  chargeSwell: 0.08,
+  chargeDim: 0.35,
+  fireFlashMs: 220,
+  fireFlashAlpha: 0.6,
 });
