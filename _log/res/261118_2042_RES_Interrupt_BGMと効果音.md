@@ -203,7 +203,7 @@
         *   `./_log/res/261118_2042_RES_Interrupt_BGMと効果音.md` :（更新）
     *   **作業内容** :
         *   「4. 詳細作業内容」の各タスクの記載がそろっているか確かめ、足りなければ書き足す。各タスクで判明した『開発資料の更新予定』の追記が2章の欄にあるか確かめる。懸念事項を整理する。
-*   [ ] タスク10: 開発資料への反映
+*   [x] タスク10: 開発資料への反映
     *   **対象ファイル** :
         *   `./PROJECT_ARCHITECTURE.md` :（更新）
     *   **作業内容** :
@@ -266,7 +266,7 @@
 
 ### タスク10: 開発資料への反映
 *   **作業内容** :
-    *   (未着手)
+    *   `PROJECT_ARCHITECTURE.md` に2章『更新予定』の全項目を反映した: 1章のフォルダ構造（`assets/bgm/` 追加、`assets/sounds/`・`js/audio/` の説明）、3章の起動と画面の流れ（BGM の流れに書き直し）、1フェーズの流れ4（攻撃の音）、1ティックの中での役割、4章の `js/scenes/`・`js/audio/`・`assets/` の行、作成済みファイルの表（`bgmCues.js` 新規、`soundCues.js`・`soundConfig.js`・`TitleScene.js`・`BoardScene.js`・`BattleShowScene.js`・`battleCues.js`・`battleDirector.js`・`makeSounds.mjs` 更新）、`js/main.js` の説明。他のファイルは未変更。
 
 ## 5. 懸念事項・要確認ポイント
 ### テストプレイで確かめること（発注者が見る点）
