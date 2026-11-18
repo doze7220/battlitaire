@@ -200,7 +200,7 @@
         *   `boardView.js`: `drawBoard` の末尾に `idle = null` を足し、`drawBattleStage` に渡す。JSDoc を合わせる。
         *   `BoardScene.js`: `EnemyIdle` を import し、`init` で作り、`update(dt)` で `update(dt, game.enemy.typeId, game.enemy.hp)`、`draw` で `look()` を `drawBoard` に渡す。プロパティの JSDoc とファイル先頭の責務（3行以内）を合わせる。
         *   構文チェック。
-*   [ ] タスク6: JSDoc と片付けの確認
+*   [x] タスク6: JSDoc と片付けの確認
     *   **対象ファイル** :
         *   タスク1〜5で変更・作成したファイル（確認と、漏れがあればその修正だけ）
     *   **作業内容** :
@@ -263,7 +263,10 @@
 
 ### タスク6: JSDoc と片付けの確認
 *   **作業内容** :
-    *   （未記入）
+    *   変更・作成した16ファイルの先頭の責務 JSDoc が3行以内であること、`enemyIdle.js` を含む関数・クラスに JSDoc があることを確認した（修正なし）。
+    *   `js/` を `multiplier`・`releaseMultiplier`・`倍率`・`×` で検索し、束の補正に関わるものは残っていない（残りは早送りの倍率・`impactFx.js`・絵の倍率・座標の説明など無関係なもの）。
+    *   `requestAnimationFrame` 等の禁止語は `js/main.js` の既存の `Math.random` の受け渡し（乱数の関数を渡す箇所）だけで、今回の変更で増えていない。
+    *   変更・作成した全 .js の構文チェックが通った。
 
 ### タスク7: 作業レポートの完成
 *   **作業内容** :
