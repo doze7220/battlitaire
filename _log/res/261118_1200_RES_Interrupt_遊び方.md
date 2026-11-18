@@ -134,7 +134,7 @@
         *   2章 要件2の配置のとおり、`HOWTO_*` の定数（JSDoc 付き）と typedef `HowToLayout` を足し、`createHowToLayout(screen)`（JSDoc 付き。中の `howToHitTest` にも JSDoc）を `createTitleLayout` の後に1つ足す。`inRect` を使い、`Engine.addButton` は使わない。関数は `createTitleLayout` と同じくらいの大きさに収める。
         *   先頭の責務のコメントの「タイトル画面・結果の表示（決着）の配置と当たりも持つ」を「タイトル画面・遊び方の画面・結果の表示（決着）の配置と当たりも持つ」に直す（3行以内のまま）。
         *   ほかの関数・定数は変えない。構文チェック。
-*   [ ] タスク3: タイトル画面の「遊び方」ボタンの描画
+*   [x] タスク3: タイトル画面の「遊び方」ボタンの描画
     *   **対象ファイル** :
         *   `./js/view/titleView.js` :（更新）
     *   **作業内容** :
@@ -197,7 +197,8 @@
 
 ### タスク3: タイトル画面の「遊び方」ボタンの描画
 *   **作業内容** :
-    *   （未記入）
+    *   `js/view/titleView.js` を更新（構文チェック ok）: `HOWTO_STROKE`・`HOWTO_LINE_WIDTH`・`HOWTO_FONT`・`HOWTO_TEXT_COLOR` を JSDoc 付きで足し、`drawTitle` の「はじめる」の後、既存の `save`／`restore` の中で、縁だけの角丸の枠（角の丸みは `BUTTON_RADIUS` を共用）と `TITLE_TEXT.howTo`（最大の幅は `startTextMaxW`）を描くようにした。先頭の責務コメントと `drawTitle` の JSDoc に「遊び方」ボタンを足した。
+    *   `titleLayout.howToButton` を読むため、実際に動かすにはタスク2済みの `layout.js` が前提（済み）。
 
 ### タスク4: 遊び方の画面の描画（本文の折り返しを含む）
 *   **作業内容** :

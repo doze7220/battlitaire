@@ -1,5 +1,5 @@
 /**
- * 責務: タイトル画面（暗い背景・ゲーム名・「はじめる」ボタン）を描く。
+ * 責務: タイトル画面（暗い背景・ゲーム名・「はじめる」ボタン・縁だけの「遊び方」ボタン）を描く。
  * 状態は変えず、座標は配置（TitleLayout）からだけ読む。
  */
 
@@ -25,14 +25,23 @@ const BUTTON_FONT = 'bold 48px sans-serif';
 /** ボタンの文字の色。 */
 const BUTTON_TEXT_COLOR = '#ffffff';
 
+/** 「遊び方」ボタンの縁の色（「はじめる」の縁と同じ）。 */
+const HOWTO_STROKE = '#bfe8cf';
+/** 「遊び方」ボタンの縁の太さ。 */
+const HOWTO_LINE_WIDTH = 3;
+/** 「遊び方」ボタンの文字のフォント（「はじめる」より小さい）。 */
+const HOWTO_FONT = 'bold 40px sans-serif';
+/** 「遊び方」ボタンの文字の色。 */
+const HOWTO_TEXT_COLOR = '#bfe8cf';
+
 /**
- * タイトル画面（背景・ゲーム名・「はじめる」ボタン）を描く。
+ * タイトル画面（背景・ゲーム名・「はじめる」ボタン・縁だけの「遊び方」ボタン）を描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').TitleLayout} titleLayout タイトル画面の配置
  * @returns {void}
  */
 export function drawTitle(ctx, titleLayout) {
-  const { screen, title, startButton: b } = titleLayout;
+  const { screen, title, startButton: b, howToButton: h } = titleLayout;
   ctx.save();
   ctx.fillStyle = BACKGROUND_FILL;
   ctx.fillRect(0, 0, screen.width, screen.height);
@@ -53,5 +62,14 @@ export function drawTitle(ctx, titleLayout) {
   ctx.font = BUTTON_FONT;
   ctx.fillStyle = BUTTON_TEXT_COLOR;
   ctx.fillText(TITLE_TEXT.start, b.x + b.w / 2, b.y + b.h / 2, titleLayout.startTextMaxW);
+
+  roundRectPath(ctx, h.x, h.y, h.w, h.h, BUTTON_RADIUS);
+  ctx.lineWidth = HOWTO_LINE_WIDTH;
+  ctx.strokeStyle = HOWTO_STROKE;
+  ctx.stroke();
+
+  ctx.font = HOWTO_FONT;
+  ctx.fillStyle = HOWTO_TEXT_COLOR;
+  ctx.fillText(TITLE_TEXT.howTo, h.x + h.w / 2, h.y + h.h / 2, titleLayout.startTextMaxW);
   ctx.restore();
 }
