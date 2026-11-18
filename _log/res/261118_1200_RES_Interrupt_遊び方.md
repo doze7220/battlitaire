@@ -156,7 +156,7 @@
         *   先頭に3行以内の責務の JSDoc（遊び方の画面のシーン。今のページの番号を持ち、まえへ／つぎへ／タイトルへのボタン（このシーンで押して離したとき）と ← → ・Escape キーで、ページを移る・渡された関数で作ったタイトル画面へ戻る。描くのは howToView.js）。
         *   2章 要件2のシーンのとおり、typedef `HowToOptions`、`HowToScene`（`constructor`・`init`・`canPrev`・`canNext`・`onPointer`・`onKeyDown`・`draw`）を JSDoc 付きで書く。import は `Engine`・`Scene`（`'oz'`）、`createHowToLayout`（`../view/layout.js`）、`drawHowTo`（`../view/howToView.js`）、`HOW_TO_PAGES`（`../view/howToText.js`）だけ。
         *   `update` は書かない。効果音は鳴らさない。`Engine.addButton` は使わない。構文チェック。
-*   [ ] タスク6: タイトル画面から遊び方を開き、遊び方からタイトル画面へ戻す（画面の切り替え）
+*   [x] タスク6: タイトル画面から遊び方を開き、遊び方からタイトル画面へ戻す（画面の切り替え）
     *   **対象ファイル** :
         *   `./js/scenes/TitleScene.js` :（更新）
         *   `./js/main.js` :（更新）
@@ -213,7 +213,9 @@
 
 ### タスク6: タイトル画面から遊び方を開き、遊び方からタイトル画面へ戻す（画面の切り替え）
 *   **作業内容** :
-    *   （未記入）
+    *   `TitleScene.js` を更新: オプション `howTo` を足し（typedef・コンストラクタ）、`pressed` を `'start'|'howTo'|null` に変え、`onPointer` は 'down' で `titleHitTest` の結果を記録、'up' で同じ（null でない）ボタンのときだけ `'start'`→`next()`、`'howTo'`→`howTo()` で `Engine.changeScene`。'up' のあと記録は null。`onKeyDown` は変更なし。責務コメント・クラスの JSDoc も更新。
+    *   `main.js` を更新: `HowToScene` を import、`createHowTo()` を足し、`createTitle()` で `howTo: createHowTo` を渡す。先頭の責務コメント・`createTitle` の JSDoc・`config` の JSDoc に TITLE ⇄ 遊び方を追記。
+    *   2ファイルとも構文チェック ok。
 
 ### タスク7: JSDoc の記載漏れの確認
 *   **作業内容** :
