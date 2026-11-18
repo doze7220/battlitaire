@@ -232,7 +232,7 @@ const TROOP_CAMPS_X = Object.freeze({
   enemy: Object.freeze({ x: 470, w: 80 }),
 });
 /** 陣地の y の範囲の、地面の線から上へ取る長さ（試遊で決め直す） */
-const CAMP_FOOT_ABOVE = 48;
+const CAMP_FOOT_ABOVE = 96;
 /** 陣地の y の範囲の、地面の線から下へ取る長さ（試遊で決め直す） */
 const CAMP_FOOT_BELOW = 2;
 /** 相打ちの相手が前へ踏み出す距離（試遊で決め直す） */
@@ -272,7 +272,7 @@ const HORDE_COL_STEP = 14;
 /** ゴブリンの群れの右端の列の足元の中心の x（試遊で決め直す） */
 const HORDE_RIGHT_X = 690;
 /** ゴブリンの群れの奥の行ごとの足元の上がりの、兵の大きさに対する割合 */
-const HORDE_ROW_RISE = 0.35;
+const HORDE_ROW_RISE = 0.7;
 
 /** 最下段の行（行動の枠・行動終了）の上の余白 */
 const UI_PAD_TOP = 16;
