@@ -149,7 +149,7 @@
         *   `assets/sounds/win.wav`・`assets/sounds/lose.wav` を消す。
         *   `tools/makeSounds.mjs`: `RECIPES` の `win`・`lose` を消し、使われなくなる `MAX_SEC_LONG`・`LONG_NAMES`・`triangle` と `main()` の上限の分岐（`MAX_SEC` だけにする）を消す。先頭の説明・`RECIPES`・`MAX_SEC`・`main()` の JSDoc を2章 要件1のとおりに直す。ほかの音の作り方は変えない。
         *   `node --input-type=module --check < tools/makeSounds.mjs` で構文を確かめる（スクリプトは実行しない。実行すると今の WAV が書き直されるため）。
-*   [ ] タスク2: 音の一覧・音量・BGM の設定値と、起動の前の読み込み
+*   [x] タスク2: 音の一覧・音量・BGM の設定値と、起動の前の読み込み
     *   **対象ファイル** :
         *   `./js/audio/soundConfig.js` :（更新）
         *   `./js/main.js` :（更新）
@@ -223,7 +223,9 @@
 
 ### タスク2: 音の一覧・音量・BGM の設定値と、起動の前の読み込み
 *   **作業内容** :
-    *   (未着手)
+    *   `js/audio/soundConfig.js`: `SOUND_FILES` の `win`・`lose` を mp3 に替え、`start`・`giantAttack`・`dragonClaw`・`dragonBreath` を足した。`BGM_FILES`・`BGM_VOLUME`(0.5)・`STAGE_BGM`・`BGM_TIMING` を凍結して JSDoc 付きで追加。先頭の責務コメントを直した。
+    *   `js/main.js`: `BGM_FILES`・`BGM_VOLUME` を import、`Sound.bgmVolume = BGM_VOLUME;` を追加、`Assets.load({ sounds: { ...SOUND_FILES, ...BGM_FILES } })` に変更。責務・準備のコメントを直した。
+    *   2ファイルとも構文チェック OK。これでタスク1の後の読み込み失敗（旧 wav 参照）は解消。
 
 ### タスク3: 攻撃の始まりのきっかけ・HP が 0 になる時刻・時刻 0 のきっかけ（anim）
 *   **作業内容** :

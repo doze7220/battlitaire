@@ -1,9 +1,9 @@
 /**
  * 責務: Engine.start の呼び出しと、レイヤーと画面の流れ（BOOT → TITLE ⇄ 遊び方、TITLE → 盤面 → 決着 → TITLE）を作る関数の定義を行う利用側のエントリポイント。
- * 起動の前の音の読み込みと SE の音量の設定も行う。
+ * 起動の前の効果音と BGM の読み込みと SE・BGM の音量の設定も行う。
  */
 import { Engine, Scene, Assets, Sound } from 'oz';
-import { SOUND_FILES, SE_VOLUME } from './audio/soundConfig.js';
+import { SOUND_FILES, BGM_FILES, SE_VOLUME, BGM_VOLUME } from './audio/soundConfig.js';
 import { BootScene } from './scenes/BootScene.js';
 import { TitleScene } from './scenes/TitleScene.js';
 import { BoardScene } from './scenes/BoardScene.js';
@@ -59,8 +59,9 @@ const config = {
   virtualPad: false,
 };
 
-// 起動の前の準備: SE の音量を設定し、効果音を読み込み終えてから Engine.start を呼ぶ（盤面で鳴らす音が未ロードにならないようにする）
+// 起動の前の準備: SE と BGM の音量を設定し、効果音と BGM を読み込み終えてから Engine.start を呼ぶ（盤面で鳴らす音が未ロードにならないようにする）
 Sound.seVolume = SE_VOLUME;
-await Assets.load({ sounds: SOUND_FILES });
+Sound.bgmVolume = BGM_VOLUME;
+await Assets.load({ sounds: { ...SOUND_FILES, ...BGM_FILES } });
 
 Engine.start(config);

@@ -1,6 +1,5 @@
 /**
- * 責務: 効果音の名前とパスの一覧（SOUND_FILES）と SE の音量の初期値（SE_VOLUME）を1か所に凍結して持つ。
- * 連鎖の音程の調整値（CHAIN_PITCH）も持つ。
+ * 責務: 効果音と BGM の名前とパスの一覧・SE と BGM の音量の初期値・BGM のフェードと待ち時間・敵の種類 → ステージの曲の表・連鎖の音程の調整値を1か所に凍結して持つ。
  * 値だけを持ち、oz も js/ のほかのファイルも import しない。音を鳴らさない。
  */
 
@@ -20,8 +19,23 @@ export const SOUND_FILES = Object.freeze({
   castleHit: './assets/sounds/castleHit.wav',
   enemyHit: './assets/sounds/enemyHit.wav',
   heal: './assets/sounds/heal.wav',
-  win: './assets/sounds/win.wav',
-  lose: './assets/sounds/lose.wav',
+  win: './assets/sounds/win.mp3',
+  lose: './assets/sounds/lose.mp3',
+  start: './assets/sounds/start.mp3',
+  giantAttack: './assets/sounds/giantAttack.mp3',
+  dragonClaw: './assets/sounds/dragonClaw.mp3',
+  dragonBreath: './assets/sounds/dragonBreath.mp3',
+});
+
+/**
+ * BGM の名前 → ページ（index.html）からの相対パス。効果音の一覧と同じ `Assets.load` の `sounds` に合わせて渡す（エンジンは SE と BGM を一覧で区別しない）。
+ * 一覧を分けるのは BGM と効果音を見分けるためだけ。**`SOUND_FILES` と名前を重ねてはならない**（同じ `sounds` に入るため）。
+ * @type {Readonly<Record<string, string>>}
+ */
+export const BGM_FILES = Object.freeze({
+  title: './assets/bgm/title.mp3',
+  stage: './assets/bgm/stage.mp3',
+  dragon: './assets/bgm/dragon.mp3',
 });
 
 /**
@@ -29,6 +43,40 @@ export const SOUND_FILES = Object.freeze({
  * @type {number}
  */
 export const SE_VOLUME = 0.7;
+
+/**
+ * `Sound.bgmVolume` の初期値（0〜1）。試遊で決め直す。
+ * @type {number}
+ */
+export const BGM_VOLUME = 0.5;
+
+/**
+ * 敵の種類の識別子 → ステージの曲の名前（`BGM_FILES` の名前）。
+ * 識別子はルール層の値（`game.enemy.typeId`）を文字として書いたもので、`js/rules/` は import しない。
+ * @type {Readonly<Record<string, string>>}
+ */
+export const STAGE_BGM = Object.freeze({
+  goblins: 'stage',
+  giant: 'stage',
+  dragon: 'dragon',
+});
+
+/**
+ * BGM のフェードと待ち時間（すべてミリ秒。0 以上の有限数）。試遊で決め直す。
+ * - titleFadeInMs: タイトルの曲のフェードイン
+ * - startFadeOutMs: 「はじめる」でタイトルの曲を止めるフェードアウト
+ * - startToStageMs: スタートの音を鳴らしてから最初のステージの曲を始めるまでの待ち時間（スタートの音の長さ 約 1.2 秒に合わせる）
+ * - stageFadeInMs: ステージの曲のフェードイン（0 で頭からすぐ）
+ * - knockoutFadeOutMs: HP が 0 になった瞬間に BGM を止めるフェードアウト
+ * @type {Readonly<{titleFadeInMs: number, startFadeOutMs: number, startToStageMs: number, stageFadeInMs: number, knockoutFadeOutMs: number}>}
+ */
+export const BGM_TIMING = Object.freeze({
+  titleFadeInMs: 0,
+  startFadeOutMs: 300,
+  startToStageMs: 1200,
+  stageFadeInMs: 0,
+  knockoutFadeOutMs: 300,
+});
 
 /**
  * 放った束の連鎖の音程の上がり方。試遊で決め直す。
