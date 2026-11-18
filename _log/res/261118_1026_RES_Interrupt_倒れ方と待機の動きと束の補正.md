@@ -166,7 +166,7 @@
         *   `orbView.js`: `drawReleaseOrbs` の JSDoc の型と `releaseFormulaText(f.sum, f.bonus, f.amount)` にする。
         *   `battleText.js`: `releaseFormulaText(sum, bonus, amount)` を「`bonus > 0` なら `合計 +足す量 = 加算量`、そうでなければ加算量の数字だけ」にし、JSDoc を合わせる。
         *   構文チェック。
-*   [ ] タスク3: 倒れるときに弾かれる放物線
+*   [x] タスク3: 倒れるときに弾かれる放物線
     *   **対象ファイル** :
         *   `./js/anim/battleAnimConfig.js` :（更新。`knockDistance` を足す）
         *   `./js/anim/troopMotion.js` :（更新）
@@ -240,7 +240,9 @@
 
 ### タスク3: 倒れるときに弾かれる放物線
 *   **作業内容** :
-    *   （未記入）
+    *   `battleAnimConfig.js`: `knockDistance: 50` と JSDoc の項目を足し、先頭の責務に「弾かれて落ちる距離」を足した（3行以内）。
+    *   `troopMotion.js`: 凍結表 `KNOCK_DIRS`（JSDoc つき）・`TroopEnd.dx`（JSDoc）を足し、`setTroopEnd` で `hasOwnProperty` を使って `dx` を決め（'vanish' は 0）、`sampleTroop` の落ちる分岐の横を `end.x + end.dx × min(1, τ / (doneAt − time))`（span ≤ 0 なら `dx` そのまま）にした。縦の式・`fallDuration`・`sortY` は変更なし。先頭の責務の文言も合わせた。
+    *   終わり方の記録を作る箇所は `setTroopEnd` だけであることを確認。構文チェックは両ファイルとも通った。
 
 ### タスク4: 敵の待機の動き（anim）
 *   **作業内容** :

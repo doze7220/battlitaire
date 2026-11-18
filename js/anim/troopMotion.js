@@ -1,6 +1,6 @@
 /**
  * 兵1体の動きの記録（脚・終わり方）の作成と追記、時計からの1体の見た目（位置・傾き・濃さ・待っているか）を求める。
- * 弾む・揺れる・跳ねて落ちる・その場で消える・踏み込み（加速）の式はここだけに置く。
+ * 弾む・揺れる・進む向きと逆へ弾かれて落ちる・その場で消える・踏み込み（加速）の式はここだけに置く。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
@@ -30,6 +30,19 @@ const VANISH_ON_HIT_KINDS = new Set(['flame']);
 const RUSH_KINDS = new Set(['attack']);
 
 /**
+ * 倒れるときに弾かれる向き（-1＝左、1＝右）。進む向きと逆。表にない種類（shield・flame・figure）は横に動かない（0）。
+ * @type {Readonly<Record<string, number>>}
+ */
+const KNOCK_DIRS = Object.freeze({
+  attack: -1,
+  defense: -1,
+  heal: -1,
+  enemy: 1,
+  enemyGuard: 1,
+  goblin: 1,
+});
+
+/**
  * 移動の区間（脚）。位置は直線で補間する。
  * @typedef {Object} TroopLeg
  * @property {number} start 脚の始まりの時刻（ms）
@@ -49,6 +62,7 @@ const RUSH_KINDS = new Set(['attack']);
  * @property {number} doneAt 見えなくなる時刻（ms）
  * @property {number} x 始まる位置の x
  * @property {number} y 始まる位置の足元の y
+ * @property {number} dx 落ちる間の横のずれの合計（px、符号つき。'vanish'・向きのない種類は 0）
  */
 
 /**
@@ -168,7 +182,11 @@ export function setTroopEnd(unit, type, time, fallOutY) {
     throw new Error('setTroopEnd: すでに終わり方が決まっています');
   }
   let doneAt;
+  let dx = 0;
   if (type === 'fall') {
+    if (Object.prototype.hasOwnProperty.call(KNOCK_DIRS, unit.kind)) {
+      dx = KNOCK_DIRS[unit.kind] * BATTLE_ANIM.knockDistance;
+    }
     doneAt = time + fallDuration(unit.y, fallOutY);
     const last = unit.legs.length > 0 ? unit.legs[unit.legs.length - 1] : null;
     if (RUSH_KINDS.has(unit.kind) && last !== null && last.end === time && last.toX > last.fromX) {
@@ -179,7 +197,7 @@ export function setTroopEnd(unit, type, time, fallOutY) {
   } else {
     throw new Error(`setTroopEnd: 未知の終わり方 ${type}`);
   }
-  unit.end = { type, time, doneAt, x: unit.x, y: unit.y };
+  unit.end = { type, time, doneAt, x: unit.x, y: unit.y, dx };
 }
 
 /**
@@ -207,10 +225,11 @@ export function sampleTroop(unit, clock, out) {
     if (end.type === 'vanish') return;
     if (clock >= end.doneAt) return;
     out.visible = true;
-    out.x = end.x;
     out.sortY = end.y;
     const { popHeight, popMs, fallAccel } = BATTLE_ANIM;
     const tau = clock - end.time;
+    const span = end.doneAt - end.time;
+    out.x = end.x + (span > 0 ? end.dx * Math.min(1, tau / span) : end.dx);
     let dy;
     if (tau <= popMs) {
       const v0 = (2 * popHeight) / popMs;

@@ -1,5 +1,5 @@
 /**
- * 攻防の演出の設定（段・兵の動き・早送り・燃える札・段取りの間・敵の側の兵・打撃・ヒットマークの時間と大きさ、
+ * 攻防の演出の設定（段・兵の動き・弾かれて落ちる距離・早送り・燃える札・段取りの間・敵の側の兵・打撃・ヒットマークの時間と大きさ、
  * 攻防のエフェクトの値）を1か所に凍結して持つ。これらの数値は、ほかのファイルに書かない。
  */
 
@@ -28,6 +28,7 @@
  * @property {number} popHeight 跳ねて落ちるときの、跳ねる高さ（px）。試遊で決め直す。
  * @property {number} popMs 跳ねて落ちるときに、頂点へ着くまでの時間（ms）。試遊で決め直す。
  * @property {number} fallAccel 跳ねた後に落ちる加速（px/ms²）。試遊で決め直す。
+ * @property {number} knockDistance 倒れるとき、跳ね始めから消えるまでに進む向きと逆へ弾かれる横の距離の合計（px）。試遊で決め直す。
  * @property {number} fallStaggerMs 前から順に跳ねて落ちるときの、1組ごとの遅れ（ms）。試遊で決め直す。
  * @property {number} fallStaggerMaxMs 前から順に跳ねて落ちるときの、遅れの広がり全体の上限（ms）。試遊で決め直す。
  * @property {number} healMoveMs 修理の兵が城へ入るまで移動する時間（ms）。試遊で決め直す。
@@ -98,6 +99,7 @@ export const BATTLE_ANIM = Object.freeze({
   popHeight: 16,
   popMs: 150,
   fallAccel: 0.003,
+  knockDistance: 50,
   fallStaggerMs: 15,
   fallStaggerMaxMs: 250,
   healMoveMs: 600,
