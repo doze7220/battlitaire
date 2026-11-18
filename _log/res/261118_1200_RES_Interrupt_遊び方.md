@@ -164,7 +164,7 @@
         *   `TitleScene.js`: 2章 要件1の入力のとおり、オプション `howTo` を足し（typedef `TitleOptions` とコンストラクタの JSDoc も）、`pressed` を押したボタン（`'start'|'howTo'|null`）の記録に変え、`onPointer` を「押したボタンと同じボタンの中で離したとき、そのボタンの働き」にする。`onKeyDown`（Enter・Space）は変えない。先頭の責務のコメント・クラスの JSDoc に「遊び方」ボタンで遊び方の画面へ進むことを足す。
         *   `main.js`: `HowToScene` を import し、`createHowTo()`（JSDoc 付き）を足し、`createTitle()` で `howTo: createHowTo` を渡す。先頭の責務のコメントの画面の流れと、`createTitle` の JSDoc、`config` の JSDoc の説明に、TITLE ⇄ 遊び方を書き足す。BOOT・盤面の作り方・渡し方、`Engine.start` の設定、音の読み込みは変えない。
         *   2ファイルの構文チェック。
-*   [ ] タスク7: JSDoc の記載漏れの確認
+*   [x] タスク7: JSDoc の記載漏れの確認
     *   **対象ファイル** :
         *   タスク1〜6で作成・変更したファイル（確認のみ。漏れがあれば、そのファイルの JSDoc だけを足す）
     *   **作業内容** :
@@ -219,7 +219,8 @@
 
 ### タスク7: JSDoc の記載漏れの確認
 *   **作業内容** :
-    *   （未記入）
+    *   タスク1〜6の8ファイル（howToText.js・titleText.js・layout.js・titleView.js・howToView.js・HowToScene.js・TitleScene.js・main.js）を確認。先頭の責務コメント（3行以内）、クラス・関数・メソッド・typedef・定数の JSDoc を確かめた。漏れが1つあり、`layout.js` の `createHowToLayout` の中の矢印関数 `button` に JSDoc（説明・`@param {number} i`・`@returns {Rect}`）を足した（コードは変えていない）。ほかのファイルに漏れはなく、変更はしなかった。
+    *   js/ を grep（addEventListener・requestAnimationFrame・getContext・setTimeout・setInterval・performance.now・Date.now・Math.random・window.）した結果、main.js の createBoard の Math.random の受け渡し（と、その JSDoc の文）以外に該当なし。window へのプロパティ追加もなし。
 
 ### タスク8: 作業レポートの完成
 *   **作業内容** :

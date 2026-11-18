@@ -787,6 +787,11 @@ export function createHowToLayout(screen) {
   const innerW = W - HOWTO_PAD_X * 2;
   const buttonW = (innerW - HOWTO_BUTTON_GAP_X * 2) / 3;
   const buttonY = H - HOWTO_BOTTOM_PAD - HOWTO_BUTTON_H;
+  /**
+   * 遊び方の画面の i 番目（0: まえへ、1: タイトルへ、2: つぎへ）のボタンの矩形を作る。
+   * @param {number} i ボタンの番号
+   * @returns {Rect} ボタンの矩形
+   */
   const button = (i) => ({
     x: HOWTO_PAD_X + (buttonW + HOWTO_BUTTON_GAP_X) * i,
     y: buttonY,
