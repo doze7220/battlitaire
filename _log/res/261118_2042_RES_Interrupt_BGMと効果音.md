@@ -185,7 +185,7 @@
     *   **作業内容** :
         *   2章 要件4・5のとおり、`stageBgmWaitMs`・`stageBgmEnemyIndex`（コンストラクタで JSDoc 付きで宣言し、`init` で初期化）と `updateStageBgm(dt)`（JSDoc 付き）を足し、`update(dt)` から1行で呼ぶ。`playStageBgm` を `./bgmCues.js` から、`BGM_TIMING` を `../audio/soundConfig.js` から import する。入力・攻防への入り方・描画は変えない。先頭の責務のコメント（3行以内）と `update` の JSDoc にステージの曲のことを足す。
         *   構文チェック。
-*   [ ] タスク7: 攻防の演出のシーンの音（攻撃の音・HP 0 で BGM を止める・クリアの音）
+*   [x] タスク7: 攻防の演出のシーンの音（攻撃の音・HP 0 で BGM を止める・クリアの音）
     *   **対象ファイル** :
         *   `./js/scenes/BattleShowScene.js` :（更新）
     *   **作業内容** :
@@ -250,7 +250,8 @@
 
 ### タスク7: 攻防の演出のシーンの音（攻撃の音・HP 0 で BGM を止める・クリアの音）
 *   **作業内容** :
-    *   (未着手)
+    *   `js/scenes/BattleShowScene.js`: `stopBgmOnKnockout`（`./bgmCues.js`）を import。`bgmStopped`（JSDoc 付き）とメソッド `stopBgmOnKnockout()`（JSDoc 付き。`bgmStopped` でなく `director.isKnockedOut()` なら止めて印を立てる）を追加し、`update` のきっかけの効果音の直後と `onPointer` の `director.skip()` の直後から呼ぶ。きっかけの音を `playBattleCueSe(type, this.before.enemyTypeId, variant)` に変更。決着の音の条件を「`isFinished()` かつ未再生」にし `playOutcomeSe(this.result.outcome, this.result.defeat)` を呼ぶ。早送り・スキップ・`timeScale`・次のフェーズへの進み方・描画は変更なし。先頭の責務コメント・`update`・`onPointer`・`outcomeSePlayed` の JSDoc を直した。構文チェック OK。
+    *   `variant` は計画どおり `this.result.enemyAction.variant` を直接渡す（`BattleResult.enemyAction` は null を取らない型のため、守りの分岐は置かない）。
 
 ### タスク8: JSDoc の記載漏れと決まりの確認
 *   **作業内容** :

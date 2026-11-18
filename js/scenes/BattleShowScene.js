@@ -1,10 +1,11 @@
 /**
  * 責務: 攻防の演出のシーン。結果を anim に渡して時間を進め、早送り・スキップ・決着後・敵を倒した後のタップを受け、timeScale を切り替えて戻すこと。
- * 終わったら次のフェーズへ進めて戻る／タイトルへ切り替え、見た目の値を view に渡して描くこと（決着の表示（結果）を含む）。
- * 攻防のきっかけと決着の表示で効果音を鳴らすこと（soundCues.js）。背面の盤面のシーンへ札が燃える段の盤面の見た目を答えること。
+ * 終わったら次のフェーズへ進めて戻る／タイトルへ切り替え、見た目の値を view に渡して描き（決着の表示を含む）、背面の盤面のシーンへ札が燃える段の盤面の見た目を答えること。
+ * 攻防のきっかけ・決着と敵の撃破の表示で効果音を鳴らし（soundCues.js）、HP が 0 になった瞬間に BGM を止めること（bgmCues.js）。
  */
 import { Engine, Scene } from 'oz';
 import { playBattleCueSe, playOutcomeSe } from './soundCues.js';
+import { stopBgmOnKnockout } from './bgmCues.js';
 import { BATTLE_ANIM } from '../anim/battleAnimConfig.js';
 import { buildBattleSteps } from '../anim/battleSteps.js';
 import { buildBattleTimeline } from '../anim/battleTimeline.js';
@@ -52,8 +53,10 @@ export class BattleShowScene extends Scene {
     this.director = null;
     /** @type {boolean} 早送り中か */
     this.fast = false;
-    /** @type {boolean} 決着の効果音（勝ち・負け）を鳴らし済みか（音を1回に限るためだけに使い、演出の進み方には使わない） */
+    /** @type {boolean} 決着・敵を倒したときの効果音（クリア・負け）を鳴らし済みか（音を1回に限るためだけに使い、演出の進み方には使わない） */
     this.outcomeSePlayed = false;
+    /** @type {boolean} この攻防で HP が 0 になって BGM を止め済みか（止めるのを1回に限るためだけに使う） */
+    this.bgmStopped = false;
   }
 
   /**
@@ -79,16 +82,29 @@ export class BattleShowScene extends Scene {
   }
 
   /**
-   * 演出の時計に dt を足し、その間に起きた攻防のきっかけと、決着の表示が出たとき（1回だけ）に効果音を鳴らす。終わったら等速に戻し、決着も敵の撃破もしていなければ間の後に次のフェーズへ進めて戻る。
+   * HP が 0 になっていて、まだ止めていなければ BGM を止める（攻防ごとに1回。状態はこの印だけ変える）。
+   * @returns {void}
+   */
+  stopBgmOnKnockout() {
+    if (this.bgmStopped || !this.director.isKnockedOut()) return;
+    this.bgmStopped = true;
+    stopBgmOnKnockout();
+  }
+
+  /**
+   * 演出の時計に dt を足し、その間に起きた攻防のきっかけの効果音を鳴らし、HP が 0 になったら BGM を止め、演出が終わったとき（決着・敵を倒したとき、1回だけ）にクリア・負けの音を鳴らす。終わったら等速に戻し、決着も敵の撃破もしていなければ間の後に次のフェーズへ進めて戻る。
    * @param {number} dt 1ティックの長さ（ミリ秒）
    * @returns {void}
    */
   update(dt) {
     this.director.update(dt);
-    for (const type of this.director.cuesInLastUpdate()) playBattleCueSe(type);
-    if (this.director.isFinished() && this.result.outcome !== null && !this.outcomeSePlayed) {
+    for (const type of this.director.cuesInLastUpdate()) {
+      playBattleCueSe(type, this.before.enemyTypeId, this.result.enemyAction.variant);
+    }
+    this.stopBgmOnKnockout();
+    if (this.director.isFinished() && !this.outcomeSePlayed) {
       this.outcomeSePlayed = true;
-      playOutcomeSe(this.result.outcome);
+      playOutcomeSe(this.result.outcome, this.result.defeat);
     }
     if (this.director.isFinished() && (Engine.timeScale !== NORMAL_SCALE || this.fast)) {
       Engine.timeScale = NORMAL_SCALE;
@@ -102,7 +118,7 @@ export class BattleShowScene extends Scene {
   }
 
   /**
-   * 押したとき（'down'）だけ反応する。終わっていれば決着のときタイトルへ、敵を倒したときは次のフェーズへ進めて戻り（次の敵に入れ替わる）、終わっていなければ早送り・スキップを調べる。
+   * 押したとき（'down'）だけ反応する。終わっていれば決着のときタイトルへ、敵を倒したときは次のフェーズへ進めて戻り（次の敵に入れ替わる）、終わっていなければ早送り・スキップを調べる（スキップの直後に HP が 0 になっていれば BGM を止める）。
    * @param {{ type: string, x: number, y: number }} pointer ポインタ入力
    * @returns {void}
    */
@@ -125,6 +141,7 @@ export class BattleShowScene extends Scene {
       Engine.timeScale = this.fast ? BATTLE_ANIM.fastScale : NORMAL_SCALE;
     } else if (hit === 'skip') {
       this.director.skip();
+      this.stopBgmOnKnockout();
       this.fast = false;
       Engine.timeScale = NORMAL_SCALE;
     }
