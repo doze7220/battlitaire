@@ -140,7 +140,7 @@
     *   **作業内容** :
         *   2章 要件1の見た目のとおり、`HOWTO_*` の定数（JSDoc 付き）を足し、`drawTitle` で「はじめる」の後に、縁だけの角丸の枠と `TITLE_TEXT.howTo` を描く（今の `save`／`restore` の中）。
         *   先頭の責務のコメントと `drawTitle` の JSDoc の説明に「遊び方」ボタンを足す。構文チェック。
-*   [ ] タスク4: 遊び方の画面の描画（本文の折り返しを含む）
+*   [x] タスク4: 遊び方の画面の描画（本文の折り返しを含む）
     *   **対象ファイル** :
         *   `./js/view/howToView.js` :（新規）
     *   **作業内容** :
@@ -202,7 +202,9 @@
 
 ### タスク4: 遊び方の画面の描画（本文の折り返しを含む）
 *   **作業内容** :
-    *   （未記入）
+    *   `js/view/howToView.js` を新規作成（構文チェック ok）。責務コメント3行、色・フォント定数、`NO_LINE_START`（凍結した `Set`）、typedef `HowToViewState`、公開しない `splitUnits`（単位への分割）・`wrapParagraph(ctx, text, maxW, hangW)`・`drawButton`（押せないときは `globalAlpha = 0.3`、ボタンごとに `save`／`restore`）、公開 `drawHowTo(ctx, howToLayout, view)` を JSDoc 付きで書いた。import は `./cardView.js`（`roundRectPath`）と `./howToText.js` だけ。
+    *   `drawHowTo` は、背景〜本文を1つの `save`／`restore` で囲み、ボタン3つは `drawButton` 内で `save`／`restore`。状態は変えない。
+    *   見積もりのやり直し（スクラッチパッドのスクリプト。実装した `wrapParagraph` を `measureText` のモックで実行。`maxW` 640・`hangW` 34）: 全角 34px・半角 0.6 倍で1〜7ページが 10・13・9・11・11・12・15 行、半角も 34px で 10・13・9・12・12・13・15 行。すべて 18 行以内で、行の間隔を詰める必要はない。また、行頭が禁止の文字・半角スペースになる行は出なかった。
 
 ### タスク5: 遊び方の画面のシーン
 *   **作業内容** :
