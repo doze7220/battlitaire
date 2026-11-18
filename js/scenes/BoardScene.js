@@ -1,7 +1,7 @@
 /**
  * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面を描くこと。
  * 操作の結果を anim に渡して時間を進め（ReleaseShow・敵の待機 EnemyIdle の時計を含む）、札が動いている間はタップを無視し、行動終了で玉・兵が着くのを待ってから攻防に入り待っていた兵の数を演出のシーンへ渡すこと。
- * 操作・行動終了・連鎖のきっかけで効果音を鳴らすこと（soundCues.js）。積んだ演出のシーンから札が燃える段の盤面を読んで描くこと。
+ * 操作・行動終了・連鎖のきっかけで効果音を鳴らし（soundCues.js）、スタートの待ち時間の後と敵が入れ替わったところでステージの曲を流すこと（bgmCues.js）。積んだ演出のシーンから札が燃える段の盤面を読んで描くこと。
  */
 import { Engine, Scene } from 'oz';
 import { Game } from '../rules/Game.js';
@@ -16,6 +16,8 @@ import { releaseGeometry } from '../view/releaseLayout.js';
 import { snapshotBoard, buildPlanningMotion } from '../anim/planningMotion.js';
 import { applyTap, boardUiFor } from './boardSelection.js';
 import { playPlanningSe, playTurnEndSe, playChainSe } from './soundCues.js';
+import { playStageBgm } from './bgmCues.js';
+import { BGM_TIMING } from '../audio/soundConfig.js';
 
 /**
  * @typedef {Object} BoardOptions BoardScene に渡すオプション
@@ -58,6 +60,10 @@ export class BoardScene extends Scene {
     this.enemyIdle = null;
     /** @type {boolean} 「行動終了」を押して、玉・兵が着くのを待っているか（待つ間はタップを無視する） */
     this.pendingBattle = false;
+    /** @type {number} スタートの音の後、最初のステージの曲を始めるまでの待ち時間の残り（ミリ秒。init で BGM_TIMING.startToStageMs） */
+    this.stageBgmWaitMs = 0;
+    /** @type {number|null} ステージの曲を始めた敵の番号（game.enemyIndex の値。まだ始めていなければ null） */
+    this.stageBgmEnemyIndex = null;
   }
 
   /**
@@ -80,11 +86,14 @@ export class BoardScene extends Scene {
     this.releaseShow = new ReleaseShow(this.layout.battle.troops);
     this.enemyIdle = new EnemyIdle();
     this.pendingBattle = false;
+    this.stageBgmWaitMs = BGM_TIMING.startToStageMs;
+    this.stageBgmEnemyIndex = null;
   }
 
   /**
    * 動きの時計に dt（ミリ秒）を足して進める（timeScale は update の呼ばれる回数に反映されるので掛けない。ルール層の状態は変えない）。
    * 放つ演出の時計も進め、進めた直後に、その間に玉に変わった札の序数ごとに連鎖の効果音を鳴らす。
+   * ステージの曲の待ち時間も進め、曲を始める場面なら流す（updateStageBgm）。
    * 頭で `this.battleShow` を外す（update は最前面のときだけ呼ばれるので、攻防の演出のシーンが外れた後になる）。
    * @param {number} dt 1ティックの長さ（ミリ秒）
    * @returns {void}
@@ -95,10 +104,24 @@ export class BoardScene extends Scene {
     this.releaseShow.update(dt);
     this.enemyIdle.update(dt, this.game.enemy.typeId, this.game.enemy.hp);
     for (const ordinal of this.releaseShow.chainCuesInLastUpdate()) playChainSe(ordinal);
+    this.updateStageBgm(dt);
     if (this.pendingBattle && !this.releaseShow.isBusy()) {
       this.pendingBattle = false;
       this.startBattle();
     }
+  }
+
+  /**
+   * ステージの曲の待ち時間を dt（ミリ秒）だけ減らし、残りが 0 で、まだ曲を始めていない敵（`game.enemyIndex` が記録と違う）なら、その敵のステージの曲を頭から流す。
+   * ルール層の値は読むだけ。フェーズが変わっても敵の番号は変わらないので鳴らし直さない。
+   * @param {number} dt 1ティックの長さ（ミリ秒）
+   * @returns {void}
+   */
+  updateStageBgm(dt) {
+    this.stageBgmWaitMs = Math.max(0, this.stageBgmWaitMs - dt);
+    if (this.stageBgmWaitMs > 0 || this.stageBgmEnemyIndex === this.game.enemyIndex) return;
+    this.stageBgmEnemyIndex = this.game.enemyIndex;
+    playStageBgm(this.game.enemy.typeId);
   }
 
   /**

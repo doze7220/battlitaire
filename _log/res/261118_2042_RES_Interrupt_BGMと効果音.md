@@ -179,7 +179,7 @@
     *   **作業内容** :
         *   2章 要件3・4のとおり、`init()` の最後で `playTitleBgm()` を呼び、`startGame()`（JSDoc 付き。`stopTitleBgm()` → `playStartSe()` → `Engine.changeScene(this.next())`）を足して、「はじめる」と Enter・Space の2か所から呼ぶ。「遊び方」へ進むところは変えない。先頭の責務のコメント（3行以内）と `onPointer`・`onKeyDown`・`init` の JSDoc に音のことを足す。
         *   構文チェック。
-*   [ ] タスク6: ステージの BGM（盤面のシーン）
+*   [x] タスク6: ステージの BGM（盤面のシーン）
     *   **対象ファイル** :
         *   `./js/scenes/BoardScene.js` :（更新）
     *   **作業内容** :
@@ -246,7 +246,7 @@
 
 ### タスク6: ステージの BGM（盤面のシーン）
 *   **作業内容** :
-    *   (未着手)
+    *   `js/scenes/BoardScene.js`: `playStageBgm`（`./bgmCues.js`）・`BGM_TIMING`（`../audio/soundConfig.js`）を import。コンストラクタで `stageBgmWaitMs`・`stageBgmEnemyIndex` を JSDoc 付きで宣言し、`init` で `BGM_TIMING.startToStageMs`・`null` に初期化。`updateStageBgm(dt)`（JSDoc 付き）を足し、`update` の連鎖の音の直後・攻防に入る判定の前で1行呼ぶ。入力・攻防への入り方・描画は変更なし。先頭の責務コメント（3行）と `update` の JSDoc を直した。構文チェック OK。
 
 ### タスク7: 攻防の演出のシーンの音（攻撃の音・HP 0 で BGM を止める・クリアの音）
 *   **作業内容** :
