@@ -173,7 +173,7 @@
         *   `bgmCues.js` を新規に作る。先頭に3行以内の責務の JSDoc（BGM の補助。`Sound.playBgm`・`Sound.stopBgm` を呼ぶのはここだけ。状態は持たない。ルールの判定はしない）。2章 要件3〜6のとおり `TITLE_BGM`・`stageBgmName`・`playTitleBgm`・`stopTitleBgm`・`playStageBgm`・`stopBgmOnKnockout` を JSDoc 付きで置く。import は `oz` の `Sound` と `../audio/soundConfig.js` の `STAGE_BGM`・`BGM_TIMING` だけ。
         *   `soundCues.js`: `START_SE = 'start'` と `playStartSe()` を足す。2章 要件7のとおり `ENEMY_ATTACK_SE`（凍結）・`enemyAttackSeName`・`battleCueSeName` を足し、`playBattleCueSe(type, enemyTypeId, variant)` にする（`'enemyAttackStart'` の鍵の文字列は `battleCues.js` のきっかけの種類と同じであることを JSDoc に書く。`js/anim/` は import しない）。`DEFEAT_SE = 'win'`（途中の敵を倒したときの音）と純粋関数 `outcomeSeName(outcome, defeat)`（`outcome` が `null` でなければ今の `OUTCOME_SE[outcome] ?? null`、そうでなく `defeat` が `null`・`undefined` でなければ `DEFEAT_SE`、どちらでもなければ `null`）を足し、`playOutcomeSe(outcome, defeat)` にする。`Sound.playSe` 以外の `Sound` は呼ばない。今の `BATTLE_CUE_SE`・`OUTCOME_SE`・段取り・連鎖・行動終了の音は変えない。先頭の責務のコメントを3行以内で直す（スタート・攻撃の音・敵を倒したときの音を足す）。
         *   2ファイルの構文チェック。
-*   [ ] タスク5: タイトル画面の BGM とゲームスタート
+*   [x] タスク5: タイトル画面の BGM とゲームスタート
     *   **対象ファイル** :
         *   `./js/scenes/TitleScene.js` :（更新）
     *   **作業内容** :
@@ -242,7 +242,7 @@
 
 ### タスク5: タイトル画面の BGM とゲームスタート
 *   **作業内容** :
-    *   (未着手)
+    *   `js/scenes/TitleScene.js`: `bgmCues.js` の `playTitleBgm`・`stopTitleBgm` と `soundCues.js` の `playStartSe` を import。`init()` の最後で `playTitleBgm()`、新メソッド `startGame()`（`stopTitleBgm()` → `playStartSe()` → `Engine.changeScene(this.next())`）を足し、「はじめる」の `'up'` と Enter・Space から呼ぶ。「遊び方」は変更なし。責務コメント・`init`・`onPointer`・`onKeyDown` の JSDoc を直した。構文チェック OK。
 
 ### タスク6: ステージの BGM（盤面のシーン）
 *   **作業内容** :

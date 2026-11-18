@@ -1,10 +1,13 @@
 /**
  * 責務: タイトル画面のシーン。「はじめる」ボタンと Enter・Space キーで新しいゲームの盤面へ、「遊び方」ボタンで
  * 遊び方の画面へ、渡された関数で作って進むこと（ボタンはこのシーンで押して離したとき）。描くのは titleView.js。
+ * タイトルの曲を流し、ゲームスタートでは曲を止めてスタートの音を鳴らす（音は bgmCues.js・soundCues.js 経由）。
  */
 import { Engine, Scene } from 'oz';
 import { createTitleLayout } from '../view/layout.js';
 import { drawTitle } from '../view/titleView.js';
+import { playTitleBgm, stopTitleBgm } from './bgmCues.js';
+import { playStartSe } from './soundCues.js';
 
 /**
  * @typedef {Object} TitleOptions TitleScene に渡すオプション
@@ -36,16 +39,27 @@ export class TitleScene extends Scene {
   }
 
   /**
-   * 配置を作り、押下の記録を初期化する。
+   * 配置を作り、押下の記録を初期化し、タイトルの曲を流す（同じ曲が流れていれば何もしない）。
    * @returns {void}
    */
   init() {
     this.layout = createTitleLayout(this.screen);
     this.pressed = null;
+    playTitleBgm();
   }
 
   /**
-   * 押したボタンと同じボタンの中で離したとき、そのボタンの働き（盤面へ／遊び方の画面へ）で進む。
+   * ゲームスタート: タイトルの曲を止め、スタートの音を鳴らして、新しい盤面へ進む。
+   * @returns {void}
+   */
+  startGame() {
+    stopTitleBgm();
+    playStartSe();
+    Engine.changeScene(this.next());
+  }
+
+  /**
+   * 押したボタンと同じボタンの中で離したとき、そのボタンの働き（スタートの音を鳴らして盤面へ／遊び方の画面へ）で進む。
    * @param {{ type: string, x: number, y: number }} pointer ポインタ入力
    * @returns {void}
    */
@@ -56,18 +70,18 @@ export class TitleScene extends Scene {
       const target = this.layout.titleHitTest(pointer.x, pointer.y);
       const button = target !== null && target === this.pressed ? target : null;
       this.pressed = null;
-      if (button === 'start') Engine.changeScene(this.next());
+      if (button === 'start') this.startGame();
       else if (button === 'howTo') Engine.changeScene(this.howTo());
     }
   }
 
   /**
-   * Enter・Space で盤面へ進む（ほかのキーは何もしない）。
+   * Enter・Space でゲームスタート（曲を止めスタートの音を鳴らして盤面へ進む）（ほかのキーは何もしない）。
    * @param {string} code KeyboardEvent.code
    * @returns {void}
    */
   onKeyDown(code) {
-    if (code === 'Enter' || code === 'Space') Engine.changeScene(this.next());
+    if (code === 'Enter' || code === 'Space') this.startGame();
   }
 
   /**
