@@ -1,6 +1,6 @@
 /**
  * 攻防の演出の設定（段・兵の動き・弾かれて落ちる距離・早送り・燃える札・段取りの間・敵の側の兵・打撃・ヒットマークの時間と大きさ、
- * 攻防のエフェクトの値）を1か所に凍結して持つ。これらの数値は、ほかのファイルに書かない。
+ * 攻防のエフェクトの値・呼吸の深さと速さ・敵の絵の呼吸の深さと速さ）を1か所に凍結して持つ。これらの数値は、ほかのファイルに書かない。
  */
 
 /**
@@ -63,6 +63,8 @@
  * @property {number} shakePeriodMs 揺れの1往復（ms）。試遊で決め直す。
  * @property {number} breathDepth 呼吸の深さ（縦の伸び縮みの割合）。試遊で決め直す。
  * @property {number} breathPeriodMs 呼吸の1回（ms）。試遊で決め直す。
+ * @property {number} figureBreathDepth 巨人・ドラゴンの絵の待機の伸び縮みの深さ（縦の伸び縮みの割合）。試遊で決め直す。
+ * @property {number} figureBreathPeriodMs 巨人・ドラゴンの絵の待機の伸び縮みの1回（ms）。試遊で決め直す。
  * @property {number} rushPower 踏み込みの加速の強さ（進み具合の累乗。1 で等速）。試遊で決め直す。
  * @property {number} chargeMs ための段の長さ（ms）。試遊で決め直す。
  * @property {number} chargeLean ための動きで後ろへ反る角度（rad）。試遊で決め直す。
@@ -134,6 +136,8 @@ export const BATTLE_ANIM = Object.freeze({
   shakePeriodMs: 45,
   breathDepth: 0.05,
   breathPeriodMs: 1600,
+  figureBreathDepth: 0.025,
+  figureBreathPeriodMs: 2000,
   rushPower: 2.2,
   chargeMs: 900,
   chargeLean: 0.12,

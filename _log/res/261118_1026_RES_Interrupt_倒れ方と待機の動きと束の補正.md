@@ -174,7 +174,7 @@
         *   `battleAnimConfig.js`: `knockDistance: 50` と JSDoc の項目を足し、ファイル先頭の責務に「弾かれる距離」が読み取れるよう必要なら文言を合わせる（3行以内）。
         *   `troopMotion.js`: 凍結した表 `KNOCK_DIRS`（JSDoc つき）を足し、`TroopEnd` に `dx` を足し（JSDoc）、`setTroopEnd` で `dx` を決め、`sampleTroop` の落ちる分岐で `x = end.x + end.dx × min(1, τ / (doneAt − time))` にする。ファイル先頭の責務の「跳ねて落ちる」を「進む向きと逆へ弾かれて落ちる」に合わせる（3行以内）。`fallDuration`・縦の式・`sortY` は変えない。
         *   構文チェック。
-*   [ ] タスク4: 敵の待機の動き（anim）
+*   [x] タスク4: 敵の待機の動き（anim）
     *   **対象ファイル** :
         *   `./js/anim/battleAnimConfig.js` :（更新。`figureBreathDepth`・`figureBreathPeriodMs` を足す）
         *   `./js/anim/troopBreath.js` :（更新）
@@ -246,7 +246,12 @@
 
 ### タスク4: 敵の待機の動き（anim）
 *   **作業内容** :
-    *   （未記入）
+    *   `battleAnimConfig.js`: `figureBreathDepth: 0.025`・`figureBreathPeriodMs: 2000` と JSDoc の項目を足し、先頭の責務の文言を合わせた。
+    *   `troopBreath.js`: `KIND_PHASE` に `goblin: 0`・`enemyGuard: 1/2`・`enemy: 1/6` を足し、判定を `hasOwnProperty` に変え、`OWN_KINDS` の import を消した。先頭の責務・JSDoc を「自軍の兵とゴブリン」に合わせた。
+    *   `enemyIdle.js`（新規）: `figureBreath`（内部）・`sampleFigurePose`・`EnemyIdleLook`・`EnemyIdle`（`update`・`look`）を2章のとおりに書いた。`look()` は自分自身を返す。
+    *   `enemyBody.js`: `enemyFigureFalling(body, clock)` を足した。
+    *   `battleDirector.js`: `pose` の入れ物を持ち、`sampleLooks` で `sampleFigurePose` を呼び、`view().pose` を `this.pose` にした。`BattleLook.pose` の JSDoc・先頭の責務を合わせた。
+    *   5ファイルとも構文チェックが通った。
 
 ### タスク5: 敵の待機の動きの描画と段取りの間のつなぎ
 *   **作業内容** :

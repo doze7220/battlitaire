@@ -152,6 +152,16 @@ export function enemyBodyEnd(body) {
 }
 
 /**
+ * 倒れる絵が、いまの時計までに倒れ始めているかを返す（群れ・倒れる記録がまだない絵は false）。
+ * @param {EnemyBody} body 敵の体
+ * @param {number} clock 時計の値（ms）
+ * @returns {boolean} 倒れ始めていれば true
+ */
+export function enemyFigureFalling(body, clock) {
+  return body.fall !== null && body.fall.end !== null && clock >= body.fall.end.time;
+}
+
+/**
  * 時計からの絵の見た目を `out` に書き込む（オブジェクトを作らない）。
  * @param {EnemyBody} body 敵の体
  * @param {number} clock 時計の値（ms）

@@ -1,10 +1,9 @@
 /**
- * 段取りの間・攻防の間に陣地の家で待っている自軍の兵の呼吸の伸び縮み（兵ごとの位相は番号から。乱数なし）を求める。
+ * 段取りの間・攻防の間に陣地の家で待っている自軍の兵とゴブリンの呼吸の伸び縮み（兵ごとの位相は番号から。乱数なし）を求める。
  * 描画も状態の変更もしない。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
-import { OWN_KINDS } from './troopRoster.js';
 
 /**
  * 黄金比の小数部（兵ごとの位相のばらけに使う）。
@@ -16,7 +15,14 @@ const GOLDEN = 0.6180339887;
  * 種類ごとの位相のずれ（周期に対する割合）。
  * @type {Readonly<Record<string, number>>}
  */
-const KIND_PHASE = Object.freeze({ attack: 0, defense: 1 / 3, heal: 2 / 3 });
+const KIND_PHASE = Object.freeze({
+  attack: 0,
+  defense: 1 / 3,
+  heal: 2 / 3,
+  goblin: 0,
+  enemyGuard: 1 / 2,
+  enemy: 1 / 6,
+});
 
 /**
  * 小数部を返す。
@@ -28,7 +34,7 @@ function frac(v) {
 }
 
 /**
- * 自軍の兵1体の呼吸の伸び縮みを `out` に書き込む（オブジェクトを作らない）。自軍以外の種類は 1・1。
+ * 自軍の兵・ゴブリン1体の呼吸の伸び縮みを `out` に書き込む（オブジェクトを作らない）。位相の表にない種類（シールド・炎・絵）は 1・1。
  * @param {string} kind 兵の種類
  * @param {number} index 種類の中の何番目か
  * @param {number} clock 時計の値（ms）
@@ -36,7 +42,7 @@ function frac(v) {
  * @returns {void}
  */
 export function breathScale(kind, index, clock, out) {
-  if (!OWN_KINDS.includes(kind)) {
+  if (!Object.prototype.hasOwnProperty.call(KIND_PHASE, kind)) {
     out.scaleX = 1;
     out.scaleY = 1;
     return;
