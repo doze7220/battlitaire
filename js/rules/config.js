@@ -1,4 +1,4 @@
-/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・倍率の式の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・常時防御力・行動の決まり（重みによる抽選・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率）））と敵の順番、力こぶの換算）を1か所に集める設定ファイル。 */
+/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・常時防御力・行動の決まり（重みによる抽選・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率）））と敵の順番、力こぶの換算）を1か所に集める設定ファイル。 */
 
 /**
  * 敵の行動の種類ごとの量と重み。
@@ -70,7 +70,7 @@
  * @property {number} baseActions 1フェーズの基本の行動回数。
  * @property {readonly string[]} gauges ゲージの識別子。ゲージの並び順でもある。
  * @property {Readonly<Object<string, string>>} suitGauge スートの識別子から、加算先のゲージの識別子への対応。
- * @property {Readonly<{base: number, perCard: number}>} releaseMultiplier 放ったときの倍率の式の係数。倍率 = base + perCard × 同スート区切りの枚数。
+ * @property {Readonly<{perCard: number, max: number}>} releaseBonus 放ったときの束の補正の係数。足す量 = min(max, perCard × (同じスートの区切りの枚数 − 1))、加算量 = 合計 + 足す量。
  * @property {number} castleMaxHp 城の最大 HP（ゲーム開始時の HP でもある）。
  * @property {readonly string[]} enemyOrder 敵の種類の識別子の並び（戦う順）。
  * @property {Readonly<Object<string, Readonly<EnemySpec>>>} enemies 敵の種類の識別子から、敵の種類の設定への対応。
@@ -98,7 +98,7 @@ export const RULES = Object.freeze({
     potion: 'heal',
     muscle: 'muscle',
   }),
-  releaseMultiplier: Object.freeze({ base: 0, perCard: 1 }),
+  releaseBonus: Object.freeze({ perCard: 1, max: 6 }),
   castleMaxHp: 50,
   enemyOrder: Object.freeze(['goblins', 'giant', 'dragon']),
   enemies: Object.freeze({

@@ -145,7 +145,7 @@
 *   （タスク実行時に影響が判明した場合は、ここへ追記する。）
 
 ## 3. タスクリスト
-*   [ ] タスク1: 束の補正の式と設定（ルール層）
+*   [x] タスク1: 束の補正の式と設定（ルール層）
     *   **対象ファイル** :
         *   `./js/rules/config.js` :（更新）
         *   `./js/rules/release.js` :（更新）
@@ -225,7 +225,10 @@
 
 ### タスク1: 束の補正の式と設定（ルール層）
 *   **作業内容** :
-    *   （未記入）
+    *   `config.js`: `releaseMultiplier` を `releaseBonus: { perCard: 1, max: 6 }` に置き換え、`Rules` の JSDoc とファイル先頭の責務の文言（「束の補正（足す量）の係数」）を書き換えた。
+    *   `release.js`: `ReleaseSegment.multiplier` を `bonus` に置き換え、`computeRelease` を `bonus = min(max, perCard × (count − 1))`・`amount = sum + bonus` にした。先頭の責務・JSDoc（config の型含む）も合わせた。
+    *   `planningResults.js`・`Game.js` に「倍率」「multiplier」の文字がないことを `js/rules` の検索で確認（変更なし）。構文チェックは両ファイルとも通った。
+    *   注意: `multiplier` を読む `orbTrack.js` 等（タスク2の対象）は、タスク2まで一時的に `undefined` を参照する状態。
 
 ### タスク2: 玉の記録と式の文字
 *   **作業内容** :

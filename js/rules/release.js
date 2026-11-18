@@ -1,6 +1,6 @@
 /**
  * 責務: 列のカードから「放ったときのゲージの加算量」を求める純粋な計算（状態は変えない）。
- * 同じスートが続く区切りごとに倍率と加算量を出す。
+ * 同じスートが続く区切りごとに足す量と加算量を出す。
  */
 
 /**
@@ -11,8 +11,8 @@
  * @property {import('./card.js').Card[]} cards 区切りに含まれるカード（列の下から順）
  * @property {number} sum 区切りの数字の合計
  * @property {number} count 区切りの枚数
- * @property {number} multiplier 倍率（`base + perCard × count`）
- * @property {number} amount 加算量（`sum × multiplier`）
+ * @property {number} bonus 足す量（`min(max, perCard × (count - 1))`）
+ * @property {number} amount 加算量（`sum + bonus`）
  */
 
 /**
@@ -23,10 +23,10 @@
  */
 
 /**
- * 列のカード（下から順）から、区切りごとの倍率・加算量とゲージごとの加算量を求める。
+ * 列のカード（下から順）から、区切りごとの足す量・加算量とゲージごとの加算量を求める。
  * 引数は書き換えない。
  * @param {import('./card.js').Card[]} cards 列のカード（[0] が一番下）
- * @param {{ gauges: readonly string[], suitGauge: Object<string, string>, releaseMultiplier: { base: number, perCard: number } }} config ルールの設定
+ * @param {{ gauges: readonly string[], suitGauge: Object<string, string>, releaseBonus: { perCard: number, max: number } }} config ルールの設定
  * @returns {ReleaseCalc} 計算結果
  */
 export function computeRelease(cards, config) {
@@ -43,7 +43,7 @@ export function computeRelease(cards, config) {
         cards: [],
         sum: 0,
         count: 0,
-        multiplier: 0,
+        bonus: 0,
         amount: 0,
       };
       segments.push(current);
@@ -59,10 +59,10 @@ export function computeRelease(cards, config) {
     gains[gauge] = 0;
   }
 
-  const { base, perCard } = config.releaseMultiplier;
+  const { perCard, max } = config.releaseBonus;
   for (const seg of segments) {
-    seg.multiplier = base + perCard * seg.count;
-    seg.amount = seg.sum * seg.multiplier;
+    seg.bonus = Math.min(max, perCard * (seg.count - 1));
+    seg.amount = seg.sum + seg.bonus;
     gains[seg.gauge] = (gains[seg.gauge] ?? 0) + seg.amount;
   }
 
