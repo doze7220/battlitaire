@@ -1,5 +1,5 @@
 /**
- * 責務: 段取りの操作・連鎖・行動終了・攻防のきっかけ・決着から鳴らす効果音を決め、Sound.playSe で鳴らすこと。
+ * 責務: 段取り・連鎖・行動終了・スタート・攻防のきっかけ（攻撃の音を含む）・決着と敵を倒したときの効果音を決め、Sound.playSe で鳴らすこと。
  * シーンから呼ばれる音の補助モジュール（Scene を継承しない）。ルールの判定はしない。
  */
 import { Sound } from 'oz';
@@ -43,6 +43,12 @@ export const OUTCOME_SE = Object.freeze({
   win: 'win',
   lose: 'lose',
 });
+
+/** ゲームスタート（「はじめる」）の音の名前。 @type {string} */
+export const START_SE = 'start';
+
+/** 途中の敵を倒したときの音の名前（クリアの音と同じ）。 @type {string} */
+export const DEFEAT_SE = 'win';
 
 /** めくる（山札を選んだ）音の名前。 @type {string} */
 export const FLIP_SE = 'flip';
@@ -110,21 +116,80 @@ export function playChainSe(ordinal) {
 }
 
 /**
- * 攻防のきっかけの種類に対応する音を鳴らす。対応表にない種類は鳴らさない。
- * @param {string} type きっかけの種類（段の種類）
+ * ゲームスタートの音を鳴らす。
  * @returns {void}
  */
-export function playBattleCueSe(type) {
-  const name = BATTLE_CUE_SE[type];
-  if (name !== undefined) Sound.playSe(name);
+export function playStartSe() {
+  Sound.playSe(START_SE);
 }
 
 /**
- * 決着の音を鳴らす。対応表にない値は鳴らさない。
- * @param {'win'|'lose'|null} outcome 決着
+ * 敵の種類の識別子 → 行動の中の種類の引き鍵 → 敵の攻撃の始まりの音の名前。
+ * 引き方は enemyShows.js の enemyAttackShow と同じ。goblins は持たない（鳴らさない）。
+ * @type {Readonly<Record<string, Readonly<Record<string, string>>>>}
+ */
+export const ENEMY_ATTACK_SE = Object.freeze({
+  giant: Object.freeze({ default: 'giantAttack' }),
+  dragon: Object.freeze({ default: 'dragonClaw', breath: 'dragonBreath' }),
+});
+
+/**
+ * 敵の攻撃の始まりの音の名前を引く（純粋関数）。
+ * @param {string} typeId 敵の種類の識別子
+ * @param {string|null|undefined} variant 行動の中の種類
+ * @returns {string|null} 音の名前。なければ null
+ */
+export function enemyAttackSeName(typeId, variant) {
+  if (!Object.prototype.hasOwnProperty.call(ENEMY_ATTACK_SE, typeId)) return null;
+  const table = ENEMY_ATTACK_SE[typeId];
+  const key = typeof variant === 'string' && Object.prototype.hasOwnProperty.call(table, variant) ? variant : 'default';
+  return Object.prototype.hasOwnProperty.call(table, key) ? table[key] : null;
+}
+
+/**
+ * きっかけの種類から鳴らす音の名前を決める（純粋関数）。
+ * 'enemyAttackStart' は battleCues.js のきっかけの種類と同じ文字列。
+ * @param {string} type きっかけの種類
+ * @param {string} enemyTypeId この攻防の敵の種類の識別子
+ * @param {string|null|undefined} variant 行動の中の種類
+ * @returns {string|null} 音の名前。鳴らさないなら null
+ */
+export function battleCueSeName(type, enemyTypeId, variant) {
+  if (type === 'enemyAttackStart') return enemyAttackSeName(enemyTypeId, variant);
+  return BATTLE_CUE_SE[type] ?? null;
+}
+
+/**
+ * 攻防のきっかけの種類に対応する音を鳴らす。対応表にない種類は鳴らさない。
+ * @param {string} type きっかけの種類
+ * @param {string} enemyTypeId この攻防の敵の種類の識別子
+ * @param {string|null|undefined} variant 行動の中の種類
  * @returns {void}
  */
-export function playOutcomeSe(outcome) {
-  const name = OUTCOME_SE[outcome];
-  if (name !== undefined) Sound.playSe(name);
+export function playBattleCueSe(type, enemyTypeId, variant) {
+  const name = battleCueSeName(type, enemyTypeId, variant);
+  if (name !== null) Sound.playSe(name);
+}
+
+/**
+ * 決着・敵を倒したときの音の名前を決める（純粋関数）。
+ * @param {'win'|'lose'|null} outcome 決着
+ * @param {object|null|undefined} defeat 途中の敵を倒したときの情報
+ * @returns {string|null} 音の名前。鳴らさないなら null
+ */
+export function outcomeSeName(outcome, defeat) {
+  if (outcome !== null && outcome !== undefined) return OUTCOME_SE[outcome] ?? null;
+  if (defeat !== null && defeat !== undefined) return DEFEAT_SE;
+  return null;
+}
+
+/**
+ * 決着・敵を倒したときの音を鳴らす。鳴らさない場合は何もしない。
+ * @param {'win'|'lose'|null} outcome 決着
+ * @param {object|null|undefined} defeat 途中の敵を倒したときの情報
+ * @returns {void}
+ */
+export function playOutcomeSe(outcome, defeat) {
+  const name = outcomeSeName(outcome, defeat);
+  if (name !== null) Sound.playSe(name);
 }

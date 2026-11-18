@@ -165,7 +165,7 @@
         *   `battleCues.js`: 2章 要件7のとおり `ENEMY_ATTACK_STEP_TYPES`（凍結した `Set`。JSDoc 付き）を足し、`buildBattleCues` で敵の攻撃の最初の段の `start` に種類 `'enemyAttackStart'` のきっかけを1つ足す（なければ足さない。並べ替えは今のまま）。`BattleCue` の typedef の種類に `'enemyAttackStart'` を足す。2章 要件6のとおり `knockoutTime(castleHpChanges, enemyHpChanges)`（`./hpTrack.js` の `hpChangeEnd` を import）を足す。JSDoc（引数・戻り値・時刻の式を持たず記録を読むだけであること）を書き、先頭の責務のコメントを3行以内で直す（音の名前を持たない・`Sound` を import しないことは今のまま）。
         *   `battleDirector.js`: `knockoutAt`（コンストラクタで `knockoutTime(timeline.castleHpChanges, timeline.enemyHpChanges)`）と `isKnockedOut()` を足す。`firstUpdate` を足し、`update` の頭の `prevClock` の設定と `skip()` を2章 要件7「時刻 0 のきっかけ」のとおりに直す（`cuesInLastUpdate()` の式・時計・ヒットストップ・見た目は変えない）。フィールドとメソッドの JSDoc を書き、先頭の責務のコメントに「HP が 0 になったか」を足す（3行以内）。
         *   2ファイルの構文チェック。
-*   [ ] タスク4: 音の補助（BGM の補助の新規と、効果音の補助の追加）
+*   [x] タスク4: 音の補助（BGM の補助の新規と、効果音の補助の追加）
     *   **対象ファイル** :
         *   `./js/scenes/bgmCues.js` :（新規）
         *   `./js/scenes/soundCues.js` :（更新）
@@ -235,7 +235,10 @@
 
 ### タスク4: 音の補助（BGM の補助の新規と、効果音の補助の追加）
 *   **作業内容** :
-    *   (未着手)
+    *   `js/scenes/bgmCues.js` を新規作成: `TITLE_BGM`・`stageBgmName`・`playTitleBgm`・`stopTitleBgm`・`playStageBgm`・`stopBgmOnKnockout`（JSDoc 付き。import は `oz` の `Sound` と `soundConfig.js` の `STAGE_BGM`・`BGM_TIMING` のみ）。
+    *   `js/scenes/soundCues.js`: `START_SE`・`DEFEAT_SE`・`playStartSe`・`ENEMY_ATTACK_SE`・`enemyAttackSeName`・`battleCueSeName` を追加、`playBattleCueSe(type, enemyTypeId, variant)`・`outcomeSeName(outcome, defeat)`・`playOutcomeSe(outcome, defeat)` に変更。先頭の責務コメントを直した。既存の表・段取り・連鎖・行動終了の音は未変更。
+    *   呼び出し側（BattleShowScene）は旧シグネチャのままなので、タスク7まで `playOutcomeSe`・`playBattleCueSe` の引数が不足した状態（タスク7で直す）。
+    *   2ファイルとも構文チェック OK。
 
 ### タスク5: タイトル画面の BGM とゲームスタート
 *   **作業内容** :
