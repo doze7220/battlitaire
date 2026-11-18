@@ -4,7 +4,7 @@
  */
 
 /**
- * 効果音の名前 → ページ（index.html）からの相対パス。`Assets.load({ sounds: SOUND_FILES })` にそのまま渡す。
+ * 効果音の名前 → ページ（index.html）からの相対パス。`BGM_FILES` と合わせて `Assets.load` の `sounds` に渡す。
  * 本番の音に差し替えるときは、同じ名前のファイルを置き換えるか、ここのパスを書き換える。
  * @type {Readonly<Record<string, string>>}
  */

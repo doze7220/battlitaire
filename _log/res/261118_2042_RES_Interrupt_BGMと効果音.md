@@ -191,7 +191,7 @@
     *   **作業内容** :
         *   2章 要件6〜8のとおり、きっかけの音を `playBattleCueSe(type, this.before.enemyTypeId, this.result.enemyAction.variant)` にし、`bgmStopped`（JSDoc 付き）と `stopBgmOnKnockout()`（JSDoc 付き。`./bgmCues.js` の `stopBgmOnKnockout` を呼ぶ）を足して `update` ときっかけの音の直後とスキップの直後から呼び、決着の音の条件を「終わっていて、まだ鳴らしていない」にして `playOutcomeSe(this.result.outcome, this.result.defeat)` を呼ぶ。早送り・スキップ・`timeScale`・次のフェーズへの進み方・描画は変えない。先頭の責務のコメント（3行以内）と `update`・`onPointer`・`outcomeSePlayed` の JSDoc を直す。
         *   構文チェック。
-*   [ ] タスク8: JSDoc の記載漏れと決まりの確認
+*   [x] タスク8: JSDoc の記載漏れと決まりの確認
     *   **対象ファイル** :
         *   タスク1〜7で作成・変更したファイル（確認のみ。漏れがあれば、そのファイルの JSDoc だけを足す）
     *   **作業内容** :
@@ -255,7 +255,9 @@
 
 ### タスク8: JSDoc の記載漏れと決まりの確認
 *   **作業内容** :
-    *   (未着手)
+    *   タスク1〜7のファイルの先頭の責務コメント・JSDoc を確認し、漏れはなかった。タスク2の監査指摘に従い、`js/audio/soundConfig.js` の `SOUND_FILES` の JSDoc の「`Assets.load({ sounds: SOUND_FILES })` にそのまま渡す」を「`BGM_FILES` と合わせて `Assets.load` の `sounds` に渡す」に直した（文言のみ）。
+    *   grep 確認: `Sound` の import は `main.js`・`soundCues.js`・`bgmCues.js` のみ。`playBgm`・`stopBgm` は `bgmCues.js` のみ、`playSe` は `soundCues.js` のみ。`js/anim/`・`js/view/` に `Sound` の import・音の名前なし（`battleCues.js` の責務コメントの「`Sound` を import しない」の記述のみ）。`js/audio/` は import なし。`js/rules/` は変更なし。禁止語は `main.js` の `Math.random` の受け渡しのみ。音の呼び出しは `draw` の中になし。
+    *   変更した .js 10ファイル（`tools/makeSounds.mjs` 含む）の構文チェック OK。
 
 ### タスク9: 作業レポートの完成
 *   **作業内容** :
