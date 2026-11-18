@@ -1,6 +1,6 @@
 /**
  * 責務: 盤面の画面配置（戦闘の段の兵の陣地・敵ごとの当たる位置・炎の出る位置・画面の外の x・城の打撃の範囲・人数の表示・城と敵の絵の矩形・ゴブリンの群れの並び・敵を倒したときの案内・早送りとスキップの矩形を含む）を一手に持ち、座標から「何に当たるか」を求める。
- * タイトル画面・結果の表示（決着）の配置と当たりも持つ。ルール層は import せず、数の情報は引数で受け取る。状態は変えない。絵の縦横比は spriteView.js から得る。
+ * タイトル画面・遊び方の画面・結果の表示（決着）の配置と当たりも持つ。ルール層は import せず、数の情報は引数で受け取る。状態は変えない。絵の縦横比は spriteView.js から得る。
  */
 
 import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
@@ -117,8 +117,24 @@ import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * @property {{ width: number, height: number }} screen 画面の大きさ（背景を塗る範囲）
  * @property {{ x: number, y: number, maxW: number }} title ゲーム名の中心と最大の幅
  * @property {Rect} startButton 「はじめる」ボタンの矩形
- * @property {number} startTextMaxW ボタンの文字の最大の幅
- * @property {function(number, number): ('start'|null)} titleHitTest 座標から、ボタンに当たったものを返す
+ * @property {Rect} howToButton 「遊び方」ボタンの矩形
+ * @property {number} startTextMaxW ボタン（はじめる・遊び方）の文字の最大の幅
+ * @property {function(number, number): ('start'|'howTo'|null)} titleHitTest 座標から、ボタンに当たったものを返す
+ */
+
+/**
+ * 遊び方の画面の配置。
+ * @typedef {Object} HowToLayout
+ * @property {{ width: number, height: number }} screen 画面の大きさ（背景を塗る範囲）
+ * @property {{ x: number, y: number, maxW: number }} heading 見出しの左端・中心 y・最大の幅（左寄せ）
+ * @property {{ x: number, y: number, maxW: number }} pageNumber ページ番号の右端・中心 y・最大の幅（右寄せ）
+ * @property {{ x: number, y: number, w: number }} rule 区切り線の左端・y・長さ
+ * @property {Rect} body 本文の範囲
+ * @property {Rect} prevButton 「まえへ」ボタンの矩形
+ * @property {Rect} backButton 「タイトルへ」ボタンの矩形
+ * @property {Rect} nextButton 「つぎへ」ボタンの矩形
+ * @property {number} buttonTextMaxW ボタンの文字の最大の幅
+ * @property {function(number, number): ('prev'|'back'|'next'|null)} howToHitTest 座標から、ボタンに当たったものを返す（押せるかは見ない）
  */
 
 /**
@@ -297,6 +313,33 @@ const TITLE_BUTTON_H = 120;
 const TITLE_BUTTON_RATIO = 0.58;
 /** 「はじめる」ボタンの文字の左右の余白 */
 const TITLE_BUTTON_PAD_X = 24;
+/** タイトル画面の「はじめる」と「遊び方」の間のすき間 */
+const TITLE_HOWTO_GAP = 32;
+/** タイトル画面の「遊び方」ボタンの高さ */
+const TITLE_HOWTO_H = 96;
+
+/** 遊び方の画面の左右の余白（本文・見出し・ボタンの列の左右の端） */
+const HOWTO_PAD_X = 40;
+/** 遊び方の画面の見出し・ページ番号の中心 y */
+const HOWTO_HEADING_Y = 88;
+/** 遊び方の画面のページ番号の最大の幅 */
+const HOWTO_PAGE_NUMBER_W = 120;
+/** 遊び方の画面の見出しとページ番号の間のすき間 */
+const HOWTO_HEADING_GAP_X = 16;
+/** 遊び方の画面の見出しの下の区切り線の y */
+const HOWTO_RULE_Y = 140;
+/** 遊び方の画面の本文の上端 y */
+const HOWTO_BODY_TOP = 164;
+/** 遊び方の画面の本文の下端とボタンの上端の間のすき間 */
+const HOWTO_BODY_GAP = 24;
+/** 遊び方の画面のボタンの高さ */
+const HOWTO_BUTTON_H = 100;
+/** 遊び方の画面のボタンの下の余白 */
+const HOWTO_BOTTOM_PAD = 40;
+/** 遊び方の画面のボタン同士の横の間隔 */
+const HOWTO_BUTTON_GAP_X = 16;
+/** 遊び方の画面のボタンの文字の左右の余白 */
+const HOWTO_BUTTON_PAD_X = 12;
 
 /** 結果の板の幅 */
 const RESULT_PANEL_W = 600;
@@ -705,21 +748,86 @@ export function createTitleLayout(screen) {
     h: TITLE_BUTTON_H,
   };
 
+  const howToButton = {
+    x: startButton.x,
+    y: startButton.y + startButton.h + TITLE_HOWTO_GAP,
+    w: TITLE_BUTTON_W,
+    h: TITLE_HOWTO_H,
+  };
+
   /**
    * 座標から、タイトル画面のボタンに当たったものを返す。
    * @param {number} x x 座標
    * @param {number} y y 座標
-   * @returns {'start'|null} 当たったもの。なければ null
+   * @returns {'start'|'howTo'|null} 当たったもの。なければ null
    */
   function titleHitTest(x, y) {
-    return inRect(startButton, x, y) ? 'start' : null;
+    if (inRect(startButton, x, y)) return 'start';
+    return inRect(howToButton, x, y) ? 'howTo' : null;
   }
 
   return {
     screen,
     title: { x: W / 2, y: H * TITLE_TEXT_RATIO, maxW: W - SIDE_MARGIN * 2 },
     startButton,
+    howToButton,
     startTextMaxW: TITLE_BUTTON_W - TITLE_BUTTON_PAD_X * 2,
     titleHitTest,
+  };
+}
+
+/**
+ * 遊び方の画面の配置を作る。
+ * @param {{ width: number, height: number }} screen 画面の大きさ
+ * @returns {HowToLayout} 遊び方の画面の配置
+ */
+export function createHowToLayout(screen) {
+  const W = screen.width;
+  const H = screen.height;
+  const innerW = W - HOWTO_PAD_X * 2;
+  const buttonW = (innerW - HOWTO_BUTTON_GAP_X * 2) / 3;
+  const buttonY = H - HOWTO_BOTTOM_PAD - HOWTO_BUTTON_H;
+  const button = (i) => ({
+    x: HOWTO_PAD_X + (buttonW + HOWTO_BUTTON_GAP_X) * i,
+    y: buttonY,
+    w: buttonW,
+    h: HOWTO_BUTTON_H,
+  });
+  const prevButton = button(0);
+  const backButton = button(1);
+  const nextButton = button(2);
+
+  /**
+   * 座標から、遊び方の画面のボタンに当たったものを返す（押せるかどうかは見ない）。
+   * @param {number} x x 座標
+   * @param {number} y y 座標
+   * @returns {'prev'|'back'|'next'|null} 当たったもの。なければ null
+   */
+  function howToHitTest(x, y) {
+    if (inRect(prevButton, x, y)) return 'prev';
+    if (inRect(backButton, x, y)) return 'back';
+    return inRect(nextButton, x, y) ? 'next' : null;
+  }
+
+  return {
+    screen,
+    heading: {
+      x: HOWTO_PAD_X,
+      y: HOWTO_HEADING_Y,
+      maxW: innerW - HOWTO_PAGE_NUMBER_W - HOWTO_HEADING_GAP_X,
+    },
+    pageNumber: { x: W - HOWTO_PAD_X, y: HOWTO_HEADING_Y, maxW: HOWTO_PAGE_NUMBER_W },
+    rule: { x: HOWTO_PAD_X, y: HOWTO_RULE_Y, w: innerW },
+    body: {
+      x: HOWTO_PAD_X,
+      y: HOWTO_BODY_TOP,
+      w: innerW,
+      h: buttonY - HOWTO_BODY_GAP - HOWTO_BODY_TOP,
+    },
+    prevButton,
+    backButton,
+    nextButton,
+    buttonTextMaxW: buttonW - HOWTO_BUTTON_PAD_X * 2,
+    howToHitTest,
   };
 }

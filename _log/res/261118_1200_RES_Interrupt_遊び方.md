@@ -126,7 +126,7 @@
         *   `titleText.js` の `TITLE_TEXT` に `howTo: '遊び方'` を足し、`@type` と先頭の責務のコメントの「ボタンの文字」の説明を「はじめる・遊び方」が分かるように直す（3行以内のまま）。
         *   写した文字を REQ と1行ずつ突き合わせて確かめる（スクリプトで REQ のコードブロックと比べてもよい。比べるスクリプトはリポジトリに置かない）。
         *   2ファイルの構文チェック（`node --input-type=module --check < <ファイル>`）。
-*   [ ] タスク2: 配置と当たり（タイトル画面の「遊び方」ボタン、遊び方の画面）
+*   [x] タスク2: 配置と当たり（タイトル画面の「遊び方」ボタン、遊び方の画面）
     *   **対象ファイル** :
         *   `./js/view/layout.js` :（更新）
     *   **作業内容** :
@@ -192,7 +192,8 @@
 
 ### タスク2: 配置と当たり（タイトル画面の「遊び方」ボタン、遊び方の画面）
 *   **作業内容** :
-    *   （未記入）
+    *   `layout.js` を更新済み（構文チェック ok）: `TITLE_HOWTO_GAP`・`TITLE_HOWTO_H`、`HOWTO_*` 定数、typedef `TitleLayout`（`howToButton` 追加）・`HowToLayout`、`createTitleLayout`（`howToButton`・`titleHitTest` の `'howTo'`）、`createHowToLayout`、先頭の責務コメントを直した。
+    *   `createHowToLayout` は 50 行（`createTitleLayout` は 29 行）。実装統括の判断により、同じ形の1関数でボタン3つと返す項目の多さによる差のため、このまま `layout.js` に置く（別ファイルには分けない）。
 
 ### タスク3: タイトル画面の「遊び方」ボタンの描画
 *   **作業内容** :
