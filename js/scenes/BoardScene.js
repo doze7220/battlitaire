@@ -1,6 +1,6 @@
 /**
  * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面を描くこと。
- * 操作の結果を anim に渡して時間を進め（ReleaseShow の時計を含む）、札が動いている間はタップを無視し、行動終了で玉・兵が着くのを待ってから攻防に入り待っていた兵の数を演出のシーンへ渡すこと。
+ * 操作の結果を anim に渡して時間を進め（ReleaseShow・敵の待機 EnemyIdle の時計を含む）、札が動いている間はタップを無視し、行動終了で玉・兵が着くのを待ってから攻防に入り待っていた兵の数を演出のシーンへ渡すこと。
  * 操作・行動終了・連鎖のきっかけで効果音を鳴らすこと（soundCues.js）。積んだ演出のシーンから札が燃える段の盤面を読んで描くこと。
  */
 import { Engine, Scene } from 'oz';
@@ -11,6 +11,7 @@ import { createLayout } from '../view/layout.js';
 import { drawBoard } from '../view/boardView.js';
 import { BoardAnimator } from '../anim/boardAnimator.js';
 import { ReleaseShow } from '../anim/releaseShow.js';
+import { EnemyIdle } from '../anim/enemyIdle.js';
 import { releaseGeometry } from '../view/releaseLayout.js';
 import { snapshotBoard, buildPlanningMotion } from '../anim/planningMotion.js';
 import { applyTap, boardUiFor } from './boardSelection.js';
@@ -53,6 +54,8 @@ export class BoardScene extends Scene {
     this.battleShow = null;
     /** @type {ReleaseShow|null} 放つ演出（玉・段取りの間の兵。init で作る） */
     this.releaseShow = null;
+    /** @type {EnemyIdle|null} 段取りの間の敵の待機の動き（ゴブリンの群れ・巨人・ドラゴンの伸び縮み。init で作る） */
+    this.enemyIdle = null;
     /** @type {boolean} 「行動終了」を押して、玉・兵が着くのを待っているか（待つ間はタップを無視する） */
     this.pendingBattle = false;
   }
@@ -75,6 +78,7 @@ export class BoardScene extends Scene {
     this.animator = new BoardAnimator();
     this.battleShow = null;
     this.releaseShow = new ReleaseShow(this.layout.battle.troops);
+    this.enemyIdle = new EnemyIdle();
     this.pendingBattle = false;
   }
 
@@ -89,6 +93,7 @@ export class BoardScene extends Scene {
     this.battleShow = null; // update は最前面のときだけ呼ばれる＝演出のシーンが外れた後
     this.animator.update(dt);
     this.releaseShow.update(dt);
+    this.enemyIdle.update(dt, this.game.enemy.typeId, this.game.enemy.hp);
     for (const ordinal of this.releaseShow.chainCuesInLastUpdate()) playChainSe(ordinal);
     if (this.pendingBattle && !this.releaseShow.isBusy()) {
       this.pendingBattle = false;
@@ -175,6 +180,6 @@ export class BoardScene extends Scene {
     if (layer !== this.layer) return;
     const game = this.game;
     const burn = this.battleShow === null ? null : this.battleShow.boardLook();
-    drawBoard(ctx, this.layout, game, boardUiFor(game, this.selection), this.animator.view(), this.releaseShow.view(game.gauges), burn);
+    drawBoard(ctx, this.layout, game, boardUiFor(game, this.selection), this.animator.view(), this.releaseShow.view(game.gauges), burn, this.enemyIdle.look());
   }
 }

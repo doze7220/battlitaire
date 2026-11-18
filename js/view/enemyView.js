@@ -1,5 +1,5 @@
 /**
- * 責務: 戦闘の段の敵の絵（巨人・ドラゴン。攻防中は倒れる動きのずれ・ための姿勢で段の中に切り抜く）と、段取りの間の群れ・シールドマークを描く。
+ * 責務: 戦闘の段の敵の絵（巨人・ドラゴン。攻防中は倒れる動きのずれ・姿勢で段の中に切り抜く）と、段取りの間の絵・群れ（待機の伸び縮み）・シールドマークを描く。
  * 状態は変えず、ルール層・anim は実行時に import しない。
  */
 
@@ -16,17 +16,39 @@ const HORDE_ENEMIES = new Set(['goblins']);
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
  * @param {number} count 群れの兵の数（敵の HP）
+ * @param {{ count: number, scaleX: Float64Array, scaleY: Float64Array }|null} idle 待機の伸び縮み（並びの番号 i が idle.count 未満ならその値、そうでなければ 1・1。null なら伸び縮みなし）
  * @returns {void}
  */
-function drawHorde(ctx, battleLayout, count) {
+function drawHorde(ctx, battleLayout, count, idle) {
   const slots = battleLayout.hordeSlots(count);
   let maxRow = 0;
   for (const slot of slots) maxRow = Math.max(maxRow, slot.row);
   for (let row = maxRow; row >= 0; row--) {
-    for (const slot of slots) {
-      if (slot.row === row) drawTroop(ctx, HORDE_KIND, slot.x, slot.footY, slot.size, 0, 1, 1, 1);
+    for (let i = 0; i < slots.length; i++) {
+      const slot = slots[i];
+      if (slot.row !== row) continue;
+      const own = idle !== null && i < idle.count;
+      drawTroop(ctx, HORDE_KIND, slot.x, slot.footY, slot.size, 0, 1, own ? idle.scaleX[i] : 1, own ? idle.scaleY[i] : 1);
     }
   }
+}
+
+/**
+ * 絵の足元（矩形の下端の中央）を軸に、傾け・伸ばす変換を ctx に重ねる（傾き 0・伸び 1・1 なら何もしない）。
+ * 呼ぶ側が ctx.save()／restore() で囲む。
+ * @param {CanvasRenderingContext2D} ctx 描画先
+ * @param {import('./layout.js').Rect} rect 絵の矩形
+ * @param {{ tilt: number, scaleX: number, scaleY: number }} pose 姿勢（傾き・横と縦の伸び縮み）
+ * @returns {void}
+ */
+function applyFootPose(ctx, rect, pose) {
+  if (pose.tilt === 0 && pose.scaleX === 1 && pose.scaleY === 1) return;
+  const footX = rect.x + rect.w / 2;
+  const footY = rect.y + rect.h;
+  ctx.translate(footX, footY);
+  ctx.rotate(pose.tilt);
+  ctx.scale(pose.scaleX, pose.scaleY);
+  ctx.translate(-footX, -footY);
 }
 
 /**
@@ -48,9 +70,10 @@ function drawShieldMark(ctx, rect) {
  * @param {{ typeId: string, armor: number, hp: number }} enemy 描く敵（種類の識別子・常時防御力・HP。群れの数は HP）
  * @param {{ visible: boolean, dy: number }|null} [figure] 倒れる絵の見た目（EnemyFigureLook）。null か省くと段取りの絵
  * @param {{ tilt: number, scaleX: number, scaleY: number }|null} [pose] ための姿勢（ChargePoseLook。攻防の演出中の絵を足元を軸に傾け・伸ばす）。null か省くと姿勢なし
+ * @param {{ count: number, scaleX: Float64Array, scaleY: Float64Array, figure: { tilt: number, scaleX: number, scaleY: number } }|null} [idle] 段取りの間の待機の伸び縮み（EnemyIdleLook。絵は足元を軸に、群れは1体ずつ。null か省くと伸び縮みなし。シールドマークは伸び縮みしない）
  * @returns {void}
  */
-export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = null) {
+export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = null, idle = null) {
   const hasFigure = Object.prototype.hasOwnProperty.call(battleLayout.enemyFigures, enemy.typeId);
   ctx.save();
   if (figure !== null) {
@@ -61,14 +84,7 @@ export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = 
       ctx.rect(area.x, area.y, area.w, area.h);
       ctx.clip();
       ctx.translate(0, figure.dy);
-      if (pose !== null && (pose.tilt !== 0 || pose.scaleX !== 1 || pose.scaleY !== 1)) {
-        const footX = fig.rect.x + fig.rect.w / 2;
-        const footY = fig.rect.y + fig.rect.h;
-        ctx.translate(footX, footY);
-        ctx.rotate(pose.tilt);
-        ctx.scale(pose.scaleX, pose.scaleY);
-        ctx.translate(-footX, -footY);
-      }
+      if (pose !== null) applyFootPose(ctx, fig.rect, pose);
       drawSpriteFit(ctx, fig.sprite, fig.rect);
     }
     ctx.restore();
@@ -77,10 +93,13 @@ export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = 
   let shieldBody = battleLayout.enemy;
   if (hasFigure) {
     const fig = battleLayout.enemyFigures[enemy.typeId];
+    ctx.save();
+    if (idle !== null) applyFootPose(ctx, fig.rect, idle.figure);
     drawSpriteFit(ctx, fig.sprite, fig.rect);
+    ctx.restore();
     shieldBody = fig.shieldArea;
   } else if (HORDE_ENEMIES.has(enemy.typeId)) {
-    drawHorde(ctx, battleLayout, enemy.hp);
+    drawHorde(ctx, battleLayout, enemy.hp, idle);
   }
   if (enemy.armor > 0) {
     for (const rect of battleLayout.shieldRects(enemy.armor, shieldBody)) drawShieldMark(ctx, rect);

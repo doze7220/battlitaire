@@ -188,7 +188,7 @@
         *   `enemyBody.js`: `enemyFigureFalling(body, clock)` を JSDoc つきで足す。
         *   `battleDirector.js`: 絵の姿勢の入れ物 `pose` を持ち、`sampleLooks` で `sampleFigurePose(...)` を呼び、`view()` の `pose` をそれにする。`chargeLevel` は `chargeShow.js` から import する。`BattleLook.pose` の JSDoc を合わせる。
         *   構文チェック。
-*   [ ] タスク5: 敵の待機の動きの描画と段取りの間のつなぎ
+*   [x] タスク5: 敵の待機の動きの描画と段取りの間のつなぎ
     *   **対象ファイル** :
         *   `./js/view/enemyView.js` :（更新）
         *   `./js/view/battleStageView.js` :（更新）
@@ -255,7 +255,11 @@
 
 ### タスク5: 敵の待機の動きの描画と段取りの間のつなぎ
 *   **作業内容** :
-    *   （未記入）
+    *   `enemyView.js`: 足元を軸にした変換を `applyFootPose`（JSDoc つき）に出し、倒れる絵の分岐（`pose`）と段取りの絵（`idle.figure`。`save`／`restore` の中）で共用した。`drawEnemyFigure` に `idle = null` を足し、`drawHorde` は並びの番号 i が `idle.count` 未満なら `idle.scaleX[i]`・`scaleY[i]`、そうでなければ 1・1 を渡す（奥の行から描く順は同じ）。シールドマークは変更なし。先頭の責務・JSDoc を合わせた。
+    *   `battleStageView.js`: state に `idle`（省くと null）を足して `drawEnemyFigure` へ渡し、JSDoc・責務を合わせた。
+    *   `boardView.js`: `drawBoard` の末尾に `idle = null` を足し、`drawBattleStage` に渡した。JSDoc を合わせた。
+    *   `BoardScene.js`: `EnemyIdle` を import し、`init` で作り、`update(dt)` で `update(dt, game.enemy.typeId, game.enemy.hp)`、`draw` で `look()` を `drawBoard` に渡した。プロパティの JSDoc・先頭の責務を合わせた（3行以内）。
+    *   4ファイルとも構文チェックが通った。
 
 ### タスク6: JSDoc と片付けの確認
 *   **作業内容** :
