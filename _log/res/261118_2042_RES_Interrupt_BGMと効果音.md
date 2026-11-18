@@ -137,7 +137,7 @@
 *   4章「土台から残したファイル」の `js/main.js`: 「`Engine.start` の前に音を読み込み、SE の音量を設定する」を「`Engine.start` の前に効果音と BGM を読み込み、SE と BGM の音量を設定する」に直す。
 
 ## 3. タスクリスト
-*   [ ] タスク1: 音のファイルの写しと、仮の音の `win`・`lose` の廃止
+*   [x] タスク1: 音のファイルの写しと、仮の音の `win`・`lose` の廃止
     *   **対象ファイル** :
         *   `./assets/bgm/title.mp3`・`./assets/bgm/stage.mp3`・`./assets/bgm/dragon.mp3` :（新規。コピー）
         *   `./assets/sounds/win.mp3`・`lose.mp3`・`start.mp3`・`giantAttack.mp3`・`dragonClaw.mp3`・`dragonBreath.mp3` :（新規。コピー）
@@ -215,7 +215,11 @@
 
 ### タスク1: 音のファイルの写しと、仮の音の `win`・`lose` の廃止
 *   **作業内容** :
-    *   (未着手)
+    *   スクラッチパッドの使い捨て Node スクリプトで、元のフォルダを `readdirSync` し NFC 完全一致（ちょうど1件）で選んで 9 ファイルを `assets/bgm/`（新規作成）・`assets/sounds/` へコピーした。元のファイルは未変更。
+    *   写した先の大きさは全9ファイルが表と一致（title 6197184・stage 2525958・dragon 1809774・win 30986・lose 33493・start 30986・giantAttack 9044・dragonClaw 15947・dragonBreath 29732）。
+    *   `assets/sounds/win.wav`・`lose.wav` を削除した。
+    *   `tools/makeSounds.mjs`: `RECIPES` の `win`・`lose`、`MAX_SEC_LONG`・`LONG_NAMES`・`triangle`、`main()` の上限の分岐を削除（`MAX_SEC` のみ）。先頭の説明・`RECIPES` の JSDoc・`MAX_SEC` の説明を要件1のとおり直した。構文チェック OK。
+    *   注意: `js/audio/soundConfig.js` はまだ `win.wav`・`lose.wav` を指している（タスク2で差し替える）ので、タスク2まで起動すると読み込みに失敗する。
 
 ### タスク2: 音の一覧・音量・BGM の設定値と、起動の前の読み込み
 *   **作業内容** :

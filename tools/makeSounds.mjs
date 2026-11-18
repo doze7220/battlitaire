@@ -1,5 +1,5 @@
 /**
- * 仮の効果音（WAV 16bit モノラル）を合成して assets/sounds/ に書き出す開発用スクリプト。
+ * 仮の効果音（WAV 16bit モノラル。win・lose・start などの mp3 は作らない）を合成して assets/sounds/ に書き出す開発用スクリプト。
  * 実行: リポジトリの最上位で `node tools/makeSounds.mjs`（外部パッケージ不要）。
  * 同じ名前のファイルは上書きする。ゲームの実行時には読まない（index.html・js/ から import しない）。
  */
@@ -15,12 +15,8 @@ const PEAK = 0.8;
 const ATTACK_SEC = 0.005;
 /** 終わりの落とし込みの時間（秒）。末尾を必ず 0 に収める。 */
 const RELEASE_SEC = 0.005;
-/** 勝ち・負け以外の音の長さの上限（秒）。 */
+/** 音の長さの上限（秒）。 */
 const MAX_SEC = 1;
-/** 勝ち・負けの音の長さの上限（秒）。 */
-const MAX_SEC_LONG = 2;
-/** 長さの上限を長く認める音の名前。 */
-const LONG_NAMES = new Set(['win', 'lose']);
 /** 書き出し先のフォルダ（スクリプトの位置から求める）。 */
 const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'sounds');
 
@@ -46,16 +42,6 @@ function sine(phase) {
  */
 function square(phase) {
   return phase - Math.floor(phase) < 0.5 ? 1 : -1;
-}
-
-/**
- * 三角波。
- * @param {number} phase 位相（周期を 1 とする）
- * @returns {number} -1〜1
- */
-function triangle(phase) {
-  const p = phase - Math.floor(phase);
-  return p < 0.5 ? p * 4 - 1 : 3 - p * 4;
 }
 
 /**
@@ -200,7 +186,7 @@ function melody(freqs, stepSec, lastSec, wave, rate) {
 }
 
 /**
- * 音の作り方の表（名前 → 標本を作る関数）。名前は js/audio/soundConfig.js の SOUND_FILES と揃える。
+ * 音の作り方の表（名前 → 標本を作る関数）。名前は js/audio/soundConfig.js の SOUND_FILES のうち WAV の仮の音の名前と揃える（win・lose・start などの mp3 は作らない）。
  * @type {Record<string, () => Float32Array>}
  */
 const RECIPES = {
@@ -235,11 +221,7 @@ const RECIPES = {
     return mixAt(out, noiseBurst(0.2, 53, 18), 0, 0.6);
   },
   // 修理: 正弦波の上がる3音
-  heal: () => melody([523, 659, 784], 0.12, 0.2, sine, 6),
-  // 勝ち: 長調の上がる4音、最後を伸ばす
-  win: () => melody([523, 659, 784, 1047], 0.15, 0.75, triangle, 3),
-  // 負け: 短調の下がる3音、最後を伸ばす
-  lose: () => melody([392, 311, 262], 0.3, 0.9, sine, 2.5)
+  heal: () => melody([523, 659, 784], 0.12, 0.2, sine, 6)
 };
 
 /**
@@ -278,8 +260,7 @@ function main() {
   const rendered = Object.entries(RECIPES).map(([name, make]) => {
     const samples = normalize(make());
     const sec = samples.length / SAMPLE_RATE;
-    const limit = LONG_NAMES.has(name) ? MAX_SEC_LONG : MAX_SEC;
-    if (sec > limit) throw new Error(`${name}: ${sec.toFixed(3)}s は上限 ${limit}s を超えている`);
+    if (sec > MAX_SEC) throw new Error(`${name}: ${sec.toFixed(3)}s は上限 ${MAX_SEC}s を超えている`);
     return { name, samples, sec };
   });
   mkdirSync(OUT_DIR, { recursive: true });
