@@ -1,6 +1,6 @@
 /**
- * 攻防の演出全体の管理。時計を進め（ヒットストップ：壁の時計から演出の時計を求める）、終わったか・次へ進んでよいか・直前の進みの間に起きたきっかけを答え、
- * スキップで終わりへ移り、見た目の値（兵全員・ヒットマーク・倒れる絵・人数・燃える段の盤面・エフェクト・絵の姿勢を含む）を作る。描画せず、ゲームの状態に触れない。
+ * 攻防の演出全体の管理。時計を進め（ヒットストップ）、終わったか・次へ進んでよいか・HP が 0 になったか・直前の進みの間に起きたきっかけを答え、
+ * スキップで終わりへ移り、見た目の値（兵・ヒットマーク・倒れる絵・人数・盤面・エフェクト・姿勢）を作る。描画せず、ゲームの状態に触れない。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
@@ -9,7 +9,7 @@ import { sampleHp } from './hpTrack.js';
 import { samplePopTrack } from './popTrack.js';
 import { TroopSwarm } from './troopSwarm.js';
 import { sampleTroopCounts } from './troopCounter.js';
-import { buildBattleCues } from './battleCues.js';
+import { buildBattleCues, knockoutTime } from './battleCues.js';
 import { sampleBurnBoard } from './burnTrack.js';
 import { HitMarkSwarm } from './hitMarks.js';
 import { enemyFigureFalling, sampleEnemyFigure } from './enemyBody.js';
@@ -60,6 +60,10 @@ export class BattleDirector {
     this.prevClock = 0;
     /** @type {import('./battleCues.js').BattleCue[]} 音を合わせるきっかけ（時刻の昇順） */
     this.cues = buildBattleCues(timeline.steps);
+    /** @type {boolean} まだ一度も update していないか（最初の update だけ時刻 0 のきっかけを含めるため） */
+    this.firstUpdate = true;
+    /** @type {number|null} 城または敵の HP が 0 になる時刻（演出の時計の ms。時間割の HP の変化の記録から一度だけ求める。なければ null） */
+    this.knockoutAt = knockoutTime(timeline.castleHpChanges, timeline.enemyHpChanges);
     /** @type {boolean} スキップされたか */
     this.skipped = false;
     /** @type {TroopSwarm} 兵全員の見た目の入れ物（名簿は読むだけ） */
@@ -101,7 +105,9 @@ export class BattleDirector {
    * @returns {void}
    */
   update(ms) {
-    this.prevClock = this.clock;
+    // 最初の update だけ時刻 0 のきっかけを含める（prevClock < 時刻 で拾えるように -Infinity にする）
+    this.prevClock = this.firstUpdate ? -Infinity : this.clock;
+    this.firstUpdate = false;
     this.wall += ms;
     this.clock = showTimeAt(this.stops, this.wall);
     this.sampleLooks();
@@ -125,7 +131,16 @@ export class BattleDirector {
     this.clock = Math.max(this.clock, this.timeline.endTime);
     // 飛ばした段のきっかけを、次の問い合わせで出さない
     this.prevClock = this.clock;
+    this.firstUpdate = false;
     this.sampleLooks();
+  }
+
+  /**
+   * 城または敵の HP が 0 になったか（演出の時計が `knockoutAt` に達したか。スキップの後も true。状態は変えない）。
+   * @returns {boolean} HP が 0 になる攻防で、その時刻に達していれば true（なければ常に false）
+   */
+  isKnockedOut() {
+    return this.knockoutAt !== null && this.clock >= this.knockoutAt;
   }
 
   /**

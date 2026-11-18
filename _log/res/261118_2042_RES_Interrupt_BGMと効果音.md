@@ -157,7 +157,7 @@
         *   `soundConfig.js`: 2章 要件2のとおり `SOUND_FILES` を直し・足し、`BGM_FILES`・`BGM_VOLUME`・`STAGE_BGM`・`BGM_TIMING` を凍結して足す。それぞれに JSDoc（型・単位・試遊で決め直す値であること・`SOUND_FILES` と `BGM_FILES` の名前を重ねない決まり・`STAGE_BGM` の識別子はルール層の値を文字として書いたもので `js/rules/` を import しないこと）を書く。先頭の責務のコメントを3行以内で直す。
         *   `main.js`: `BGM_FILES`・`BGM_VOLUME` を import し、`Sound.bgmVolume = BGM_VOLUME;` を足し、`Assets.load({ sounds: { ...SOUND_FILES, ...BGM_FILES } })` にする。先頭の責務のコメントと準備のコメントを直す。シーンの作り方・`Engine.start` の設定は変えない。
         *   2ファイルの構文チェック。
-*   [ ] タスク3: 攻撃の始まりのきっかけ・HP が 0 になる時刻・時刻 0 のきっかけ（anim）
+*   [x] タスク3: 攻撃の始まりのきっかけ・HP が 0 になる時刻・時刻 0 のきっかけ（anim）
     *   **対象ファイル** :
         *   `./js/anim/battleCues.js` :（更新）
         *   `./js/anim/battleDirector.js` :（更新）
@@ -229,7 +229,9 @@
 
 ### タスク3: 攻撃の始まりのきっかけ・HP が 0 になる時刻・時刻 0 のきっかけ（anim）
 *   **作業内容** :
-    *   (未着手)
+    *   `js/anim/battleCues.js`: `ENEMY_ATTACK_STEP_TYPES`（凍結 Set）、`buildBattleCues` で敵の攻撃の最初の段の `start` に `'enemyAttackStart'` を1つ足す処理、`knockoutTime`（`hpChangeEnd` を import）を追加。typedef・先頭の責務コメントを直した。
+    *   `js/anim/battleDirector.js`: `firstUpdate`・`knockoutAt`・`isKnockedOut()` を追加。`update` の頭を `prevClock = firstUpdate ? -Infinity : clock` に、`skip()` に `firstUpdate = false` を追加。`cuesInLastUpdate()` の式・時計・見た目は変更なし。先頭の責務コメントを直した。
+    *   2ファイルとも構文チェック OK。
 
 ### タスク4: 音の補助（BGM の補助の新規と、効果音の補助の追加）
 *   **作業内容** :
@@ -282,4 +284,4 @@
 *   **素材の利用規約**: 魔王魂・Springin' Sound Stock の利用規約（クレジット表記の要否など）は、計画の範囲外として発注者が確かめる。画面への表記は作らない。
 
 ### 実装時に判明した点
-*   (タスク実行時に記入)
+*   タスク3: 最初の `update` で `prevClock = -Infinity` にするため、時刻 0 のきっかけ（1発目の当たりの音を含む）が最初の `update` で出る。同じ `update` で出るきっかけの並びは時刻の昇順で、同時刻のときは cueTimes のきっかけ → `'enemyAttackStart'` の順ではなく、`sort`（安定）により push した順（段の cueTimes が先、`enemyAttackStart` は同じ段の cueTimes の後）になる。同時刻の2つの音の順は聞き分けられない程度のため問題なしと判断。
