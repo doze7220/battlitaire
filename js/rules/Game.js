@@ -106,7 +106,7 @@ export class Game {
   }
 
   /**
-   * いまの敵の次の行動を、行動の決まりで決めて予告と決まりの状態に入れる（乱数は決まりによって0回か1回。決まりの種類ごとの使い方は `enemyBehaviors.js` に従う）。
+   * いまの敵の次の行動を、行動の決まりで決めて予告と決まりの状態に入れる（乱数は決まりと行動によって0〜2回（種類の抽選と量の抽選）。決まりの種類ごとの使い方は `enemyBehaviors.js` に従う）。
    */
   planIntent() {
     const spec = enemySpecAt(this.config, this.enemyIndex);

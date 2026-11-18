@@ -1,11 +1,22 @@
 /**
- * 責務: 敵の行動の決まり（種類ごとの状態の初期値・次の行動の決め方・数え下ろしの問い合わせ）の表と呼び分け、攻撃の直後の回復の抽選。
- * 渡された乱数だけを使う純粋な関数（ルール層）。
+ * 責務: 敵の行動の決まり（種類ごとの状態の初期値・次の行動の決め方・数え下ろしの問い合わせ）の表と呼び分け、
+ * 行動の量の幅からの抽選、攻撃の直後の回復の抽選。渡された乱数だけを使う純粋な関数（ルール層）。
  */
 
 /**
- * 重みによって行動を1つ選ぶ。`random()` は1回だけ呼ぶ。
- * @param {ReadonlyArray<{ kind: string, amount: number, weight: number }>} actions 行動の種類ごとの量と重み
+ * 量の幅から整数を1つ抽選する（min・max を含む等確率）。`random()` は必ず1回呼ぶ。
+ * min・max は整数で min ≤ max であること（設定の責任）。
+ * @param {{ min: number, max: number }} range 量の幅
+ * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @returns {number} 抽選した量
+ */
+function rollAmount(range, random) {
+  return range.min + Math.floor(random() * (range.max - range.min + 1));
+}
+
+/**
+ * 重みによって行動を1つ選び、量を幅から抽選する。`random()` は2回呼ぶ（種類 → 量の順）。
+ * @param {ReadonlyArray<{ kind: string, range: { min: number, max: number }, weight: number }>} actions 行動の種類ごとの量の幅と重み
  * @param {() => number} random 0以上1未満を返す乱数の関数
  * @returns {import('./combatants.js').EnemyAction} 新しい行動オブジェクト（重みは含まない）
  */
@@ -13,12 +24,15 @@ export function pickWeighted(actions, random) {
   const total = actions.reduce((sum, spec) => sum + spec.weight, 0);
   const r = random() * total;
   let acc = 0;
+  let chosen = actions[actions.length - 1];
   for (const spec of actions) {
     acc += spec.weight;
-    if (acc > r) return { kind: spec.kind, amount: spec.amount };
+    if (acc > r) {
+      chosen = spec;
+      break;
+    }
   }
-  const last = actions[actions.length - 1];
-  return { kind: last.kind, amount: last.amount };
+  return { kind: chosen.kind, amount: rollAmount(chosen.range, random) };
 }
 
 /**
@@ -40,11 +54,13 @@ const BEHAVIORS = Object.freeze({
   }),
   cycle: Object.freeze({
     initialState: () => ({ countdown: null }),
-    planNext: (behavior, state) => {
+    planNext: (behavior, state, random) => {
       const countdown =
         state.countdown === null || state.countdown <= 0 ? behavior.cycleLength - 1 : state.countdown - 1;
       const action =
-        countdown === 0 ? { kind: 'attack', amount: behavior.attack } : { kind: 'windup', amount: 0 };
+        countdown === 0
+          ? { kind: 'attack', amount: rollAmount(behavior.attackRange, random) }
+          : { kind: 'windup', amount: 0 };
       return { action, state: { countdown } };
     },
     countdown: (behavior, state) => state.countdown,
@@ -56,16 +72,16 @@ const BEHAVIORS = Object.freeze({
       if (state.lastVariant === 'inhale') {
         action = {
           kind: 'attack',
-          amount: behavior.breath.amount,
+          amount: rollAmount(behavior.breath.range, random),
           variant: 'breath',
           burn: behavior.breath.burn,
         };
       } else if (state.lastVariant === 'breath') {
-        action = { kind: 'attack', amount: behavior.claw.amount, variant: 'claw' };
+        action = { kind: 'attack', amount: rollAmount(behavior.claw.range, random), variant: 'claw' };
       } else if (random() < behavior.inhaleChance) {
         action = { kind: 'windup', amount: 0, variant: 'inhale' };
       } else {
-        action = { kind: 'attack', amount: behavior.claw.amount, variant: 'claw' };
+        action = { kind: 'attack', amount: rollAmount(behavior.claw.range, random), variant: 'claw' };
       }
       return { action, state: { lastVariant: action.variant } };
     },
@@ -97,6 +113,7 @@ export function createBehaviorState(behavior) {
 
 /**
  * 次の行動を決める。引数の状態は書き換えず、新しい状態を返す。
+ * 乱数の使い方は決まりごと（weighted: 種類→量。cycle: 攻撃のフェーズだけ量。inhale: ブレス・爪は量、それ以外は吸い込むの抽選→外れなら爪の量）。
  * @param {{ type: string }} behavior 行動の決まりの設定
  * @param {object} state いまの決まりの状態
  * @param {() => number} random 0以上1未満を返す乱数の関数

@@ -1,10 +1,17 @@
-/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・常時防御力・行動の決まり（重みによる抽選・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率）））と敵の順番、力こぶの換算）を1か所に集める設定ファイル。 */
+/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・常時防御力・行動の決まり・攻撃・防御の量の幅（重みによる抽選・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率）））と敵の順番、力こぶの換算）を1か所に集める設定ファイル。 */
 
 /**
- * 敵の行動の種類ごとの量と重み。
+ * 行動の量の幅（予告を決めるたびに、この中から整数を1つ抽選する）。
+ * @typedef {Object} AmountRangeSpec
+ * @property {number} min 量の最小（整数）。
+ * @property {number} max 量の最大（min 以上の整数）。
+ */
+
+/**
+ * 敵の行動の種類ごとの量の幅と重み。
  * @typedef {Object} EnemyActionSpec
  * @property {string} kind 行動の種類（'attack'|'defend'）。
- * @property {number} amount 行動の量。
+ * @property {Readonly<AmountRangeSpec>} range 行動の量の幅。
  * @property {number} weight 予告で選ばれる重み。
  */
 
@@ -25,13 +32,13 @@
 /**
  * ドラゴンの爪の攻撃の設定。
  * @typedef {Object} ClawSpec
- * @property {number} amount 爪の攻撃力。
+ * @property {Readonly<AmountRangeSpec>} range 爪の攻撃力の幅。
  */
 
 /**
  * ドラゴンのブレスの攻撃の設定。
  * @typedef {Object} BreathSpec
- * @property {number} amount ブレスの攻撃力。
+ * @property {Readonly<AmountRangeSpec>} range ブレスの攻撃力の幅。
  * @property {Readonly<BurnSpec>} burn ブレスで燃やす札の枚数の範囲。
  */
 
@@ -42,9 +49,9 @@
  * @property {Readonly<ClawSpec>} [claw] 爪の攻撃（'inhale' のみ）。
  * @property {Readonly<BreathSpec>} [breath] ブレスの攻撃と燃やす札（'inhale' のみ）。
  * @property {number} [inhaleChance] 直前の予告が吸い込む・ブレスでないとき、フェーズごとに吸い込むを予告する確率（0〜1。'inhale' のみ）。
- * @property {readonly Readonly<EnemyActionSpec>[]} [actions] 予告する行動の種類ごとの量と重み（'weighted' のみ）。
+ * @property {readonly Readonly<EnemyActionSpec>[]} [actions] 予告する行動の種類ごとの量の幅と重み（'weighted' のみ）。
  * @property {number} [cycleLength] 1周期のフェーズ数。最後のフェーズで攻撃、ほかは振りかぶり（'cycle' のみ。1以上の整数）。
- * @property {number} [attack] 周期の最後のフェーズの攻撃の量（'cycle' のみ）。
+ * @property {Readonly<AmountRangeSpec>} [attackRange] 周期の最後のフェーズの攻撃の量の幅（'cycle' のみ）。
  * @property {Readonly<AttackHealSpec>} [attackHeal] 攻撃の直後の回復（任意。書かなければ回復しない）。
  */
 
@@ -104,35 +111,38 @@ export const RULES = Object.freeze({
   enemies: Object.freeze({
     goblins: Object.freeze({
       name: 'ゴブリンの軍勢',
-      maxHp: 50,
+      maxHp: 30,
       armor: 0,
       behavior: Object.freeze({
         type: 'weighted',
         actions: Object.freeze([
-          Object.freeze({ kind: 'attack', amount: 10, weight: 3 }),
-          Object.freeze({ kind: 'defend', amount: 15, weight: 1 }),
+          Object.freeze({ kind: 'attack', range: Object.freeze({ min: 2, max: 5 }), weight: 3 }),
+          Object.freeze({ kind: 'defend', range: Object.freeze({ min: 2, max: 5 }), weight: 1 }),
         ]),
       }),
     }),
     giant: Object.freeze({
       name: '巨人',
-      maxHp: 80,
-      armor: 8,
+      maxHp: 60,
+      armor: 3,
       behavior: Object.freeze({
         type: 'cycle',
         cycleLength: 4,
-        attack: 40,
+        attackRange: Object.freeze({ min: 18, max: 22 }),
         attackHeal: Object.freeze({ chance: 0.25, amount: 20 }),
       }),
     }),
     dragon: Object.freeze({
       name: 'ドラゴン',
-      maxHp: 120,
-      armor: 15,
+      maxHp: 80,
+      armor: 4,
       behavior: Object.freeze({
         type: 'inhale',
-        claw: Object.freeze({ amount: 10 }),
-        breath: Object.freeze({ amount: 25, burn: Object.freeze({ min: 4, max: 6 }) }),
+        claw: Object.freeze({ range: Object.freeze({ min: 4, max: 6 }) }),
+        breath: Object.freeze({
+          range: Object.freeze({ min: 10, max: 13 }),
+          burn: Object.freeze({ min: 4, max: 6 }),
+        }),
         inhaleChance: 0.3,
       }),
     }),
