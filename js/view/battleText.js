@@ -162,12 +162,12 @@ export function damagePopText() {
 }
 
 /**
- * 放った区切りの式を「12 ×3 = 36」のような文字にする。
+ * 放った区切りの式を「18 +2 = 20」のような文字にする。足す量 0 は加算量の数字だけ（「4」）。
  * @param {number} sum 区切りの合計
- * @param {number} multiplier 倍率
+ * @param {number} bonus 足す量
  * @param {number} amount 加算量
- * @returns {string} 「合計 ×倍率 = 加算量」
+ * @returns {string} 「合計 +足す量 = 加算量」（足す量 0 は加算量の数字だけ）
  */
-export function releaseFormulaText(sum, multiplier, amount) {
-  return `${sum} ×${multiplier} = ${amount}`;
+export function releaseFormulaText(sum, bonus, amount) {
+  return bonus > 0 ? `${sum} +${bonus} = ${amount}` : `${amount}`;
 }

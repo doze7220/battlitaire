@@ -39,7 +39,7 @@ export function drawReleaseCards(ctx, cards) {
  * 玉（スートの色の光）と、区切りの式の文字を描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {{orbs: {suit: string, x: number, y: number, size: number, alpha: number}[],
- *   formulas: {sum: number, multiplier: number, amount: number, x: number, y: number, gap: number, dir: number}[]}} look
+ *   formulas: {sum: number, bonus: number, amount: number, x: number, y: number, gap: number, dir: number}[]}} look
  *   描く見た目（ReleaseLook のうち orbs と formulas）
  * @returns {void}
  */
@@ -67,7 +67,7 @@ export function drawReleaseOrbs(ctx, look) {
     ctx.lineWidth = FORMULA_STROKE_W;
     ctx.strokeStyle = FORMULA_STROKE;
     ctx.fillStyle = FORMULA_COLOR;
-    const text = releaseFormulaText(f.sum, f.multiplier, f.amount);
+    const text = releaseFormulaText(f.sum, f.bonus, f.amount);
     const tx = f.x + f.dir * (f.gap + FORMULA_PAD);
     ctx.strokeText(text, tx, f.y);
     ctx.fillText(text, tx, f.y);

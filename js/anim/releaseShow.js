@@ -45,7 +45,7 @@ export class ReleaseShow {
 
   /**
    * 放った結果を、玉の動きと兵として記録に足す。
-   * @param {{segments: Array<{suit: string, gauge: string, cards: Array<*>, sum: number, multiplier: number, amount: number}>}} result 放った結果（`ReleaseResult`）
+   * @param {{segments: Array<{suit: string, gauge: string, cards: Array<*>, sum: number, bonus: number, amount: number}>}} result 放った結果（`ReleaseResult`）
    * @param {import('../view/releaseLayout.js').ReleaseGeometry} geometry 放つ演出の配置
    * @returns {void}
    */

@@ -154,7 +154,7 @@
         *   `release.js`: `ReleaseSegment` の `multiplier` を `bonus` に置き換え、`computeRelease` を「`bonus = min(max, perCard × (count − 1))`、`amount = sum + bonus`」にする。ファイル先頭の責務・JSDoc（config の型を含む）を合わせる。
         *   `planningResults.js`・`Game.js` に「倍率」「multiplier」の文字がないことを確かめる（なければ変えない）。
         *   構文チェック（`node --input-type=module --check < ファイル`）。
-*   [ ] タスク2: 玉の記録と式の文字
+*   [x] タスク2: 玉の記録と式の文字
     *   **対象ファイル** :
         *   `./js/anim/orbTrack.js` :（更新）
         *   `./js/anim/releaseShow.js` :（更新。JSDoc だけ）
@@ -232,7 +232,11 @@
 
 ### タスク2: 玉の記録と式の文字
 *   **作業内容** :
-    *   （未記入）
+    *   `orbTrack.js`: `OrbSegment`・`FormulaLook`・`createReleaseOrbs` 引数の型の `multiplier` を `bonus`（足す量）に、写す2か所を `bonus: seg.bonus` にした。
+    *   `releaseShow.js`: `start` の JSDoc の型だけ `bonus` にした。
+    *   `orbView.js`: JSDoc の型と `releaseFormulaText(f.sum, f.bonus, f.amount)` にした。
+    *   `battleText.js`: `releaseFormulaText(sum, bonus, amount)` を `bonus > 0` なら「18 +2 = 20」、そうでなければ加算量だけにし、JSDoc を合わせた。
+    *   4ファイルとも構文チェックが通った。
 
 ### タスク3: 倒れるときに弾かれる放物線
 *   **作業内容** :

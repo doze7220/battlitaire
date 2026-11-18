@@ -20,7 +20,7 @@ import { clamp01, lerp, easeOutCubic, easeInOutQuad } from './easing.js';
  * @property {string} suit スート。
  * @property {string} gauge 加算先のゲージ。
  * @property {number} sum 札の合計。
- * @property {number} multiplier 倍率。
+ * @property {number} bonus 足す量。
  * @property {number} amount 加算量。
  * @property {{x:number,y:number}} point 合体する位置（玉の中心）。
  * @property {{x:number,y:number}} target 飛ぶ先（玉の中心）。
@@ -70,7 +70,7 @@ import { clamp01, lerp, easeOutCubic, easeInOutQuad } from './easing.js';
  * 式の見た目。
  * @typedef {Object} FormulaLook
  * @property {number} sum 札の合計。
- * @property {number} multiplier 倍率。
+ * @property {number} bonus 足す量。
  * @property {number} amount 加算量。
  * @property {number} x 玉の中心 x。
  * @property {number} y 玉の中心 y。
@@ -99,7 +99,7 @@ function progress(clock, start, length) {
 
 /**
  * 1回の放つの玉の記録を組み立てる。
- * @param {Array<{suit:string, gauge:string, cards:Array<*>, sum:number, multiplier:number, amount:number}>} segments 放った結果の区切り（下の区切りから順）。
+ * @param {Array<{suit:string, gauge:string, cards:Array<*>, sum:number, bonus:number, amount:number}>} segments 放った結果の区切り（下の区切りから順）。
  * @param {{cardRects:Array<{x:number,y:number,w:number,h:number}>, mergePoints:Array<{x:number,y:number}>, targets:Array<{x:number,y:number}>, smallSize:number, bigSize:number, burstSize:number, arcRise:number, labelDir:number}} geometry 放つ演出の配置。
  * @param {number} t0 放った時計の値。
  * @returns {ReleaseOrbs} 玉の記録。
@@ -133,7 +133,7 @@ export function createReleaseOrbs(segments, geometry, t0) {
       suit: seg.suit,
       gauge: seg.gauge,
       sum: seg.sum,
-      multiplier: seg.multiplier,
+      bonus: seg.bonus,
       amount: seg.amount,
       point: geometry.mergePoints[s],
       target: geometry.targets[s],
@@ -195,7 +195,7 @@ export function sampleReleaseOrbs(orbs, clock, out) {
       out.orbs.push({ suit: seg.suit, x: point.x, y: point.y, size: orbs.bigSize, alpha: 1 });
       out.formulas.push({
         sum: seg.sum,
-        multiplier: seg.multiplier,
+        bonus: seg.bonus,
         amount: seg.amount,
         x: point.x,
         y: point.y,
