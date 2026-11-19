@@ -1,6 +1,6 @@
 /**
  * 責務: 攻防の演出中の最上段の描画の取りまとめ（揺らして段の中で切り抜く戦闘の段・倒れる絵・兵・ヒットマーク・エフェクト、段の暗さと光、
- * 人数の表示・敵の回復の量・敵を倒したときの案内）。
+ * 人数の表示・敵の回復の量・最上部の HP・フェーズ・金貨のゲージ・敵を倒したときの案内）。
  * 状態は変えず、ルール層・anim は実行時に import しない。
  */
 
@@ -9,6 +9,7 @@ import { drawTroopSwarm } from './troopView.js';
 import { drawHitMarks } from './hitMarkView.js';
 import { drawImpactFx, drawStageOverlay } from './battleFxView.js';
 import { drawTroopCounter } from './troopCountView.js';
+import { drawTopGauges } from './topGaugeView.js';
 import { defeatText, nextEnemyText, healAmountText, defeatHintText } from './battleText.js';
 
 /** 敵を倒したときの案内の暗幕の色。 */
@@ -83,7 +84,7 @@ function drawEnemyHealPop(ctx, battleLayout, typeId, pop) {
  * 演出中の最上段を描く。引数は読むだけで書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
- * @param {import('../rules/Game.js').Game} game ルール層のゲーム（フェーズ・最大 HP・攻防をした敵の種類・名前・常時防御力を読む）
+ * @param {import('../rules/Game.js').Game} game ルール層のゲーム（フェーズ・城と敵の最大 HP・攻防をした敵の種類・常時防御力・金貨の値と力こぶの換算の設定を読む）
  * @param {import('../rules/Game.js').BattleResult} result 攻防の結果（敵の行動・敵を倒したときの案内を読む）
  * @param {import('../anim/battleDirector.js').BattleLook} look 演出の見た目の値
  * @returns {void}
@@ -96,13 +97,9 @@ export function drawBattleShow(ctx, battleLayout, game, result, look) {
   ctx.clip();
   ctx.translate(look.stage.shakeX, look.stage.shakeY);
   drawBattleStage(ctx, battleLayout, {
-    phase: game.phase,
-    castle: { hp: look.castleHp, maxHp: game.castle.maxHp },
     enemy: {
       typeId: game.enemy.typeId,
-      name: game.enemy.name,
       hp: look.enemyHp,
-      maxHp: game.enemy.maxHp,
       armor: game.enemy.armor,
       intent: result.enemyAction,
     },
@@ -117,5 +114,13 @@ export function drawBattleShow(ctx, battleLayout, game, result, look) {
   drawStageOverlay(ctx, area, look.stage);
   drawTroopCounter(ctx, battleLayout.troopCounter, look.troopCounts);
   if (look.enemyHealPop !== null) drawEnemyHealPop(ctx, battleLayout, game.enemy.typeId, look.enemyHealPop);
+  const conv = game.config.muscleConversion;
+  drawTopGauges(ctx, battleLayout.topGauges, {
+    phase: game.phase,
+    castle: { hp: look.castleHp, maxHp: game.castle.maxHp },
+    enemy: { hp: look.enemyHp, maxHp: game.enemy.maxHp },
+    coins: game.gauges[conv.gauge] ?? 0,
+    coinConversion: conv,
+  });
   if (look.finished && result.defeat !== null) drawDefeat(ctx, battleLayout, result.defeat);
 }
