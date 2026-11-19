@@ -51,7 +51,7 @@ function centerOf(r) {
  * @param {string[]} segmentGauges 区切りごとのゲージ名（下の区切りから順）
  * @param {string} coinGauge 金貨のゲージの識別子（陣地のない区切りのうち、最上部の金貨のゲージへ飛ぶもの）
  * @returns {ReleaseGeometry} 放つ演出の配置
- * @throws {Error} 飛ぶ先のないゲージがあるとき
+ * @throws {Error} 陣地（`layout.battle.troops.camps`）になく、金貨のゲージ（coinGauge）でもない区切りがあるとき
  */
 export function releaseGeometry(layout, columnIndex, cardCount, segmentGauges, coinGauge) {
   const cardRects = layout.columnCardRects(columnIndex, cardCount);
