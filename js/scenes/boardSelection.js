@@ -20,14 +20,14 @@
  */
 
 /**
- * 行動が残っているときのタップを処理する。ルール層の操作を呼ぶことがある。
+ * 行動が残っているときのタップを処理する（山札・手札・列・放つボタンの当たりだけを扱う）。ルール層の操作を呼ぶことがある。
  * @param {import('../rules/Game.js').Game} game ゲーム
  * @param {BoardSelection} selection 今の選択
  * @param {import('../view/layout.js').Hit|null} hit 当たったもの（何もなければ null）
  * @returns {TapStep} タップ後の選択と、操作の結果
  */
 export function applyTap(game, selection, hit) {
-  if (hit === null || hit.kind === 'actionEnd') return { selection: null, result: null };
+  if (hit === null) return { selection: null, result: null };
   if (hit.kind === 'deck') return tapDeck(game, selection, hit.index);
   if (hit.kind === 'hand') return tapHand(game, selection, hit.index);
   if (hit.kind === 'column') return tapColumn(game, selection, hit.index, hit.cardIndex ?? null);
@@ -146,7 +146,5 @@ export function boardUiFor(game, selection) {
     selectedHandSlot: hand,
     selectedRun: run !== null ? { column: run.column, from: run.from } : null,
     releasable: game.columns.map((_, c) => game.canRelease(c)),
-    outOfActions: game.isOutOfActions(),
-    battleReady: game.canResolveBattle(),
   };
 }

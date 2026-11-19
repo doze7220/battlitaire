@@ -1,7 +1,7 @@
 /**
  * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面を描くこと。
- * 操作の結果を anim に渡して時間を進め（ReleaseShow・敵の待機 EnemyIdle の時計を含む）、札が動いている間はタップを無視し、行動終了で玉・兵が着くのを待ってから攻防に入り待っていた兵の数を演出のシーンへ渡すこと。
- * 操作・行動終了・連鎖のきっかけで効果音を鳴らし（soundCues.js）、スタートの待ち時間の後と敵が入れ替わったところでステージの曲を流すこと（bgmCues.js）。積んだ演出のシーンから札が燃える段の盤面を読んで描くこと。
+ * 操作の結果を anim に渡して時間を進め（ReleaseShow・敵の待機 EnemyIdle の時計を含む）、札が動いている間はタップを無視し、行動を使い切ったら札・玉・兵が全部着いてから自動で攻防に入り待っていた兵の数を演出のシーンへ渡すこと。
+ * 操作・攻防に入るとき・連鎖のきっかけで効果音を鳴らし（soundCues.js）、スタートの待ち時間の後と敵が入れ替わったところでステージの曲を流すこと（bgmCues.js）。積んだ演出のシーンから札が燃える段の盤面を読んで描くこと。
  */
 import { Engine, Scene } from 'oz';
 import { Game } from '../rules/Game.js';
@@ -27,7 +27,7 @@ import { BGM_TIMING } from '../audio/soundConfig.js';
  * @property {() => Scene} createTitle タイトルの画面のシーンを作る関数（攻防の演出のシーンへ渡す）
  */
 
-/** 盤面を表示し、置く・捨てる・手札に入れる・手札から置く・束の移し替え・放つ・攻防への進行をタップ／クリックで行うシーン */
+/** 盤面を表示し、置く・捨てる・手札に入れる・手札から置く・束の移し替え・放つをタップ／クリックで行い、行動を使い切ったら札・玉・兵が全部着いてから自動で攻防に入るシーン */
 export class BoardScene extends Scene {
   /**
    * @param {BoardOptions} options オプション
@@ -58,8 +58,6 @@ export class BoardScene extends Scene {
     this.releaseShow = null;
     /** @type {EnemyIdle|null} 段取りの間の敵の待機の動き（ゴブリンの群れ・巨人・ドラゴンの伸び縮み。init で作る） */
     this.enemyIdle = null;
-    /** @type {boolean} 「行動終了」を押して、玉・兵が着くのを待っているか（待つ間はタップを無視する） */
-    this.pendingBattle = false;
     /** @type {number} スタートの音の後、最初のステージの曲を始めるまでの待ち時間の残り（ミリ秒。init で BGM_TIMING.startToStageMs） */
     this.stageBgmWaitMs = 0;
     /** @type {number|null} ステージの曲を始めた敵の番号（game.enemyIndex の値。まだ始めていなければ null） */
@@ -77,7 +75,7 @@ export class BoardScene extends Scene {
       deckCount: this.game.decks.length,
       columnCount: this.game.columns.length,
       handSize: this.game.hand.length,
-      gaugeCount: Object.keys(this.game.gauges).length,
+      actionBlockCount: this.game.config.baseActions,
     });
     this.selection = null;
     this.lastResult = null;
@@ -85,7 +83,6 @@ export class BoardScene extends Scene {
     this.battleShow = null;
     this.releaseShow = new ReleaseShow(this.layout.battle.troops);
     this.enemyIdle = new EnemyIdle();
-    this.pendingBattle = false;
     this.stageBgmWaitMs = BGM_TIMING.startToStageMs;
     this.stageBgmEnemyIndex = null;
   }
@@ -94,6 +91,7 @@ export class BoardScene extends Scene {
    * 動きの時計に dt（ミリ秒）を足して進める（timeScale は update の呼ばれる回数に反映されるので掛けない。ルール層の状態は変えない）。
    * 放つ演出の時計も進め、進めた直後に、その間に玉に変わった札の序数ごとに連鎖の効果音を鳴らす。
    * ステージの曲の待ち時間も進め、曲を始める場面なら流す（updateStageBgm）。
+   * 最後に、行動を使い切っていて（ルール層の canResolveBattle）札の移動・山札のめくれ・玉に変わる前の札・玉・兵が全部止まっていれば、自動で攻防に入る（startBattle）。
    * 頭で `this.battleShow` を外す（update は最前面のときだけ呼ばれるので、攻防の演出のシーンが外れた後になる）。
    * @param {number} dt 1ティックの長さ（ミリ秒）
    * @returns {void}
@@ -105,8 +103,7 @@ export class BoardScene extends Scene {
     this.enemyIdle.update(dt, this.game.enemy.typeId, this.game.enemy.hp);
     for (const ordinal of this.releaseShow.chainCuesInLastUpdate()) playChainSe(ordinal);
     this.updateStageBgm(dt);
-    if (this.pendingBattle && !this.releaseShow.isBusy()) {
-      this.pendingBattle = false;
+    if (this.game.canResolveBattle() && !this.animator.isBusy() && !this.releaseShow.isBusy()) {
       this.startBattle();
     }
   }
@@ -125,7 +122,7 @@ export class BoardScene extends Scene {
   }
 
   /**
-   * 攻防に入る（攻防の前の値の写し → 待っている兵の数 → 攻防の解決 → 行動終了の音 → 放つ演出の作り直し → 攻防の演出のシーンを積む）。
+   * 攻防に入る（update が、行動を使い切って札・玉・兵が全部止まったときに呼ぶ。攻防の前の値の写し → 待っている兵の数 → 攻防の解決 → 行動終了の音 → 放つ演出の作り直し → 攻防の演出のシーンを積む）。
    * 攻防を解決できなければ何もしない。
    * @returns {void}
    */
@@ -150,24 +147,20 @@ export class BoardScene extends Scene {
   }
 
   /**
-   * 押したとき（'down'）だけ、札の動き・山札のめくれ・玉に変わる前の札が残っている間は無視し、当たった場所に応じてルール層の操作を呼ぶ（選択の扱いは boardSelection.js）。
-   * 操作が成り立ったとき・行動終了で攻防に入ったときに効果音を鳴らす（soundCues.js）。
+   * 押したとき（'down'）だけ、札の動き・山札のめくれ・玉に変わる前の札が残っている間は無視する。行動を使い切っていれば選択を外して戻る（攻防へは update が自動で入る）。
+   * それ以外は、当たった場所に応じてルール層の操作を呼ぶ（選択の扱いは boardSelection.js）。操作が成り立ったときに効果音を鳴らす（soundCues.js）。
    * @param {{ type: string, x: number, y: number }} pointer ポインタ入力
    * @returns {void}
    */
   onPointer(pointer) {
     if (pointer.type !== 'down') return;
-    if (this.pendingBattle || this.animator.isBusy() || this.releaseShow.isHoldingCards()) return;
+    if (this.animator.isBusy() || this.releaseShow.isHoldingCards()) return;
     const game = this.game;
-    const hit = this.layout.hitTest(pointer.x, pointer.y, game.columns.map((col) => col.length));
     if (game.isOutOfActions()) {
       this.selection = null;
-      if (hit !== null && hit.kind === 'actionEnd' && game.canResolveBattle()) {
-        if (this.releaseShow.isBusy()) this.pendingBattle = true;
-        else this.startBattle();
-      }
       return;
     }
+    const hit = this.layout.hitTest(pointer.x, pointer.y, game.columns.map((col) => col.length));
     const before = snapshotBoard(game);
     const prevSelection = this.selection;
     const step = applyTap(game, this.selection, hit);
@@ -185,7 +178,7 @@ export class BoardScene extends Scene {
             step.result.columnIndex,
             step.result.cards.length,
             step.result.segments.map((s) => s.gauge),
-            Object.keys(game.gauges),
+            game.config.muscleConversion.gauge,
           ),
         );
       }
