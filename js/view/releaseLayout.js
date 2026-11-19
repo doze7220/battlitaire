@@ -49,11 +49,11 @@ function centerOf(r) {
  * @param {number} columnIndex 放った列の番号
  * @param {number} cardCount 放った札の枚数
  * @param {string[]} segmentGauges 区切りごとのゲージ名（下の区切りから順）
- * @param {string[]} gaugeKeys ゲージ名の並び（`layout.gauges` と同じ順）
+ * @param {string} coinGauge 金貨のゲージの識別子（陣地のない区切りのうち、最上部の金貨のゲージへ飛ぶもの）
  * @returns {ReleaseGeometry} 放つ演出の配置
  * @throws {Error} 飛ぶ先のないゲージがあるとき
  */
-export function releaseGeometry(layout, columnIndex, cardCount, segmentGauges, gaugeKeys) {
+export function releaseGeometry(layout, columnIndex, cardCount, segmentGauges, coinGauge) {
   const cardRects = layout.columnCardRects(columnIndex, cardCount);
   const col = layout.columns[columnIndex];
   const cardW = layout.card.w;
@@ -76,9 +76,8 @@ export function releaseGeometry(layout, columnIndex, cardCount, segmentGauges, g
     if (Object.prototype.hasOwnProperty.call(camps, gauge)) {
       targets.push(centerOf(camps[gauge]));
     } else {
-      const gi = gaugeKeys.indexOf(gauge);
-      if (gi < 0) throw new Error(`releaseGeometry: 飛ぶ先のないゲージ ${gauge}`);
-      targets.push(centerOf(layout.gauges[gi]));
+      if (gauge !== coinGauge) throw new Error(`releaseGeometry: 飛ぶ先のないゲージ ${gauge}`);
+      targets.push(centerOf(layout.battle.topGauges.coinBar));
     }
   }
 
