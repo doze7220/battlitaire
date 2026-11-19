@@ -1,5 +1,5 @@
 /**
- * 責務: 盤面の画面配置（戦闘の段の兵の陣地・敵ごとの当たる位置・炎の出る位置・画面の外の x・城の打撃の範囲・人数の表示・城と敵の絵の矩形・ゴブリンの群れの並び・敵を倒したときの案内・早送りとスキップの矩形を含む）を一手に持ち、座標から「何に当たるか」を求める。
+ * 責務: 盤面の画面配置（戦闘の段の兵の陣地・敵ごとの当たる位置・炎の出る位置・画面の外の x・城の打撃の範囲・人数の表示・城と敵の絵の矩形・ゴブリンの群れの並び・敵を倒したときの案内・最上部のゲージ・行動のゲージの帯を含む）を一手に持ち、座標から「何に当たるか」を求める。
  * タイトル画面・遊び方の画面・結果の表示（決着）の配置と当たりも持つ。ルール層は import せず、数の情報は引数で受け取る。状態は変えない。絵の縦横比は spriteView.js から得る。
  */
 
@@ -27,10 +27,23 @@ import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
  */
 
 /**
- * 最下段（UI）の配置。
- * @typedef {Object} HudLayout
- * @property {Rect} panel 段の背景
- * @property {Rect} actionEnd 「行動終了」の領域（中に残りの行動回数も出す。左側は空けてある）
+ * 行動のゲージの配置（戦闘の段とソリティアの段の間の帯。押せない）。
+ * @typedef {Object} ActionGaugeLayout
+ * @property {Rect} band 帯（`sections.actionBar`）
+ * @property {Rect[]} blocks ブロックの矩形（左から `actionBlockCount` 個。0 以下なら空）
+ */
+
+/**
+ * 画面の最上部のゲージ（城と敵の HP・フェーズ・金貨）の配置。
+ * @typedef {Object} TopGaugeLayout
+ * @property {Rect} castleBar 城の HP ゲージ（右端が根元）
+ * @property {Rect} enemyBar 敵の HP ゲージ（左端が根元）
+ * @property {{ x: number, y: number }} castleValue 城の HP の数字の左端・中心 y
+ * @property {{ x: number, y: number }} enemyValue 敵の HP の数字の右端・中心 y
+ * @property {{ x: number, y: number }} phaseLabel 「PHASE」の中心
+ * @property {{ x: number, y: number }} phaseValue フェーズの番号の中心
+ * @property {Rect} coinBar 金貨のゲージ（城の HP ゲージと同じ範囲・同じ向き）
+ * @property {function(number): Rect} coinBadge 根元から数えて i 番目の金貨のバッジの矩形（i がいくつでも返す）
  */
 
 /**
@@ -44,7 +57,7 @@ import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * 当たり判定の結果。
  * `index` は山札・手札の枠・列・放つボタンの番号。`cardIndex` は列のときだけ意味を持ち、
  * 当たった列のカードの番号（下から数える。どのカードにも当たらなければ null）。
- * @typedef {{ kind: 'deck'|'hand'|'column'|'release'|'actionEnd', index: number, cardIndex?: (number|null) }} Hit
+ * @typedef {{ kind: 'deck'|'hand'|'column'|'release', index: number, cardIndex?: (number|null) }} Hit
  */
 
 /**
@@ -82,9 +95,7 @@ import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * @property {Rect} castle 城の絵の矩形
  * @property {Rect} enemy ゴブリンの群れの矩形（絵を持たない敵のシールドマークの既定の並べ先・兵の当たる位置の基準でもある）
  * @property {Object<string, EnemyFigure>} enemyFigures 敵の種類の識別子 → 敵の絵の配置（凍結。絵を持たない敵は含まれない）
- * @property {Rect} phase 「フェーズ N」の枠
- * @property {Rect} castleHp 城の HP の枠
- * @property {Rect} enemyHp 敵の HP の枠
+ * @property {TopGaugeLayout} topGauges 画面の最上部のゲージ（城と敵の HP・フェーズ・金貨）の配置
  * @property {Rect} intent 敵の次の行動の予告の枠
  * @property {Rect} countdown 数え下ろしの枠（段の右上）
  * @property {{ x: number, y: number }} enemyHealText 絵を持たない敵の回復の量の文字の中心（群れの矩形の上寄り）
@@ -141,27 +152,50 @@ import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * 盤面の配置。
  * @typedef {Object} Layout
  * @property {{ width: number, height: number }} screen 画面の大きさ
- * @property {{ battle: Rect, solitaire: Rect, ui: Rect }} sections 3段の領域（上から戦闘・ソリティア・UI）
+ * @property {{ battle: Rect, actionBar: Rect, solitaire: Rect }} sections 3つの領域（上から戦闘・行動のゲージの帯・ソリティア）
  * @property {{ w: number, h: number }} card カードの幅と高さ
  * @property {Rect[]} decks 山札の領域
- * @property {Rect[]} gauges ゲージの枠（ソリティアの段の最上部の横1行。ゲージの並び順。押せない）
  * @property {Rect} discard 捨て札の領域
  * @property {ColumnLayout[]} columns 列の領域
  * @property {HandLayout} hand 手札の見出しと枠
  * @property {Rect[]} releaseButtons 放つボタンの領域
- * @property {HudLayout} hud 最下段（UI）
+ * @property {ActionGaugeLayout} actionGauge 行動のゲージの帯とブロック
  * @property {BattleLayout} battle 最上段（戦闘）
- * @property {{ fastForward: Rect, skip: Rect }} battleControls 攻防の演出中の最下段の「早送り」「スキップ」の矩形（`hud.actionEnd` を左右に2分割）
  * @property {function(number, number): Rect[]} columnCardRects 列の番号と枚数から、下から順の各カードの矩形（長い列の詰めを含む）
  * @property {ResultLayout} result 決着の表示（結果）の配置
  * @property {function(number, number, number[]=): (Hit|null)} hitTest 座標（と列ごとのカードの枚数）から当たったものを返す
- * @property {function(number, number): ('fastForward'|'skip'|null)} battleHitTest 座標から、演出中のボタン（早送り・スキップ）に当たったものを返す
  */
 
 /** 最上段（戦闘）の高さ。300〜480 の範囲で変えてよい。試遊で決め直す。 */
 const BATTLE_H = 360;
-/** 最下段（UI）の高さ（固定。行動の枠・行動終了の行がおさまる高さ） */
-const UI_H = 144;
+/** 行動のゲージの帯（戦闘の段とソリティアの段の間）の高さ。試遊で決め直す。 */
+const ACTION_BAR_H = 36;
+/** 行動のゲージの帯の中のブロックの上下の余白。試遊で決め直す。 */
+const ACTION_BLOCK_PAD_Y = 6;
+/** 行動のゲージのブロックどうしの間。試遊で決め直す。 */
+const ACTION_BLOCK_GAP = 8;
+/** 画面の上端から最上部の HP ゲージの上端までの距離。試遊で決め直す。 */
+const TOP_GAUGE_Y = 8;
+/** HP ゲージの太さ（変える1か所）。試遊で決め直す。 */
+const HP_GAUGE_H = 20;
+/** 左右の HP ゲージの間の「PHASE」の欄の幅。試遊で決め直す。 */
+const TOP_GAUGE_CENTER_W = 100;
+/** HP の数字の、ゲージの外側の端から内側への距離。試遊で決め直す。 */
+const HP_VALUE_INSET = 8;
+/** 「PHASE」の文字の中心 y。試遊で決め直す。 */
+const PHASE_LABEL_Y = 16;
+/** フェーズの番号の中心 y。試遊で決め直す。 */
+const PHASE_VALUE_Y = 42;
+/** 城の HP ゲージと金貨のゲージの間。試遊で決め直す。 */
+const COIN_GAUGE_GAP_Y = 4;
+/** 金貨のゲージの太さ。試遊で決め直す。 */
+const COIN_GAUGE_H = 10;
+/** 金貨のゲージとバッジの間。試遊で決め直す。 */
+const COIN_BADGE_GAP_Y = 4;
+/** 金貨のバッジの直径。試遊で決め直す。 */
+const COIN_BADGE_SIZE = 12;
+/** 金貨のバッジどうしの間。試遊で決め直す。 */
+const COIN_BADGE_GAP_X = 4;
 /** 左右の余白 */
 const SIDE_MARGIN = 20;
 /** 上の行のカードの横の間隔 */
@@ -187,13 +221,11 @@ const COLUMN_KEEP_TOP = 3;
 
 /** 戦闘の段の枠の高さ */
 const BOX_H = 40;
-/** 「フェーズ N」の枠の幅 */
-const PHASE_BOX_W = 200;
 /** 戦闘の段の上の余白 */
 const BATTLE_TOP_PAD = 12;
 /** 地面の線から段の下端までの距離 */
 const GROUND_OFFSET = 100;
-/** フェーズの枠と城・敵の上端の最小の間隔 */
+/** 段の上の枠の行（数え下ろし・人数の表示）の下端と城・敵の上端の最小の間隔 */
 const BODY_GAP = 16;
 /** 城の絵の中心の x（段の左端から約 1/3。試遊で動かす1か所） */
 const CASTLE_CX = 240;
@@ -230,13 +262,11 @@ const ENEMY_HEAL_TEXT_RATIO = 0.15;
 const ENEMY_MAX_SIZE = 120;
 /** 数え下ろしの枠の幅 */
 const COUNTDOWN_W = 220;
-/** 城の HP の枠の幅 */
-const INFO_W = 240;
-/** 敵の HP・予告の枠の幅（敵の名前が入るので城の枠より広い） */
+/** 予告の枠の幅 */
 const ENEMY_INFO_W = 340;
-/** 地面の線と HP の枠の間隔 */
+/** 地面の線と予告の枠の位置の基準の間隔 */
 const INFO_GAP = 8;
-/** HP の枠と予告の枠の間隔 */
+/** 予告の枠の位置の基準と予告の枠の間隔 */
 const INFO_GAP_Y = 4;
 /** 兵の大きさ（直径）。試遊で決め直す1か所 */
 const TROOP_SIZE = 24;
@@ -289,19 +319,6 @@ const HORDE_COL_STEP = 14;
 const HORDE_RIGHT_X = 690;
 /** ゴブリンの群れの奥の行ごとの足元の上がりの、兵の大きさに対する割合 */
 const HORDE_ROW_RISE = 0.7;
-
-/** 最下段の行（行動の枠・行動終了）の上の余白 */
-const UI_PAD_TOP = 16;
-/** ゲージの枠の高さ */
-const GAUGE_H = 64;
-/** ゲージの行と、その下の山札の行の間のすき間 */
-const GAUGE_GAP_Y = 12;
-/** 横の間隔（ゲージの枠どうし、最下段の左の空きと行動終了の間、早送りとスキップの間） */
-const UI_GAP_X = 12;
-/** 最下段の左側の空き（何も置かない。Phase 4 のスキル用）の幅 */
-const UI_LEFT_W = 200;
-/** 行動終了の高さ */
-const ACTION_END_H = 100;
 
 /** タイトル画面のゲーム名の中心 y の、画面の高さに対する割合 */
 const TITLE_TEXT_RATIO = 0.36;
@@ -398,6 +415,41 @@ export function columnCardYs(columnLayout, count) {
 }
 
 /**
+ * 画面の最上部のゲージの配置を作る。城の HP ゲージは中央の「PHASE」の欄の左（右端が根元）、
+ * 敵の HP ゲージは右（左端が根元）で、長さは同じ。金貨のゲージは城の HP ゲージの真下に同じ範囲で置き、
+ * その下に赤い丸のバッジを根元から左へ並べる。
+ * @param {number} width 画面の幅
+ * @returns {TopGaugeLayout} 最上部のゲージの配置
+ */
+function createTopGaugeLayout(width) {
+  const barW = width / 2 - TOP_GAUGE_CENTER_W / 2 - SIDE_MARGIN;
+  const castleBar = { x: SIDE_MARGIN, y: TOP_GAUGE_Y, w: barW, h: HP_GAUGE_H };
+  const enemyBar = { x: width / 2 + TOP_GAUGE_CENTER_W / 2, y: TOP_GAUGE_Y, w: barW, h: HP_GAUGE_H };
+  const coinBar = { x: castleBar.x, y: castleBar.y + castleBar.h + COIN_GAUGE_GAP_Y, w: castleBar.w, h: COIN_GAUGE_H };
+  /**
+   * 根元（中央の側）から数えて i 番目の金貨のバッジの矩形を返す。
+   * @param {number} i 根元からの番号（0 から）
+   * @returns {Rect} バッジの矩形
+   */
+  const coinBadge = (i) => ({
+    x: coinBar.x + coinBar.w - COIN_BADGE_SIZE - i * (COIN_BADGE_SIZE + COIN_BADGE_GAP_X),
+    y: coinBar.y + coinBar.h + COIN_BADGE_GAP_Y,
+    w: COIN_BADGE_SIZE,
+    h: COIN_BADGE_SIZE,
+  });
+  return {
+    castleBar,
+    enemyBar,
+    castleValue: { x: castleBar.x + HP_VALUE_INSET, y: castleBar.y + castleBar.h / 2 },
+    enemyValue: { x: enemyBar.x + enemyBar.w - HP_VALUE_INSET, y: enemyBar.y + enemyBar.h / 2 },
+    phaseLabel: { x: width / 2, y: PHASE_LABEL_Y },
+    phaseValue: { x: width / 2, y: PHASE_VALUE_Y },
+    coinBar,
+    coinBadge,
+  };
+}
+
+/**
  * 最上段（戦闘）の配置を作る。地面の基準は段の下端から GROUND_OFFSET 上、城・敵の絵はその上に足元をそろえて立つ。
  * 城の絵は CASTLE_CX、敵の中心は ENEMY_CX。巨人・ドラゴンの絵は ENEMY_FIGURES の表で大きさと
  * シールドマークの並べ先を決める。
@@ -405,12 +457,10 @@ export function columnCardYs(columnLayout, count) {
  * @returns {BattleLayout} 戦闘の段の配置
  */
 function createBattleLayout(width) {
-  const phase = { x: (width - PHASE_BOX_W) / 2, y: BATTLE_TOP_PAD, w: PHASE_BOX_W, h: BOX_H };
   const groundY = BATTLE_H - GROUND_OFFSET;
-  const bodyTop = phase.y + phase.h + BODY_GAP;
+  const bodyTop = BATTLE_TOP_PAD + BOX_H + BODY_GAP;
   const enemySize = Math.min(ENEMY_MAX_SIZE, groundY - bodyTop);
   const infoY = groundY + INFO_GAP;
-  const enemyHp = { x: width - SIDE_MARGIN - ENEMY_INFO_W, y: infoY, w: ENEMY_INFO_W, h: BOX_H };
   const area = { x: 0, y: 0, w: width, h: BATTLE_H };
   const castle = spriteFitRect(SPRITE_IDS.castle, CASTLE_CX, groundY, Math.min(CASTLE_H, groundY - bodyTop));
   const enemy = { x: ENEMY_CX - enemySize / 2, y: groundY - enemySize, w: enemySize, h: enemySize };
@@ -542,10 +592,8 @@ function createBattleLayout(width) {
     area,
     castle,
     enemy,
-    phase,
-    castleHp: { x: SIDE_MARGIN, y: infoY, w: INFO_W, h: BOX_H },
-    enemyHp,
-    intent: { x: enemyHp.x, y: enemyHp.y + BOX_H + INFO_GAP_Y, w: ENEMY_INFO_W, h: BOX_H },
+    topGauges: createTopGaugeLayout(width),
+    intent: { x: width - SIDE_MARGIN - ENEMY_INFO_W, y: infoY + BOX_H + INFO_GAP_Y, w: ENEMY_INFO_W, h: BOX_H },
     countdown,
     enemyFigures,
     enemyHealText,
@@ -570,29 +618,37 @@ function createBattleLayout(width) {
  * @param {number} params.deckCount 山札の数
  * @param {number} params.columnCount 列の数
  * @param {number} params.handSize 手札の枠の数
- * @param {number} params.gaugeCount ゲージの数
+ * @param {number} params.actionBlockCount 行動のゲージのブロックの数（シーンがルール層の基本の行動回数を渡す）
  * @returns {Layout} 配置
  */
-export function createLayout({ screen, deckCount, columnCount, handSize, gaugeCount }) {
+export function createLayout({ screen, deckCount, columnCount, handSize, actionBlockCount }) {
   const W = screen.width;
   const H = screen.height;
   const sections = {
     battle: { x: 0, y: 0, w: W, h: BATTLE_H },
-    solitaire: { x: 0, y: BATTLE_H, w: W, h: H - BATTLE_H - UI_H },
-    ui: { x: 0, y: H - UI_H, w: W, h: UI_H },
+    actionBar: { x: 0, y: BATTLE_H, w: W, h: ACTION_BAR_H },
+    solitaire: { x: 0, y: BATTLE_H + ACTION_BAR_H, w: W, h: H - BATTLE_H - ACTION_BAR_H },
   };
+
+  const blockCount = Math.max(0, actionBlockCount);
+  const blockW = (W - SIDE_MARGIN * 2 - ACTION_BLOCK_GAP * (blockCount - 1)) / blockCount;
+  const blocks = [];
+  for (let i = 0; i < blockCount; i++) {
+    blocks.push({
+      x: SIDE_MARGIN + (blockW + ACTION_BLOCK_GAP) * i,
+      y: sections.actionBar.y + ACTION_BLOCK_PAD_Y,
+      w: blockW,
+      h: sections.actionBar.h - ACTION_BLOCK_PAD_Y * 2,
+    });
+  }
+  /** @type {ActionGaugeLayout} */
+  const actionGauge = { band: sections.actionBar, blocks };
 
   // カードの大きさは、上の行（山札・捨て札・手札の枠）が横幅に並ぶことから決める
   const n = deckCount + 1 + handSize;
   const cardW = Math.floor((W - SIDE_MARGIN * 2 - ROW_GAP_X * (n - 1)) / n);
   const cardH = Math.round(cardW * CARD_ASPECT);
-  const gaugeW = (W - SIDE_MARGIN * 2 - UI_GAP_X * (gaugeCount - 1)) / gaugeCount;
-  const gaugeY = sections.solitaire.y + SOLITAIRE_PAD_TOP;
-  const gauges = [];
-  for (let i = 0; i < gaugeCount; i++) {
-    gauges.push({ x: SIDE_MARGIN + (gaugeW + UI_GAP_X) * i, y: gaugeY, w: gaugeW, h: GAUGE_H });
-  }
-  const rowY = gaugeY + GAUGE_H + GAUGE_GAP_Y;
+  const rowY = sections.solitaire.y + SOLITAIRE_PAD_TOP;
   /**
    * 上の行（山札・捨て札・手札の枠）の i 番目のカードの左端 x を返す。
    * @param {number} i 上の行での左からの番号
@@ -614,7 +670,7 @@ export function createLayout({ screen, deckCount, columnCount, handSize, gaugeCo
   };
 
   const columnTop = rowY + cardH + LABEL_LINE_H + ROW_GAP_Y;
-  const releaseY = sections.ui.y - SOLITAIRE_PAD_BOTTOM - RELEASE_H;
+  const releaseY = sections.solitaire.y + sections.solitaire.h - SOLITAIRE_PAD_BOTTOM - RELEASE_H;
   const areaH = releaseY - COLUMN_BOTTOM_GAP - columnTop;
   const step = COLUMN_STEP_DEFAULT;
   const pitch = (W - SIDE_MARGIN * 2) / columnCount;
@@ -627,33 +683,7 @@ export function createLayout({ screen, deckCount, columnCount, handSize, gaugeCo
     releaseButtons.push({ x, y: releaseY, w: cardW, h: RELEASE_H });
   }
 
-  const actionsY = sections.ui.y + UI_PAD_TOP;
-  const actionEndX = SIDE_MARGIN + UI_LEFT_W + UI_GAP_X;
-  /** @type {HudLayout} */
-  const hud = {
-    panel: sections.ui,
-    actionEnd: { x: actionEndX, y: actionsY, w: W - SIDE_MARGIN - actionEndX, h: ACTION_END_H },
-  };
-
   const battle = createBattleLayout(W);
-
-  const controlW = (hud.actionEnd.w - UI_GAP_X) / 2;
-  const battleControls = {
-    fastForward: { x: hud.actionEnd.x, y: hud.actionEnd.y, w: controlW, h: hud.actionEnd.h },
-    skip: { x: hud.actionEnd.x + controlW + UI_GAP_X, y: hud.actionEnd.y, w: controlW, h: hud.actionEnd.h },
-  };
-
-  /**
-   * 座標から、演出中のボタン（早送り・スキップ）に当たったものを返す。
-   * @param {number} x x 座標
-   * @param {number} y y 座標
-   * @returns {'fastForward'|'skip'|null} 当たったもの。なければ null
-   */
-  function battleHitTest(x, y) {
-    if (inRect(battleControls.fastForward, x, y)) return 'fastForward';
-    if (inRect(battleControls.skip, x, y)) return 'skip';
-    return null;
-  }
 
   /**
    * 列のカードの矩形を下から順に求める（`columnCardYs` を使うので長い列の詰めを含む）。
@@ -667,14 +697,13 @@ export function createLayout({ screen, deckCount, columnCount, handSize, gaugeCo
   }
 
   /**
-   * 座標から当たったものを返す（行動終了 → 放つボタン → 山札 → 手札の枠 → 列 の順）。
+   * 座標から当たったものを返す（放つボタン → 山札 → 手札の枠 → 列 の順）。
    * @param {number} x x 座標
    * @param {number} y y 座標
    * @param {number[]} [columnLengths] 列ごとのカードの枚数（列のカードの当たりに使う）
    * @returns {Hit|null} 当たったもの。なければ null
    */
   function hitTest(x, y, columnLengths = []) {
-    if (inRect(hud.actionEnd, x, y)) return { kind: 'actionEnd', index: 0 };
     for (let i = 0; i < releaseButtons.length; i++) {
       if (inRect(releaseButtons[i], x, y)) return { kind: 'release', index: i };
     }
@@ -701,7 +730,7 @@ export function createLayout({ screen, deckCount, columnCount, handSize, gaugeCo
 
   const result = createResultLayout(screen);
 
-  return { screen, sections, card: { w: cardW, h: cardH }, gauges, decks, discard, columns, hand, releaseButtons, hud, battle, battleControls, result, columnCardRects, hitTest, battleHitTest };
+  return { screen, sections, card: { w: cardW, h: cardH }, decks, discard, columns, hand, releaseButtons, actionGauge, battle, result, columnCardRects, hitTest };
 }
 
 /**
