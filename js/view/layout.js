@@ -1,9 +1,9 @@
 /**
- * 責務: 盤面の画面配置（戦闘の段の兵の陣地・敵ごとの当たる位置・炎の出る位置・画面の外の x・城の打撃の範囲・人数の表示・城と敵の絵の矩形・ゴブリンの群れの並び・敵を倒したときの案内・最上部のゲージ・行動のゲージの帯を含む）を一手に持ち、座標から「何に当たるか」を求める。
+ * 責務: 盤面の画面配置（戦闘の段の兵の陣地・敵の頭の上の予告の札・敵ごとの当たる位置・炎の出る位置・画面の外の x・城の打撃の範囲・人数の表示・城と敵の絵の矩形・ゴブリンの群れの並び・敵を倒したときの案内・最上部のゲージ・行動のゲージの帯を含む）を一手に持ち、座標から「何に当たるか」を求める。
  * タイトル画面・遊び方の画面・結果の表示（決着）の配置と当たりも持つ。ルール層は import せず、数の情報は引数で受け取る。状態は変えない。絵の縦横比は spriteView.js から得る。
  */
 
-import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
+import { INTENT_CELL, SPRITE_IDS, spriteFitRect } from './spriteView.js';
 
 /**
  * 矩形。
@@ -85,6 +85,25 @@ import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * @property {number} hitX 攻撃の兵が当たって止まる足元の x（`rect.x + rect.w × hit`）
  * @property {{ x: number, y: number }|null} mouth 炎が出る口の位置（口のない敵は null）
  * @property {{ x: number, y: number }} healText 敵の回復の量の文字の中心
+ * @property {IntentSpot} intent 予告の札の上端の中央（最上部のゲージの下端より下）
+ */
+
+/**
+ * 予告の札の置き場所（札の上端の中央）。
+ * @typedef {Object} IntentSpot
+ * @property {number} x 札の中心の x
+ * @property {number} y 札の上端の y
+ */
+
+/**
+ * 予告の札の大きさと、その下の数え下ろしの文字の配置。
+ * @typedef {Object} IntentBadgeLayout
+ * @property {number} h 札（板）の高さ
+ * @property {number} padX 板の左右の余白
+ * @property {number} iconW 予告の絵の幅
+ * @property {number} gap 絵と量の数字の間
+ * @property {number} countdownDy 札の上端から数え下ろしの文字の中心 y までの距離
+ * @property {number} countdownMaxW 数え下ろしの文字の最大の幅
  */
 
 /**
@@ -99,6 +118,8 @@ import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * @property {Rect} intent 敵の次の行動の予告の枠
  * @property {Rect} countdown 数え下ろしの枠（段の右上）
  * @property {{ x: number, y: number }} enemyHealText 絵を持たない敵の回復の量の文字の中心（群れの矩形の上寄り）
+ * @property {IntentSpot} enemyIntent 絵を持たない敵（ゴブリンの群れ）の予告の札の上端の中央
+ * @property {IntentBadgeLayout} intentBadge 予告の札の大きさと数え下ろしの文字の配置
  * @property {TroopLayout} troops 兵の配置
  * @property {{ box: Rect, iconSize: number, items: Array<{ iconX: number, iconY: number, textX: number, textY: number }> }} troopCounter 人数の表示の配置（枠・アイコンの大きさ・攻撃・防御・修理の順の各項目のアイコン中心と文字の左端・中心 y）
  * @property {{ x: number, titleY: number, hintY: number, maxW: number }} defeat 敵を倒したときの案内の位置（段の中央の x、「〜を倒した！」・「タップで次へ」の y、文字の最大の幅）
@@ -196,6 +217,8 @@ const COIN_BADGE_GAP_Y = 4;
 const COIN_BADGE_SIZE = 12;
 /** 金貨のバッジどうしの間。試遊で決め直す。 */
 const COIN_BADGE_GAP_X = 4;
+/** 最上部のゲージの下端の y（金貨のバッジの下端）。ほかの定数から求める */
+const TOP_GAUGES_BOTTOM = TOP_GAUGE_Y + HP_GAUGE_H + COIN_GAUGE_GAP_Y + COIN_GAUGE_H + COIN_BADGE_GAP_Y + COIN_BADGE_SIZE;
 /** 左右の余白 */
 const SIDE_MARGIN = 20;
 /** 上の行のカードの横の間隔 */
@@ -236,7 +259,8 @@ const ENEMY_CX = 620;
 /**
  * 敵の種類の識別子ごとの絵の設定。height は絵の高さ、shield はシールドマークを並べる矩形（絵の矩形に対する割合。
  * cx・cy は中心、w・h は幅・高さ）、hit は攻撃の兵が当たって止まる x の絵の矩形の幅に対する割合（左端から。試遊で決め直す）、
- * mouth は炎が出る位置の絵の矩形に対する割合 {x, y}（口のない敵は null。試遊で決め直す）。
+ * mouth は炎が出る位置の絵の矩形に対する割合 {x, y}（口のない敵は null。試遊で決め直す）、
+ * intent は予告の札の上端の中央の絵の矩形に対する割合 {x, y}（試遊で決め直す。上端は最上部のゲージの下端より下に補正する）。
  */
 const ENEMY_FIGURES = Object.freeze({
   giant: Object.freeze({
@@ -245,6 +269,7 @@ const ENEMY_FIGURES = Object.freeze({
     shield: Object.freeze({ cx: 0.41, cy: 0.39, w: 0.7, h: 0.3 }),
     hit: 0.15,
     mouth: null,
+    intent: Object.freeze({ x: 0.32, y: 0 }),
   }),
   dragon: Object.freeze({
     sprite: SPRITE_IDS.dragon,
@@ -252,6 +277,7 @@ const ENEMY_FIGURES = Object.freeze({
     shield: Object.freeze({ cx: 0.47, cy: 0.49, w: 0.6, h: 0.3 }),
     hit: 0.15,
     mouth: Object.freeze({ x: 0.03, y: 0.3 }),
+    intent: Object.freeze({ x: 0.25, y: 0 }),
   }),
 });
 /** 城の打撃のヒットマークを出す範囲の、城の絵の矩形に対する割合（x・y は左上、w・h は幅・高さ。試遊で決め直す） */
@@ -260,6 +286,27 @@ const CASTLE_HIT_AREA = Object.freeze({ x: 0.15, y: 0.3, w: 0.7, h: 0.5 });
 const ENEMY_HEAL_TEXT_RATIO = 0.15;
 /** 敵の最大の大きさ */
 const ENEMY_MAX_SIZE = 120;
+/** 最上部のゲージの下端と予告の札の上端の最小の間隔。試遊で決め直す。 */
+const INTENT_TOP_GAP = 4;
+/** ゴブリンの予告の札の中心の、群れの右端の列の足元の x から左への距離。試遊で決め直す。 */
+const HORDE_INTENT_DX = 40;
+/** ゴブリンの予告の札の上端の、群れの一番奥の行の兵の頭の上端から上への距離。試遊で決め直す。 */
+const HORDE_INTENT_RISE = 40;
+/** 予告の札（板）の左右の余白。試遊で決め直す。 */
+const INTENT_PAD_X = 6;
+/** 予告の札（板）の上下の余白。試遊で決め直す。 */
+const INTENT_PAD_Y = 2;
+/** 予告の札の絵と量の数字の間。試遊で決め直す。 */
+const INTENT_GAP_X = 4;
+/** 札の板の下端と数え下ろしの文字の行の上端の間。試遊で決め直す。 */
+const INTENT_COUNTDOWN_GAP_Y = 2;
+/**
+ * 数え下ろしの文字の行の高さ。`intentView.js` の数え下ろしの文字の大きさ（20px）と合わせること
+ * （片方だけ変えると文字の位置がずれる）。試遊で決め直す。
+ */
+const INTENT_COUNTDOWN_LINE_H = 20;
+/** 数え下ろしの文字の最大の幅。試遊で決め直す。 */
+const INTENT_COUNTDOWN_MAX_W = 200;
 /** 数え下ろしの枠の幅 */
 const COUNTDOWN_W = 220;
 /** 予告の枠の幅 */
@@ -291,12 +338,14 @@ const ATTACK_ADVANCE_X = 250;
 const ENEMY_ADVANCE_X = 60;
 /** 城に当たる位置の、城の右端からの内側への距離（試遊で決め直す） */
 const CASTLE_HIT_INSET = 10;
-/** 人数の表示の枠の幅 */
-const TROOP_COUNTER_W = 230;
+/** 最上部のゲージの下端と人数の表示の枠の上端の間。試遊で決め直す。 */
+const TROOP_COUNTER_GAP_Y = 6;
+/** 人数の表示の枠の幅（城の絵の矩形の左端より左に収まる幅）。試遊で決め直す。 */
+const TROOP_COUNTER_W = 168;
 /** 人数の表示のアイコンの大きさ */
 const TROOP_COUNTER_ICON = 24;
-/** 人数の表示の枠の左右の余白 */
-const TROOP_COUNTER_PAD_X = 10;
+/** 人数の表示の枠の左右の余白。試遊で決め直す。 */
+const TROOP_COUNTER_PAD_X = 6;
 /** 人数の表示のアイコンと文字の間隔 */
 const TROOP_COUNTER_TEXT_GAP = 4;
 /** 人数の表示の項目の数（攻撃・防御・修理） */
@@ -484,12 +533,32 @@ function createBattleLayout(width) {
         h: sh,
       },
       healText: { x: rect.x + rect.w / 2, y: rect.y + rect.h * ENEMY_HEAL_TEXT_RATIO },
+      intent: {
+        x: rect.x + rect.w * def.intent.x,
+        y: Math.max(TOP_GAUGES_BOTTOM + INTENT_TOP_GAP, rect.y + rect.h * def.intent.y),
+      },
       hitX: rect.x + rect.w * def.hit,
       mouth: def.mouth === null ? null : { x: rect.x + rect.w * def.mouth.x, y: rect.y + rect.h * def.mouth.y },
     });
   }
   Object.freeze(enemyFigures);
   const enemyHealText = { x: enemy.x + enemy.w / 2, y: enemy.y + enemy.h * ENEMY_HEAL_TEXT_RATIO };
+  const enemyIntent = {
+    x: HORDE_RIGHT_X - HORDE_INTENT_DX,
+    y: Math.max(
+      TOP_GAUGES_BOTTOM + INTENT_TOP_GAP,
+      groundY - TROOP_SIZE * HORDE_ROW_RISE * (HORDE_ROWS - 1) - TROOP_SIZE - HORDE_INTENT_RISE,
+    ),
+  };
+  const intentBadgeH = INTENT_CELL.h + INTENT_PAD_Y * 2;
+  const intentBadge = {
+    h: intentBadgeH,
+    padX: INTENT_PAD_X,
+    iconW: INTENT_CELL.w,
+    gap: INTENT_GAP_X,
+    countdownDy: intentBadgeH + INTENT_COUNTDOWN_GAP_Y + INTENT_COUNTDOWN_LINE_H / 2,
+    countdownMaxW: INTENT_COUNTDOWN_MAX_W,
+  };
 
   const campTop = groundY - CAMP_FOOT_ABOVE;
   const campH = CAMP_FOOT_ABOVE + CAMP_FOOT_BELOW;
@@ -524,7 +593,7 @@ function createBattleLayout(width) {
     fallOutY: BATTLE_H + TROOP_SIZE,
   };
 
-  const counterBox = { x: SIDE_MARGIN, y: BATTLE_TOP_PAD, w: TROOP_COUNTER_W, h: BOX_H };
+  const counterBox = { x: SIDE_MARGIN, y: TOP_GAUGES_BOTTOM + TROOP_COUNTER_GAP_Y, w: TROOP_COUNTER_W, h: BOX_H };
   const counterItemW = (counterBox.w - TROOP_COUNTER_PAD_X * 2) / TROOP_COUNTER_ITEMS;
   const counterItems = [];
   for (let i = 0; i < TROOP_COUNTER_ITEMS; i++) {
@@ -595,6 +664,8 @@ function createBattleLayout(width) {
     countdown,
     enemyFigures,
     enemyHealText,
+    enemyIntent,
+    intentBadge,
     troops,
     troopCounter,
     defeat: {
