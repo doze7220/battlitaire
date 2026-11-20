@@ -73,15 +73,16 @@ function topGaugeValues(game, release) {
  * @param {import('../anim/releaseShow.js').ReleaseLook} release 放つ演出の見た目の値（段取りの間の兵・ゲージの表示値・玉に変わる前の札・玉と式。読むだけ）
  * @param {import('../anim/burnTrack.js').BurnBoardLook|null} [burn] 札が燃える段の盤面の見た目（なければ null でルール層の盤面をそのまま描く）
  * @param {import('../anim/enemyIdle.js').EnemyIdleLook|null} [idle] 段取りの間の敵の待機の伸び縮みの見た目（戦闘の段へ渡す。なければ null）
+ * @param {import('../anim/enemyEntrance.js').EnemyEntranceLook|null} [entrance] 段取りの間の敵の入りの見た目（見えるか・横のずれ。戦闘の段へ渡す。なければ null）
  * @returns {void}
  */
-export function drawBoard(ctx, layout, game, ui, anim, release, burn = null, idle = null) {
+export function drawBoard(ctx, layout, game, ui, anim, release, burn = null, idle = null, entrance = null) {
   ctx.save();
   ctx.fillStyle = BACKGROUND_COLOR;
   ctx.fillRect(0, 0, layout.screen.width, layout.screen.height);
   ctx.restore();
 
-  drawBattleStage(ctx, layout.battle, { enemy: game.enemy, countdown: game.attackCountdown(), idle });
+  drawBattleStage(ctx, layout.battle, { enemy: game.enemy, countdown: game.attackCountdown(), idle, entrance });
   ctx.save();
   ctx.beginPath();
   ctx.rect(layout.battle.area.x, layout.battle.area.y, layout.battle.area.w, layout.battle.area.h);

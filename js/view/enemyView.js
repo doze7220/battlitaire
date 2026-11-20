@@ -1,6 +1,6 @@
 /**
  * 責務: 戦闘の段の敵の絵（巨人・ドラゴン。攻防中は倒れる動きのずれ・姿勢で段の中に切り抜く）と、段取りの間の絵・群れ（待機の伸び縮み）・シールドマークを描く。
- * 状態は変えず、ルール層・anim は実行時に import しない。
+ * 段取りの間は入りのずれ（見えるか・横のずれ）を受けて描く。状態は変えず、ルール層・anim は実行時に import しない。
  */
 
 import { drawTroop } from './troopView.js';
@@ -64,6 +64,7 @@ function drawShieldMark(ctx, rect) {
 /**
  * 敵の絵を描く。段取りの間（figure が null）は絵または兵の群れと常時防御力のシールドマークを描き、
  * 攻防の演出中は絵だけを倒れる動きのずれで段の中に切り抜いて描く（群れ・シールドは名簿の1体として別に描かれる）。
+ * 段取りの間は entrance を受け、見えないなら何も描かず、横のずれがあれば絵・群れ・シールドマークをまとめてずらす。
  * 引数は読むだけで書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
@@ -71,9 +72,10 @@ function drawShieldMark(ctx, rect) {
  * @param {{ visible: boolean, dy: number }|null} [figure] 倒れる絵の見た目（EnemyFigureLook）。null か省くと段取りの絵
  * @param {{ tilt: number, scaleX: number, scaleY: number }|null} [pose] ための姿勢（ChargePoseLook。攻防の演出中の絵を足元を軸に傾け・伸ばす）。null か省くと姿勢なし
  * @param {{ count: number, scaleX: Float64Array, scaleY: Float64Array, figure: { tilt: number, scaleX: number, scaleY: number } }|null} [idle] 段取りの間の待機の伸び縮み（EnemyIdleLook。絵は足元を軸に、群れは1体ずつ。null か省くと伸び縮みなし。シールドマークは伸び縮みしない）
+ * @param {import('../anim/enemyEntrance.js').EnemyEntranceLook|null} [entrance] 段取りの間の敵の入りの見た目（visible が偽なら描かない、dx は右へのずれ px。攻防の演出中は使わない。null か省くと常に見えてずれなし）
  * @returns {void}
  */
-export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = null, idle = null) {
+export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = null, idle = null, entrance = null) {
   const hasFigure = Object.prototype.hasOwnProperty.call(battleLayout.enemyFigures, enemy.typeId);
   ctx.save();
   if (figure !== null) {
@@ -90,6 +92,11 @@ export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = 
     ctx.restore();
     return;
   }
+  if (entrance !== null && !entrance.visible) {
+    ctx.restore();
+    return;
+  }
+  if (entrance !== null && entrance.dx !== 0) ctx.translate(entrance.dx, 0);
   let shieldBody = battleLayout.enemy;
   if (hasFigure) {
     const fig = battleLayout.enemyFigures[enemy.typeId];

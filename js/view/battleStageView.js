@@ -69,13 +69,13 @@ function drawBackground(ctx, battleLayout) {
  * 最上段（戦闘）を描く。引数は読むだけで書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
- * @param {{ enemy: { typeId: string, hp: number, armor: number, intent: import('../rules/combatants.js').EnemyAction|null }, figure?: { visible: boolean, dy: number }|null, countdown?: number|null, pose?: { tilt: number, scaleX: number, scaleY: number }|null, idle?: { count: number, scaleX: Float64Array, scaleY: Float64Array, figure: { tilt: number, scaleX: number, scaleY: number } }|null }} state 表示する状態（idle: 段取りの間の敵の待機の伸び縮み（EnemyIdleLook）。攻防中は渡さない。null か省くと伸び縮みなし。figure: 攻防の演出中の敵の絵の見た目（倒れる動き）。null か省くと段取りの絵。countdown: 攻撃までの残りフェーズ数。null か省くと数え下ろしを描かない。pose: ための姿勢（ChargePoseLook）。null か省くと姿勢なし）
+ * @param {{ enemy: { typeId: string, hp: number, armor: number, intent: import('../rules/combatants.js').EnemyAction|null }, figure?: { visible: boolean, dy: number }|null, countdown?: number|null, pose?: { tilt: number, scaleX: number, scaleY: number }|null, idle?: { count: number, scaleX: Float64Array, scaleY: Float64Array, figure: { tilt: number, scaleX: number, scaleY: number } }|null, entrance?: import('../anim/enemyEntrance.js').EnemyEntranceLook|null }} state 表示する状態（entrance: 段取りの間の敵の入りの見た目（見えるか・横のずれ）。攻防中は渡さない。null か省くと常に見えてずれなし。idle: 段取りの間の敵の待機の伸び縮み（EnemyIdleLook）。攻防中は渡さない。null か省くと伸び縮みなし。figure: 攻防の演出中の敵の絵の見た目（倒れる動き）。null か省くと段取りの絵。countdown: 攻撃までの残りフェーズ数。null か省くと数え下ろしを描かない。pose: ための姿勢（ChargePoseLook）。null か省くと姿勢なし）
  * @returns {void}
  */
-export function drawBattleStage(ctx, battleLayout, { enemy, figure = null, countdown = null, pose = null, idle = null }) {
+export function drawBattleStage(ctx, battleLayout, { enemy, figure = null, countdown = null, pose = null, idle = null, entrance = null }) {
   drawBackground(ctx, battleLayout);
   drawSpriteFit(ctx, SPRITE_IDS.castle, battleLayout.castle);
-  drawEnemyFigure(ctx, battleLayout, enemy, figure, pose, idle);
+  drawEnemyFigure(ctx, battleLayout, enemy, figure, pose, idle, entrance);
   const intentText = enemy.intent === null ? NO_INTENT_TEXT : enemyActionText(enemy.intent);
   const emphasized = enemy.intent !== null && EMPHASIZED_VARIANTS.has(enemy.intent.variant);
   drawBox(ctx, battleLayout.intent, `${INTENT_LABEL} ${intentText}`, emphasized ? EMPHASIS_STYLE : undefined);
