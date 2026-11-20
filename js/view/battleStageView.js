@@ -1,59 +1,11 @@
 /**
- * 責務: 最上段（戦闘）の描画（背景のスプライト・城のスプライト・敵の絵（enemyView.js。段取りの間は待機の伸び縮みを渡す）・敵の予告（ブレスの種類を目立たせる）・数え下ろし）。
+ * 責務: 最上段（戦闘）の描画（背景のスプライト・城のスプライト・敵の絵（enemyView.js。段取りの間は待機の伸び縮みを渡す）・敵の頭の上の予告と数え下ろし（intentView.js を呼ぶ））。
  * 状態は変えず、ルール層は実行時に import しない。
  */
 
-import { roundRectPath } from './cardView.js';
-import { enemyActionText, countdownText } from './battleText.js';
 import { drawEnemyFigure } from './enemyView.js';
+import { drawEnemyIntent } from './intentView.js';
 import { SPRITE_IDS, drawSpriteFit } from './spriteView.js';
-
-/** 枠の塗りつぶしの色。 */
-const BOX_FILL = 'rgba(0, 0, 0, 0.35)';
-/** 枠の角の半径。 */
-const BOX_CORNER = 8;
-/** 枠の左端から文字までの余白。 */
-const BOX_PADDING_X = 14;
-/** 目立たせる枠の塗りつぶしの色。 */
-const EMPHASIS_FILL = 'rgba(150, 20, 20, 0.85)';
-/** 目立たせる枠の文字の色。 */
-const EMPHASIS_COLOR = '#ffe45c';
-/**
- * 予告の枠を目立たせる行動の中の種類（variant）の集合。
- * @type {Set<string>}
- */
-const EMPHASIZED_VARIANTS = new Set(['breath']);
-/** 目立たせる枠の見た目。 */
-const EMPHASIS_STYLE = Object.freeze({ fill: EMPHASIS_FILL, color: EMPHASIS_COLOR });
-/** 文字の色。 */
-const TEXT_COLOR = '#f0f0f0';
-/** 文字のフォント。 */
-const TEXT_FONT = 'bold 24px sans-serif';
-/** 予告の枠の見出し。 */
-const INTENT_LABEL = '次の行動';
-/** 予告がないときに出す文字。 */
-const NO_INTENT_TEXT = '－';
-
-/**
- * 枠を1つ描き、左寄せで文字を出す（文字は枠の幅からはみ出さないよう最大の幅を渡す）。
- * @param {CanvasRenderingContext2D} ctx 描画先
- * @param {import('./layout.js').Rect} rect 枠の矩形
- * @param {string} text 出す文字
- * @param {{ fill: string, color: string }} [style] 見た目（塗りと文字の色。省くと通常の色）
- * @returns {void}
- */
-function drawBox(ctx, rect, text, style) {
-  ctx.save();
-  roundRectPath(ctx, rect.x, rect.y, rect.w, rect.h, BOX_CORNER);
-  ctx.fillStyle = style ? style.fill : BOX_FILL;
-  ctx.fill();
-  ctx.fillStyle = style ? style.color : TEXT_COLOR;
-  ctx.font = TEXT_FONT;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(text, rect.x + BOX_PADDING_X, rect.y + rect.h / 2, rect.w - BOX_PADDING_X * 2);
-  ctx.restore();
-}
 
 /**
  * 背景（クオータービューの空と地面のスプライト）を戦闘の段の区画いっぱいに描く。
@@ -66,20 +18,15 @@ function drawBackground(ctx, battleLayout) {
 }
 
 /**
- * 最上段（戦闘）を描く。引数は読むだけで書き換えない。
+ * 最上段（戦闘）を描く。敵の予告の札と数え下ろしは敵の頭の上に出す（enemy.hp が 0 以下か enemy.intent が null なら出さない。段取りの間は entrance に合わせる）。引数は読むだけで書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
- * @param {{ enemy: { typeId: string, hp: number, armor: number, intent: import('../rules/combatants.js').EnemyAction|null }, figure?: { visible: boolean, dy: number }|null, countdown?: number|null, pose?: { tilt: number, scaleX: number, scaleY: number }|null, idle?: { count: number, scaleX: Float64Array, scaleY: Float64Array, figure: { tilt: number, scaleX: number, scaleY: number } }|null, entrance?: import('../anim/enemyEntrance.js').EnemyEntranceLook|null }} state 表示する状態（entrance: 段取りの間の敵の入りの見た目（見えるか・横のずれ）。攻防中は渡さない。null か省くと常に見えてずれなし。idle: 段取りの間の敵の待機の伸び縮み（EnemyIdleLook）。攻防中は渡さない。null か省くと伸び縮みなし。figure: 攻防の演出中の敵の絵の見た目（倒れる動き）。null か省くと段取りの絵。countdown: 攻撃までの残りフェーズ数。null か省くと数え下ろしを描かない。pose: ための姿勢（ChargePoseLook）。null か省くと姿勢なし）
+ * @param {{ enemy: { typeId: string, hp: number, armor: number, intent: import('../rules/combatants.js').EnemyAction|null }, figure?: { visible: boolean, dy: number }|null, countdown?: number|null, pose?: { tilt: number, scaleX: number, scaleY: number }|null, idle?: { count: number, scaleX: Float64Array, scaleY: Float64Array, figure: { tilt: number, scaleX: number, scaleY: number } }|null, entrance?: import('../anim/enemyEntrance.js').EnemyEntranceLook|null }} state 表示する状態（entrance: 段取りの間の敵の入りの見た目（見えるか・横のずれ）。攻防中は渡さない。null か省くと常に見えてずれなし。idle: 段取りの間の敵の待機の伸び縮み（EnemyIdleLook）。攻防中は渡さない。null か省くと伸び縮みなし。figure: 攻防の演出中の敵の絵の見た目（倒れる動き）。null か省くと段取りの絵。countdown: 攻撃までの残りフェーズ数（予告の札の下に出す）。null か省くと数え下ろしを描かない。pose: ための姿勢（ChargePoseLook）。null か省くと姿勢なし）
  * @returns {void}
  */
 export function drawBattleStage(ctx, battleLayout, { enemy, figure = null, countdown = null, pose = null, idle = null, entrance = null }) {
   drawBackground(ctx, battleLayout);
   drawSpriteFit(ctx, SPRITE_IDS.castle, battleLayout.castle);
   drawEnemyFigure(ctx, battleLayout, enemy, figure, pose, idle, entrance);
-  const intentText = enemy.intent === null ? NO_INTENT_TEXT : enemyActionText(enemy.intent);
-  const emphasized = enemy.intent !== null && EMPHASIZED_VARIANTS.has(enemy.intent.variant);
-  drawBox(ctx, battleLayout.intent, `${INTENT_LABEL} ${intentText}`, emphasized ? EMPHASIS_STYLE : undefined);
-  if (countdown !== null) {
-    drawBox(ctx, battleLayout.countdown, countdownText(countdown));
-  }
+  drawEnemyIntent(ctx, battleLayout, enemy, countdown, entrance);
 }

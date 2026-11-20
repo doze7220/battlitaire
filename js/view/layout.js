@@ -115,8 +115,6 @@ import { INTENT_CELL, SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * @property {Rect} enemy ゴブリンの群れの矩形（絵を持たない敵のシールドマークの既定の並べ先・兵の当たる位置の基準でもある）
  * @property {Object<string, EnemyFigure>} enemyFigures 敵の種類の識別子 → 敵の絵の配置（凍結。絵を持たない敵は含まれない）
  * @property {TopGaugeLayout} topGauges 画面の最上部のゲージ（城と敵の HP・フェーズ・金貨）の配置
- * @property {Rect} intent 敵の次の行動の予告の枠
- * @property {Rect} countdown 数え下ろしの枠（段の右上）
  * @property {{ x: number, y: number }} enemyHealText 絵を持たない敵の回復の量の文字の中心（群れの矩形の上寄り）
  * @property {IntentSpot} enemyIntent 絵を持たない敵（ゴブリンの群れ）の予告の札の上端の中央
  * @property {IntentBadgeLayout} intentBadge 予告の札の大きさと数え下ろしの文字の配置
@@ -242,13 +240,13 @@ const COLUMN_BOTTOM_GAP = 16;
 /** 長い列で、重ね幅を保って残す上からの枚数 */
 const COLUMN_KEEP_TOP = 3;
 
-/** 戦闘の段の枠の高さ */
+/** 城・敵の絵の大きさの上限を求める基準（今までの枠の行の高さ。絵の大きさを変えないために残す）。人数の表示の枠の高さにも使う。 */
 const BOX_H = 40;
-/** 戦闘の段の上の余白 */
+/** 城・敵の絵の大きさの上限を求める基準（今までの枠の行の上の余白。絵の大きさを変えないために残す） */
 const BATTLE_TOP_PAD = 12;
 /** 地面の線から段の下端までの距離 */
 const GROUND_OFFSET = 100;
-/** 段の上の枠の行（数え下ろし・人数の表示）の下端と城・敵の上端の最小の間隔 */
+/** 城・敵の絵の大きさの上限を求める基準（今までの枠の行の下端と城・ゴブリンの上端の最小の間隔。絵の大きさを変えないために残す） */
 const BODY_GAP = 16;
 /** 城の絵の中心の x（段の左端から約 1/3。試遊で動かす1か所） */
 const CASTLE_CX = 240;
@@ -307,14 +305,6 @@ const INTENT_COUNTDOWN_GAP_Y = 2;
 const INTENT_COUNTDOWN_LINE_H = 20;
 /** 数え下ろしの文字の最大の幅。試遊で決め直す。 */
 const INTENT_COUNTDOWN_MAX_W = 200;
-/** 数え下ろしの枠の幅 */
-const COUNTDOWN_W = 220;
-/** 予告の枠の幅 */
-const ENEMY_INFO_W = 340;
-/** 地面の線と予告の枠の位置の基準の間隔 */
-const INFO_GAP = 8;
-/** 予告の枠の位置の基準と予告の枠の間隔 */
-const INFO_GAP_Y = 4;
 /** 兵の大きさ（直径）。試遊で決め直す1か所 */
 const TROOP_SIZE = 24;
 /** 役割ごとの陣地の x と幅（段の左端からの絶対値。兵の足元の中心が入る範囲。試遊で動かす）。enemy は敵兵・敵の守りが共用する */
@@ -507,11 +497,9 @@ function createBattleLayout(width) {
   const groundY = BATTLE_H - GROUND_OFFSET;
   const bodyTop = BATTLE_TOP_PAD + BOX_H + BODY_GAP;
   const enemySize = Math.min(ENEMY_MAX_SIZE, groundY - bodyTop);
-  const infoY = groundY + INFO_GAP;
   const area = { x: 0, y: 0, w: width, h: BATTLE_H };
   const castle = spriteFitRect(SPRITE_IDS.castle, CASTLE_CX, groundY, Math.min(CASTLE_H, groundY - bodyTop));
   const enemy = { x: ENEMY_CX - enemySize / 2, y: groundY - enemySize, w: enemySize, h: enemySize };
-  const countdown = { x: width - SIDE_MARGIN - COUNTDOWN_W, y: BATTLE_TOP_PAD, w: COUNTDOWN_W, h: BOX_H };
   /** @type {Object<string, EnemyFigure>} */
   const enemyFigures = {};
   for (const [typeId, def] of Object.entries(ENEMY_FIGURES)) {
@@ -519,7 +507,7 @@ function createBattleLayout(width) {
       def.sprite,
       ENEMY_CX,
       groundY,
-      Math.min(def.height, groundY - (countdown.y + countdown.h)),
+      Math.min(def.height, groundY - (BATTLE_TOP_PAD + BOX_H)),
     );
     const sw = rect.w * def.shield.w;
     const sh = rect.h * def.shield.h;
@@ -660,8 +648,6 @@ function createBattleLayout(width) {
     castle,
     enemy,
     topGauges: createTopGaugeLayout(width),
-    intent: { x: width - SIDE_MARGIN - ENEMY_INFO_W, y: infoY + BOX_H + INFO_GAP_Y, w: ENEMY_INFO_W, h: BOX_H },
-    countdown,
     enemyFigures,
     enemyHealText,
     enemyIntent,
