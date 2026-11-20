@@ -1,15 +1,12 @@
 /**
  * 責務: カード1枚の表・裏・めくれ（横幅を縮めた表裏）・空き枠・強調の枠・色の重ねなど、カード単位の見た目を描く。
- * 状態は変えず、ルール層は実行時に import しない。
+ * 表の枠と裏はスプライト（spriteView.js）で描く。状態は変えず、ルール層は実行時に import しない。
  */
 
 import { suitLook } from './suitStyle.js';
-import { drawSpriteCentered } from './spriteView.js';
+import { SPRITE_IDS, drawSpriteCentered, drawSpriteStretched } from './spriteView.js';
 
 const CORNER_RADIUS = 8;
-const FACE_FILL = '#fdfaf0';
-const FACE_STROKE = '#333333';
-const FACE_LINE_WIDTH = 2;
 const RANK_FONT = 'bold 24px sans-serif';
 /** カードの短い辺に対する、スートの絵の長い辺の割合 */
 const SUIT_ART_RATIO = 0.5;
@@ -22,10 +19,6 @@ const EMPTY_FONT = '16px sans-serif';
 const EMPTY_TEXT_COLOR = '#8a9a8a';
 const HIGHLIGHT_LINE_WIDTH = 4;
 const HIGHLIGHT_MARGIN = 3;
-const BACK_FILL = '#2f4a8a';
-const BACK_INNER_STROKE = '#9fb4e6';
-const BACK_INNER_MARGIN = 6;
-const BACK_INNER_LINE_WIDTH = 2;
 
 /**
  * 角丸矩形のパスを現在のパスとして作る（描画はしない）。
@@ -48,7 +41,7 @@ export function roundRectPath(ctx, x, y, w, h, r) {
 }
 
 /**
- * カードの表（角丸の枠・左上に数字・中央にスートのスプライト）を描く。
+ * カードの表を描く。表の枠はスートごとのスプライト、その上に左上の数字と中央のスートの絵を重ねる。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {number} x 左端
  * @param {number} y 上端
@@ -59,14 +52,9 @@ export function roundRectPath(ctx, x, y, w, h, r) {
  */
 export function drawCardFace(ctx, x, y, w, h, card) {
   const look = suitLook(card.suit);
-  ctx.save();
-  roundRectPath(ctx, x, y, w, h, CORNER_RADIUS);
-  ctx.fillStyle = FACE_FILL;
-  ctx.fill();
-  ctx.lineWidth = FACE_LINE_WIDTH;
-  ctx.strokeStyle = FACE_STROKE;
-  ctx.stroke();
+  drawSpriteStretched(ctx, look.frame, x, y, w, h);
 
+  ctx.save();
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.fillStyle = look.color;
@@ -81,7 +69,7 @@ export function drawCardFace(ctx, x, y, w, h, card) {
 }
 
 /**
- * カードの裏（角丸の濃い色の地と内側の枠）を描く。
+ * カードの裏を、裏のスプライト（card_back）を矩形に合わせて描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {number} x 左端
  * @param {number} y 上端
@@ -90,25 +78,7 @@ export function drawCardFace(ctx, x, y, w, h, card) {
  * @returns {void}
  */
 export function drawCardBack(ctx, x, y, w, h) {
-  ctx.save();
-  roundRectPath(ctx, x, y, w, h, CORNER_RADIUS);
-  ctx.fillStyle = BACK_FILL;
-  ctx.fill();
-  ctx.lineWidth = FACE_LINE_WIDTH;
-  ctx.strokeStyle = FACE_STROKE;
-  ctx.stroke();
-  roundRectPath(
-    ctx,
-    x + BACK_INNER_MARGIN,
-    y + BACK_INNER_MARGIN,
-    w - BACK_INNER_MARGIN * 2,
-    h - BACK_INNER_MARGIN * 2,
-    CORNER_RADIUS / 2,
-  );
-  ctx.lineWidth = BACK_INNER_LINE_WIDTH;
-  ctx.strokeStyle = BACK_INNER_STROKE;
-  ctx.stroke();
-  ctx.restore();
+  drawSpriteStretched(ctx, SPRITE_IDS.cardBack, x, y, w, h);
 }
 
 /**
