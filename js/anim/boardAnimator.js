@@ -5,6 +5,7 @@
 
 import { cardTweenEnd, sampleCardTween } from './cardTween.js';
 import { deckFlipEnd, sampleDeckFlip } from './deckFlip.js';
+import { columnSettleEnd, sampleColumnSettle } from './columnSettle.js';
 
 /**
  * 飛んでいるカード1枚の描画用の値。
@@ -30,6 +31,7 @@ import { deckFlipEnd, sampleDeckFlip } from './deckFlip.js';
  * @property {Set<number>} hiddenCardIds 列・手札の描画で隠すカードの ID（先が列・手札で着いていないもの）
  * @property {number} discardPending 捨て札へ向かっていてまだ着いていない枚数
  * @property {Map<number, FlipLook>} deckFlips めくれ中の山札の番号 -> 見え方
+ * @property {Map<number, number[]>} columnYs 詰め直し中の列の番号 -> 各カードの上端 y（下から順。動きがなければ空）
  */
 
 /**
@@ -58,7 +60,7 @@ export class BoardAnimator {
   }
 
   /**
-   * 動きを始める。進行中の動きは置き換える。
+   * 動きを始める。進行中の動きは置き換える。終わりの時刻には、移動・めくれ・列の詰め直しの最大を使う。
    * @param {import('./planningMotion.js').Motion} motion 始める動き
    * @returns {void}
    */
@@ -68,6 +70,7 @@ export class BoardAnimator {
     let end = 0;
     for (const t of motion.tweens) end = Math.max(end, cardTweenEnd(t));
     for (const f of motion.flips) end = Math.max(end, deckFlipEnd(f));
+    for (const c of motion.settles) end = Math.max(end, columnSettleEnd(c));
     this.endTime = end;
   }
 
@@ -90,7 +93,7 @@ export class BoardAnimator {
   }
 
   /**
-   * 描画用の見た目の値を作る（状態は変えない）。
+   * 描画用の見た目の値を作る（状態は変えない）。列の詰め直しは、終わっていないものだけ `columnYs` に入れる。
    * @returns {BoardAnimView} 動きの見た目の値
    */
   view() {
@@ -100,6 +103,7 @@ export class BoardAnimator {
       hiddenCardIds: new Set(),
       discardPending: 0,
       deckFlips: new Map(),
+      columnYs: new Map(),
     };
     const m = this.motion;
     if (m === null) return v;
@@ -113,6 +117,10 @@ export class BoardAnimator {
     for (const f of m.flips) {
       const s = sampleDeckFlip(f, this.clock);
       if (s !== null) v.deckFlips.set(f.deckIndex, { scaleX: s.scaleX, faceUp: s.faceUp });
+    }
+    for (const c of m.settles) {
+      const ys = sampleColumnSettle(c, this.clock);
+      if (ys !== null) v.columnYs.set(c.columnIndex, ys);
     }
     return v;
   }
