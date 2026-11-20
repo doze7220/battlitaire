@@ -10,7 +10,7 @@ import { drawHitMarks } from './hitMarkView.js';
 import { drawImpactFx, drawStageOverlay } from './battleFxView.js';
 import { drawTroopCounter } from './troopCountView.js';
 import { drawTopGauges } from './topGaugeView.js';
-import { defeatText,healAmountText, defeatHintText } from './battleText.js';
+import { defeatText, healAmountText, defeatHintText } from './battleText.js';
 
 /** 敵を倒したときの案内の暗幕の色。 */
 const CURTAIN_FILL = 'rgba(0, 0, 0, 0.55)';
