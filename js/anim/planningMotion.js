@@ -35,6 +35,7 @@ export function snapshotBoard(game) {
 
 /**
  * 操作の結果と前後の写しから、動きを組み立てる。
+ * 山札のめくれは、カードが抜けてから `deckFlipDelayMs` の待ちの後に始まる（補充のめくれも同じ）。
  * @param {import('../rules/planningResults.js').PlanningResult} result 操作の結果
  * @param {BoardSnapshot} before 操作前の写し
  * @param {BoardSnapshot} after 操作後の写し
@@ -105,7 +106,8 @@ export function buildPlanningMotion(result, before, after, layout) {
   for (const refill of result.refills ?? []) flipDecks.add(refill.deckIndex);
   for (const d of flipDecks) {
     if ((after.deckVisibleCounts[d] ?? 0) >= 1) {
-      motion.flips.push(createDeckFlip({ deckIndex: d, delay: 0, duration: ANIM_TIMING.deckFlipMs }));
+      // 抜けたカードが半分ほど離れた頃にめくれ始める。待つ間は裏のまま（sampleDeckFlip）。補充のめくれも同じ
+      motion.flips.push(createDeckFlip({ deckIndex: d, delay: ANIM_TIMING.deckFlipDelayMs, duration: ANIM_TIMING.deckFlipMs }));
     }
   }
   return motion;
