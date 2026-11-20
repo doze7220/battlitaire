@@ -1,5 +1,5 @@
 /**
- * 責務: 段取り・連鎖・行動終了・準備終了・BATTLE!・スタート・攻防のきっかけ（攻撃の音を含む）・決着と敵を倒したときの効果音を決め、Sound.playSe で鳴らすこと。
+ * 責務: 段取り・連鎖・準備終了・BATTLE!・スタート・攻防のきっかけ（攻撃の音を含む）・決着と敵を倒したときの効果音を決め、Sound.playSe で鳴らすこと。
  * シーンから呼ばれる音の補助モジュール（Scene を継承しない）。ルールの判定はしない。
  */
 import { Sound } from 'oz';
@@ -56,9 +56,6 @@ export const FLIP_SE = 'flip';
 /** 連鎖（放ったカード1枚ごと）の音の名前。 @type {string} */
 export const CHAIN_SE = 'chain';
 
-/** 行動終了（攻防に入った）音の名前。 @type {string} */
-export const TURN_END_SE = 'turnEnd';
-
 /** 「準備終了」のロゴが出たときの音の名前。 @type {string} */
 export const READY_SE = 'ready';
 
@@ -106,14 +103,6 @@ export function playReadySe() {
  */
 export function playBattleStartSe() {
   Sound.playSe(BATTLE_START_SE);
-}
-
-/**
- * 行動終了の音を鳴らす。
- * @returns {void}
- */
-export function playTurnEndSe() {
-  Sound.playSe(TURN_END_SE);
 }
 
 /**

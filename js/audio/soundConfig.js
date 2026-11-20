@@ -17,7 +17,6 @@ export const SOUND_FILES = Object.freeze({
   discard: './assets/sounds/discard.wav',
   release: './assets/sounds/release.wav',
   chain: './assets/sounds/chain.wav',
-  turnEnd: './assets/sounds/turnEnd.wav',
   ready: './assets/sounds/turnEnd.wav',
   battleStart: './assets/sounds/turnEnd.wav',
   block: './assets/sounds/block.wav',
