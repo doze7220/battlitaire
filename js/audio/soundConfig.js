@@ -6,6 +6,9 @@
 /**
  * 効果音の名前 → ページ（index.html）からの相対パス。`BGM_FILES` と合わせて `Assets.load` の `sounds` に渡す。
  * 本番の音に差し替えるときは、同じ名前のファイルを置き換えるか、ここのパスを書き換える。
+ * - ready: 「準備終了」のロゴが出たときの音
+ * - battleStart: 「BATTLE!」のロゴが出たときの音
+ * 今は ready・battleStart はどちらも仮に行動終了の音のファイル（turnEnd.wav）を指す。後で別の音に差し替える。
  * @type {Readonly<Record<string, string>>}
  */
 export const SOUND_FILES = Object.freeze({
@@ -15,6 +18,8 @@ export const SOUND_FILES = Object.freeze({
   release: './assets/sounds/release.wav',
   chain: './assets/sounds/chain.wav',
   turnEnd: './assets/sounds/turnEnd.wav',
+  ready: './assets/sounds/turnEnd.wav',
+  battleStart: './assets/sounds/turnEnd.wav',
   block: './assets/sounds/block.wav',
   castleHit: './assets/sounds/castleHit.wav',
   enemyHit: './assets/sounds/enemyHit.wav',
