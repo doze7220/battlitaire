@@ -28,7 +28,7 @@ const ARROW_SHAFT_W = 14;
 const ARROW_HEAD_H = 26;
 
 /**
- * 列を描く。カードの位置は columnCardYs で求め、下から順に重ねる。空なら空き枠。
+ * 列を描く。カードの位置は、詰め直し中の位置 cardYs が渡されればそれを使い、なければ columnCardYs で求め、下から順に重ねる。空なら空き枠。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').ColumnLayout} columnLayout 列の配置
  * @param {import('../rules/card.js').Card[]} cards 列のカード（[0] が一番下）
