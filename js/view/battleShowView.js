@@ -10,7 +10,7 @@ import { drawHitMarks } from './hitMarkView.js';
 import { drawImpactFx, drawStageOverlay } from './battleFxView.js';
 import { drawTroopCounter } from './troopCountView.js';
 import { drawTopGauges } from './topGaugeView.js';
-import { defeatText, nextEnemyText, healAmountText, defeatHintText } from './battleText.js';
+import { defeatText,healAmountText, defeatHintText } from './battleText.js';
 
 /** 敵を倒したときの案内の暗幕の色。 */
 const CURTAIN_FILL = 'rgba(0, 0, 0, 0.55)';
@@ -22,15 +22,13 @@ const OUTCOME_HINT_FONT = 'bold 32px sans-serif';
 const OUTCOME_HINT_COLOR = '#f0f0f0';
 /** 敵を倒したときの「〜を倒した！」のフォント。 */
 const DEFEAT_TITLE_FONT = 'bold 52px sans-serif';
-/** 敵を倒したときの「次は〜」のフォント。 */
-const DEFEAT_NEXT_FONT = 'bold 36px sans-serif';
 /** 敵の回復の量のフォント。 */
 const ENEMY_HEAL_FONT = 'bold 40px sans-serif';
 /** 敵の回復の量の文字の色（緑）。 */
 const ENEMY_HEAL_COLOR = '#6ee07a';
 
 /**
- * 敵を倒したときの案内（暗幕・「〜を倒した！」・「次は〜」・「タップで次へ」）を描く。
+ * 敵を倒したときの案内（暗幕・「〜を倒した！」・「タップで次へ」）を描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
  * @param {{ enemyName: string, nextEnemyName: string|null }} defeat 倒した敵と次の敵の名前（BattleResult.defeat）
@@ -46,11 +44,6 @@ function drawDefeat(ctx, battleLayout, defeat) {
   ctx.font = DEFEAT_TITLE_FONT;
   ctx.fillStyle = WIN_COLOR;
   ctx.fillText(defeatText(defeat.enemyName), pos.x, pos.titleY, pos.maxW);
-  if (defeat.nextEnemyName !== null) {
-    ctx.font = DEFEAT_NEXT_FONT;
-    ctx.fillStyle = OUTCOME_HINT_COLOR;
-    ctx.fillText(nextEnemyText(defeat.nextEnemyName), pos.x, pos.nextY, pos.maxW);
-  }
   ctx.font = OUTCOME_HINT_FONT;
   ctx.fillStyle = OUTCOME_HINT_COLOR;
   ctx.fillText(defeatHintText(), pos.x, pos.hintY, pos.maxW);

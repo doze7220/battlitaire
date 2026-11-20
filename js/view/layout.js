@@ -101,7 +101,7 @@ import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * @property {{ x: number, y: number }} enemyHealText 絵を持たない敵の回復の量の文字の中心（群れの矩形の上寄り）
  * @property {TroopLayout} troops 兵の配置
  * @property {{ box: Rect, iconSize: number, items: Array<{ iconX: number, iconY: number, textX: number, textY: number }> }} troopCounter 人数の表示の配置（枠・アイコンの大きさ・攻撃・防御・修理の順の各項目のアイコン中心と文字の左端・中心 y）
- * @property {{ x: number, titleY: number, nextY: number, hintY: number, maxW: number }} defeat 敵を倒したときの案内の位置（段の中央の x、「〜を倒した！」・「次は〜」・「タップで次へ」の y、文字の最大の幅）
+ * @property {{ x: number, titleY: number, hintY: number, maxW: number }} defeat 敵を倒したときの案内の位置（段の中央の x、「〜を倒した！」・「タップで次へ」の y、文字の最大の幅）
  * @property {function(number, Rect=): Rect[]} shieldRects シールドマーク count 個の矩形（body の矩形の中の格子。body を省くと群れの矩形。最後の行は中央にそろえる）
  * @property {function(number): Array<{ x: number, footY: number, size: number, row: number }>} hordeSlots ゴブリンの兵 count 体の並び（番号の順。x は中心、footY は足元の y、size は兵の大きさ、row は行（0 が前＝地面））
  */
@@ -303,8 +303,6 @@ const TROOP_COUNTER_TEXT_GAP = 4;
 const TROOP_COUNTER_ITEMS = 3;
 /** 敵を倒したときの「〜を倒した！」の y の、段の高さに対する割合 */
 const DEFEAT_TITLE_RATIO = 0.3;
-/** 敵を倒したときの「次は〜」の y の、段の高さに対する割合 */
-const DEFEAT_NEXT_RATIO = 0.5;
 /** 敵を倒したときの「タップで次へ」の y の、段の高さに対する割合 */
 const DEFEAT_HINT_RATIO = 0.7;
 /** シールドマークの格子の1行の最大の個数 */
@@ -602,7 +600,6 @@ function createBattleLayout(width) {
     defeat: {
       x: area.x + area.w / 2,
       titleY: area.y + area.h * DEFEAT_TITLE_RATIO,
-      nextY: area.y + area.h * DEFEAT_NEXT_RATIO,
       hintY: area.y + area.h * DEFEAT_HINT_RATIO,
       maxW: area.w - SIDE_MARGIN * 2,
     },

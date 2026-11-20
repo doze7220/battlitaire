@@ -111,15 +111,6 @@ export function defeatHintText() {
 }
 
 /**
- * 次の敵の案内の文字にする。
- * @param {string} enemyName 次の敵の名前
- * @returns {string} 「次は（名前）」
- */
-export function nextEnemyText(enemyName) {
-  return `次は${enemyName}`;
-}
-
-/**
  * 敵の行動を「攻撃 10」のような文字にする。
  * @param {import('../rules/combatants.js').EnemyAction} action 敵の行動
  * @returns {string} 表示名と量の文字。variant が表にあればその表示名（「爪 10」「吸い込む」「ブレス 25」）。種類が未知なら表示名は「？」
