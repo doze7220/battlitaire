@@ -69,7 +69,7 @@ function topGaugeValues(game, release) {
  * @param {import('./layout.js').Layout} layout 画面の配置
  * @param {import('../rules/Game.js').Game} game ゲームの状態（読み取り専用）
  * @param {BoardUi} ui 表示用の値
- * @param {import('../anim/boardAnimator.js').BoardAnimView} anim 動きの見た目の値（読むだけ）
+ * @param {import('../anim/boardAnimator.js').BoardAnimView} anim 動きの見た目の値（列の詰め直し中の各カードの上端 y `columnYs` を含む。読むだけ）
  * @param {import('../anim/releaseShow.js').ReleaseLook} release 放つ演出の見た目の値（段取りの間の兵・ゲージの表示値・玉に変わる前の札・玉と式。読むだけ）
  * @param {import('../anim/burnTrack.js').BurnBoardLook|null} [burn] 札が燃える段の盤面の見た目（なければ null でルール層の盤面をそのまま描く）
  * @param {import('../anim/enemyIdle.js').EnemyIdleLook|null} [idle] 段取りの間の敵の待機の伸び縮みの見た目（戦闘の段へ渡す。なければ null）
@@ -105,7 +105,8 @@ export function drawBoard(ctx, layout, game, ui, anim, release, burn = null, idl
   for (let c = 0; c < layout.columns.length; c++) {
     const runFrom = ui.selectedRun !== null && ui.selectedRun.column === c ? ui.selectedRun.from : null;
     const cards = burn === null ? game.columns[c] : burn.columns[c];
-    drawColumn(ctx, layout.columns[c], cards, ui.placeableColumns.includes(c), runFrom, anim.hiddenCardIds);
+    drawColumn(ctx, layout.columns[c], cards, ui.placeableColumns.includes(c), runFrom, anim.hiddenCardIds,
+      burn === null ? (anim.columnYs.get(c) ?? null) : null);
     drawReleaseButton(ctx, layout.releaseButtons[c], ui.releasable[c]);
   }
   if (burn !== null && burn.flash !== null) {
