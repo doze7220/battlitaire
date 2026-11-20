@@ -1,5 +1,5 @@
 /**
- * 責務: スプライトJSの import と識別子・絵の範囲の表を持ち、位置と大きさを合わせて draw(ctx) を呼ぶ。
+ * 責務: スプライトJSの import と識別子・絵の範囲の表、ロゴ・数字の表（原点を中心に倍率をかけて描く・数字を並べて描く）を持ち、draw(ctx) を呼ぶ。
  * assets/sprites/ を import するのはこのモジュールだけ。状態は変えず、ルール層・anim は import しない。
  */
 
@@ -20,6 +20,23 @@ import cardFrontShield from 'assets/sprites/card_front_shield.js';
 import cardFrontHammer from 'assets/sprites/card_front_hammer.js';
 import cardFrontGold from 'assets/sprites/card_front_gold.js';
 import cardBack from 'assets/sprites/card_back.js';
+import logoReady from 'assets/sprites/logo_ready.js';
+import logoBattle from 'assets/sprites/logo_battle.js';
+import logoPhase from 'assets/sprites/logo_phase.js';
+import logoStage from 'assets/sprites/logo_stage.js';
+import logoNameGoblins from 'assets/sprites/logo_name_goblins.js';
+import logoNameGiant from 'assets/sprites/logo_name_giant.js';
+import logoNameDragon from 'assets/sprites/logo_name_dragon.js';
+import digit0 from 'assets/sprites/digit_0.js';
+import digit1 from 'assets/sprites/digit_1.js';
+import digit2 from 'assets/sprites/digit_2.js';
+import digit3 from 'assets/sprites/digit_3.js';
+import digit4 from 'assets/sprites/digit_4.js';
+import digit5 from 'assets/sprites/digit_5.js';
+import digit6 from 'assets/sprites/digit_6.js';
+import digit7 from 'assets/sprites/digit_7.js';
+import digit8 from 'assets/sprites/digit_8.js';
+import digit9 from 'assets/sprites/digit_9.js';
 
 /**
  * 矩形。
@@ -96,6 +113,49 @@ const SPRITE_TABLE = Object.freeze({
   [SPRITE_IDS.cardFrontGold]: Object.freeze({ sprite: cardFrontGold, ...CARD_ART_RANGE }),
   [SPRITE_IDS.cardBack]: Object.freeze({ sprite: cardBack, ...CARD_ART_RANGE }),
 });
+
+/**
+ * ロゴのスプライトの識別子（SPRITE_IDS とは別。呼ぶ側はこの定数でロゴを指す）。
+ * @type {Readonly<{ready: string, battle: string, phase: string, stage: string, nameGoblins: string, nameGiant: string, nameDragon: string}>}
+ */
+export const LOGO_IDS = Object.freeze({
+  ready: 'ready',
+  battle: 'battle',
+  phase: 'phase',
+  stage: 'stage',
+  nameGoblins: 'nameGoblins',
+  nameGiant: 'nameGiant',
+  nameDragon: 'nameDragon',
+});
+
+/**
+ * ロゴの識別子 → スプライトの凍結した表。
+ * エディタで描くときの約束: 原点 (0, 0) を絵の中心にして描き、ゲームは px をそのまま（倍率 1）描く。bounds は読まない。
+ * @type {Readonly<Record<string, {draw: function(CanvasRenderingContext2D): void}>>}
+ */
+const LOGO_TABLE = Object.freeze({
+  [LOGO_IDS.ready]: logoReady,
+  [LOGO_IDS.battle]: logoBattle,
+  [LOGO_IDS.phase]: logoPhase,
+  [LOGO_IDS.stage]: logoStage,
+  [LOGO_IDS.nameGoblins]: logoNameGoblins,
+  [LOGO_IDS.nameGiant]: logoNameGiant,
+  [LOGO_IDS.nameDragon]: logoNameDragon,
+});
+
+/**
+ * 数字 0〜9 のスプライト（添字が数字）。
+ * エディタで数字を描くときの約束: 原点 (0, 0) が枠の中心で、幅56×高さ76（x -28〜28、y -38〜38）の枠の中に描く。
+ * 並べる間隔は枠の幅（DIGIT_CELL.w）。bounds は読まない。
+ * @type {ReadonlyArray<{draw: function(CanvasRenderingContext2D): void}>}
+ */
+const DIGIT_SPRITES = Object.freeze([digit0, digit1, digit2, digit3, digit4, digit5, digit6, digit7, digit8, digit9]);
+
+/**
+ * 数字を描くときの約束の枠（エディタで数字を描く大きさ。並べる間隔は w）。export しない。
+ * @type {Readonly<{w: number, h: number}>}
+ */
+const DIGIT_CELL = Object.freeze({ w: 56, h: 76 });
 
 /**
  * 識別子から絵と絵の範囲を引く。未知の識別子は Error。
@@ -186,6 +246,52 @@ export function drawSpriteStretched(ctx, id, x, y, w, h) {
   ctx.scale(sx, sy);
   e.sprite.draw(ctx);
   ctx.restore();
+}
+
+/**
+ * ロゴを、原点を中心 (cx, cy) に置き、倍率 scale をかけて描く。scale が 0 以下なら何もしない。
+ * @param {CanvasRenderingContext2D} ctx 描画先
+ * @param {string} id LOGO_IDS の値
+ * @param {number} cx 絵の中心の x
+ * @param {number} cy 絵の中心の y
+ * @param {number} scale 倍率（1 で等倍）
+ * @returns {void}
+ * @throws {Error} 未知の識別子のとき
+ */
+export function drawLogo(ctx, id, cx, cy, scale) {
+  if (!Object.prototype.hasOwnProperty.call(LOGO_TABLE, id)) {
+    throw new Error(`spriteView: 未知のロゴの識別子です: ${id}`);
+  }
+  if (scale <= 0) return;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+  LOGO_TABLE[id].draw(ctx);
+  ctx.restore();
+}
+
+/**
+ * 数字を、各桁を枠の幅の間隔で左から並べ、全体の中心の x を cx、各桁の中心の y を cy にそろえて描く。
+ * value が 0 以上の整数でないとき、または scale が 0 以下のときは何もしない（エラーにしない）。
+ * @param {CanvasRenderingContext2D} ctx 描画先
+ * @param {number} value 描く数（0 以上の整数）
+ * @param {number} cx 並べた全体の中心の x
+ * @param {number} cy 各桁の中心の y
+ * @param {number} scale 倍率（1 で等倍）
+ * @returns {void}
+ */
+export function drawDigits(ctx, value, cx, cy, scale) {
+  if (!Number.isInteger(value) || value < 0 || scale <= 0) return;
+  const text = String(value);
+  const pitch = DIGIT_CELL.w * scale;
+  const left = cx - (pitch * text.length) / 2;
+  for (let i = 0; i < text.length; i++) {
+    ctx.save();
+    ctx.translate(left + (i + 0.5) * pitch, cy);
+    ctx.scale(scale, scale);
+    DIGIT_SPRITES[text.charCodeAt(i) - 48].draw(ctx);
+    ctx.restore();
+  }
 }
 
 /**
