@@ -1,9 +1,10 @@
 /**
- * 責務: 操作前後の盤面の写しと段取りの操作の結果から、動き（カードの移動・山札のめくれ）を組み立てる。放った札は releaseShow.js が見せる。
+ * 責務: 操作前後の盤面の写しと段取りの操作の結果から、動き（カードの移動・山札のめくれ・長い列の詰め直し）を組み立てる。放った札は releaseShow.js が見せる。
  * ルール層は import せず、描画も状態の変更も行わない。
  */
 
 import { ANIM_TIMING } from './animConfig.js';
+import { buildColumnSettle } from './columnSettle.js';
 import { createCardTween } from './cardTween.js';
 import { createDeckFlip } from './deckFlip.js';
 
@@ -19,6 +20,7 @@ import { createDeckFlip } from './deckFlip.js';
  * @typedef {Object} Motion
  * @property {import('./cardTween.js').CardTween[]} tweens カードの移動
  * @property {import('./deckFlip.js').DeckFlip[]} flips 山札のめくれ
+ * @property {import('./columnSettle.js').ColumnSettle[]} settles 列の詰め直し（列にもとからあったカードの移動）
  */
 
 /**
@@ -36,6 +38,8 @@ export function snapshotBoard(game) {
 /**
  * 操作の結果と前後の写しから、動きを組み立てる。
  * 山札のめくれは、カードが抜けてから `deckFlipDelayMs` の待ちの後に始まる（補充のめくれも同じ）。
+ * 置く・手札から置く・束を移すで長い列の詰めが変わるときは、動くカードが着いた後（`cardMoveMs` の後）から
+ * 列にもとからあったカードが新しい位置へ動く詰め直し（`settles`）を足す。
  * @param {import('../rules/planningResults.js').PlanningResult} result 操作の結果
  * @param {BoardSnapshot} before 操作前の写し
  * @param {BoardSnapshot} after 操作後の写し
@@ -44,7 +48,7 @@ export function snapshotBoard(game) {
  */
 export function buildPlanningMotion(result, before, after, layout) {
   /** @type {Motion} */
-  const motion = { tweens: [], flips: [] };
+  const motion = { tweens: [], flips: [], settles: [] };
   const move = ANIM_TIMING.cardMoveMs;
   /** めくる山札の番号（重複なし）。 */
   const flipDecks = new Set();
@@ -70,9 +74,22 @@ export function buildPlanningMotion(result, before, after, layout) {
     motion.tweens.push(createCardTween({ card, from, to, delay, duration: move, dest }));
   };
 
+  /**
+   * 列の詰め直し（動くカードが着いてから、列にもとからあったカードが動く）を、あれば motion に足す。
+   * @param {number} c 列の番号
+   * @returns {void}
+   */
+  const addSettle = (c) => {
+    const settle = buildColumnSettle(
+      layout, c, before.columnLengths[c], after.columnLengths[c], ANIM_TIMING.cardMoveMs, ANIM_TIMING.columnSettleMs,
+    );
+    if (settle !== null) motion.settles.push(settle);
+  };
+
   switch (result.type) {
     case 'place':
       addTween(result.card, layout.decks[result.deckIndex], columnTop(result.columnIndex), 'column');
+      addSettle(result.columnIndex);
       flipDecks.add(result.deckIndex);
       break;
     case 'discard':
@@ -85,6 +102,7 @@ export function buildPlanningMotion(result, before, after, layout) {
       break;
     case 'placeFromHand':
       addTween(result.card, layout.hand.slots[result.slotIndex], columnTop(result.columnIndex), 'column');
+      addSettle(result.columnIndex);
       break;
     case 'move': {
       const n = result.cards.length;
@@ -94,9 +112,12 @@ export function buildPlanningMotion(result, before, after, layout) {
       for (let k = 0; k < n; k++) {
         addTween(result.cards[k], fromRects[result.fromIndex + k], toRects[L - n + k], 'column');
       }
+      addSettle(result.toColumn);
+      addSettle(result.fromColumn);
       break;
     }
     case 'release':
+      // 列の札をすべて放ち列が空になるので、残るカードがなく詰め直しは起きない（作らない）
       // 放った札は releaseShow.js が玉で見せる（ここでは補充のめくれだけを後の共通の処理で足す）
       break;
     default:
