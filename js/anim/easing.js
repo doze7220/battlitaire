@@ -34,6 +34,23 @@ export function easeOutCubic(t) {
 }
 
 /**
+ * easeOutBack の行き過ぎの強さ（大きいほど 1 を大きく超えて戻る）。
+ * @type {number}
+ */
+const BACK_OVERSHOOT = 1.70158;
+
+/**
+ * 1 を少し超えてから 1 に戻るイージング（ぽんと出る動きに使う）。
+ * @param {number} t 進み具合（0〜1）
+ * @returns {number} イージング後の進み具合（t=0 で 0、t=1 で 1、途中で 1 を少し超える）
+ */
+export function easeOutBack(t) {
+  const c = BACK_OVERSHOOT;
+  const u = t - 1;
+  return 1 + (c + 1) * u * u * u + c * u * u;
+}
+
+/**
  * 出だしと終わりがゆるやかなイージング（群れの移動に使う）。
  * @param {number} t 進み具合（0〜1）
  * @returns {number} イージング後の進み具合（0〜1）
