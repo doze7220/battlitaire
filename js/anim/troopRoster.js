@@ -66,6 +66,42 @@ function moveDelay(k, n) {
 }
 
 /**
+ * 当たりに行く動きの遅れの決め方の表（pace → `BATTLE_ANIM` の「1体ごとの遅れ」「広がりの上限」の設定名）。
+ * @type {Readonly<Record<string, readonly [string, string]>>}
+ */
+const CHARGE_PACES = Object.freeze({
+  move: Object.freeze(['moveStaggerMs', 'moveStaggerMaxMs']),
+  hit: Object.freeze(['hitStaggerMs', 'hitStaggerMaxMs']),
+});
+
+/**
+ * 当たりに行く動きの遅れ（前から k 番目、n 体のうち）。
+ * @param {string} pace 遅れの決め方（`'move'` | `'hit'`）
+ * @param {number} k 前から何番目か
+ * @param {number} n 動く数
+ * @returns {number} 遅れ（ms）
+ * @throws {Error} pace が未知のとき
+ */
+function chargeDelay(pace, k, n) {
+  if (!Object.prototype.hasOwnProperty.call(CHARGE_PACES, pace)) {
+    throw new Error(`chargeDelay: 未知の pace です（${pace}）`);
+  }
+  const [staggerKey, maxKey] = CHARGE_PACES[pace];
+  return staggerDelay(k, n, BATTLE_ANIM[staggerKey], BATTLE_ANIM[maxKey]);
+}
+
+/**
+ * 当たる・城に入る脚の行き先の y を、当たる・城に入るときの足元の範囲に収める。
+ * @param {TroopRoster} roster 名簿
+ * @param {number} y 兵の今の y
+ * @returns {number} `contactTop`〜`contactBottom` に収めた y
+ */
+function contactY(roster, y) {
+  const { contactTop, contactBottom } = roster.layout;
+  return Math.min(contactBottom, Math.max(contactTop, y));
+}
+
+/**
  * 相打ちで落ちる遅れ（前から k 番目、n 組のうち）。
  * @param {number} k 前から何番目か
  * @param {number} n 組の数
@@ -264,10 +300,11 @@ export function popTroops(roster, kind, times) {
  * @param {number} count 組の数
  * @param {number} t 段の始め（ms）
  * @param {number} moveMs 進む時間（ms）
- * @returns {number[]} 着く時刻の昇順の配列
- * @throws {Error} どちらかの兵が足りないとき
+ * @param {string} [pace] 遅れの決め方（`'move'`＝移動の遅れ、`'hit'`＝敵に当たる間隔。省くと `'move'`）
+ * @returns {number[]} 着く時刻の昇順の配列（行き先の y は相手の y）
+ * @throws {Error} どちらかの兵が足りないとき、または pace が未知のとき
  */
-export function chargePairs(roster, kind, partnerKind, count, t, moveMs) {
+export function chargePairs(roster, kind, partnerKind, count, t, moveMs, pace = 'move') {
   const m = Math.max(0, count);
   const squad = activeOf(roster, kind);
   const partners = activeOf(roster, partnerKind);
@@ -281,8 +318,8 @@ export function chargePairs(roster, kind, partnerKind, count, t, moveMs) {
     const unit = squad[k];
     const partner = partners[k];
     const side = partner.x >= unit.x ? 1 : -1;
-    const start = Math.max(t + moveDelay(k, m), unit.freeAt);
-    addTroopLeg(unit, start, partner.x - side * roster.layout.contactGap, unit.y, moveMs);
+    const start = Math.max(t + chargeDelay(pace, k, m), unit.freeAt);
+    addTroopLeg(unit, start, partner.x - side * roster.layout.contactGap, partner.y, moveMs);
     setTroopEnd(unit, troopHitEnd(kind), unit.freeAt, roster.layout.fallOutY);
     setTroopEnd(partner, troopHitEnd(partnerKind), Math.max(unit.freeAt, partner.freeAt), roster.layout.fallOutY);
     arrivals.push(unit.freeAt);
@@ -355,23 +392,26 @@ export function clashPairs(roster, kind, amount, t) {
 }
 
 /**
- * まだ終わっていない kind の兵を前から count 体、targetX（y は今の y）へ前から遅らせて移動させ、着いた時刻に跳ねて落ちさせる。
+ * まだ終わっていない kind の兵を前から count 体、targetX へ前から遅らせて移動させ、着いた時刻に跳ねて落ちさせる。
+ * 行き先の y は、兵の今の y を当たる・城に入るときの範囲（`contactTop`〜`contactBottom`）に収めたもの。
  * @param {TroopRoster} roster 名簿
  * @param {string} kind 種類
  * @param {number} count 動かす数（Infinity で全員）
  * @param {number} targetX 行き先の x
  * @param {number} t 段の始め（ms）
  * @param {number} moveMs 移動の時間（ms）
+ * @param {string} [pace] 遅れの決め方（`'move'`＝移動の遅れ、`'hit'`＝敵に当たる間隔。省くと `'move'`）
  * @returns {number[]} 着く時刻の昇順の配列（1体も動かさなければ空）
+ * @throws {Error} pace が未知のとき
  */
-export function chargeTo(roster, kind, count, targetX, t, moveMs) {
+export function chargeTo(roster, kind, count, targetX, t, moveMs, pace = 'move') {
   const chosen = activeOf(roster, kind).slice(0, Math.max(0, count));
   const m = chosen.length;
   const arrivals = [];
   for (let k = 0; k < m; k++) {
     const unit = chosen[k];
-    const start = Math.max(t + moveDelay(k, m), unit.freeAt);
-    addTroopLeg(unit, start, targetX, unit.y, moveMs);
+    const start = Math.max(t + chargeDelay(pace, k, m), unit.freeAt);
+    addTroopLeg(unit, start, targetX, contactY(roster, unit.y), moveMs);
     setTroopEnd(unit, troopHitEnd(kind), unit.freeAt, roster.layout.fallOutY);
     arrivals.push(unit.freeAt);
   }
@@ -380,6 +420,7 @@ export function chargeTo(roster, kind, count, targetX, t, moveMs) {
 
 /**
  * まだ終わっていない kind の兵を全員、城に入る位置へ前から遅らせて移動させ、着いた時刻に消す。
+ * 行き先の y は、兵の今の y を当たる・城に入るときの範囲（`contactTop`〜`contactBottom`）に収めたもの。
  * @param {TroopRoster} roster 名簿
  * @param {string} kind 種類
  * @param {number} t 段の始め（ms）
@@ -393,7 +434,7 @@ export function enterCastle(roster, kind, t, moveMs) {
   for (let k = 0; k < m; k++) {
     const unit = chosen[k];
     const start = Math.max(t + moveDelay(k, m), unit.freeAt);
-    addTroopLeg(unit, start, roster.layout.castleEntryX, unit.y, moveMs);
+    addTroopLeg(unit, start, roster.layout.castleEntryX, contactY(roster, unit.y), moveMs);
     setTroopEnd(unit, 'vanish', unit.freeAt, roster.layout.fallOutY);
     arrivals.push(unit.freeAt);
   }
