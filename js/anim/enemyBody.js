@@ -69,11 +69,12 @@ const BODY_SETUPS = Object.freeze({
 
 /**
  * 体の見せ方ごとの、攻撃の兵が敵に当たる動き（着く時刻の昇順を返す）。
+ * 敵に当たる間隔（`hitStaggerMs`・上限 `hitStaggerMaxMs`）で1体ずつずらす。
  * @type {Readonly<Record<string, function(EnemyBody, import('./troopRoster.js').TroopRoster, number, number): number[]>>}
  */
 const BODY_HITS = Object.freeze({
-  horde: (body, roster, count, t) => chargePairs(roster, 'attack', 'goblin', count, t, BATTLE_ANIM.hitMoveMs),
-  figure: (body, roster, count, t) => chargeTo(roster, 'attack', count, body.hitX, t, BATTLE_ANIM.hitMoveMs),
+  horde: (body, roster, count, t) => chargePairs(roster, 'attack', 'goblin', count, t, BATTLE_ANIM.hitMoveMs, 'hit'),
+  figure: (body, roster, count, t) => chargeTo(roster, 'attack', count, body.hitX, t, BATTLE_ANIM.hitMoveMs, 'hit'),
 });
 
 /**
@@ -104,6 +105,7 @@ export function createEnemyBody(roster, battleLayout, typeId, hp, armor) {
 
 /**
  * 攻撃の兵を count 体、シールドに当たる位置へ進め、着いた時刻に兵と前からのシールドを1つずつ跳ねて落とす（HP は変わらない）。
+ * 敵に当たる間隔（`hitStaggerMs`・上限 `hitStaggerMaxMs`）で1体ずつずらす。
  * @param {EnemyBody} body 敵の体
  * @param {import('./troopRoster.js').TroopRoster} roster 名簿
  * @param {number} count 剥がす数
@@ -112,13 +114,14 @@ export function createEnemyBody(roster, battleLayout, typeId, hp, armor) {
  * @throws {Error} シールドが足りないとき
  */
 export function hitEnemyArmor(body, roster, count, t) {
-  const arrivals = chargeTo(roster, 'attack', count, body.armorHitX, t, BATTLE_ANIM.hitMoveMs);
+  const arrivals = chargeTo(roster, 'attack', count, body.armorHitX, t, BATTLE_ANIM.hitMoveMs, 'hit');
   popTroops(roster, 'shield', arrivals);
   return arrivals;
 }
 
 /**
  * 攻撃の兵を count 体、敵に当たる位置へ進める（群れは1対1で2体とも落ち、絵は着いた時刻に兵が落ちる）。
+ * 敵に当たる間隔（`hitStaggerMs`・上限 `hitStaggerMaxMs`）で1体ずつずらす。
  * @param {EnemyBody} body 敵の体
  * @param {import('./troopRoster.js').TroopRoster} roster 名簿
  * @param {number} count 当たる数
