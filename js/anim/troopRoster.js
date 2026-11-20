@@ -1,11 +1,12 @@
 /**
  * 兵1体ずつの名簿を作り、段ごとに兵へ脚と終わり方を割り当てる
  * （出す・置く・行進・当たる・相打ち・落とす・城へ入る・右へ帰す・家へ跳ばす）。
- * 前から遅らせる式はここだけに置く。乱数は使わない。
+ * 前から遅らせる式と、兵ごとのずれ（troopJitter.js）の足し方はここだけに置く。乱数は使わない。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
 import { campSlot } from './campSlots.js';
+import { durationScale, startJitter } from './troopJitter.js';
 import { addTroopLeg, createTroopUnit, setTroopEnd, troopHitEnd } from './troopMotion.js';
 
 /**
@@ -63,6 +64,35 @@ export function staggerDelay(k, n, staggerMs, maxMs) {
  */
 function moveDelay(k, n) {
   return staggerDelay(k, n, BATTLE_ANIM.moveStaggerMs, BATTLE_ANIM.moveStaggerMaxMs);
+}
+
+/**
+ * 前から並んだ兵それぞれの動き出しの遅れ（前からの遅れ＋兵ごとのずれ）を求める。
+ * 一番小さい遅れが 0 になるよう全員から引くので、一番早い兵は段の始めに出る。
+ * @param {Array<{kind: string, index: number}>} units 前から並んだ兵（種類と番号を持つもの）
+ * @param {number} staggerMs 1体ごとの遅れ（ms）
+ * @param {number} maxMs 前からの遅れの広がり全体の上限（ms）
+ * @param {number} jitterMs 兵ごとの動き出しのずれの最大（ms。0 ならずれなし）
+ * @returns {number[]} 兵ごとの遅れ（ms。units と同じ順。最小は 0）
+ */
+function launchDelays(units, staggerMs, maxMs, jitterMs) {
+  const n = units.length;
+  const raw = units.map((u, k) => staggerDelay(k, n, staggerMs, maxMs) + jitterMs * startJitter(u.kind, u.index));
+  if (n === 0) return raw;
+  const min = Math.min(...raw);
+  return raw.map((d) => d - min);
+}
+
+/**
+ * 兵1体の動きの長さ（基準の長さにずれの倍率を掛ける）。
+ * @param {string} kind 兵の種類
+ * @param {number} index 種類の中の番号
+ * @param {number} baseMs 基準の長さ（ms）
+ * @param {number} spread 長さのばらつきの幅（割合）
+ * @returns {number} 動きの長さ（ms）
+ */
+function legMs(kind, index, baseMs, spread) {
+  return baseMs * durationScale(kind, index, spread);
 }
 
 /**
@@ -182,7 +212,7 @@ export function spawnTroops(roster, kind, count, t, appearMs) {
 
 /**
  * 段取りの間に、種類の兵を count 体、陣地の中心（fromX, fromY）から家へ跳ばせて足す。
- * 兵は t（に1体ごとの遅れ）から家へ 1本の脚で動く。家の番号は、その種類のすでにいる兵の続き。
+ * 兵は t（に1体ごとの遅れとずれ）から、ずれた長さで家へ 1本の脚で動く。家の番号は、その種類のすでにいる兵の続き。
  * @param {TroopRoster} roster 名簿
  * @param {string} kind 種類（attack・defense・heal・enemy・enemyGuard）
  * @param {number} count 人数（0 以下なら何もしない）
@@ -194,8 +224,11 @@ export function spawnTroops(roster, kind, count, t, appearMs) {
  * @throws {Error} 未知の種類のとき
  */
 export function landTroops(roster, kind, count, fromX, fromY, t, moveMs) {
-  const { landStaggerMs, landStaggerMaxMs } = BATTLE_ANIM;
-  return jumpTroops('landTroops', roster, kind, count, fromX, fromY, t, moveMs, landStaggerMs, landStaggerMaxMs);
+  const { landStaggerMs, landStaggerMaxMs, landJitterMs, speedSpread } = BATTLE_ANIM;
+  return jumpTroops(
+    'landTroops', roster, kind, count, fromX, fromY, t, moveMs,
+    landStaggerMs, landStaggerMaxMs, landJitterMs, speedSpread,
+  );
 }
 
 /**
@@ -210,28 +243,37 @@ export function landTroops(roster, kind, count, fromX, fromY, t, moveMs) {
  * @param {number} moveMs 家へ動く時間（ms）
  * @param {number} staggerMs 1体ごとの遅れ（ms）
  * @param {number} maxMs 遅れの広がり全体の上限（ms）
- * @returns {number} 全員が家に着く時刻（ms。count が 0 以下なら t）
+ * @param {number} jitterMs 兵ごとの動き出しのずれの最大（ms。0 ならずれなし）
+ * @param {number} spread 動きの長さのばらつきの幅（割合。0 ならずれなし）
+ * @returns {number} 全員が家に着く時刻（ms。全員の「t＋遅れ＋長さ」の最大。count が 0 以下なら t）
  * @throws {Error} 未知の種類のとき
  */
-function jumpTroops(name, roster, kind, count, fromX, fromY, t, moveMs, staggerMs, maxMs) {
+function jumpTroops(name, roster, kind, count, fromX, fromY, t, moveMs, staggerMs, maxMs, jitterMs, spread) {
   const campName = CAMP_OF[kind];
   if (campName === undefined) throw new Error(`${name}: 未知の種類 ${kind}`);
   const camp = roster.layout.camps[campName];
   const list = roster.ranked[kind] || (roster.ranked[kind] = []);
   const first = list.length;
-  for (let i = 0; i < count; i++) {
+  const n = Math.max(0, count);
+  const ids = [];
+  for (let i = 0; i < n; i++) ids.push({ kind, index: first + i });
+  const delays = launchDelays(ids, staggerMs, maxMs, jitterMs);
+  let end = t;
+  for (let i = 0; i < n; i++) {
     const index = first + i;
     const home = campSlot(camp, index);
-    const start = t + staggerDelay(i, count, staggerMs, maxMs);
+    const start = t + delays[i];
+    const ms = legMs(kind, index, moveMs, spread);
     const unit = createTroopUnit(kind, index, home.x, home.y, start, 0);
     unit.x = fromX;
     unit.y = fromY === null ? home.y : fromY;
-    addTroopLeg(unit, start, home.x, home.y, moveMs);
+    addTroopLeg(unit, start, home.x, home.y, ms);
     roster.units.push(unit);
     list.push(unit);
+    end = Math.max(end, start + ms);
   }
   sortRanked(list, kind);
-  return count <= 0 ? t : t + spreadOf(count, staggerMs, maxMs) + moveMs;
+  return end;
 }
 
 /**
@@ -248,7 +290,7 @@ function jumpTroops(name, roster, kind, count, fromX, fromY, t, moveMs, staggerM
  */
 export function enterTroops(roster, kind, count, fromX, fromY, t, moveMs) {
   const { moveStaggerMs, moveStaggerMaxMs } = BATTLE_ANIM;
-  return jumpTroops('enterTroops', roster, kind, count, fromX, fromY, t, moveMs, moveStaggerMs, moveStaggerMaxMs);
+  return jumpTroops('enterTroops', roster, kind, count, fromX, fromY, t, moveMs, moveStaggerMs, moveStaggerMaxMs, 0, 0);
 }
 
 /**
@@ -333,12 +375,12 @@ export function chargePairs(roster, kind, partnerKind, count, t, moveMs, pace = 
  * @param {TroopRoster} roster 名簿
  * @param {{ kind: string, partnerKind: string, pairs: number, dir: number, advanceX: number, t: number }} spec
  *   kind＝進む側、partnerKind＝相手、pairs＝組の数、dir＝進む向き（右 1・左 -1）、advanceX＝組でない兵が進む距離、t＝段の始め
- * @returns {number} 段の長さ（marchMs＋遅れの広がり。ms）
+ * @returns {number} 段の長さ（全員の「遅れ＋長さ」の最大。兵がいなければ marchMs。ms）
  * @throws {Error} 組の数に対して兵が足りないとき
  */
 export function marchSquad(roster, spec) {
   const { kind, partnerKind, pairs, dir, advanceX, t } = spec;
-  const { marchMs, moveStaggerMs, moveStaggerMaxMs } = BATTLE_ANIM;
+  const { marchMs, moveStaggerMs, moveStaggerMaxMs, moveJitterMs, speedSpread } = BATTLE_ANIM;
   const squad = activeOf(roster, kind);
   const partners = activeOf(roster, partnerKind);
   if (pairs > squad.length || pairs > partners.length) {
@@ -347,24 +389,28 @@ export function marchSquad(roster, spec) {
     );
   }
   const n = squad.length;
+  const delays = launchDelays(squad, moveStaggerMs, moveStaggerMaxMs, moveJitterMs);
+  let span = marchMs;
   for (let k = 0; k < n; k++) {
     const unit = squad[k];
-    const delay = moveDelay(k, n);
+    const delay = delays[k];
+    const ms = legMs(unit.kind, unit.index, marchMs, speedSpread);
     if (k < pairs) {
       const partner = partners[k];
       unit.partner = partner;
       partner.partner = unit;
       const partnerX = partner.x - dir * roster.layout.blockStepX;
       const partnerStart = Math.max(t + delay, partner.freeAt);
-      addTroopLeg(partner, partnerStart, partnerX, partner.y, marchMs);
+      addTroopLeg(partner, partnerStart, partnerX, partner.y, ms);
       const start = Math.max(t + delay, unit.freeAt);
-      addTroopLeg(unit, start, partnerX - dir * roster.layout.contactGap, partner.y, marchMs);
+      addTroopLeg(unit, start, partnerX - dir * roster.layout.contactGap, partner.y, ms);
     } else {
       const start = Math.max(t + delay, unit.freeAt);
-      addTroopLeg(unit, start, unit.homeX + dir * advanceX, unit.y, marchMs);
+      addTroopLeg(unit, start, unit.homeX + dir * advanceX, unit.y, ms);
     }
+    span = k === 0 ? delay + ms : Math.max(span, delay + ms);
   }
-  return marchMs + spreadOf(n, moveStaggerMs, moveStaggerMaxMs);
+  return span;
 }
 
 /**
@@ -424,17 +470,19 @@ export function chargeTo(roster, kind, count, targetX, t, moveMs, pace = 'move')
  * @param {TroopRoster} roster 名簿
  * @param {string} kind 種類
  * @param {number} t 段の始め（ms）
- * @param {number} moveMs 移動の時間（ms）
+ * @param {number} moveMs 移動の基準の時間（ms。兵ごとにずれる）
  * @returns {number[]} 着く時刻の昇順の配列（1体も動かさなければ空）
  */
 export function enterCastle(roster, kind, t, moveMs) {
+  const { moveStaggerMs, moveStaggerMaxMs, moveJitterMs, speedSpread } = BATTLE_ANIM;
   const chosen = activeOf(roster, kind);
   const m = chosen.length;
+  const delays = launchDelays(chosen, moveStaggerMs, moveStaggerMaxMs, moveJitterMs);
   const arrivals = [];
   for (let k = 0; k < m; k++) {
     const unit = chosen[k];
-    const start = Math.max(t + moveDelay(k, m), unit.freeAt);
-    addTroopLeg(unit, start, roster.layout.castleEntryX, contactY(roster, unit.y), moveMs);
+    const start = Math.max(t + delays[k], unit.freeAt);
+    addTroopLeg(unit, start, roster.layout.castleEntryX, contactY(roster, unit.y), legMs(unit.kind, unit.index, moveMs, speedSpread));
     setTroopEnd(unit, 'vanish', unit.freeAt, roster.layout.fallOutY);
     arrivals.push(unit.freeAt);
   }
@@ -447,16 +495,18 @@ export function enterCastle(roster, kind, t, moveMs) {
  * @param {string} kind 種類
  * @param {number} toX 行き先の x（画面の外）
  * @param {number} t 走り始める時刻（ms）
- * @param {number} moveMs 移動の時間（ms）
+ * @param {number} moveMs 移動の基準の時間（ms。兵ごとにずれる）
  * @returns {void}
  */
 export function exitTroops(roster, kind, toX, t, moveMs) {
+  const { moveStaggerMs, moveStaggerMaxMs, moveJitterMs, speedSpread } = BATTLE_ANIM;
   const chosen = activeOf(roster, kind);
   const m = chosen.length;
+  const delays = launchDelays(chosen, moveStaggerMs, moveStaggerMaxMs, moveJitterMs);
   for (let k = 0; k < m; k++) {
     const unit = chosen[k];
-    const start = Math.max(t + moveDelay(k, m), unit.freeAt);
-    addTroopLeg(unit, start, toX, unit.y, moveMs);
+    const start = Math.max(t + delays[k], unit.freeAt);
+    addTroopLeg(unit, start, toX, unit.y, legMs(unit.kind, unit.index, moveMs, speedSpread));
     setTroopEnd(unit, 'vanish', unit.freeAt, roster.layout.fallOutY);
   }
 }
