@@ -1,7 +1,7 @@
 /**
- * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面を描くこと。
- * 操作の結果を anim に渡して時間を進め（ReleaseShow・敵の待機 EnemyIdle の時計を含む）、札が動いている間はタップを無視し、行動を使い切ったら札・玉・兵が全部着いてから自動で攻防に入り待っていた兵の数を演出のシーンへ渡すこと。
- * 操作・攻防に入るとき・連鎖のきっかけで効果音を鳴らし（soundCues.js）、スタートの待ち時間の後と敵が入れ替わったところでステージの曲を流すこと（bgmCues.js）。積んだ演出のシーンから札が燃える段の盤面を読んで描くこと。
+ * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面と合図を描くこと。
+ * 操作の結果を anim に渡して時間を進め、段階の管理（boardFlow.js）を進めて、BATTLE! が終わったら攻防に入り待っていた兵の数を演出のシーンへ渡すこと。
+ * 操作・連鎖のきっかけで効果音を鳴らし（soundCues.js）、積んだ演出のシーンから札が燃える段の盤面を読んで描くこと。
  */
 import { Engine, Scene } from 'oz';
 import { Game } from '../rules/Game.js';
@@ -15,9 +15,10 @@ import { EnemyIdle } from '../anim/enemyIdle.js';
 import { releaseGeometry } from '../view/releaseLayout.js';
 import { snapshotBoard, buildPlanningMotion } from '../anim/planningMotion.js';
 import { applyTap, boardUiFor } from './boardSelection.js';
-import { playPlanningSe, playTurnEndSe, playChainSe } from './soundCues.js';
-import { playStageBgm } from './bgmCues.js';
-import { BGM_TIMING } from '../audio/soundConfig.js';
+import { playPlanningSe, playChainSe } from './soundCues.js';
+import { BoardFlow } from './boardFlow.js';
+import { createBannerLayout } from '../view/bannerLayout.js';
+import { drawBanner } from '../view/bannerView.js';
 
 /**
  * @typedef {Object} BoardOptions BoardScene に渡すオプション
@@ -27,7 +28,7 @@ import { BGM_TIMING } from '../audio/soundConfig.js';
  * @property {() => Scene} createTitle タイトルの画面のシーンを作る関数（攻防の演出のシーンへ渡す）
  */
 
-/** 盤面を表示し、置く・捨てる・手札に入れる・手札から置く・束の移し替え・放つをタップ／クリックで行い、行動を使い切ったら札・玉・兵が全部着いてから自動で攻防に入るシーン */
+/** 盤面を表示し、置く・捨てる・手札に入れる・手札から置く・束の移し替え・放つをタップ／クリックで行い、段階の管理（boardFlow.js）を進めて、BATTLE! が終わったら攻防に入り、合図を描くシーン */
 export class BoardScene extends Scene {
   /**
    * @param {BoardOptions} options オプション
@@ -58,10 +59,10 @@ export class BoardScene extends Scene {
     this.releaseShow = null;
     /** @type {EnemyIdle|null} 段取りの間の敵の待機の動き（ゴブリンの群れ・巨人・ドラゴンの伸び縮み。init で作る） */
     this.enemyIdle = null;
-    /** @type {number} スタートの音の後、最初のステージの曲を始めるまでの待ち時間の残り（ミリ秒。init で BGM_TIMING.startToStageMs） */
-    this.stageBgmWaitMs = 0;
-    /** @type {number|null} ステージの曲を始めた敵の番号（game.enemyIndex の値。まだ始めていなければ null） */
-    this.stageBgmEnemyIndex = null;
+    /** @type {import('../view/bannerLayout.js').BannerLayout|null} 合図の配置（init で作る） */
+    this.bannerLayout = null;
+    /** @type {BoardFlow|null} 盤面の段階の管理（スタートの待ち・ステージとフェーズの始まり・準備終了・BATTLE!。init で作る） */
+    this.flow = null;
   }
 
   /**
@@ -83,15 +84,14 @@ export class BoardScene extends Scene {
     this.battleShow = null;
     this.releaseShow = new ReleaseShow(this.layout.battle.troops);
     this.enemyIdle = new EnemyIdle();
-    this.stageBgmWaitMs = BGM_TIMING.startToStageMs;
-    this.stageBgmEnemyIndex = null;
+    this.bannerLayout = createBannerLayout(this.layout);
+    this.flow = new BoardFlow(this.bannerLayout.enemyEntryDX);
   }
 
   /**
    * 動きの時計に dt（ミリ秒）を足して進める（dt はエンジンが渡した値をそのまま足し、倍率は掛けない。ルール層の状態は変えない）。
    * 放つ演出の時計も進め、進めた直後に、その間に玉に変わった札の序数ごとに連鎖の効果音を鳴らす。
-   * ステージの曲の待ち時間も進め、曲を始める場面なら流す（updateStageBgm）。
-   * 最後に、行動を使い切っていて（ルール層の canResolveBattle）札の移動・山札のめくれ・玉に変わる前の札・玉・兵が全部止まっていれば、自動で攻防に入る（startBattle）。
+   * 最後に、札の移動・山札のめくれ・玉に変わる前の札・玉・兵が全部止まっているかを段階の管理（BoardFlow.update）に渡して進め、BATTLE! が終わったと返されたら攻防に入る（startBattle）。
    * 頭で `this.battleShow` を外す（update は最前面のときだけ呼ばれるので、攻防の演出のシーンが外れた後になる）。
    * @param {number} dt 1ティックの長さ（ミリ秒）
    * @returns {void}
@@ -102,27 +102,12 @@ export class BoardScene extends Scene {
     this.releaseShow.update(dt);
     this.enemyIdle.update(dt, this.game.enemy.typeId, this.game.enemy.hp);
     for (const ordinal of this.releaseShow.chainCuesInLastUpdate()) playChainSe(ordinal);
-    this.updateStageBgm(dt);
-    if (this.game.canResolveBattle() && !this.animator.isBusy() && !this.releaseShow.isBusy()) {
-      this.startBattle();
-    }
+    const boardIdle = !this.animator.isBusy() && !this.releaseShow.isBusy();
+    if (this.flow.update(dt, this.game, boardIdle)) this.startBattle();
   }
 
   /**
-   * ステージの曲の待ち時間を dt（ミリ秒）だけ減らし、残りが 0 で、まだ曲を始めていない敵（`game.enemyIndex` が記録と違う）なら、その敵のステージの曲を頭から流す。
-   * ルール層の値は読むだけ。フェーズが変わっても敵の番号は変わらないので鳴らし直さない。
-   * @param {number} dt 1ティックの長さ（ミリ秒）
-   * @returns {void}
-   */
-  updateStageBgm(dt) {
-    this.stageBgmWaitMs = Math.max(0, this.stageBgmWaitMs - dt);
-    if (this.stageBgmWaitMs > 0 || this.stageBgmEnemyIndex === this.game.enemyIndex) return;
-    this.stageBgmEnemyIndex = this.game.enemyIndex;
-    playStageBgm(this.game.enemy.typeId);
-  }
-
-  /**
-   * 攻防に入る（update が、行動を使い切って札・玉・兵が全部止まったときに呼ぶ。攻防の前の値の写し → 待っている兵の数 → 攻防の解決 → 行動終了の音 → 放つ演出の作り直し → 攻防の演出のシーンを積む）。
+   * 攻防に入る（BATTLE! が消えたとき update が呼ぶ。攻防の前の値の写し → 待っている兵の数 → 攻防の解決 → 放つ演出の作り直し → 攻防の演出のシーンを積む）。
    * 攻防を解決できなければ何もしない。
    * @returns {void}
    */
@@ -132,7 +117,6 @@ export class BoardScene extends Scene {
     const waiting = this.releaseShow.waitingCounts();
     this.lastResult = game.resolveBattle();
     if (this.lastResult === null) return;
-    playTurnEndSe(); // 行動終了（攻防に入った）の効果音
     this.releaseShow = new ReleaseShow(this.layout.battle.troops); // 次のフェーズは兵のいない状態から
     this.battleShow = new BattleShowScene({
       layer: this.layer,
@@ -147,7 +131,9 @@ export class BoardScene extends Scene {
   }
 
   /**
-   * 押したとき（'down'）だけ、札の動き・山札のめくれ・玉に変わる前の札が残っている間は無視する。行動を使い切っていれば選択を外して戻る（攻防へは update が自動で入る）。
+   * 押したとき（'down'）だけ、札の動き・山札のめくれ・玉に変わる前の札が残っている間は無視する。
+   * 続けて段階の管理（BoardFlow.tap）に渡し、準備終了ならそのタップで BATTLE! を始める。合図が出ている間・始まりの待ちの間（false が返る）は選択を外して戻る。
+   * 行動を使い切っていれば選択を外して戻る。
    * それ以外は、当たった場所に応じてルール層の操作を呼ぶ（選択の扱いは boardSelection.js）。操作が成り立ったときに効果音を鳴らす（soundCues.js）。
    * @param {{ type: string, x: number, y: number }} pointer ポインタ入力
    * @returns {void}
@@ -156,6 +142,7 @@ export class BoardScene extends Scene {
     if (pointer.type !== 'down') return;
     if (this.animator.isBusy() || this.releaseShow.isHoldingCards()) return;
     const game = this.game;
+    if (!this.flow.tap(game)) { this.selection = null; return; }
     if (game.isOutOfActions()) {
       this.selection = null;
       return;
@@ -188,6 +175,7 @@ export class BoardScene extends Scene {
   /**
    * ルール層の問い合わせと anim の見た目の値から盤面を描く（状態は変えない）。
    * 攻防の演出のシーンを積んでいれば、その `boardLook()`（燃える段の盤面の見た目。なければ null）を読んで `drawBoard` に渡す。
+   * 盤面の最後に、段階の管理の敵の入りの見た目を渡し、その上に合図（準備終了・BATTLE!・フェーズ・ステージの始まり）を描く。
    * @param {CanvasRenderingContext2D} ctx 描画先
    * @param {string} layer レイヤー名
    * @returns {void}
@@ -196,6 +184,13 @@ export class BoardScene extends Scene {
     if (layer !== this.layer) return;
     const game = this.game;
     const burn = this.battleShow === null ? null : this.battleShow.boardLook();
-    drawBoard(ctx, this.layout, game, boardUiFor(game, this.selection), this.animator.view(), this.releaseShow.view(game.gauges), burn, this.enemyIdle.look());
+    drawBoard(ctx, this.layout, game, boardUiFor(game, this.selection), this.animator.view(), this.releaseShow.view(game.gauges), burn, this.enemyIdle.look(), this.flow.entranceLook(game));
+    drawBanner(ctx, this.bannerLayout, this.flow.bannerLook(), {
+      phase: game.phase,
+      enemyIndex: game.enemyIndex,
+      enemyTypeId: game.enemy.typeId,
+      intent: game.enemy.intent,
+      countdown: game.attackCountdown(),
+    });
   }
 }
