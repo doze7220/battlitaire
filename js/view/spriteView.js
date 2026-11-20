@@ -15,6 +15,11 @@ import suitHammer from 'assets/sprites/suit_hammer.js';
 import suitGold from 'assets/sprites/suit_gold.js';
 import effectFire from 'assets/sprites/effect_fire.js';
 import effectHit from 'assets/sprites/effect_hit.js';
+import cardFrontSword from 'assets/sprites/card_front_sword.js';
+import cardFrontShield from 'assets/sprites/card_front_shield.js';
+import cardFrontHammer from 'assets/sprites/card_front_hammer.js';
+import cardFrontGold from 'assets/sprites/card_front_gold.js';
+import cardBack from 'assets/sprites/card_back.js';
 
 /**
  * 矩形。
@@ -27,7 +32,7 @@ import effectHit from 'assets/sprites/effect_hit.js';
 
 /**
  * スプライトの識別子（呼ぶ側はこの定数で絵を指す）。
- * @type {Readonly<{background: string, castle: string, giant: string, dragon: string, soldier: string, goblin: string, sword: string, shield: string, hammer: string, gold: string, fire: string, hit: string}>}
+ * @type {Readonly<{background: string, castle: string, giant: string, dragon: string, soldier: string, goblin: string, sword: string, shield: string, hammer: string, gold: string, fire: string, hit: string, cardFrontSword: string, cardFrontShield: string, cardFrontHammer: string, cardFrontGold: string, cardBack: string}>}
  */
 export const SPRITE_IDS = Object.freeze({
   background: 'background',
@@ -42,6 +47,11 @@ export const SPRITE_IDS = Object.freeze({
   gold: 'gold',
   fire: 'fire',
   hit: 'hit',
+  cardFrontSword: 'cardFrontSword',
+  cardFrontShield: 'cardFrontShield',
+  cardFrontHammer: 'cardFrontHammer',
+  cardFrontGold: 'cardFrontGold',
+  cardBack: 'cardBack',
 });
 
 /**
@@ -53,6 +63,15 @@ export const SPRITE_IDS = Object.freeze({
  * @property {number} minY y の最小
  * @property {number} maxY y の最大（足元）
  */
+
+/**
+ * カードのスプライトを OZ Vector Editor で描くときの約束の範囲（倍率の元）。
+ * 原点 (0, 0) がカードの中心で、カードの外形を幅100×高さ140（x -50〜50、y -70〜70）の実寸で描く。
+ * ゲームはこの範囲をカードの矩形に縦横別々の倍率で合わせ、範囲の外にはみ出した部分も同じ倍率で描く。
+ * スプライトの bounds は読まない。
+ * @type {Readonly<{minX: number, maxX: number, minY: number, maxY: number}>}
+ */
+const CARD_ART_RANGE = Object.freeze({ minX: -50, maxX: 50, minY: -70, maxY: 70 });
 
 /**
  * 識別子 → 絵と絵の範囲の凍結した表。
@@ -71,6 +90,11 @@ const SPRITE_TABLE = Object.freeze({
   [SPRITE_IDS.gold]: Object.freeze({ sprite: suitGold, minX: -70.5, maxX: 70.5, minY: -89.5, maxY: 85.5 }),
   [SPRITE_IDS.fire]: Object.freeze({ sprite: effectFire, minX: -84, maxX: 85, minY: -99, maxY: 92 }),
   [SPRITE_IDS.hit]: Object.freeze({ sprite: effectHit, minX: -99, maxX: 99, minY: -99, maxY: 99 }),
+  [SPRITE_IDS.cardFrontSword]: Object.freeze({ sprite: cardFrontSword, ...CARD_ART_RANGE }),
+  [SPRITE_IDS.cardFrontShield]: Object.freeze({ sprite: cardFrontShield, ...CARD_ART_RANGE }),
+  [SPRITE_IDS.cardFrontHammer]: Object.freeze({ sprite: cardFrontHammer, ...CARD_ART_RANGE }),
+  [SPRITE_IDS.cardFrontGold]: Object.freeze({ sprite: cardFrontGold, ...CARD_ART_RANGE }),
+  [SPRITE_IDS.cardBack]: Object.freeze({ sprite: cardBack, ...CARD_ART_RANGE }),
 });
 
 /**
@@ -138,6 +162,28 @@ export function drawSpriteCentered(ctx, id, cx, cy, size) {
   ctx.save();
   ctx.translate(cx - ((e.minX + e.maxX) / 2) * s, cy - ((e.minY + e.maxY) / 2) * s);
   ctx.scale(s, s);
+  e.sprite.draw(ctx);
+  ctx.restore();
+}
+
+/**
+ * 絵の範囲を矩形 (x, y, w, h) にぴったり合わせて描く（横の倍率 w/範囲の幅、縦の倍率 h/範囲の高さ。別々）。
+ * 範囲の外にはみ出した部分も同じ変換のまま描かれる。カード1枚ごとにオブジェクトを作らないよう、矩形は位置で受ける。
+ * @param {CanvasRenderingContext2D} ctx 描画先
+ * @param {string} id SPRITE_IDS の値
+ * @param {number} x 矩形の左端
+ * @param {number} y 矩形の上端
+ * @param {number} w 矩形の幅
+ * @param {number} h 矩形の高さ
+ * @returns {void}
+ */
+export function drawSpriteStretched(ctx, id, x, y, w, h) {
+  const e = lookupSprite(id);
+  const sx = w / (e.maxX - e.minX);
+  const sy = h / (e.maxY - e.minY);
+  ctx.save();
+  ctx.translate(x - e.minX * sx, y - e.minY * sy);
+  ctx.scale(sx, sy);
   e.sprite.draw(ctx);
   ctx.restore();
 }
