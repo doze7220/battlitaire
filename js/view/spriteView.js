@@ -1,5 +1,5 @@
 /**
- * 責務: スプライトJSの import と識別子・絵の範囲の表、ロゴ・数字の表（原点を中心に倍率をかけて描く・数字を並べて描く）を持ち、draw(ctx) を呼ぶ。
+ * 責務: スプライトJSの import と識別子・絵の範囲の表、ロゴ・数字・予告の絵の表（原点を中心に倍率をかけて描く・数字を並べて描く）を持ち、draw(ctx) を呼ぶ。
  * assets/sprites/ を import するのはこのモジュールだけ。状態は変えず、ルール層・anim は import しない。
  */
 
@@ -37,6 +37,12 @@ import digit6 from 'assets/sprites/digit_6.js';
 import digit7 from 'assets/sprites/digit_7.js';
 import digit8 from 'assets/sprites/digit_8.js';
 import digit9 from 'assets/sprites/digit_9.js';
+import intentAttack from 'assets/sprites/intent_attack.js';
+import intentDefend from 'assets/sprites/intent_defend.js';
+import intentWindup from 'assets/sprites/intent_windup.js';
+import intentClaw from 'assets/sprites/intent_claw.js';
+import intentInhale from 'assets/sprites/intent_inhale.js';
+import intentBreath from 'assets/sprites/intent_breath.js';
 
 /**
  * 矩形。
@@ -92,6 +98,9 @@ const CARD_ART_RANGE = Object.freeze({ minX: -50, maxX: 50, minY: -70, maxY: 70 
 
 /**
  * 識別子 → 絵と絵の範囲の凍結した表。
+ * 兵（soldier）とゴブリン（goblin）の範囲（x ±99・y ±98）はスプライトの bounds（x ±101・y ±100。太さ 6 の線を含む）と違う。
+ * 表は兵の描く大きさ（drawSpriteCentered の size）の基準で、bounds に合わせると約 2% 小さく描かれるため、見た目を変えないよう今の値を残す。
+ * スプライトを描き直して差し替えるときに、表を新しい bounds に合わせ直し、layout.js の TROOP_SIZE も一緒に見直す。
  * @type {Readonly<Record<string, Readonly<SpriteEntry>>>}
  */
 const SPRITE_TABLE = Object.freeze({
@@ -156,6 +165,40 @@ const DIGIT_SPRITES = Object.freeze([digit0, digit1, digit2, digit3, digit4, dig
  * @type {Readonly<{w: number, h: number}>}
  */
 const DIGIT_CELL = Object.freeze({ w: 56, h: 76 });
+
+/**
+ * 予告の絵の識別子（SPRITE_IDS・LOGO_IDS とは別。呼ぶ側はこの定数で予告の絵を指す）。
+ * @type {Readonly<{attack: string, defend: string, windup: string, claw: string, inhale: string, breath: string}>}
+ */
+export const INTENT_IDS = Object.freeze({
+  attack: 'attack',
+  defend: 'defend',
+  windup: 'windup',
+  claw: 'claw',
+  inhale: 'inhale',
+  breath: 'breath',
+});
+
+/**
+ * 予告の絵の識別子 → スプライトの凍結した表（範囲の数値は持たない）。
+ * @type {Readonly<Record<string, {draw: function(CanvasRenderingContext2D): void}>>}
+ */
+const INTENT_TABLE = Object.freeze({
+  [INTENT_IDS.attack]: intentAttack,
+  [INTENT_IDS.defend]: intentDefend,
+  [INTENT_IDS.windup]: intentWindup,
+  [INTENT_IDS.claw]: intentClaw,
+  [INTENT_IDS.inhale]: intentInhale,
+  [INTENT_IDS.breath]: intentBreath,
+});
+
+/**
+ * 予告の絵を描くときの約束の枠（エディタで予告の絵を描く大きさ）。
+ * 原点 (0, 0) が枠の中心で、幅40×高さ40（x -20〜20、y -20〜20）の枠の中に描く。
+ * ゲームはエディタの px をそのまま（倍率 1）描く。bounds は読まない。layout.js が札の大きさを求めるのに使う。
+ * @type {Readonly<{w: number, h: number}>}
+ */
+export const INTENT_CELL = Object.freeze({ w: 40, h: 40 });
 
 /**
  * 識別子から絵と絵の範囲を引く。未知の識別子は Error。
@@ -267,6 +310,25 @@ export function drawLogo(ctx, id, cx, cy, scale) {
   ctx.translate(cx, cy);
   ctx.scale(scale, scale);
   LOGO_TABLE[id].draw(ctx);
+  ctx.restore();
+}
+
+/**
+ * 予告の絵を、原点を中心 (cx, cy) に置き、倍率 1 で描く。
+ * @param {CanvasRenderingContext2D} ctx 描画先
+ * @param {string} id INTENT_IDS の値
+ * @param {number} cx 絵の中心の x
+ * @param {number} cy 絵の中心の y
+ * @returns {void}
+ * @throws {Error} 未知の識別子のとき
+ */
+export function drawIntentIcon(ctx, id, cx, cy) {
+  if (!Object.prototype.hasOwnProperty.call(INTENT_TABLE, id)) {
+    throw new Error(`spriteView: 未知の予告の絵の識別子です: ${id}`);
+  }
+  ctx.save();
+  ctx.translate(cx, cy);
+  INTENT_TABLE[id].draw(ctx);
   ctx.restore();
 }
 
