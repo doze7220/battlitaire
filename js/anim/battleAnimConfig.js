@@ -1,6 +1,6 @@
 /**
  * 攻防の演出の設定（段・兵の動き・弾かれて落ちる距離・燃える札・段取りの間・敵の側の兵・打撃・ヒットマークの時間と大きさ、
- * 攻防のエフェクトの値・呼吸の深さと速さ・敵の絵の呼吸の深さと速さ）を1か所に凍結して持つ。これらの数値は、ほかのファイルに書かない。
+ * 兵ごとの動きのずれ・攻撃の兵が当たる間隔、攻防のエフェクトの値・呼吸の深さと速さ・敵の絵の呼吸の深さと速さ）を1か所に凍結して持つ。これらの数値は、ほかのファイルに書かない。
  */
 
 /**
@@ -24,6 +24,8 @@
  * @property {number} swayPeriodMs 揺れる移動の1回の長さ（ms。脚の長さから回数を決める）。試遊で決め直す。
  * @property {number} moveStaggerMs 兵が前から順に出るときの、1体ごとの遅れ（ms）。試遊で決め直す。
  * @property {number} moveStaggerMaxMs 前から順に出るときの、遅れの広がり全体の上限（ms）。試遊で決め直す。
+ * @property {number} moveJitterMs 攻防で兵が出ていく・進む・帰る動きの、兵ごとの動き出しのずれの最大（ms。前からの遅れに足す）。試遊で決め直す。
+ * @property {number} speedSpread 兵ごとの動きの長さのばらつきの幅（割合。0.15 なら基準の 0.85〜1.15 倍）。試遊で決め直す。
  * @property {number} popHeight 跳ねて落ちるときの、跳ねる高さ（px）。試遊で決め直す。
  * @property {number} popMs 跳ねて落ちるときに、頂点へ着くまでの時間（ms）。試遊で決め直す。
  * @property {number} fallAccel 跳ねた後に落ちる加速（px/ms²）。試遊で決め直す。
@@ -35,9 +37,12 @@
  * @property {number} landMs 段取りの間、弾けた玉から出た兵が家へ跳ぶ時間（ms）。試遊で決め直す。
  * @property {number} landStaggerMs 段取りの間、兵が1体ずつ飛び出すときの1体ごとの遅れ（ms）。試遊で決め直す。
  * @property {number} landStaggerMaxMs 段取りの間、飛び出す遅れの広がり全体の上限（ms）。試遊で決め直す。
+ * @property {number} landJitterMs 段取りの間、兵が家へ跳ぶ動きの、兵ごとの動き出しのずれの最大（ms。前からの遅れに足す）。試遊で決め直す。
  * @property {number} enterMs 敵の側の兵（ゴブリン・炎）が画面の外・ドラゴンの口から陣地の家まで動く時間（ms。前から出る遅れは別）。試遊で決め直す。
  * @property {number} strikeStaggerMs 飛ぶもののない打撃で、防御の兵・城に1つずつ当たる間隔の上限（ms）。試遊で決め直す。
  * @property {number} strikeStaggerMaxMs 打撃の間隔の広がり全体の上限（ms）。試遊で決め直す。
+ * @property {number} hitStaggerMs 攻撃の兵が敵（群れ・絵・シールド）に1体ずつ当たる間隔の上限（ms）。試遊で決め直す。
+ * @property {number} hitStaggerMaxMs 敵に当たる間隔の広がり全体の上限（ms）。試遊で決め直す。
  * @property {number} hitMarkMs ヒットマークが出てから消えるまでの時間（ms）。試遊で決め直す。
  * @property {number} hitMarkSize ヒットマークの大きさ（px。絵の長い方の辺）。試遊で決め直す。
  * @property {number} burnFireRatio 燃える札の上に出す炎の大きさの、札の幅に対する割合。試遊で決め直す。
@@ -96,6 +101,8 @@ export const BATTLE_ANIM = Object.freeze({
   swayPeriodMs: 300,
   moveStaggerMs: 12,
   moveStaggerMaxMs: 300,
+  moveJitterMs: 300,
+  speedSpread: 0.15,
   popHeight: 16,
   popMs: 150,
   fallAccel: 0.003,
@@ -107,9 +114,12 @@ export const BATTLE_ANIM = Object.freeze({
   landMs: 400,
   landStaggerMs: 10,
   landStaggerMaxMs: 300,
+  landJitterMs: 300,
   enterMs: 600,
   strikeStaggerMs: 90,
   strikeStaggerMaxMs: 1200,
+  hitStaggerMs: 80,
+  hitStaggerMaxMs: 1000,
   hitMarkMs: 250,
   hitMarkSize: 40,
   burnFireRatio: 0.6,
