@@ -1,5 +1,5 @@
 /**
- * 責務: スートごとの絵（スプライトの識別子）・色と、ゲージの絵の対応表を持ち、識別子から見た目を引く。
+ * 責務: スートごとの絵（スプライトの識別子）・色・カードの表の枠と、ゲージの絵の対応表を持ち、識別子から見た目を引く。
  * ルール層は import せず、識別子の文字列をキーにする。
  */
 
@@ -10,6 +10,7 @@ import { SPRITE_IDS } from './spriteView.js';
  * @typedef {Object} SuitLook
  * @property {string|null} sprite スートを表すスプライトの識別子（`SPRITE_IDS` の値。未知のスートは null）
  * @property {string} color スートの色（CSS 色文字列）
+ * @property {string} frame カードの表の枠のスプライトの識別子（`SPRITE_IDS` の値）
  */
 
 /**
@@ -17,17 +18,17 @@ import { SPRITE_IDS } from './spriteView.js';
  * @type {Readonly<Object<string, SuitLook>>}
  */
 export const SUIT_LOOKS = Object.freeze({
-  sword: Object.freeze({ sprite: SPRITE_IDS.sword, color: '#d9534f' }),
-  shield: Object.freeze({ sprite: SPRITE_IDS.shield, color: '#4a90d9' }),
-  potion: Object.freeze({ sprite: SPRITE_IDS.hammer, color: '#4cae4c' }),
-  muscle: Object.freeze({ sprite: SPRITE_IDS.gold, color: '#e0a030' }),
+  sword: Object.freeze({ sprite: SPRITE_IDS.sword, color: '#d9534f', frame: SPRITE_IDS.cardFrontSword }),
+  shield: Object.freeze({ sprite: SPRITE_IDS.shield, color: '#4a90d9', frame: SPRITE_IDS.cardFrontShield }),
+  potion: Object.freeze({ sprite: SPRITE_IDS.hammer, color: '#4cae4c', frame: SPRITE_IDS.cardFrontHammer }),
+  muscle: Object.freeze({ sprite: SPRITE_IDS.gold, color: '#e0a030', frame: SPRITE_IDS.cardFrontGold }),
 });
 
 /**
- * 未知のスートに使う既定の見た目。
+ * 未知のスートに使う既定の見た目（未知のスートは剣の枠で描く）。
  * @type {Readonly<SuitLook>}
  */
-export const DEFAULT_SUIT_LOOK = Object.freeze({ sprite: null, color: '#888888' });
+export const DEFAULT_SUIT_LOOK = Object.freeze({ sprite: null, color: '#888888', frame: SPRITE_IDS.cardFrontSword });
 
 /**
  * ゲージの識別子 → スートの絵（スプライトの識別子）の対応表（攻撃・防御・修理のみ）。
