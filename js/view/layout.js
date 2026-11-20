@@ -69,6 +69,8 @@ import { INTENT_CELL, SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * @property {number} contactGap 相打ちでぶつかる2体の間隔
  * @property {number} attackAdvanceX 相打ちの相手のいない攻撃の兵が進む距離
  * @property {number} enemyAdvanceX 相打ちにならない敵兵が左へ進む距離
+ * @property {number} contactTop 兵が城・敵に当たる・城に入るときの足元の y の上端（陣地の y をこの範囲に収めて当てる）
+ * @property {number} contactBottom 兵が城・敵に当たる・城に入るときの足元の y の下端（陣地の y をこの範囲に収めて当てる）
  * @property {number} castleHitX 城に当たる位置の x（城の右端の少し内側）
  * @property {number} offscreenX 敵の側の兵が現れる・帰る画面の外の x（段の右端 + 兵の大きさ）
  * @property {Rect} castleHitArea 城の打撃のヒットマークを出す範囲（城の絵の矩形の内側）
@@ -314,10 +316,14 @@ const TROOP_CAMPS_X = Object.freeze({
   defense: Object.freeze({ x: 300, w: 100 }),
   enemy: Object.freeze({ x: 470, w: 80 }),
 });
-/** 陣地の y の範囲の、地面の線から上へ取る長さ（試遊で決め直す） */
-const CAMP_FOOT_ABOVE = 96;
-/** 陣地の y の範囲の、地面の線から下へ取る長さ（試遊で決め直す） */
-const CAMP_FOOT_BELOW = 2;
+/** 陣地の y の範囲の、地面の線から上へ取る長さ（兵が縦にばらけるよう広げた。足元は段の下端・空・人数の表示の枠にかからない範囲。試遊で決め直す） */
+const CAMP_FOOT_ABOVE = 110;
+/** 陣地の y の範囲の、地面の線から下へ取る長さ（兵が縦にばらけるよう広げた。足元は段の下端・空・人数の表示の枠にかからない範囲。試遊で決め直す） */
+const CAMP_FOOT_BELOW = 64;
+/** 兵が城・敵に当たる・城に入るときの足元の y の範囲の、地面の線から上へ取る長さ（今までの陣地の範囲。試遊で決め直す） */
+const CONTACT_FOOT_ABOVE = 96;
+/** 兵が城・敵に当たる・城に入るときの足元の y の範囲の、地面の線から下へ取る長さ（今までの陣地の範囲。試遊で決め直す） */
+const CONTACT_FOOT_BELOW = 2;
 /** 相打ちの相手が前へ踏み出す距離（試遊で決め直す） */
 const BLOCK_STEP_X = 30;
 /** 相打ちでぶつかる2体の間隔（試遊で決め直す） */
@@ -569,6 +575,8 @@ function createBattleLayout(width) {
     contactGap: CONTACT_GAP,
     attackAdvanceX: ATTACK_ADVANCE_X,
     enemyAdvanceX: ENEMY_ADVANCE_X,
+    contactTop: groundY - CONTACT_FOOT_ABOVE,
+    contactBottom: groundY + CONTACT_FOOT_BELOW,
     castleHitX: castle.x + castle.w - CASTLE_HIT_INSET,
     offscreenX: area.x + area.w + TROOP_SIZE,
     castleHitArea: {
