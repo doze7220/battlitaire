@@ -1,5 +1,5 @@
 /**
- * 責務: 敵の行動（爪・吸い込む・ブレスの種類を含む）・決着・結果の集計の見出し・タップでタイトルへの案内・敵を倒したときの案内・数え下ろし・回復の量・当たりのダメージの数字・放った区切りの式を、画面に出す文字に直す。
+ * 責務: 敵の行動（爪・吸い込む・ブレスの種類を含む）・予告の量の数字・表にない予告の印・決着・結果の集計の見出し・タップでタイトルへの案内・敵を倒したときの案内・数え下ろし・回復の量・当たりのダメージの数字・放った区切りの式を、画面に出す文字に直す。
  * 計算はせず、量をそのまま文字にする。ルール層は実行時に import しない。
  */
 
@@ -124,6 +124,24 @@ export function enemyActionText(action) {
       : UNKNOWN_ACTION_LABEL;
   if (AMOUNTLESS_KINDS.has(action.kind)) return name;
   return `${name} ${action.amount}`;
+}
+
+/**
+ * 敵の行動の量を、予告の札に出す数字の文字にする。
+ * @param {import('../rules/combatants.js').EnemyAction} action 敵の行動
+ * @returns {string|null} 量をそのまま文字にしたもの。量を出さない行動（振りかぶり）は null
+ */
+export function intentAmountText(action) {
+  if (AMOUNTLESS_KINDS.has(action.kind)) return null;
+  return String(action.amount);
+}
+
+/**
+ * 表にない予告の種類に出す印の文字にする。
+ * @returns {string} 「？」
+ */
+export function unknownIntentText() {
+  return UNKNOWN_ACTION_LABEL;
 }
 
 /**
