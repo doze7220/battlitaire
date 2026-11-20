@@ -1,10 +1,10 @@
 /**
  * 攻防の演出全体の管理。時計を進め（ヒットストップ）、終わったか・次へ進んでよいか・HP が 0 になったか・直前の進みの間に起きたきっかけを答え、
- * スキップで終わりへ移り、見た目の値（兵・ヒットマーク・倒れる絵・人数・盤面・エフェクト・姿勢）を作る。描画せず、ゲームの状態に触れない。
+ * 見た目の値（兵・ヒットマーク・倒れる絵・人数・盤面・エフェクト・姿勢）を作る。描画せず、ゲームの状態に触れない。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
-import { createHitStops, showTimeAt, wallTimeAt } from './hitStop.js';
+import { createHitStops, showTimeAt } from './hitStop.js';
 import { sampleHp } from './hpTrack.js';
 import { samplePopTrack } from './popTrack.js';
 import { TroopSwarm } from './troopSwarm.js';
@@ -64,8 +64,6 @@ export class BattleDirector {
     this.firstUpdate = true;
     /** @type {number|null} 城または敵の HP が 0 になる時刻（演出の時計の ms。時間割の HP の変化の記録から一度だけ求める。なければ null） */
     this.knockoutAt = knockoutTime(timeline.castleHpChanges, timeline.enemyHpChanges);
-    /** @type {boolean} スキップされたか */
-    this.skipped = false;
     /** @type {TroopSwarm} 兵全員の見た目の入れ物（名簿は読むだけ） */
     this.swarm = new TroopSwarm(timeline.roster.units);
     /** @type {HitMarkSwarm} ヒットマークの見た目の入れ物 */
@@ -122,21 +120,7 @@ export class BattleDirector {
   }
 
   /**
-   * 演出を終わりまで飛ばす。
-   * @returns {void}
-   */
-  skip() {
-    this.skipped = true;
-    this.wall = Math.max(this.wall, wallTimeAt(this.stops, this.timeline.endTime));
-    this.clock = Math.max(this.clock, this.timeline.endTime);
-    // 飛ばした段のきっかけを、次の問い合わせで出さない
-    this.prevClock = this.clock;
-    this.firstUpdate = false;
-    this.sampleLooks();
-  }
-
-  /**
-   * 城または敵の HP が 0 になったか（演出の時計が `knockoutAt` に達したか。スキップの後も true。状態は変えない）。
+   * 城または敵の HP が 0 になったか（演出の時計が `knockoutAt` に達したか。状態は変えない）。
    * @returns {boolean} HP が 0 になる攻防で、その時刻に達していれば true（なければ常に false）
    */
   isKnockedOut() {
@@ -152,15 +136,15 @@ export class BattleDirector {
   }
 
   /**
-   * 次のフェーズへ進んでよいか（終わってから間を置く。スキップならすぐ）。
+   * 次のフェーズへ進んでよいか（終わってから間を置く）。
    * @returns {boolean}
    */
   isReadyToLeave() {
-    return this.isFinished() && (this.skipped || this.clock >= this.timeline.endTime + BATTLE_ANIM.endDelayMs);
+    return this.isFinished() && this.clock >= this.timeline.endTime + BATTLE_ANIM.endDelayMs;
   }
 
   /**
-   * 燃える段の盤面の見た目を作る（状態は変えない）。燃える札がない・演出が終わった・スキップ後は null
+   * 燃える段の盤面の見た目を作る（状態は変えない）。燃える札がない・演出が終わったときは null
    * （ルール層の盤面をそのまま描く）。
    * @returns {import('./burnTrack.js').BurnBoardLook|null}
    */

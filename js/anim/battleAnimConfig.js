@@ -1,5 +1,5 @@
 /**
- * 攻防の演出の設定（段・兵の動き・弾かれて落ちる距離・早送り・燃える札・段取りの間・敵の側の兵・打撃・ヒットマークの時間と大きさ、
+ * 攻防の演出の設定（段・兵の動き・弾かれて落ちる距離・燃える札・段取りの間・敵の側の兵・打撃・ヒットマークの時間と大きさ、
  * 攻防のエフェクトの値・呼吸の深さと速さ・敵の絵の呼吸の深さと速さ）を1か所に凍結して持つ。これらの数値は、ほかのファイルに書かない。
  */
 
@@ -14,7 +14,6 @@
  * @property {number} fadeMs 敵の回復の量の浮き出しが薄れて消える時間（ms）。試遊で決め直す。
  * @property {number} stepGapMs 段と段の間（ms）。試遊で決め直す。
  * @property {number} endDelayMs 演出が終わってから次のフェーズへ進むまでの間（ms。決着していないとき）。試遊で決め直す。
- * @property {number} fastScale 早送りの倍率（`Engine.timeScale` の値）。試遊で決め直す。
  * @property {number} burnFlashMs 燃える札1枚が明滅する時間（ms）。試遊で決め直す。
  * @property {number} burnFlyMs 燃える札が捨て札へ飛ぶ時間（ms）。試遊で決め直す。
  * @property {number} burnBlinks 燃える札1枚の明滅の回数（回）。試遊で決め直す。
@@ -87,7 +86,6 @@ export const BATTLE_ANIM = Object.freeze({
   fadeMs: 250,
   stepGapMs: 150,
   endDelayMs: 500,
-  fastScale: 3,
   burnFlashMs: 400,
   burnFlyMs: 250,
   burnBlinks: 2,

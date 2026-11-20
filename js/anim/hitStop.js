@@ -1,5 +1,5 @@
 /**
- * 当たりの記録からヒットストップの並び（同じ時刻は1回、段ごとの合計に上限、大きな一撃は長く）を作り、壁の時計と演出の時計（時間割の時刻）の対応を求める。
+ * 当たりの記録からヒットストップの並び（同じ時刻は1回、段ごとの合計に上限、大きな一撃は長く）を作り、壁の時計から演出の時計（時間割の時刻）を求める。
  * 時間割の時刻は変えず、描画も状態の変更もしない。
  */
 
@@ -100,26 +100,4 @@ export function showTimeAt(stops, wall) {
   if (found < 0) return wall;
   if (wall < stops.wallAt[found] + stops.dur[found]) return stops.at[found];
   return wall - stops.cum[found];
-}
-
-/**
- * 演出の時刻に着いて、その時刻以前の止まりをすべて終えた壁の時計を求める（スキップに使う）。
- * @param {HitStops} stops ヒットストップの並び
- * @param {number} show 演出の時刻（ms）
- * @returns {number} 壁の時計（ms）
- */
-export function wallTimeAt(stops, show) {
-  let lo = 0;
-  let hi = stops.count - 1;
-  let found = -1;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    if (stops.at[mid] <= show) {
-      found = mid;
-      lo = mid + 1;
-    } else {
-      hi = mid - 1;
-    }
-  }
-  return found < 0 ? show : show + stops.cum[found];
 }
