@@ -165,6 +165,28 @@ function dropHp(state, target, amount, arrivals, t) {
 }
 
 /**
+ * 敵の HP の表示が、攻撃の兵が当たるたびに 1 ずつ減る変化を足す。当たった数と量が同じときだけ当たりごとにし、
+ * 数が違うときは dropHp に任せる。きっかけは当たりの時刻ごと。
+ * @param {BuildState} state 組み立て中の状態
+ * @param {number} amount 減る量
+ * @param {number[]} arrivals 当たった時刻（ms）の昇順
+ * @param {number} t 段の開始時刻（ms）
+ * @returns {number} 段の長さ（ms）
+ */
+function dropEnemyHpByHits(state, amount, arrivals, t) {
+  if (arrivals.length !== amount || amount <= 0) return dropHp(state, 'enemy', amount, arrivals, t);
+  const first = arrivals[0];
+  const last = arrivals[arrivals.length - 1];
+  for (const at of arrivals) {
+    const to = state.enemyShown - 1;
+    state.enemyChanges.push(createHpChange({ from: state.enemyShown, to, start: at, duration: 0 }));
+    state.enemyShown = to;
+    state.cueTimes.push(at);
+  }
+  return first + Math.max(BATTLE_ANIM.hpMs, last - first) - t;
+}
+
+/**
  * 敵の側の兵が城に当たる位置へ進んで落ち（炎は消え）、城の HP の表示が減る段。
  * @param {BuildState} state 組み立て中の状態
  * @param {import('./battleSteps.js').BattleStep} step 段
@@ -177,7 +199,8 @@ function addCastleHit(state, step, t) {
 }
 
 /**
- * 攻撃の兵が敵に当たって落ち、敵の HP の表示が減る段。HP の表示が 0 になる時刻に、敵の体の倒れる動きを記録する。
+ * 攻撃の兵が敵に当たって落ち、敵の HP の表示が減る段。HP の表示は当たるたびに 1 減る。きっかけは当たりごと。
+ * HP の表示が 0 になる時刻に、敵の体の倒れる動きを記録する。
  * @param {BuildState} state 組み立て中の状態
  * @param {import('./battleSteps.js').BattleStep} step 段
  * @param {number} t 開始時刻（ms）
@@ -185,7 +208,7 @@ function addCastleHit(state, step, t) {
  */
 function addEnemyHit(state, step, t) {
   const arrivals = hitEnemyBody(state.body, state.roster, step.amount, t);
-  const d = dropHp(state, 'enemy', step.amount, arrivals, t);
+  const d = dropEnemyHpByHits(state, step.amount, arrivals, t);
   if (state.enemyShown <= 0) defeatEnemyBody(state.body, t + d);
   return d;
 }
@@ -210,7 +233,7 @@ function addMarch(state, step, t) {
 
 /**
  * 攻撃の兵が敵の当たる位置まで進んで量だけ跳ねて落ち、同じ数のシールドが剥がれて落ちる段（常時防御力）。HP は変わらない。
- * きっかけは最初の兵が当たる位置に着いた時刻。
+ * きっかけは兵が当たる位置に着いた時刻ごと。
  * @param {BuildState} state 組み立て中の状態
  * @param {import('./battleSteps.js').BattleStep} step 段
  * @param {number} t 開始時刻（ms）
@@ -221,7 +244,11 @@ function addArmorBlock(state, step, t) {
   const arrivals = hitEnemyArmor(state.body, state.roster, step.amount, t);
   const first = arrivals.length > 0 ? arrivals[0] : t + T.hitMoveMs;
   const last = arrivals.length > 0 ? arrivals[arrivals.length - 1] : first;
-  state.cueTimes.push(first);
+  if (arrivals.length > 0) {
+    for (const at of arrivals) state.cueTimes.push(at);
+  } else {
+    state.cueTimes.push(first);
+  }
   return last - t + T.clashMs;
 }
 
