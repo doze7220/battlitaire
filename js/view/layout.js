@@ -69,8 +69,10 @@ import { INTENT_CELL, SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * @property {number} contactGap 相打ちでぶつかる2体の間隔
  * @property {number} attackAdvanceX 相打ちの相手のいない攻撃の兵が進む距離
  * @property {number} enemyAdvanceX 相打ちにならない敵兵が左へ進む距離
- * @property {number} contactTop 兵が城・敵に当たる・城に入るときの足元の y の上端（陣地の y をこの範囲に収めて当てる）
- * @property {number} contactBottom 兵が城・敵に当たる・城に入るときの足元の y の下端（陣地の y をこの範囲に収めて当てる）
+ * @property {number} fieldTop 兵の足元の範囲（陣地と攻防の演出で兵が動く範囲）の上端の y
+ * @property {number} fieldBottom 兵の足元の範囲の下端の y（groundY）
+ * @property {number} contactTop 兵が城・敵に当たる・城に入るときの足元の y の上端（陣地での高さの割合のまま、この範囲へ縮めて当てる）
+ * @property {number} contactBottom 兵が城・敵に当たる・城に入るときの足元の y の下端（陣地での高さの割合のまま、この範囲へ縮めて当てる）
  * @property {number} castleHitX 城に当たる位置の x（城の右端の少し内側）
  * @property {number} offscreenX 敵の側の兵が現れる・帰る画面の外の x（段の右端 + 兵の大きさ）
  * @property {Rect} castleHitArea 城の打撃のヒットマークを出す範囲（城の絵の矩形の内側）
@@ -113,6 +115,7 @@ import { INTENT_CELL, SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * 兵の陣地は右から防御 → 城 → 攻撃 → 修理の並び）。
  * @typedef {Object} BattleLayout
  * @property {Rect} area 段全体
+ * @property {number} groundY 城・敵の絵の足元の y（地面の下端。兵を奥と手前に分けて描く境目）
  * @property {Rect} castle 城の絵の矩形
  * @property {Rect} enemy ゴブリンの群れの矩形（絵を持たない敵のシールドマークの既定の並べ先・兵の当たる位置の基準でもある）
  * @property {Object<string, EnemyFigure>} enemyFigures 敵の種類の識別子 → 敵の絵の配置（凍結。絵を持たない敵は含まれない）
@@ -246,8 +249,8 @@ const COLUMN_KEEP_TOP = 3;
 const BOX_H = 40;
 /** 城・敵の絵の大きさの上限を求める基準（今までの枠の行の上の余白。絵の大きさを変えないために残す） */
 const BATTLE_TOP_PAD = 12;
-/** 地面の線から段の下端までの距離 */
-const GROUND_OFFSET = 100;
+/** 地面の下端（城・敵の絵の足元・ゴブリンの群れの一番手前の行の足元・兵の足元の範囲の下端。groundY）から段の下端までの距離。試遊で決め直す。 */
+const GROUND_OFFSET = 25;
 /** 城・敵の絵の大きさの上限を求める基準（今までの枠の行の下端と城・ゴブリンの上端の最小の間隔。絵の大きさを変えないために残す） */
 const BODY_GAP = 16;
 /** 城の絵の中心の x（段の左端から約 1/3。試遊で動かす1か所） */
@@ -316,14 +319,10 @@ const TROOP_CAMPS_X = Object.freeze({
   defense: Object.freeze({ x: 300, w: 100 }),
   enemy: Object.freeze({ x: 470, w: 80 }),
 });
-/** 陣地の y の範囲の、地面の線から上へ取る長さ（兵が縦にばらけるよう広げた。足元は段の下端・空・人数の表示の枠にかからない範囲。試遊で決め直す） */
-const CAMP_FOOT_ABOVE = 110;
-/** 陣地の y の範囲の、地面の線から下へ取る長さ（兵が縦にばらけるよう広げた。足元は段の下端・空・人数の表示の枠にかからない範囲。試遊で決め直す） */
-const CAMP_FOOT_BELOW = 64;
-/** 兵が城・敵に当たる・城に入るときの足元の y の範囲の、地面の線から上へ取る長さ（今までの陣地の範囲。試遊で決め直す） */
-const CONTACT_FOOT_ABOVE = 96;
-/** 兵が城・敵に当たる・城に入るときの足元の y の範囲の、地面の線から下へ取る長さ（今までの陣地の範囲。試遊で決め直す） */
-const CONTACT_FOOT_BELOW = 2;
+/** 兵の足元の範囲（陣地と攻防の演出で兵が動く範囲）の、groundY から上への高さ（上端は背景の地面の上端に合わせる。試遊で決め直す） */
+const FIELD_H = 210;
+/** 兵が城・敵に当たる・城に入るときの足元の y の範囲の、groundY から上への長さ（下端は groundY。試遊で決め直す） */
+const CONTACT_FOOT_ABOVE = 40;
 /** 相打ちの相手が前へ踏み出す距離（試遊で決め直す） */
 const BLOCK_STEP_X = 30;
 /** 相打ちでぶつかる2体の間隔（試遊で決め直す） */
@@ -493,7 +492,8 @@ function createTopGaugeLayout(width) {
 }
 
 /**
- * 最上段（戦闘）の配置を作る。地面の基準は段の下端から GROUND_OFFSET 上、城・敵の絵はその上に足元をそろえて立つ。
+ * 最上段（戦闘）の配置を作る。地面の下端（groundY）は段の下端から GROUND_OFFSET 上、城・敵の絵はその上に足元をそろえて立つ。
+ * 兵の足元の範囲は groundY から FIELD_H 上まで。
  * 城の絵は CASTLE_CX、敵の中心は ENEMY_CX。巨人・ドラゴンの絵は ENEMY_FIGURES の表で大きさと
  * シールドマークの並べ先を決める。
  * @param {number} width 画面の幅
@@ -554,8 +554,8 @@ function createBattleLayout(width) {
     countdownMaxW: INTENT_COUNTDOWN_MAX_W,
   };
 
-  const campTop = groundY - CAMP_FOOT_ABOVE;
-  const campH = CAMP_FOOT_ABOVE + CAMP_FOOT_BELOW;
+  const campTop = groundY - FIELD_H;
+  const campH = FIELD_H;
   /**
    * 役割の陣地の矩形を作る。
    * @param {{ x: number, w: number }} def TROOP_CAMPS_X の項目
@@ -575,8 +575,10 @@ function createBattleLayout(width) {
     contactGap: CONTACT_GAP,
     attackAdvanceX: ATTACK_ADVANCE_X,
     enemyAdvanceX: ENEMY_ADVANCE_X,
+    fieldTop: groundY - FIELD_H,
+    fieldBottom: groundY,
     contactTop: groundY - CONTACT_FOOT_ABOVE,
-    contactBottom: groundY + CONTACT_FOOT_BELOW,
+    contactBottom: groundY,
     castleHitX: castle.x + castle.w - CASTLE_HIT_INSET,
     offscreenX: area.x + area.w + TROOP_SIZE,
     castleHitArea: {
@@ -653,6 +655,7 @@ function createBattleLayout(width) {
 
   return {
     area,
+    groundY,
     castle,
     enemy,
     topGauges: createTopGaugeLayout(width),
