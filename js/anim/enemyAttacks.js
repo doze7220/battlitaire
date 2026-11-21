@@ -4,7 +4,7 @@
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
-import { campSlot } from './campSlots.js';
+import { campSlot } from '../view/campSlots.js';
 import { addHitMark } from './hitMarks.js';
 import { enterTroops, popTroops, staggerDelay } from './troopRoster.js';
 

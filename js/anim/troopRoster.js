@@ -5,7 +5,7 @@
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
-import { campSlot } from './campSlots.js';
+import { campSlot } from '../view/campSlots.js';
 import { durationScale, startJitter } from './troopJitter.js';
 import { addTroopLeg, createTroopUnit, setTroopEnd, troopHitEnd } from './troopMotion.js';
 
