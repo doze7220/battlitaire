@@ -1,6 +1,6 @@
 /**
- * 責務: 兵（攻撃・防御・修理の兵、敵兵・敵の守り・ゴブリン・シールド・炎）を1体ずつ、体と持ち物のスプライトで描く。
- * 状態は変えず、ルール層・anim は実行時に import しない。
+ * 責務: 兵（攻撃・防御・修理の兵、敵兵・敵の守り・ゴブリン・シールド・炎）を1体ずつ、体と持ち物のスプライトで描き、
+ * 城・敵の絵の足元の y で奥・手前に分けて描くこと。状態は変えず、ルール層・anim は実行時に import しない。
  */
 
 import { SPRITE_IDS, drawTroopFigure } from './spriteView.js';
@@ -73,17 +73,33 @@ export function drawTroop(ctx, kind, x, footY, size, tilt, alpha, scaleX, scaleY
 }
 
 /**
+ * 城・敵の絵の足元の y によらず、絵の手前に描く兵の種類（体に並ぶシールド・口から出る炎）。
+ * @type {ReadonlySet<string>}
+ */
+const OVER_FIGURE_KINDS = Object.freeze(new Set(['shield', 'flame']));
+
+/**
  * 兵の名簿の見た目を、order の順（奥から手前）に、見えている兵だけ描く。読むだけで書き換えない。
+ * layer で、城・敵の絵の足元の y（depthY）を境目に奥の兵・手前の兵の片方だけを描ける。
+ * 奥の兵は sortY が depthY より小さく、絵の手前に描く種類でない兵。手前の兵はそれ以外。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('../anim/troopSwarm.js').TroopSwarmLook} troops 名簿の見た目
  * @param {number} size 兵の大きさ（直径。兵ごとの大きさが 0 のときに使う）
+ * @param {'all'|'back'|'front'} [layer='all'] 描く層（'all' 全員・'back' 奥の兵だけ・'front' 手前の兵だけ）
+ * @param {number} [depthY=0] 奥と手前の境目の y（城・敵の絵の足元の y。'all' では使わない）
  * @returns {void}
+ * @throws {Error} 未知の layer のとき
  */
-export function drawTroopSwarm(ctx, troops, size) {
-  const { count, kinds, order, visible, x, footY, tilt, alpha, size: sizes, scaleX, scaleY } = troops;
+export function drawTroopSwarm(ctx, troops, size, layer = 'all', depthY = 0) {
+  if (layer !== 'all' && layer !== 'back' && layer !== 'front') throw new Error(`未知の層: ${layer}`);
+  const { count, kinds, order, visible, sortY, x, footY, tilt, alpha, size: sizes, scaleX, scaleY } = troops;
   for (let n = 0; n < count; n++) {
     const i = order[n];
     if (visible[i] === 0) continue;
+    if (layer !== 'all') {
+      const isBack = sortY[i] < depthY && !OVER_FIGURE_KINDS.has(kinds[i]);
+      if (isBack !== (layer === 'back')) continue;
+    }
     drawTroop(ctx, kinds[i], x[i], footY[i], sizes[i] > 0 ? sizes[i] : size, tilt[i], alpha[i], scaleX[i], scaleY[i]);
   }
 }

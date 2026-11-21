@@ -13,6 +13,7 @@ import { breathScale } from './troopBreath.js';
  * @property {string[]} kinds 兵ごとの種類（名簿の順）
  * @property {Int32Array} order 描く順の添字（奥から）
  * @property {Uint8Array} visible 見えるか（1／0）
+ * @property {Float64Array} sortY 描く順に使う地面の上の y（持ち上がり・跳ね・落ちを含まない）
  * @property {Float64Array} x 足元の x
  * @property {Float64Array} footY 足元の y（跳ね・落ちを含む）
  * @property {Float64Array} tilt 傾き（rad）
