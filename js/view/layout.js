@@ -89,7 +89,7 @@ import { INTENT_CELL, SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * @property {number} hitX 攻撃の兵が当たって止まる足元の x（`rect.x + rect.w × hit`）
  * @property {{ x: number, y: number }|null} mouth 炎が出る口の位置（口のない敵は null）
  * @property {{ x: number, y: number }} healText 敵の回復の量の文字の中心
- * @property {IntentSpot} intent 予告の札の上端の中央（最上部のゲージの下端より下）
+ * @property {IntentSpot} intent 予告の札の上端の中央（札の下端は人数の表示の枠の下端にそろう）
  */
 
 /**
@@ -121,7 +121,7 @@ import { INTENT_CELL, SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * @property {Object<string, EnemyFigure>} enemyFigures 敵の種類の識別子 → 敵の絵の配置（凍結。絵を持たない敵は含まれない）
  * @property {TopGaugeLayout} topGauges 画面の最上部のゲージ（城と敵の HP・フェーズ・金貨）の配置
  * @property {{ x: number, y: number }} enemyHealText 絵を持たない敵の回復の量の文字の中心（群れの矩形の上寄り）
- * @property {IntentSpot} enemyIntent 絵を持たない敵（ゴブリンの群れ）の予告の札の上端の中央
+ * @property {IntentSpot} enemyIntent 絵を持たない敵（ゴブリンの群れ）の予告の札の上端の中央（札の下端は人数の表示の枠の下端にそろう）
  * @property {IntentBadgeLayout} intentBadge 予告の札の大きさと数え下ろしの文字の配置
  * @property {TroopLayout} troops 兵の配置
  * @property {{ box: Rect, iconSize: number, items: Array<{ iconX: number, iconY: number, textX: number, textY: number }> }} troopCounter 人数の表示の配置（枠・アイコンの大きさ・攻撃・防御・修理の順の各項目のアイコン中心と文字の左端・中心 y）
@@ -263,7 +263,7 @@ const ENEMY_CX = 620;
  * 敵の種類の識別子ごとの絵の設定。height は絵の高さ、shield はシールドマークを並べる矩形（絵の矩形に対する割合。
  * cx・cy は中心、w・h は幅・高さ）、hit は攻撃の兵が当たって止まる x の絵の矩形の幅に対する割合（左端から。試遊で決め直す）、
  * mouth は炎が出る位置の絵の矩形に対する割合 {x, y}（口のない敵は null。試遊で決め直す）、
- * intent は予告の札の上端の中央の絵の矩形に対する割合 {x, y}（試遊で決め直す。上端は最上部のゲージの下端より下に補正する）。
+ * intent は予告の札の中心の x の絵の矩形に対する割合 {x}（試遊で決め直す。札の上端の y は、札の下端を人数の表示の枠の下端にそろえて決める）。
  */
 const ENEMY_FIGURES = Object.freeze({
   giant: Object.freeze({
@@ -272,7 +272,7 @@ const ENEMY_FIGURES = Object.freeze({
     shield: Object.freeze({ cx: 0.41, cy: 0.39, w: 0.7, h: 0.3 }),
     hit: 0.15,
     mouth: null,
-    intent: Object.freeze({ x: 0.32, y: 0 }),
+    intent: Object.freeze({ x: 0.32 }),
   }),
   dragon: Object.freeze({
     sprite: SPRITE_IDS.dragon,
@@ -280,7 +280,7 @@ const ENEMY_FIGURES = Object.freeze({
     shield: Object.freeze({ cx: 0.47, cy: 0.49, w: 0.6, h: 0.3 }),
     hit: 0.15,
     mouth: Object.freeze({ x: 0.03, y: 0.3 }),
-    intent: Object.freeze({ x: 0.25, y: 0 }),
+    intent: Object.freeze({ x: 0.25 }),
   }),
 });
 /** 城の打撃のヒットマークを出す範囲の、城の絵の矩形に対する割合（x・y は左上、w・h は幅・高さ。試遊で決め直す） */
@@ -289,12 +289,8 @@ const CASTLE_HIT_AREA = Object.freeze({ x: 0.15, y: 0.3, w: 0.7, h: 0.5 });
 const ENEMY_HEAL_TEXT_RATIO = 0.15;
 /** 敵の最大の大きさ */
 const ENEMY_MAX_SIZE = 120;
-/** 最上部のゲージの下端と予告の札の上端の最小の間隔。試遊で決め直す。 */
-const INTENT_TOP_GAP = 4;
 /** ゴブリンの予告の札の中心の、群れの右端の列の足元の x から左への距離。試遊で決め直す。 */
 const HORDE_INTENT_DX = 40;
-/** ゴブリンの予告の札の上端の、群れの一番奥の行の兵の頭の上端から上への距離。試遊で決め直す。 */
-const HORDE_INTENT_RISE = 40;
 /** 予告の札（板）の左右の余白。試遊で決め直す。 */
 const INTENT_PAD_X = 6;
 /** 予告の札（板）の上下の余白。試遊で決め直す。 */
@@ -354,13 +350,11 @@ const SHIELD_COLS = 5;
 /** シールドマークの大きさの、格子の1マスに対する割合 */
 const SHIELD_FILL = 0.8;
 /** ゴブリンの群れの行の数（前＝地面の行から奥へ。試遊で決め直す） */
-const HORDE_ROWS = 5;
+const HORDE_ROWS = 6;
 /** ゴブリンの群れの列の間隔（試遊で決め直す） */
-const HORDE_COL_STEP = 14;
+const HORDE_COL_STEP = 22;
 /** ゴブリンの群れの右端の列の足元の中心の x（試遊で決め直す） */
 const HORDE_RIGHT_X = 690;
-/** ゴブリンの群れの奥の行ごとの足元の上がりの、兵の大きさに対する割合 */
-const HORDE_ROW_RISE = 0.7;
 
 /** タイトル画面のゲーム名の中心 y の、画面の高さに対する割合 */
 const TITLE_TEXT_RATIO = 0.36;
@@ -506,6 +500,31 @@ function createBattleLayout(width) {
   const area = { x: 0, y: 0, w: width, h: BATTLE_H };
   const castle = spriteFitRect(SPRITE_IDS.castle, CASTLE_CX, groundY, Math.min(CASTLE_H, groundY - bodyTop));
   const enemy = { x: ENEMY_CX - enemySize / 2, y: groundY - enemySize, w: enemySize, h: enemySize };
+  const counterBox = { x: SIDE_MARGIN, y: TOP_GAUGES_BOTTOM + TROOP_COUNTER_GAP_Y, w: TROOP_COUNTER_W, h: BOX_H };
+  const counterItemW = (counterBox.w - TROOP_COUNTER_PAD_X * 2) / TROOP_COUNTER_ITEMS;
+  const counterItems = [];
+  for (let i = 0; i < TROOP_COUNTER_ITEMS; i++) {
+    const iconX = counterBox.x + TROOP_COUNTER_PAD_X + counterItemW * i + TROOP_COUNTER_ICON / 2;
+    const centerY = counterBox.y + counterBox.h / 2;
+    counterItems.push({
+      iconX,
+      iconY: centerY,
+      textX: iconX + TROOP_COUNTER_ICON / 2 + TROOP_COUNTER_TEXT_GAP,
+      textY: centerY,
+    });
+  }
+  const troopCounter = { box: counterBox, iconSize: TROOP_COUNTER_ICON, items: counterItems };
+  const intentBadgeH = INTENT_CELL.h + INTENT_PAD_Y * 2;
+  const intentBadge = {
+    h: intentBadgeH,
+    padX: INTENT_PAD_X,
+    iconW: INTENT_CELL.w,
+    gap: INTENT_GAP_X,
+    countdownDy: intentBadgeH + INTENT_COUNTDOWN_GAP_Y + INTENT_COUNTDOWN_LINE_H / 2,
+    countdownMaxW: INTENT_COUNTDOWN_MAX_W,
+  };
+  /** 予告の札の上端の y（札の下端を人数の表示の枠の下端にそろえる。どの敵でも同じ高さ） */
+  const intentTop = counterBox.y + counterBox.h - intentBadge.h;
   /** @type {Object<string, EnemyFigure>} */
   const enemyFigures = {};
   for (const [typeId, def] of Object.entries(ENEMY_FIGURES)) {
@@ -527,32 +546,14 @@ function createBattleLayout(width) {
         h: sh,
       },
       healText: { x: rect.x + rect.w / 2, y: rect.y + rect.h * ENEMY_HEAL_TEXT_RATIO },
-      intent: {
-        x: rect.x + rect.w * def.intent.x,
-        y: Math.max(TOP_GAUGES_BOTTOM + INTENT_TOP_GAP, rect.y + rect.h * def.intent.y),
-      },
+      intent: { x: rect.x + rect.w * def.intent.x, y: intentTop },
       hitX: rect.x + rect.w * def.hit,
       mouth: def.mouth === null ? null : { x: rect.x + rect.w * def.mouth.x, y: rect.y + rect.h * def.mouth.y },
     });
   }
   Object.freeze(enemyFigures);
   const enemyHealText = { x: enemy.x + enemy.w / 2, y: enemy.y + enemy.h * ENEMY_HEAL_TEXT_RATIO };
-  const enemyIntent = {
-    x: HORDE_RIGHT_X - HORDE_INTENT_DX,
-    y: Math.max(
-      TOP_GAUGES_BOTTOM + INTENT_TOP_GAP,
-      groundY - TROOP_SIZE * HORDE_ROW_RISE * (HORDE_ROWS - 1) - TROOP_SIZE - HORDE_INTENT_RISE,
-    ),
-  };
-  const intentBadgeH = INTENT_CELL.h + INTENT_PAD_Y * 2;
-  const intentBadge = {
-    h: intentBadgeH,
-    padX: INTENT_PAD_X,
-    iconW: INTENT_CELL.w,
-    gap: INTENT_GAP_X,
-    countdownDy: intentBadgeH + INTENT_COUNTDOWN_GAP_Y + INTENT_COUNTDOWN_LINE_H / 2,
-    countdownMaxW: INTENT_COUNTDOWN_MAX_W,
-  };
+  const enemyIntent = { x: HORDE_RIGHT_X - HORDE_INTENT_DX, y: intentTop };
 
   const campTop = groundY - FIELD_H;
   const campH = FIELD_H;
@@ -591,21 +592,6 @@ function createBattleLayout(width) {
     fallOutY: BATTLE_H + TROOP_SIZE,
   };
 
-  const counterBox = { x: SIDE_MARGIN, y: TOP_GAUGES_BOTTOM + TROOP_COUNTER_GAP_Y, w: TROOP_COUNTER_W, h: BOX_H };
-  const counterItemW = (counterBox.w - TROOP_COUNTER_PAD_X * 2) / TROOP_COUNTER_ITEMS;
-  const counterItems = [];
-  for (let i = 0; i < TROOP_COUNTER_ITEMS; i++) {
-    const iconX = counterBox.x + TROOP_COUNTER_PAD_X + counterItemW * i + TROOP_COUNTER_ICON / 2;
-    const centerY = counterBox.y + counterBox.h / 2;
-    counterItems.push({
-      iconX,
-      iconY: centerY,
-      textX: iconX + TROOP_COUNTER_ICON / 2 + TROOP_COUNTER_TEXT_GAP,
-      textY: centerY,
-    });
-  }
-  const troopCounter = { box: counterBox, iconSize: TROOP_COUNTER_ICON, items: counterItems };
-
   /**
    * シールドマーク count 個の矩形を求める。body の矩形の中に SHIELD_COLS 個ずつの格子で並べ、
    * 格子全体を body の矩形の中心にそろえる（最後の行が埋まらないときはその行を中央にそろえる）。
@@ -633,19 +619,21 @@ function createBattleLayout(width) {
   /**
    * ゴブリンの兵の群れの並びを求める。i 番目の位置は i だけで決まり、数 count によらない
    * （番号の大きい方から減らせば、残りの位置は動かない）。HORDE_ROWS 行ずつ右端の列から左へ並べ、
-   * 前の行（row 0）の足元が地面、奥の行ほど HORDE_ROW_RISE ずつ上げ、奇数の行は半列ずらす。
+   * 前の行（row 0）の足元が groundY、奥の行ほど行の間隔（FIELD_H ÷ (HORDE_ROWS − 1)。
+   * 一番奥の行の足元が兵の足元の範囲の上端）ずつ上げ、奇数の行は半列ずらす。
    * @param {number} count 兵の数
    * @returns {Array<{ x: number, footY: number, size: number, row: number }>} 番号の順の各兵（x は中心、footY は足元の y、size は兵の大きさ、row は行（0 が前＝地面）。count が 0 以下なら空）
    */
   function hordeSlots(count) {
     if (count <= 0) return [];
+    const rowStep = HORDE_ROWS > 1 ? FIELD_H / (HORDE_ROWS - 1) : 0;
     const slots = [];
     for (let i = 0; i < count; i++) {
       const col = Math.floor(i / HORDE_ROWS);
       const row = i % HORDE_ROWS;
       slots.push({
         x: HORDE_RIGHT_X - col * HORDE_COL_STEP - (row % 2) * HORDE_COL_STEP / 2,
-        footY: groundY - TROOP_SIZE * HORDE_ROW_RISE * row,
+        footY: groundY - rowStep * row,
         size: TROOP_SIZE,
         row,
       });
