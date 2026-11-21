@@ -10,7 +10,7 @@
  * @property {{ hp: number, maxHp: number }} castle 城の HP（表示値）と最大 HP
  * @property {{ hp: number, maxHp: number }} enemy 敵の HP（表示値）と最大 HP
  * @property {number} coins 金貨の表示値
- * @property {{ per: number, maxBonus: number }} coinConversion 金貨の換算（満タン = per × maxBonus）
+ * @property {{ per: number, maxBonus: number }} coinConversion 金貨の換算（満タン = per。1 ブロック＝金貨 1 枚）
  */
 
 /** @type {string} フェーズの見出しの文字。 */
@@ -39,6 +39,12 @@ const PHASE_LABEL_FONT = 'bold 16px sans-serif';
 /** @type {string} フェーズの番号のフォント。 */
 const PHASE_VALUE_FONT = 'bold 30px sans-serif';
 
+/** @type {string} 金貨のゲージの左のラベルの文字。 */
+const COIN_LABEL = 'GOLD';
+/** @type {string} 金貨のゲージの左のラベルのフォント。 */
+const COIN_LABEL_FONT = 'bold 14px sans-serif';
+/** @type {number} 金貨のゲージの左のラベルの縁取りの線の太さ。 */
+const COIN_LABEL_STROKE_WIDTH = 4;
 /** @type {string} 金貨のゲージの基本の色（金貨のスートの色）。 */
 const COIN_BASE_COLOR = '#e0a030';
 /** @type {string} 金貨が満タンを超えた分を重ねる色。 */
@@ -112,48 +118,72 @@ function drawHpBar(ctx, bar, ratio, fromRight, color) {
  * @param {number} y 中心 y
  * @param {CanvasTextAlign} align 横の寄せ
  * @param {string} font フォント
+ * @param {string} [color] 文字の色（省くと白）
+ * @param {number} [strokeWidth] 縁取りの線の太さ（省くと TEXT_STROKE_WIDTH）
  * @returns {void}
  */
-function drawOutlinedText(ctx, text, x, y, align, font) {
+function drawOutlinedText(ctx, text, x, y, align, font, color = TEXT_COLOR, strokeWidth = TEXT_STROKE_WIDTH) {
   ctx.font = font;
   ctx.textAlign = align;
   ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round';
-  ctx.lineWidth = TEXT_STROKE_WIDTH;
+  ctx.lineWidth = strokeWidth;
   ctx.strokeStyle = TEXT_STROKE_COLOR;
   ctx.strokeText(text, x, y);
-  ctx.fillStyle = TEXT_COLOR;
+  ctx.fillStyle = color;
   ctx.fillText(text, x, y);
 }
 
 /**
- * 金貨のゲージとバッジを描く。満タンの金貨 unit = per × maxBonus。
- * coins < unit は基本の色で coins / unit を根元から塗る。coins >= unit は満タンに基本の色を塗り、
- * その上に (coins % unit) / unit を別の色で重ねる。バッジは floor(coins / unit) 個を赤い丸で描く。
- * unit が 0 以下ならゲージは空でバッジも描かない。
+ * 金貨のゲージ（ブロック）と「GOLD」のラベルとバッジを描く。満タンの金貨 per（1 ブロック＝金貨 1 枚）。
+ * v = max(0, floor(coins))。v < per は根元（ブロックの先頭）から min(n, v) 個を基本の色で塗る。
+ * v >= per は全部を基本の色で塗り、根元から min(n, v % per) 個を別の色で重ねる。
+ * バッジは floor(v / per) 個を赤い丸で描く。per が 0 以下なら空のブロックだけでバッジは描かない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').TopGaugeLayout} topLayout 最上部のゲージの配置
  * @param {number} coins 金貨の表示値
- * @param {{ per: number, maxBonus: number }} conv 金貨の換算
+ * @param {{ per: number, maxBonus: number }} conv 金貨の換算（使うのは per だけ）
  * @returns {void}
  */
 function drawCoinGauge(ctx, topLayout, coins, conv) {
-  const bar = topLayout.coinBar;
-  const unit = conv.per * conv.maxBonus;
-  ctx.fillStyle = COIN_EMPTY_COLOR;
-  ctx.fillRect(bar.x, bar.y, bar.w, bar.h);
-  if (!(unit > 0)) return;
-  if (coins < unit) {
-    fillFromRoot(ctx, bar, clamp01(coins / unit), true, COIN_BASE_COLOR);
-  } else {
-    fillFromRoot(ctx, bar, 1, true, COIN_BASE_COLOR);
-    fillFromRoot(ctx, bar, clamp01((coins % unit) / unit), true, COIN_OVER_COLOR);
+  const blocks = topLayout.coinBlocks;
+  const n = blocks.length;
+  const per = conv.per;
+  const v = Math.max(0, Math.floor(coins));
+  const valid = per > 0;
+  let baseCount = 0;
+  let overCount = 0;
+  if (valid) {
+    if (v < per) {
+      baseCount = Math.min(n, v);
+    } else {
+      baseCount = n;
+      overCount = Math.min(n, v % per);
+    }
   }
-  ctx.strokeStyle = EDGE_COLOR;
-  ctx.lineWidth = EDGE_WIDTH;
-  ctx.strokeRect(bar.x, bar.y, bar.w, bar.h);
+  for (let i = 0; i < n; i++) {
+    const r = blocks[i];
+    ctx.fillStyle = COIN_EMPTY_COLOR;
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    if (i < baseCount) {
+      ctx.fillStyle = COIN_BASE_COLOR;
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+    }
+    if (i < overCount) {
+      ctx.fillStyle = COIN_OVER_COLOR;
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+    }
+    ctx.strokeStyle = EDGE_COLOR;
+    ctx.lineWidth = EDGE_WIDTH;
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
+  }
+  drawOutlinedText(
+    ctx, COIN_LABEL, topLayout.coinLabel.x, topLayout.coinLabel.y, 'right', COIN_LABEL_FONT,
+    COIN_BASE_COLOR, COIN_LABEL_STROKE_WIDTH,
+  );
+  if (!valid) return;
 
-  const count = Math.floor(coins / unit);
+  const count = Math.floor(v / per);
   for (let i = 0; i < count; i++) {
     const r = topLayout.coinBadge(i);
     ctx.beginPath();

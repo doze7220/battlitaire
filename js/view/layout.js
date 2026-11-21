@@ -42,7 +42,9 @@ import { INTENT_CELL, SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * @property {{ x: number, y: number }} enemyValue 敵の HP の数字の右端・中心 y
  * @property {{ x: number, y: number }} phaseLabel 「PHASE」の中心
  * @property {{ x: number, y: number }} phaseValue フェーズの番号の中心
- * @property {Rect} coinBar 金貨のゲージ（城の HP ゲージと同じ範囲・同じ向き）
+ * @property {Rect} coinBar 金貨のゲージ全体（城の HP ゲージの真下。右端は城の HP ゲージと同じで根元。左は「GOLD」の欄の分だけ狭い）
+ * @property {{ x: number, y: number }} coinLabel 「GOLD」のラベルの右端 x・中心 y（右寄せで描く）
+ * @property {Rect[]} coinBlocks 金貨のゲージのブロックの矩形（根元＝右端から順に `coinBlockCount` 個。0 以下なら空）
  * @property {function(number): Rect} coinBadge 根元から数えて i 番目の金貨のバッジの矩形（i がいくつでも返す）
  */
 
@@ -216,6 +218,12 @@ const COIN_GAUGE_GAP_Y = 4;
 const COIN_GAUGE_H = 10;
 /** 金貨のゲージとバッジの間。試遊で決め直す。 */
 const COIN_BADGE_GAP_Y = 4;
+/** 金貨のゲージの左に取る「GOLD」のラベルの欄の幅（その分だけゲージが狭くなる）。試遊で決め直す。 */
+const COIN_LABEL_W = 52;
+/** 「GOLD」のラベルの右端と金貨のゲージの左端の間。試遊で決め直す。 */
+const COIN_LABEL_GAP_X = 6;
+/** 金貨のゲージのブロックどうしの間。試遊で決め直す。 */
+const COIN_BLOCK_GAP_X = 4;
 /** 金貨のバッジの直径。試遊で決め直す。 */
 const COIN_BADGE_SIZE = 12;
 /** 金貨のバッジどうしの間。試遊で決め直す。 */
@@ -452,16 +460,35 @@ export function columnCardYs(columnLayout, count) {
 
 /**
  * 画面の最上部のゲージの配置を作る。城の HP ゲージは中央の「PHASE」の欄の左（右端が根元）、
- * 敵の HP ゲージは右（左端が根元）で、長さは同じ。金貨のゲージは城の HP ゲージの真下に同じ範囲で置き、
- * その下に赤い丸のバッジを根元から左へ並べる。
+ * 敵の HP ゲージは右（左端が根元）で、長さは同じ。金貨のゲージは城の HP ゲージの真下に置き、
+ * 右端（根元）は同じ位置のまま、左に「GOLD」のラベルの欄を取って狭める。ゲージは coinBlockCount 個の
+ * ブロックに分け、根元から順に並べる。その下に赤い丸のバッジを根元から左へ並べる。
  * @param {number} width 画面の幅
+ * @param {number} coinBlockCount 金貨のゲージのブロックの数（0 以下なら空）
  * @returns {TopGaugeLayout} 最上部のゲージの配置
  */
-function createTopGaugeLayout(width) {
+function createTopGaugeLayout(width, coinBlockCount) {
   const barW = width / 2 - TOP_GAUGE_CENTER_W / 2 - SIDE_MARGIN;
   const castleBar = { x: SIDE_MARGIN, y: TOP_GAUGE_Y, w: barW, h: HP_GAUGE_H };
   const enemyBar = { x: width / 2 + TOP_GAUGE_CENTER_W / 2, y: TOP_GAUGE_Y, w: barW, h: HP_GAUGE_H };
-  const coinBar = { x: castleBar.x, y: castleBar.y + castleBar.h + COIN_GAUGE_GAP_Y, w: castleBar.w, h: COIN_GAUGE_H };
+  const coinBar = {
+    x: castleBar.x + COIN_LABEL_W,
+    y: castleBar.y + castleBar.h + COIN_GAUGE_GAP_Y,
+    w: castleBar.w - COIN_LABEL_W,
+    h: COIN_GAUGE_H,
+  };
+  const blockN = Math.max(0, Math.floor(coinBlockCount));
+  const blockW = (coinBar.w - COIN_BLOCK_GAP_X * (blockN - 1)) / blockN;
+  /** @type {Rect[]} */
+  const coinBlocks = [];
+  for (let i = 0; i < blockN; i++) {
+    coinBlocks.push({
+      x: coinBar.x + coinBar.w - (i + 1) * blockW - i * COIN_BLOCK_GAP_X,
+      y: coinBar.y,
+      w: blockW,
+      h: coinBar.h,
+    });
+  }
   /**
    * 根元（中央の側）から数えて i 番目の金貨のバッジの矩形を返す。
    * @param {number} i 根元からの番号（0 から）
@@ -481,6 +508,8 @@ function createTopGaugeLayout(width) {
     phaseLabel: { x: width / 2, y: PHASE_LABEL_Y },
     phaseValue: { x: width / 2, y: PHASE_VALUE_Y },
     coinBar,
+    coinLabel: { x: coinBar.x - COIN_LABEL_GAP_X, y: coinBar.y + coinBar.h / 2 },
+    coinBlocks,
     coinBadge,
   };
 }
@@ -491,9 +520,10 @@ function createTopGaugeLayout(width) {
  * 城の絵は CASTLE_CX、敵の中心は ENEMY_CX。巨人・ドラゴンの絵は ENEMY_FIGURES の表で大きさと
  * シールドマークの並べ先を決める。
  * @param {number} width 画面の幅
+ * @param {number} coinBlockCount 金貨のゲージのブロックの数
  * @returns {BattleLayout} 戦闘の段の配置
  */
-function createBattleLayout(width) {
+function createBattleLayout(width, coinBlockCount) {
   const groundY = BATTLE_H - GROUND_OFFSET;
   const bodyTop = BATTLE_TOP_PAD + BOX_H + BODY_GAP;
   const enemySize = Math.min(ENEMY_MAX_SIZE, groundY - bodyTop);
@@ -646,7 +676,7 @@ function createBattleLayout(width) {
     groundY,
     castle,
     enemy,
-    topGauges: createTopGaugeLayout(width),
+    topGauges: createTopGaugeLayout(width, coinBlockCount),
     enemyFigures,
     enemyHealText,
     enemyIntent,
@@ -672,9 +702,10 @@ function createBattleLayout(width) {
  * @param {number} params.columnCount 列の数
  * @param {number} params.handSize 手札の枠の数
  * @param {number} params.actionBlockCount 行動のゲージのブロックの数（シーンがルール層の基本の行動回数を渡す）
+ * @param {number} params.coinBlockCount 金貨のゲージのブロックの数（シーンがルール層の力こぶの換算の per を渡す）
  * @returns {Layout} 配置
  */
-export function createLayout({ screen, deckCount, columnCount, handSize, actionBlockCount }) {
+export function createLayout({ screen, deckCount, columnCount, handSize, actionBlockCount, coinBlockCount }) {
   const W = screen.width;
   const H = screen.height;
   const sections = {
@@ -736,7 +767,7 @@ export function createLayout({ screen, deckCount, columnCount, handSize, actionB
     releaseButtons.push({ x, y: releaseY, w: cardW, h: RELEASE_H });
   }
 
-  const battle = createBattleLayout(W);
+  const battle = createBattleLayout(W, coinBlockCount);
 
   /**
    * 列のカードの矩形を下から順に求める（`columnCardYs` を使うので長い列の詰めを含む）。

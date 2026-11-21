@@ -77,6 +77,7 @@ export class BoardScene extends Scene {
       columnCount: this.game.columns.length,
       handSize: this.game.hand.length,
       actionBlockCount: this.game.config.baseActions,
+      coinBlockCount: this.game.config.muscleConversion.per,
     });
     this.selection = null;
     this.lastResult = null;
