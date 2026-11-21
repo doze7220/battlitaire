@@ -323,8 +323,8 @@ const TROOP_CAMPS_X = Object.freeze({
   defense: Object.freeze({ x: 300, w: 100 }),
   enemy: Object.freeze({ x: 470, w: 80 }),
 });
-/** 兵の足元の範囲（陣地と攻防の演出で兵が動く範囲）の、groundY から上への高さ（上端は背景の地面の上端に合わせる。試遊で決め直す） */
-const FIELD_H = 210;
+/** 兵の足元の範囲（陣地と攻防の演出で兵が動く範囲）の、groundY から上への高さ（上端は背景の地面の上端（約 y 125）より約 20px 下。試遊で決め直す） */
+const FIELD_H = 190;
 /** 兵が城・敵に当たる・城に入るときの足元の y の範囲の、groundY から上への長さ（下端は groundY。試遊で決め直す） */
 const CONTACT_FOOT_ABOVE = 40;
 /** 相打ちの相手が前へ踏み出す距離（試遊で決め直す） */
