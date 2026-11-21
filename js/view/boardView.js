@@ -1,5 +1,5 @@
 /**
- * 責務: 盤面全体の描画の取りまとめ（背景・戦闘の段（段取りの間の兵を渡す）・人数の表示・最上部のゲージ・行動のゲージの帯・山札・捨て札・列・手札・放つボタンの部品を配置に従って順に呼び、玉に変わる前の札・動いているカード・玉と式を手前に描く）。
+ * 責務: 盤面全体の描画の取りまとめ（背景・戦闘の段（段取りの間の兵を渡す）・人数の表示・最上部のゲージ・行動のゲージの帯とラベル・山札・捨て札・列・手札・放つボタンの部品を配置に従って順に呼び、玉に変わる前の札・動いているカード・玉と式を手前に描く）。
  * 札が燃える段は、渡された見た目の値で列・捨て札の枚数・明滅と札の上の炎・飛ぶ札を差し替える。状態は読むだけで変えず、ルールの判定は行わない。
  */
 
@@ -9,7 +9,7 @@ import { drawColumn, drawReleaseButton } from './columnView.js';
 import { drawHand } from './handView.js';
 import { drawBattleStage } from './battleStageView.js';
 import { drawTopGauges } from './topGaugeView.js';
-import { drawActionGauge } from './actionGaugeView.js';
+import { drawActionGauge, drawActionGaugeLabel } from './actionGaugeView.js';
 import { drawTroopCounter, ROLE_ORDER } from './troopCountView.js';
 import { SPRITE_IDS, drawSpriteCentered } from './spriteView.js';
 import { drawReleaseCards, drawReleaseOrbs } from './orbView.js';
@@ -63,7 +63,7 @@ function topGaugeValues(game, release) {
 }
 
 /**
- * 盤面全体を描く（背景 → 戦闘の段（奥の兵・城・敵・手前の兵・予告の順） → 人数の表示 → 最上部のゲージ → 行動のゲージの帯 → 山札・捨て札 → 列と放つボタン → 燃える札の明滅 → 玉に変わる前の札 → 手札 → 動いているカード（燃えて飛ぶ札を含む） → 玉と式の順）。game は読むだけで、何も書き換えない。
+ * 盤面全体を描く（背景 → 戦闘の段（奥の兵・城・敵・手前の兵・予告の順） → 人数の表示 → 最上部のゲージ → 行動のゲージの帯 → 行動のゲージのラベル → 山札・捨て札 → 列と放つボタン → 燃える札の明滅 → 玉に変わる前の札 → 手札 → 動いているカード（燃えて飛ぶ札を含む） → 玉と式の順）。game は読むだけで、何も書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').Layout} layout 画面の配置
  * @param {import('../rules/Game.js').Game} game ゲームの状態（読み取り専用）
@@ -86,6 +86,7 @@ export function drawBoard(ctx, layout, game, ui, anim, release, burn = null, idl
   drawTroopCounter(ctx, layout.battle.troopCounter, troopCounts(game, release));
   drawTopGauges(ctx, layout.battle.topGauges, topGaugeValues(game, release));
   drawActionGauge(ctx, layout.actionGauge, game.actionsLeft);
+  drawActionGaugeLabel(ctx, layout.actionGauge);
 
   for (let d = 0; d < layout.decks.length; d++) {
     drawDeck(ctx, layout.decks[d], game.visibleCards(d), game.hiddenCount(d), {
