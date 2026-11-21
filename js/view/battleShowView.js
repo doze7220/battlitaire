@@ -1,11 +1,10 @@
 /**
- * 責務: 攻防の演出中の最上段の描画の取りまとめ（揺らして段の中で切り抜く戦闘の段・倒れる絵・兵・ヒットマーク・エフェクト、段の暗さと光、
+ * 責務: 攻防の演出中の最上段の描画の取りまとめ（揺らして段の中で切り抜く戦闘の段（倒れる絵・兵を渡す）・ヒットマーク・エフェクト、段の暗さと光、
  * 人数の表示・敵の回復の量・最上部の HP・フェーズ・金貨のゲージ・敵を倒したときの案内）。
  * 状態は変えず、ルール層・anim は実行時に import しない。
  */
 
 import { drawBattleStage } from './battleStageView.js';
-import { drawTroopSwarm } from './troopView.js';
 import { drawHitMarks } from './hitMarkView.js';
 import { drawImpactFx, drawStageOverlay } from './battleFxView.js';
 import { drawTroopCounter } from './troopCountView.js';
@@ -99,8 +98,8 @@ export function drawBattleShow(ctx, battleLayout, game, result, look) {
     figure: look.figure,
     countdown: game.attackCountdown(),
     pose: look.pose,
+    troops: look.troops,
   });
-  drawTroopSwarm(ctx, look.troops, battleLayout.troops.size);
   drawHitMarks(ctx, look.hitMarks);
   drawImpactFx(ctx, look.fx);
   ctx.restore();
