@@ -14,7 +14,7 @@
  */
 
 /** @type {string} フェーズの見出しの文字。 */
-const PHASE_LABEL = 'PHASE';
+const PHASE_LABEL = 'TURN';
 
 /** @type {string} 城の HP ゲージの色（試遊で決め直す）。 */
 const CASTLE_COLOR = '#3d8bff';

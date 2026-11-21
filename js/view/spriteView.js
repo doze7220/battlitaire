@@ -22,7 +22,7 @@ import cardFrontGold from 'assets/sprites/card_front_gold.js';
 import cardBack from 'assets/sprites/card_back.js';
 import logoReady from 'assets/sprites/logo_ready.js';
 import logoBattle from 'assets/sprites/logo_battle.js';
-import logoPhase from 'assets/sprites/logo_phase.js';
+import logoTurn from 'assets/sprites/logo_turn.js';
 import logoStage from 'assets/sprites/logo_stage.js';
 import logoNameGoblins from 'assets/sprites/logo_name_goblins.js';
 import logoNameGiant from 'assets/sprites/logo_name_giant.js';
@@ -145,7 +145,7 @@ export const LOGO_IDS = Object.freeze({
 const LOGO_TABLE = Object.freeze({
   [LOGO_IDS.ready]: logoReady,
   [LOGO_IDS.battle]: logoBattle,
-  [LOGO_IDS.phase]: logoPhase,
+  [LOGO_IDS.phase]: logoTurn,
   [LOGO_IDS.stage]: logoStage,
   [LOGO_IDS.nameGoblins]: logoNameGoblins,
   [LOGO_IDS.nameGiant]: logoNameGiant,

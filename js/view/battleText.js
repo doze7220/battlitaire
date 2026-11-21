@@ -43,7 +43,7 @@ const AMOUNTLESS_KINDS = new Set(['windup']);
  * @type {Readonly<Record<string, string>>}
  */
 const RESULT_STAT_LABELS = Object.freeze({
-  phases: 'かかったフェーズ数',
+  phases: 'かかったターン数',
   damageDealt: '敵に与えた総ダメージ',
   damageTaken: '城が受けた総ダメージ',
   healed: '修理の合計',

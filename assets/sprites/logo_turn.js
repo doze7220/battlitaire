@@ -1,15 +1,15 @@
 /**
  * OZ Vector Editor 形式のスプライト（ESモジュール）。他のファイルに依存しない。
  * 既定のexportは、スプライトデータと draw(ctx) を持つ1つのオブジェクト（単位px、基準点は原点、y軸は下向き）。
- * 「PHASE」のロゴの仮のスプライト（原点が絵の中心）で、OZ Vector Editor で描き直して差し替える。
+ * 「TURN」のロゴの仮のスプライト（原点が絵の中心）で、OZ Vector Editor で描き直して差し替える。
  */
 const spriteData = {
   "format": "oz-vector-editor-sprite",
   "formatVersion": 2,
   "bounds": {
-    "minX": -117,
+    "minX": -98,
     "minY": -38,
-    "maxX": 117,
+    "maxX": 98,
     "maxY": 38
   },
   "elements": [
@@ -18,19 +18,19 @@ const spriteData = {
       "id": "shape-1",
       "points": [
         {
-          "x": -114,
+          "x": -95,
           "y": -35
         },
         {
-          "x": 114,
+          "x": 95,
           "y": -35
         },
         {
-          "x": 114,
+          "x": 95,
           "y": 35
         },
         {
-          "x": -114,
+          "x": -95,
           "y": 35
         }
       ],
@@ -44,24 +44,12 @@ const spriteData = {
       "id": "shape-2",
       "points": [
         {
-          "x": -90,
-          "y": 21
-        },
-        {
-          "x": -90,
+          "x": -71,
           "y": -21
         },
         {
-          "x": -62,
+          "x": -43,
           "y": -21
-        },
-        {
-          "x": -62,
-          "y": 0
-        },
-        {
-          "x": -90,
-          "y": 0
         }
       ],
       "closed": false,
@@ -74,11 +62,11 @@ const spriteData = {
       "id": "shape-3",
       "points": [
         {
-          "x": -52,
+          "x": -57,
           "y": -21
         },
         {
-          "x": -52,
+          "x": -57,
           "y": 21
         }
       ],
@@ -92,12 +80,20 @@ const spriteData = {
       "id": "shape-4",
       "points": [
         {
-          "x": -24,
+          "x": -33,
           "y": -21
         },
         {
-          "x": -24,
+          "x": -33,
           "y": 21
+        },
+        {
+          "x": -5,
+          "y": 21
+        },
+        {
+          "x": -5,
+          "y": -21
         }
       ],
       "closed": false,
@@ -110,11 +106,23 @@ const spriteData = {
       "id": "shape-5",
       "points": [
         {
-          "x": -52,
+          "x": 5,
+          "y": 21
+        },
+        {
+          "x": 5,
+          "y": -21
+        },
+        {
+          "x": 33,
+          "y": -21
+        },
+        {
+          "x": 33,
           "y": 0
         },
         {
-          "x": -24,
+          "x": 5,
           "y": 0
         }
       ],
@@ -128,27 +136,11 @@ const spriteData = {
       "id": "shape-6",
       "points": [
         {
-          "x": -14,
-          "y": 21
+          "x": 19,
+          "y": 0
         },
         {
-          "x": -14,
-          "y": -14
-        },
-        {
-          "x": -7,
-          "y": -21
-        },
-        {
-          "x": 7,
-          "y": -21
-        },
-        {
-          "x": 14,
-          "y": -14
-        },
-        {
-          "x": 14,
+          "x": 33,
           "y": 21
         }
       ],
@@ -162,12 +154,28 @@ const spriteData = {
       "id": "shape-7",
       "points": [
         {
-          "x": -14,
-          "y": 0
+          "x": 43,
+          "y": 21
         },
         {
-          "x": 14,
-          "y": 0
+          "x": 43,
+          "y": -21
+        },
+        {
+          "x": 50,
+          "y": -21
+        },
+        {
+          "x": 64,
+          "y": 21
+        },
+        {
+          "x": 71,
+          "y": 21
+        },
+        {
+          "x": 71,
+          "y": -21
         }
       ],
       "closed": false,
@@ -180,33 +188,17 @@ const spriteData = {
       "id": "shape-8",
       "points": [
         {
-          "x": 52,
+          "x": -71,
           "y": -21
         },
         {
-          "x": 24,
+          "x": -43,
           "y": -21
-        },
-        {
-          "x": 24,
-          "y": 0
-        },
-        {
-          "x": 52,
-          "y": 0
-        },
-        {
-          "x": 52,
-          "y": 21
-        },
-        {
-          "x": 24,
-          "y": 21
         }
       ],
       "closed": false,
-      "strokeColor": "#032b28",
-      "strokeWidth": 15,
+      "strokeColor": "#ffffff",
+      "strokeWidth": 9,
       "fillColor": null
     },
     {
@@ -214,25 +206,17 @@ const spriteData = {
       "id": "shape-9",
       "points": [
         {
-          "x": 90,
+          "x": -57,
           "y": -21
         },
         {
-          "x": 62,
-          "y": -21
-        },
-        {
-          "x": 62,
-          "y": 21
-        },
-        {
-          "x": 90,
+          "x": -57,
           "y": 21
         }
       ],
       "closed": false,
-      "strokeColor": "#032b28",
-      "strokeWidth": 15,
+      "strokeColor": "#ffffff",
+      "strokeWidth": 9,
       "fillColor": null
     },
     {
@@ -240,17 +224,25 @@ const spriteData = {
       "id": "shape-10",
       "points": [
         {
-          "x": 62,
-          "y": 0
+          "x": -33,
+          "y": -21
         },
         {
-          "x": 83,
-          "y": 0
+          "x": -33,
+          "y": 21
+        },
+        {
+          "x": -5,
+          "y": 21
+        },
+        {
+          "x": -5,
+          "y": -21
         }
       ],
       "closed": false,
-      "strokeColor": "#032b28",
-      "strokeWidth": 15,
+      "strokeColor": "#ffffff",
+      "strokeWidth": 9,
       "fillColor": null
     },
     {
@@ -258,23 +250,23 @@ const spriteData = {
       "id": "shape-11",
       "points": [
         {
-          "x": -90,
+          "x": 5,
           "y": 21
         },
         {
-          "x": -90,
+          "x": 5,
           "y": -21
         },
         {
-          "x": -62,
+          "x": 33,
           "y": -21
         },
         {
-          "x": -62,
+          "x": 33,
           "y": 0
         },
         {
-          "x": -90,
+          "x": 5,
           "y": 0
         }
       ],
@@ -288,11 +280,11 @@ const spriteData = {
       "id": "shape-12",
       "points": [
         {
-          "x": -52,
-          "y": -21
+          "x": 19,
+          "y": 0
         },
         {
-          "x": -52,
+          "x": 33,
           "y": 21
         }
       ],
@@ -306,160 +298,28 @@ const spriteData = {
       "id": "shape-13",
       "points": [
         {
-          "x": -24,
-          "y": -21
-        },
-        {
-          "x": -24,
-          "y": 21
-        }
-      ],
-      "closed": false,
-      "strokeColor": "#ffffff",
-      "strokeWidth": 9,
-      "fillColor": null
-    },
-    {
-      "kind": "polyline",
-      "id": "shape-14",
-      "points": [
-        {
-          "x": -52,
-          "y": 0
-        },
-        {
-          "x": -24,
-          "y": 0
-        }
-      ],
-      "closed": false,
-      "strokeColor": "#ffffff",
-      "strokeWidth": 9,
-      "fillColor": null
-    },
-    {
-      "kind": "polyline",
-      "id": "shape-15",
-      "points": [
-        {
-          "x": -14,
+          "x": 43,
           "y": 21
         },
         {
-          "x": -14,
-          "y": -14
-        },
-        {
-          "x": -7,
+          "x": 43,
           "y": -21
         },
         {
-          "x": 7,
+          "x": 50,
           "y": -21
         },
         {
-          "x": 14,
-          "y": -14
-        },
-        {
-          "x": 14,
-          "y": 21
-        }
-      ],
-      "closed": false,
-      "strokeColor": "#ffffff",
-      "strokeWidth": 9,
-      "fillColor": null
-    },
-    {
-      "kind": "polyline",
-      "id": "shape-16",
-      "points": [
-        {
-          "x": -14,
-          "y": 0
-        },
-        {
-          "x": 14,
-          "y": 0
-        }
-      ],
-      "closed": false,
-      "strokeColor": "#ffffff",
-      "strokeWidth": 9,
-      "fillColor": null
-    },
-    {
-      "kind": "polyline",
-      "id": "shape-17",
-      "points": [
-        {
-          "x": 52,
-          "y": -21
-        },
-        {
-          "x": 24,
-          "y": -21
-        },
-        {
-          "x": 24,
-          "y": 0
-        },
-        {
-          "x": 52,
-          "y": 0
-        },
-        {
-          "x": 52,
+          "x": 64,
           "y": 21
         },
         {
-          "x": 24,
+          "x": 71,
           "y": 21
-        }
-      ],
-      "closed": false,
-      "strokeColor": "#ffffff",
-      "strokeWidth": 9,
-      "fillColor": null
-    },
-    {
-      "kind": "polyline",
-      "id": "shape-18",
-      "points": [
+        },
         {
-          "x": 90,
+          "x": 71,
           "y": -21
-        },
-        {
-          "x": 62,
-          "y": -21
-        },
-        {
-          "x": 62,
-          "y": 21
-        },
-        {
-          "x": 90,
-          "y": 21
-        }
-      ],
-      "closed": false,
-      "strokeColor": "#ffffff",
-      "strokeWidth": 9,
-      "fillColor": null
-    },
-    {
-      "kind": "polyline",
-      "id": "shape-19",
-      "points": [
-        {
-          "x": 62,
-          "y": 0
-        },
-        {
-          "x": 83,
-          "y": 0
         }
       ],
       "closed": false,
@@ -477,19 +337,19 @@ const spriteData = {
         "id": "shape-1",
         "points": [
           {
-            "x": -114,
+            "x": -95,
             "y": -35
           },
           {
-            "x": 114,
+            "x": 95,
             "y": -35
           },
           {
-            "x": 114,
+            "x": 95,
             "y": 35
           },
           {
-            "x": -114,
+            "x": -95,
             "y": 35
           }
         ],
@@ -517,37 +377,16 @@ const spriteData = {
         "id": "shape-2",
         "points": [
           {
-            "x": -90,
-            "y": 21
-          },
-          {
-            "x": -90,
+            "x": -71,
             "y": -21
           },
           {
-            "x": -62,
+            "x": -43,
             "y": -21
-          },
-          {
-            "x": -62,
-            "y": 0
-          },
-          {
-            "x": -90,
-            "y": 0
           }
         ],
         "closed": false,
         "segments": [
-          {
-            "kind": "line"
-          },
-          {
-            "kind": "line"
-          },
-          {
-            "kind": "line"
-          },
           {
             "kind": "line"
           }
@@ -561,11 +400,11 @@ const spriteData = {
         "id": "shape-3",
         "points": [
           {
-            "x": -52,
+            "x": -57,
             "y": -21
           },
           {
-            "x": -52,
+            "x": -57,
             "y": 21
           }
         ],
@@ -584,16 +423,30 @@ const spriteData = {
         "id": "shape-4",
         "points": [
           {
-            "x": -24,
+            "x": -33,
             "y": -21
           },
           {
-            "x": -24,
+            "x": -33,
             "y": 21
+          },
+          {
+            "x": -5,
+            "y": 21
+          },
+          {
+            "x": -5,
+            "y": -21
           }
         ],
         "closed": false,
         "segments": [
+          {
+            "kind": "line"
+          },
+          {
+            "kind": "line"
+          },
           {
             "kind": "line"
           }
@@ -607,16 +460,37 @@ const spriteData = {
         "id": "shape-5",
         "points": [
           {
-            "x": -52,
+            "x": 5,
+            "y": 21
+          },
+          {
+            "x": 5,
+            "y": -21
+          },
+          {
+            "x": 33,
+            "y": -21
+          },
+          {
+            "x": 33,
             "y": 0
           },
           {
-            "x": -24,
+            "x": 5,
             "y": 0
           }
         ],
         "closed": false,
         "segments": [
+          {
+            "kind": "line"
+          },
+          {
+            "kind": "line"
+          },
+          {
+            "kind": "line"
+          },
           {
             "kind": "line"
           }
@@ -630,44 +504,16 @@ const spriteData = {
         "id": "shape-6",
         "points": [
           {
-            "x": -14,
-            "y": 21
+            "x": 19,
+            "y": 0
           },
           {
-            "x": -14,
-            "y": -14
-          },
-          {
-            "x": -7,
-            "y": -21
-          },
-          {
-            "x": 7,
-            "y": -21
-          },
-          {
-            "x": 14,
-            "y": -14
-          },
-          {
-            "x": 14,
+            "x": 33,
             "y": 21
           }
         ],
         "closed": false,
         "segments": [
-          {
-            "kind": "line"
-          },
-          {
-            "kind": "line"
-          },
-          {
-            "kind": "line"
-          },
-          {
-            "kind": "line"
-          },
           {
             "kind": "line"
           }
@@ -681,16 +527,44 @@ const spriteData = {
         "id": "shape-7",
         "points": [
           {
-            "x": -14,
-            "y": 0
+            "x": 43,
+            "y": 21
           },
           {
-            "x": 14,
-            "y": 0
+            "x": 43,
+            "y": -21
+          },
+          {
+            "x": 50,
+            "y": -21
+          },
+          {
+            "x": 64,
+            "y": 21
+          },
+          {
+            "x": 71,
+            "y": 21
+          },
+          {
+            "x": 71,
+            "y": -21
           }
         ],
         "closed": false,
         "segments": [
+          {
+            "kind": "line"
+          },
+          {
+            "kind": "line"
+          },
+          {
+            "kind": "line"
+          },
+          {
+            "kind": "line"
+          },
           {
             "kind": "line"
           }
@@ -704,50 +578,22 @@ const spriteData = {
         "id": "shape-8",
         "points": [
           {
-            "x": 52,
+            "x": -71,
             "y": -21
           },
           {
-            "x": 24,
+            "x": -43,
             "y": -21
-          },
-          {
-            "x": 24,
-            "y": 0
-          },
-          {
-            "x": 52,
-            "y": 0
-          },
-          {
-            "x": 52,
-            "y": 21
-          },
-          {
-            "x": 24,
-            "y": 21
           }
         ],
         "closed": false,
         "segments": [
           {
             "kind": "line"
-          },
-          {
-            "kind": "line"
-          },
-          {
-            "kind": "line"
-          },
-          {
-            "kind": "line"
-          },
-          {
-            "kind": "line"
           }
         ],
-        "strokeColor": "#032b28",
-        "strokeWidth": 15,
+        "strokeColor": "#ffffff",
+        "strokeWidth": 9,
         "fillColor": null
       },
       {
@@ -755,19 +601,11 @@ const spriteData = {
         "id": "shape-9",
         "points": [
           {
-            "x": 90,
+            "x": -57,
             "y": -21
           },
           {
-            "x": 62,
-            "y": -21
-          },
-          {
-            "x": 62,
-            "y": 21
-          },
-          {
-            "x": 90,
+            "x": -57,
             "y": 21
           }
         ],
@@ -775,16 +613,10 @@ const spriteData = {
         "segments": [
           {
             "kind": "line"
-          },
-          {
-            "kind": "line"
-          },
-          {
-            "kind": "line"
           }
         ],
-        "strokeColor": "#032b28",
-        "strokeWidth": 15,
+        "strokeColor": "#ffffff",
+        "strokeWidth": 9,
         "fillColor": null
       },
       {
@@ -792,22 +624,36 @@ const spriteData = {
         "id": "shape-10",
         "points": [
           {
-            "x": 62,
-            "y": 0
+            "x": -33,
+            "y": -21
           },
           {
-            "x": 83,
-            "y": 0
+            "x": -33,
+            "y": 21
+          },
+          {
+            "x": -5,
+            "y": 21
+          },
+          {
+            "x": -5,
+            "y": -21
           }
         ],
         "closed": false,
         "segments": [
           {
             "kind": "line"
+          },
+          {
+            "kind": "line"
+          },
+          {
+            "kind": "line"
           }
         ],
-        "strokeColor": "#032b28",
-        "strokeWidth": 15,
+        "strokeColor": "#ffffff",
+        "strokeWidth": 9,
         "fillColor": null
       },
       {
@@ -815,23 +661,23 @@ const spriteData = {
         "id": "shape-11",
         "points": [
           {
-            "x": -90,
+            "x": 5,
             "y": 21
           },
           {
-            "x": -90,
+            "x": 5,
             "y": -21
           },
           {
-            "x": -62,
+            "x": 33,
             "y": -21
           },
           {
-            "x": -62,
+            "x": 33,
             "y": 0
           },
           {
-            "x": -90,
+            "x": 5,
             "y": 0
           }
         ],
@@ -859,11 +705,11 @@ const spriteData = {
         "id": "shape-12",
         "points": [
           {
-            "x": -52,
-            "y": -21
+            "x": 19,
+            "y": 0
           },
           {
-            "x": -52,
+            "x": 33,
             "y": 21
           }
         ],
@@ -882,74 +728,28 @@ const spriteData = {
         "id": "shape-13",
         "points": [
           {
-            "x": -24,
-            "y": -21
-          },
-          {
-            "x": -24,
-            "y": 21
-          }
-        ],
-        "closed": false,
-        "segments": [
-          {
-            "kind": "line"
-          }
-        ],
-        "strokeColor": "#ffffff",
-        "strokeWidth": 9,
-        "fillColor": null
-      },
-      {
-        "type": "path",
-        "id": "shape-14",
-        "points": [
-          {
-            "x": -52,
-            "y": 0
-          },
-          {
-            "x": -24,
-            "y": 0
-          }
-        ],
-        "closed": false,
-        "segments": [
-          {
-            "kind": "line"
-          }
-        ],
-        "strokeColor": "#ffffff",
-        "strokeWidth": 9,
-        "fillColor": null
-      },
-      {
-        "type": "path",
-        "id": "shape-15",
-        "points": [
-          {
-            "x": -14,
+            "x": 43,
             "y": 21
           },
           {
-            "x": -14,
-            "y": -14
-          },
-          {
-            "x": -7,
+            "x": 43,
             "y": -21
           },
           {
-            "x": 7,
+            "x": 50,
             "y": -21
           },
           {
-            "x": 14,
-            "y": -14
-          },
-          {
-            "x": 14,
+            "x": 64,
             "y": 21
+          },
+          {
+            "x": 71,
+            "y": 21
+          },
+          {
+            "x": 71,
+            "y": -21
           }
         ],
         "closed": false,
@@ -966,140 +766,6 @@ const spriteData = {
           {
             "kind": "line"
           },
-          {
-            "kind": "line"
-          }
-        ],
-        "strokeColor": "#ffffff",
-        "strokeWidth": 9,
-        "fillColor": null
-      },
-      {
-        "type": "path",
-        "id": "shape-16",
-        "points": [
-          {
-            "x": -14,
-            "y": 0
-          },
-          {
-            "x": 14,
-            "y": 0
-          }
-        ],
-        "closed": false,
-        "segments": [
-          {
-            "kind": "line"
-          }
-        ],
-        "strokeColor": "#ffffff",
-        "strokeWidth": 9,
-        "fillColor": null
-      },
-      {
-        "type": "path",
-        "id": "shape-17",
-        "points": [
-          {
-            "x": 52,
-            "y": -21
-          },
-          {
-            "x": 24,
-            "y": -21
-          },
-          {
-            "x": 24,
-            "y": 0
-          },
-          {
-            "x": 52,
-            "y": 0
-          },
-          {
-            "x": 52,
-            "y": 21
-          },
-          {
-            "x": 24,
-            "y": 21
-          }
-        ],
-        "closed": false,
-        "segments": [
-          {
-            "kind": "line"
-          },
-          {
-            "kind": "line"
-          },
-          {
-            "kind": "line"
-          },
-          {
-            "kind": "line"
-          },
-          {
-            "kind": "line"
-          }
-        ],
-        "strokeColor": "#ffffff",
-        "strokeWidth": 9,
-        "fillColor": null
-      },
-      {
-        "type": "path",
-        "id": "shape-18",
-        "points": [
-          {
-            "x": 90,
-            "y": -21
-          },
-          {
-            "x": 62,
-            "y": -21
-          },
-          {
-            "x": 62,
-            "y": 21
-          },
-          {
-            "x": 90,
-            "y": 21
-          }
-        ],
-        "closed": false,
-        "segments": [
-          {
-            "kind": "line"
-          },
-          {
-            "kind": "line"
-          },
-          {
-            "kind": "line"
-          }
-        ],
-        "strokeColor": "#ffffff",
-        "strokeWidth": 9,
-        "fillColor": null
-      },
-      {
-        "type": "path",
-        "id": "shape-19",
-        "points": [
-          {
-            "x": 62,
-            "y": 0
-          },
-          {
-            "x": 83,
-            "y": 0
-          }
-        ],
-        "closed": false,
-        "segments": [
           {
             "kind": "line"
           }
