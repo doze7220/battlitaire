@@ -1,5 +1,5 @@
 /**
- * 責務: 戦闘の段とソリティアの段の間の、行動のゲージの帯（残りの行動のブロック）を描く。
+ * 責務: 戦闘の段とソリティアの段の間の、行動のゲージの帯（残りの行動のブロック）と、帯の上の「ACTION POINT」のラベルを描く。
  * 状態は変えず、値は呼ぶ側から受け取る。ルール層は実行時に import しない。
  */
 
@@ -15,6 +15,12 @@ const BONUS_COLOR = '#e0a030';
 const EMPTY_COLOR = 'rgba(255, 255, 255, 0.12)';
 /** @type {number} ブロックの角の半径。 */
 const BLOCK_RADIUS = 4;
+/** @type {string} ラベルの文字。 */
+const LABEL_TEXT = 'ACTION POINT';
+/** @type {string} ラベルの縁取りの色。 */
+const LABEL_OUTLINE_COLOR = '#101418';
+/** @type {number} ラベルの縁取りの太さ。 */
+const LABEL_OUTLINE_WIDTH = 4;
 
 /**
  * 値を範囲内に収める。
@@ -50,5 +56,26 @@ export function drawActionGauge(ctx, actionLayout, actionsLeft) {
     ctx.fillStyle = i < bonus ? BONUS_COLOR : i < filled ? FILLED_COLOR : EMPTY_COLOR;
     ctx.fill();
   }
+  ctx.restore();
+}
+
+/**
+ * 行動のゲージの帯の上に「ACTION POINT」のラベル（縁取りの文字。色は埋まったブロックの色）を描く。
+ * @param {CanvasRenderingContext2D} ctx 描画先
+ * @param {import('./layout.js').ActionGaugeLayout} actionLayout 行動のゲージの配置
+ * @returns {void}
+ */
+export function drawActionGaugeLabel(ctx, actionLayout) {
+  const { x, y, size } = actionLayout.label;
+  ctx.save();
+  ctx.font = `bold ${size}px sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = LABEL_OUTLINE_WIDTH;
+  ctx.strokeStyle = LABEL_OUTLINE_COLOR;
+  ctx.strokeText(LABEL_TEXT, x, y);
+  ctx.fillStyle = FILLED_COLOR;
+  ctx.fillText(LABEL_TEXT, x, y);
   ctx.restore();
 }

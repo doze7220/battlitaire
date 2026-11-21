@@ -1,5 +1,5 @@
 /**
- * 責務: 盤面の画面配置（戦闘の段の兵の陣地・敵の頭の上の予告の札・敵ごとの当たる位置・炎の出る位置・画面の外の x・城の打撃の範囲・人数の表示・城と敵の絵の矩形・ゴブリンの群れの並び・敵を倒したときの案内・最上部のゲージ・行動のゲージの帯を含む）を一手に持ち、座標から「何に当たるか」を求める。
+ * 責務: 盤面の画面配置（戦闘の段の兵の陣地・敵の頭の上の予告の札・敵ごとの当たる位置・炎の出る位置・画面の外の x・城の打撃の範囲・人数の表示・城と敵の絵の矩形・ゴブリンの群れの並び・敵を倒したときの案内・最上部のゲージ・行動のゲージの帯とラベルを含む）を一手に持ち、座標から「何に当たるか」を求める。
  * タイトル画面・遊び方の画面・結果の表示（決着）の配置と当たりも持つ。ルール層は import せず、数の情報は引数で受け取る。状態は変えない。絵の縦横比は spriteView.js から得る。
  */
 
@@ -32,6 +32,7 @@ import { campSlot } from './campSlots.js';
  * @typedef {Object} ActionGaugeLayout
  * @property {Rect} band 帯（`sections.actionBar`）
  * @property {Rect[]} blocks ブロックの矩形（左から `actionBlockCount` 個。0 以下なら空）
+ * @property {{x: number, y: number, size: number}} label 帯の上の「ACTION POINT」のラベル（x は左端、y は中心、size は文字の大きさ px）
  */
 
 /**
@@ -186,7 +187,7 @@ import { campSlot } from './campSlots.js';
  * @property {ColumnLayout[]} columns 列の領域
  * @property {HandLayout} hand 手札の見出しと枠
  * @property {Rect[]} releaseButtons 放つボタンの領域
- * @property {ActionGaugeLayout} actionGauge 行動のゲージの帯とブロック
+ * @property {ActionGaugeLayout} actionGauge 行動のゲージの帯とブロックと帯の上のラベル
  * @property {BattleLayout} battle 最上段（戦闘）
  * @property {function(number, number): Rect[]} columnCardRects 列の番号と枚数から、下から順の各カードの矩形（長い列の詰めを含む）
  * @property {ResultLayout} result 決着の表示（結果）の配置
@@ -201,6 +202,10 @@ const ACTION_BAR_H = 36;
 const ACTION_BLOCK_PAD_Y = 6;
 /** 行動のゲージのブロックどうしの間。試遊で決め直す。 */
 const ACTION_BLOCK_GAP = 8;
+/** 行動のゲージの帯の上端から「ACTION POINT」のラベルの中心までの上への距離（戦闘の段に少しはみ出す）。試遊で決め直す。 */
+const ACTION_LABEL_DY = 4;
+/** 「ACTION POINT」のラベルの文字の大きさ（px）。試遊で決め直す。 */
+const ACTION_LABEL_SIZE = 14;
 /** 画面の上端から最上部の HP ゲージの上端までの距離。試遊で決め直す。 */
 const TOP_GAUGE_Y = 8;
 /** HP ゲージの太さ（変える1か所）。試遊で決め直す。 */
@@ -720,7 +725,11 @@ export function createLayout({ screen, deckCount, columnCount, handSize, actionB
     });
   }
   /** @type {ActionGaugeLayout} */
-  const actionGauge = { band: sections.actionBar, blocks };
+  const actionGauge = {
+    band: sections.actionBar,
+    blocks,
+    label: { x: SIDE_MARGIN, y: sections.actionBar.y - ACTION_LABEL_DY, size: ACTION_LABEL_SIZE },
+  };
 
   // カードの大きさは、上の行（山札・捨て札・手札の枠）が横幅に並ぶことから決める
   const n = deckCount + 1 + handSize;
