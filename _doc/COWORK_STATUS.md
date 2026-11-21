@@ -11,7 +11,7 @@
 ---
 
 ### 1. プロジェクト現況スナップショット（最終更新：2026-11-21）
-* Phase 01〜05 クローズ済み。次の Phase（Phase 6 インゲーム強化の予定。`_doc/PROJECT_MILESTONE.md`）の DIR は未策定。
+* Phase 01〜05 クローズ済み。次の Phase は Phase 6 デバッグとエンジンの載せ替え（`_doc/PROJECT_MILESTONE.md`）。DIR は未策定で、その前に Survey で PHASEOUT のデバッグ機能とエンジンの現状を調べ、エンジンへの要望をまとめる。
 * 画面は縦長 720×1280（スマホ優先・PC 両立）。上から戦闘の段（`js/view/layout.js` の `BATTLE_H` 360。背景・城・敵・兵のスプライト。兵の足元は地面の y 145〜335、城・敵の足元は 335。空に重ねて、中央から左右へ城と敵の HP ゲージ・中央に TURN とターンの番号・城の HP ゲージの下に金貨のゲージ（5 ブロック・GOLD・5 ごとに赤い丸）。敵の頭の上に予告の札、左上に人数の枠）／行動のゲージの帯（5ブロック・ACTION POINT）／山札・捨て札・手札の行・列（列の領域の高さ 576px）・放つボタン。
 * いまのゲーム: ステージの始まり（敵が入ってきて STAGE N と名前）→ ターンの始まり（TURN N と敵の予告）→ 段取り（めくる・置く・捨てる・放つ・手札・束の移し替え。放つと札が光の玉になり、同じスートの区切りごとに合体して式を出し、陣地へ飛んで兵（1人＝1体）に変わって待つ。金貨の玉は金貨のゲージへ）→ 行動を使い切ると全部着いてから「準備終了」、タップで「BATTLE!」→ 攻防の演出（敵ごとの見せ方・兵の動きのずれ・当たりを1体ずつずらす・ヒットストップなどのエフェクト。途中のタップでは何も起きない）→ 決着していなければ次のターン、途中の敵を倒したらタップで次の敵のステージ、決着したら結果の表示からタイトルへ。敵は ゴブリンの軍勢 → 巨人 → ドラゴン の順で、ドラゴンを倒すとクリア。画面の呼び名は TURN・ターン（内部の名前は phase）。GitHub Pages（https://doze7220.github.io/battlitaire/）で遊べる（master を公開）。
 * 調整値: ルールは `js/rules/config.js`、カードと玉の動きは `js/anim/animConfig.js`、攻防の演出は `js/anim/battleAnimConfig.js`、音は `js/audio/soundConfig.js`。スプライトは `assets/sprites/`（描画は `js/view/spriteView.js` に集める）。BGM（タイトル・ゴブリンと巨人・ドラゴン。`assets/bgm/`）と一部の効果音（クリア・負け・スタート・巨人の攻撃・ドラゴンの爪とブレス）は発注者が用意した mp3、ほかの効果音は仮の合成音。BGM を鳴らす・止めるのは `js/scenes/bgmCues.js`、効果音は `js/scenes/soundCues.js`。
@@ -31,7 +31,7 @@
   * （注意・import の向き）兵とゴブリンの並べ方の計算 `campSlots.js`（位置を決めるだけの純粋関数）は、05-06 調整2 で発注者の判断により `js/anim/` から `js/view/` へ移した。`js/anim/troopRoster.js`・`js/anim/enemyAttacks.js` がこれを実行時に読み込む（anim → view の実行時の import はこれだけ。`campSlots.js` は何も import しないので循環はない）。同じような共有の計算を足すときは、置き場所を同じ考え方で決める（05-06 調整2 RES 5章）。
   * （発注者の作業・いつでも）次の手書きの仮のスプライトを、OZ Vector Editor で描き直して同じ名前で差し替える（ゲーム側のコードの変更は不要。描くときの約束は `PROJECT_ARCHITECTURE.md` 1章）。カードの表の枠4つ（`card_front_sword.js`・`card_front_shield.js`・`card_front_hammer.js`・`card_front_gold.js`）と裏（`card_back.js`。原点が中心の 100×140）。ロゴ・数字の 17 個（`logo_ready.js`（漢字の「準備終了」）・`logo_battle.js`・`logo_turn.js`・`logo_stage.js`・`logo_name_goblins.js`・`logo_name_giant.js`・`logo_name_dragon.js`（敵の日本語の名前）・`digit_0.js`〜`digit_9.js`。倍率 1）。予告の絵の6つ（`intent_attack.js`・`intent_defend.js`・`intent_windup.js`・`intent_claw.js`・`intent_inhale.js`・`intent_breath.js`。40×40 の枠）。ヒットマーク（`effect_hit.js`）。
   * （発注者の作業・音）準備終了の音 `ready` と BATTLE! の音 `battleStart` は、どちらも仮に `./assets/sounds/turnEnd.wav` を指している（`js/audio/soundConfig.js`）。別の音に差し替えるとき、`tools/makeSounds.mjs` が今も `turnEnd` の名前で合成している説明もあわせて整理する（05-03 RES 5章）。
-  * （Phase 6 へ）手札の枠を増やすと、縦画面では盤面のカード全体が同じ比率で縮み、3枠以上で押せる大きさが 80px を下回る（フォントは縮まない）。手札の枠を増やすスキルを作るときに配置を見直す（02-01 RES 5章）。前提: 05-01 で列の領域の高さは 576px（重ね幅 36・カード 100×140 で詰めずに 13 枚）、上の行は y 412、放つボタンは y 1188〜1268（05-01 RES 2章）。スキルの置き場所（最下段の左の空き）はなくなったので、P6 で改めて決める。
+  * （Phase 7 へ）手札の枠を増やすと、縦画面では盤面のカード全体が同じ比率で縮み、3枠以上で押せる大きさが 80px を下回る（フォントは縮まない）。手札の枠を増やすスキルを作るときに配置を見直す（02-01 RES 5章）。前提: 05-01 で列の領域の高さは 576px（重ね幅 36・カード 100×140 で詰めずに 13 枚）、上の行は y 412、放つボタンは y 1188〜1268（05-01 RES 2章）。スキルの置き場所（最下段の左の空き）はなくなったので、P7（インゲーム強化）で改めて決める。
   * （任意）見た目の磨き込みの候補（P5 で試遊の調整に回さなかった待ちの長さ・攻防の演出・画面の表示・カードの動きの値などを含む）は `_doc/PROJECT_MILESTONE.md` の「演出と手触り」にある。
   * （未定）P1 で入れなかったルールの調整候補（見える枚数を2枚にする、「下なら置ける」、捨てるときの得、余った攻撃・防御の扱い）は `_doc/PROJECT_MILESTONE.md` の「ルールの調整」にある。余った攻撃・防御は、いまはフェーズの終わりに消える。
 * **B. テストプレイ・操作感の確認待ち**
