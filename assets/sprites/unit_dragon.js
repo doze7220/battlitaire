@@ -7,10 +7,10 @@ const spriteData = {
   "format": "oz-vector-editor-sprite",
   "formatVersion": 2,
   "bounds": {
-    "minX": -150,
-    "minY": -196,
-    "maxX": 168,
-    "maxY": 200
+    "minX": -151,
+    "minY": -197,
+    "maxX": 169,
+    "maxY": 201
   },
   "elements": [
     {
@@ -40,7 +40,7 @@ const spriteData = {
       ],
       "closed": true,
       "strokeColor": "#000000",
-      "strokeWidth": 2,
+      "strokeWidth": 4,
       "fillColor": "#e04242"
     },
     {
@@ -94,7 +94,7 @@ const spriteData = {
       ],
       "closed": true,
       "strokeColor": "#000000",
-      "strokeWidth": 2,
+      "strokeWidth": 4,
       "fillColor": "#e04242"
     },
     {
@@ -144,7 +144,7 @@ const spriteData = {
       ],
       "closed": true,
       "strokeColor": "#000000",
-      "strokeWidth": 2,
+      "strokeWidth": 4,
       "fillColor": "#e04242"
     },
     {
@@ -246,7 +246,7 @@ const spriteData = {
       ],
       "closed": true,
       "strokeColor": "#000000",
-      "strokeWidth": 2,
+      "strokeWidth": 4,
       "fillColor": "#e04242"
     },
     {
@@ -296,7 +296,7 @@ const spriteData = {
       ],
       "closed": false,
       "strokeColor": "#000000",
-      "strokeWidth": 2,
+      "strokeWidth": 4,
       "fillColor": null
     },
     {
@@ -326,7 +326,7 @@ const spriteData = {
       ],
       "closed": true,
       "strokeColor": "#000000",
-      "strokeWidth": 2,
+      "strokeWidth": 4,
       "fillColor": "#e04242"
     },
     {
@@ -348,7 +348,7 @@ const spriteData = {
       ],
       "closed": true,
       "strokeColor": "#000000",
-      "strokeWidth": 2,
+      "strokeWidth": 4,
       "fillColor": "#ffffff"
     },
     {
@@ -370,7 +370,7 @@ const spriteData = {
       ],
       "closed": true,
       "strokeColor": "#000000",
-      "strokeWidth": 2,
+      "strokeWidth": 4,
       "fillColor": "#ffffff"
     },
     {
@@ -400,7 +400,7 @@ const spriteData = {
       ],
       "closed": true,
       "strokeColor": "#000000",
-      "strokeWidth": 2,
+      "strokeWidth": 4,
       "fillColor": "#ffffff"
     },
     {
@@ -430,7 +430,7 @@ const spriteData = {
       ],
       "closed": true,
       "strokeColor": "#000000",
-      "strokeWidth": 2,
+      "strokeWidth": 4,
       "fillColor": "#ffffff"
     },
     {
@@ -472,7 +472,7 @@ const spriteData = {
       ],
       "closed": true,
       "strokeColor": "#000000",
-      "strokeWidth": 2,
+      "strokeWidth": 4,
       "fillColor": "#e04242"
     },
     {
@@ -506,7 +506,7 @@ const spriteData = {
       ],
       "closed": true,
       "strokeColor": "#000000",
-      "strokeWidth": 2,
+      "strokeWidth": 4,
       "fillColor": "#e04242"
     }
   ],
@@ -558,7 +558,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 2,
+        "strokeWidth": 4,
         "fillColor": "#e04242"
       },
       {
@@ -647,7 +647,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 2,
+        "strokeWidth": 4,
         "fillColor": "#e04242"
       },
       {
@@ -729,7 +729,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 2,
+        "strokeWidth": 4,
         "fillColor": "#e04242"
       },
       {
@@ -902,7 +902,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 2,
+        "strokeWidth": 4,
         "fillColor": "#e04242"
       },
       {
@@ -981,7 +981,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 2,
+        "strokeWidth": 4,
         "fillColor": "#e04242"
       },
       {
@@ -1028,7 +1028,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 2,
+        "strokeWidth": 4,
         "fillColor": "#e04242"
       },
       {
@@ -1061,7 +1061,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 2,
+        "strokeWidth": 4,
         "fillColor": "#ffffff"
       },
       {
@@ -1094,7 +1094,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 2,
+        "strokeWidth": 4,
         "fillColor": "#ffffff"
       },
       {
@@ -1141,7 +1141,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 2,
+        "strokeWidth": 4,
         "fillColor": "#ffffff"
       },
       {
@@ -1188,7 +1188,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 2,
+        "strokeWidth": 4,
         "fillColor": "#ffffff"
       },
       {
@@ -1256,7 +1256,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 2,
+        "strokeWidth": 4,
         "fillColor": "#e04242"
       },
       {
@@ -1310,7 +1310,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 2,
+        "strokeWidth": 4,
         "fillColor": "#e04242"
       }
     ]

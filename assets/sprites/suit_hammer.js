@@ -7,10 +7,10 @@ const spriteData = {
   "format": "oz-vector-editor-sprite",
   "formatVersion": 2,
   "bounds": {
-    "minX": -60.5,
-    "minY": -90.5,
-    "maxX": 60.5,
-    "maxY": 90.5
+    "minX": -63,
+    "minY": -93,
+    "maxX": 63,
+    "maxY": 93
   },
   "elements": [
     {
@@ -36,7 +36,7 @@ const spriteData = {
       ],
       "closed": true,
       "strokeColor": "#000000",
-      "strokeWidth": 1,
+      "strokeWidth": 6,
       "fillColor": "#ffab66"
     },
     {
@@ -62,7 +62,7 @@ const spriteData = {
       ],
       "closed": true,
       "strokeColor": "#000000",
-      "strokeWidth": 1,
+      "strokeWidth": 6,
       "fillColor": "#787878"
     },
     {
@@ -88,7 +88,7 @@ const spriteData = {
       ],
       "closed": true,
       "strokeColor": "#000000",
-      "strokeWidth": 1,
+      "strokeWidth": 6,
       "fillColor": "#ffffff"
     },
     {
@@ -114,7 +114,7 @@ const spriteData = {
       ],
       "closed": true,
       "strokeColor": "#000000",
-      "strokeWidth": 1,
+      "strokeWidth": 6,
       "fillColor": "#ffffff"
     },
     {
@@ -140,7 +140,7 @@ const spriteData = {
       ],
       "closed": true,
       "strokeColor": "#000000",
-      "strokeWidth": 1,
+      "strokeWidth": 6,
       "fillColor": "#ffffff"
     },
     {
@@ -166,7 +166,7 @@ const spriteData = {
       ],
       "closed": true,
       "strokeColor": "#000000",
-      "strokeWidth": 1,
+      "strokeWidth": 6,
       "fillColor": "#ffffff"
     },
     {
@@ -192,7 +192,7 @@ const spriteData = {
       ],
       "closed": true,
       "strokeColor": "#000000",
-      "strokeWidth": 1,
+      "strokeWidth": 6,
       "fillColor": "#ffffff"
     },
     {
@@ -218,7 +218,7 @@ const spriteData = {
       ],
       "closed": true,
       "strokeColor": "#000000",
-      "strokeWidth": 1,
+      "strokeWidth": 6,
       "fillColor": "#ffffff"
     }
   ],
@@ -248,7 +248,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 1,
+        "strokeWidth": 6,
         "fillColor": "#ffab66"
       },
       {
@@ -273,7 +273,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 1,
+        "strokeWidth": 6,
         "fillColor": "#787878"
       },
       {
@@ -298,7 +298,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 1,
+        "strokeWidth": 6,
         "fillColor": "#ffffff"
       },
       {
@@ -323,7 +323,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 1,
+        "strokeWidth": 6,
         "fillColor": "#ffffff"
       },
       {
@@ -348,7 +348,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 1,
+        "strokeWidth": 6,
         "fillColor": "#ffffff"
       },
       {
@@ -373,7 +373,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 1,
+        "strokeWidth": 6,
         "fillColor": "#ffffff"
       },
       {
@@ -398,7 +398,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 1,
+        "strokeWidth": 6,
         "fillColor": "#ffffff"
       },
       {
@@ -423,7 +423,7 @@ const spriteData = {
           }
         ],
         "strokeColor": "#000000",
-        "strokeWidth": 1,
+        "strokeWidth": 6,
         "fillColor": "#ffffff"
       }
     ]
