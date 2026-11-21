@@ -57,16 +57,6 @@ export function staggerDelay(k, n, staggerMs, maxMs) {
 }
 
 /**
- * 移動の遅れ（前から k 番目、n 体のうち）。
- * @param {number} k 前から何番目か
- * @param {number} n 動く数
- * @returns {number} 遅れ（ms）
- */
-function moveDelay(k, n) {
-  return staggerDelay(k, n, BATTLE_ANIM.moveStaggerMs, BATTLE_ANIM.moveStaggerMaxMs);
-}
-
-/**
  * 前から並んだ兵それぞれの動き出しの遅れ（前からの遅れ＋兵ごとのずれ）を求める。
  * 一番小さい遅れが 0 になるよう全員から引くので、一番早い兵は段の始めに出る。
  * @param {Array<{kind: string, index: number}>} units 前から並んだ兵（種類と番号を持つもの）
@@ -121,14 +111,17 @@ function chargeDelay(pace, k, n) {
 }
 
 /**
- * 当たる・城に入る脚の行き先の y を、当たる・城に入るときの足元の範囲に収める。
+ * 当たる・城に入る脚の行き先の y を、陣地の範囲（`fieldTop`〜`fieldBottom`）での高さの割合のまま、
+ * 当たる・城に入るときの足元の範囲（`contactTop`〜`contactBottom`）へ縮めて求める。
  * @param {TroopRoster} roster 名簿
  * @param {number} y 兵の今の y
- * @returns {number} `contactTop`〜`contactBottom` に収めた y
+ * @returns {number} `contactTop`〜`contactBottom` へ縮めた y
  */
 function contactY(roster, y) {
-  const { contactTop, contactBottom } = roster.layout;
-  return Math.min(contactBottom, Math.max(contactTop, y));
+  const { fieldTop, fieldBottom, contactTop, contactBottom } = roster.layout;
+  const span = fieldBottom - fieldTop;
+  const u = span > 0 ? Math.min(1, Math.max(0, (y - fieldTop) / span)) : 1;
+  return contactTop + (contactBottom - contactTop) * u;
 }
 
 /**
@@ -439,7 +432,7 @@ export function clashPairs(roster, kind, amount, t) {
 
 /**
  * まだ終わっていない kind の兵を前から count 体、targetX へ前から遅らせて移動させ、着いた時刻に跳ねて落ちさせる。
- * 行き先の y は、兵の今の y を当たる・城に入るときの範囲（`contactTop`〜`contactBottom`）に収めたもの。
+ * 行き先の y は、兵の今の y を陣地での高さの割合のまま、当たる・城に入るときの範囲（`contactTop`〜`contactBottom`）へ縮めたもの。
  * @param {TroopRoster} roster 名簿
  * @param {string} kind 種類
  * @param {number} count 動かす数（Infinity で全員）
@@ -466,7 +459,7 @@ export function chargeTo(roster, kind, count, targetX, t, moveMs, pace = 'move')
 
 /**
  * まだ終わっていない kind の兵を全員、城に入る位置へ前から遅らせて移動させ、着いた時刻に消す。
- * 行き先の y は、兵の今の y を当たる・城に入るときの範囲（`contactTop`〜`contactBottom`）に収めたもの。
+ * 行き先の y は、兵の今の y を陣地での高さの割合のまま、当たる・城に入るときの範囲（`contactTop`〜`contactBottom`）へ縮めたもの。
  * @param {TroopRoster} roster 名簿
  * @param {string} kind 種類
  * @param {number} t 段の始め（ms）
