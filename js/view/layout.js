@@ -4,6 +4,7 @@
  */
 
 import { INTENT_CELL, SPRITE_IDS, spriteFitRect } from './spriteView.js';
+import { campSlot } from './campSlots.js';
 
 /**
  * 矩形。
@@ -119,7 +120,7 @@ import { INTENT_CELL, SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * @property {Rect} area 段全体
  * @property {number} groundY 城・敵の絵の足元の y（地面の下端。兵を奥と手前に分けて描く境目）
  * @property {Rect} castle 城の絵の矩形
- * @property {Rect} enemy ゴブリンの群れの矩形（絵を持たない敵のシールドマークの既定の並べ先・兵の当たる位置の基準でもある）
+ * @property {Rect} enemy ゴブリンの群れの矩形（群れの兵の体が入る範囲。絵を持たない敵のシールドマークの既定の並べ先・兵の当たる位置の基準でもある）
  * @property {Object<string, EnemyFigure>} enemyFigures 敵の種類の識別子 → 敵の絵の配置（凍結。絵を持たない敵は含まれない）
  * @property {TopGaugeLayout} topGauges 画面の最上部のゲージ（城と敵の HP・フェーズ・金貨）の配置
  * @property {{ x: number, y: number }} enemyHealText 絵を持たない敵の回復の量の文字の中心（群れの矩形の上寄り）
@@ -129,7 +130,7 @@ import { INTENT_CELL, SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * @property {{ box: Rect, iconSize: number, items: Array<{ iconX: number, iconY: number, textX: number, textY: number }> }} troopCounter 人数の表示の配置（枠・アイコンの大きさ・攻撃・防御・修理の順の各項目のアイコン中心と文字の左端・中心 y）
  * @property {{ x: number, titleY: number, hintY: number, maxW: number }} defeat 敵を倒したときの案内の位置（段の中央の x、「〜を倒した！」・「タップで次へ」の y、文字の最大の幅）
  * @property {function(number, Rect=): Rect[]} shieldRects シールドマーク count 個の矩形（body の矩形の中の格子。body を省くと群れの矩形。最後の行は中央にそろえる）
- * @property {function(number): Array<{ x: number, footY: number, size: number, row: number }>} hordeSlots ゴブリンの兵 count 体の並び（番号の順。x は中心、footY は足元の y、size は兵の大きさ、row は行（0 が前＝地面））
+ * @property {function(number): Array<{ x: number, footY: number, size: number }>} hordeSlots ゴブリンの兵 count 体の並び（番号の順。x は中心、footY は足元の y、size は兵の大きさ。群れの足元の範囲の中の R2 列）
  */
 
 /**
@@ -257,15 +258,15 @@ const COLUMN_KEEP_TOP = 3;
 const BOX_H = 40;
 /** 城・敵の絵の大きさの上限を求める基準（今までの枠の行の上の余白。絵の大きさを変えないために残す） */
 const BATTLE_TOP_PAD = 12;
-/** 地面の下端（城・敵の絵の足元・ゴブリンの群れの一番手前の行の足元・兵の足元の範囲の下端。groundY）から段の下端までの距離。試遊で決め直す。 */
+/** 地面の下端（城・敵の絵の足元・兵の足元の範囲の下端。groundY）から段の下端までの距離。試遊で決め直す。 */
 const GROUND_OFFSET = 25;
-/** 城・敵の絵の大きさの上限を求める基準（今までの枠の行の下端と城・ゴブリンの上端の最小の間隔。絵の大きさを変えないために残す） */
+/** 城・敵の絵の大きさの上限を求める基準（今までの枠の行の下端と城の上端の最小の間隔。絵の大きさを変えないために残す） */
 const BODY_GAP = 16;
 /** 城の絵の中心の x（段の左端から約 1/3。試遊で動かす1か所） */
 const CASTLE_CX = 240;
 /** 城の絵の高さ（大きさを変える1か所） */
 const CASTLE_H = 190;
-/** 敵の中心の x（ゴブリンの群れの矩形と、巨人・ドラゴンの絵の中心） */
+/** 敵の中心の x（巨人・ドラゴンの絵の中心） */
 const ENEMY_CX = 620;
 /**
  * 敵の種類の識別子ごとの絵の設定。height は絵の高さ、shield はシールドマークを並べる矩形（絵の矩形に対する割合。
@@ -295,9 +296,7 @@ const ENEMY_FIGURES = Object.freeze({
 const CASTLE_HIT_AREA = Object.freeze({ x: 0.15, y: 0.3, w: 0.7, h: 0.5 });
 /** 敵の回復の量の文字の中心 y の、絵（群れの矩形）の上端からの距離の、高さに対する割合 */
 const ENEMY_HEAL_TEXT_RATIO = 0.15;
-/** 敵の最大の大きさ */
-const ENEMY_MAX_SIZE = 120;
-/** ゴブリンの予告の札の中心の、群れの右端の列の足元の x から左への距離。試遊で決め直す。 */
+/** ゴブリンの予告の札の中心の、群れの矩形の右端（足元の範囲の右端）から左への距離。試遊で決め直す。 */
 const HORDE_INTENT_DX = 40;
 /** 予告の札（板）の左右の余白。試遊で決め直す。 */
 const INTENT_PAD_X = 6;
@@ -357,12 +356,8 @@ const DEFEAT_HINT_RATIO = 0.7;
 const SHIELD_COLS = 5;
 /** シールドマークの大きさの、格子の1マスに対する割合 */
 const SHIELD_FILL = 0.8;
-/** ゴブリンの群れの行の数（前＝地面の行から奥へ。試遊で決め直す） */
-const HORDE_ROWS = 6;
-/** ゴブリンの群れの列の間隔（試遊で決め直す） */
-const HORDE_COL_STEP = 22;
-/** ゴブリンの群れの右端の列の足元の中心の x（試遊で決め直す） */
-const HORDE_RIGHT_X = 690;
+/** ゴブリンの群れの足元の中心が入る範囲の x と幅（段の左端からの絶対値。縦は兵の足元の範囲いっぱい。試遊で決め直す） */
+const HORDE_AREA_X = Object.freeze({ x: 580, w: 110 });
 
 /** タイトル画面のゲーム名の中心 y の、画面の高さに対する割合 */
 const TITLE_TEXT_RATIO = 0.36;
@@ -517,7 +512,7 @@ function createTopGaugeLayout(width, coinBlockCount) {
 /**
  * 最上段（戦闘）の配置を作る。地面の下端（groundY）は段の下端から GROUND_OFFSET 上、城・敵の絵はその上に足元をそろえて立つ。
  * 兵の足元の範囲は groundY から FIELD_H 上まで。
- * 城の絵は CASTLE_CX、敵の中心は ENEMY_CX。巨人・ドラゴンの絵は ENEMY_FIGURES の表で大きさと
+ * 城の絵は CASTLE_CX、巨人・ドラゴンの絵の中心は ENEMY_CX、ゴブリンの群れは HORDE_AREA_X の範囲。巨人・ドラゴンの絵は ENEMY_FIGURES の表で大きさと
  * シールドマークの並べ先を決める。
  * @param {number} width 画面の幅
  * @param {number} coinBlockCount 金貨のゲージのブロックの数
@@ -526,10 +521,17 @@ function createTopGaugeLayout(width, coinBlockCount) {
 function createBattleLayout(width, coinBlockCount) {
   const groundY = BATTLE_H - GROUND_OFFSET;
   const bodyTop = BATTLE_TOP_PAD + BOX_H + BODY_GAP;
-  const enemySize = Math.min(ENEMY_MAX_SIZE, groundY - bodyTop);
   const area = { x: 0, y: 0, w: width, h: BATTLE_H };
   const castle = spriteFitRect(SPRITE_IDS.castle, CASTLE_CX, groundY, Math.min(CASTLE_H, groundY - bodyTop));
-  const enemy = { x: ENEMY_CX - enemySize / 2, y: groundY - enemySize, w: enemySize, h: enemySize };
+  /** ゴブリンの群れの足元の中心が入る範囲 */
+  const hordeArea = { x: HORDE_AREA_X.x, y: groundY - FIELD_H, w: HORDE_AREA_X.w, h: FIELD_H };
+  /** ゴブリンの群れの兵の体が入る矩形 */
+  const enemy = {
+    x: hordeArea.x - TROOP_SIZE / 2,
+    y: hordeArea.y - TROOP_SIZE,
+    w: hordeArea.w + TROOP_SIZE,
+    h: hordeArea.h + TROOP_SIZE,
+  };
   const counterBox = { x: SIDE_MARGIN, y: TOP_GAUGES_BOTTOM + TROOP_COUNTER_GAP_Y, w: TROOP_COUNTER_W, h: BOX_H };
   const counterItemW = (counterBox.w - TROOP_COUNTER_PAD_X * 2) / TROOP_COUNTER_ITEMS;
   const counterItems = [];
@@ -583,7 +585,7 @@ function createBattleLayout(width, coinBlockCount) {
   }
   Object.freeze(enemyFigures);
   const enemyHealText = { x: enemy.x + enemy.w / 2, y: enemy.y + enemy.h * ENEMY_HEAL_TEXT_RATIO };
-  const enemyIntent = { x: HORDE_RIGHT_X - HORDE_INTENT_DX, y: intentTop };
+  const enemyIntent = { x: HORDE_AREA_X.x + HORDE_AREA_X.w - HORDE_INTENT_DX, y: intentTop };
 
   const campTop = groundY - FIELD_H;
   const campH = FIELD_H;
@@ -648,25 +650,17 @@ function createBattleLayout(width, coinBlockCount) {
 
   /**
    * ゴブリンの兵の群れの並びを求める。i 番目の位置は i だけで決まり、数 count によらない
-   * （番号の大きい方から減らせば、残りの位置は動かない）。HORDE_ROWS 行ずつ右端の列から左へ並べ、
-   * 前の行（row 0）の足元が groundY、奥の行ほど行の間隔（FIELD_H ÷ (HORDE_ROWS − 1)。
-   * 一番奥の行の足元が兵の足元の範囲の上端）ずつ上げ、奇数の行は半列ずらす。
+   * （番号の大きい方から減らせば、残りの位置は動かない）。群れの足元の範囲の中を、
+   * 味方の兵と同じ R2 列（campSlot。乱数なし）でばらけさせる。
    * @param {number} count 兵の数
-   * @returns {Array<{ x: number, footY: number, size: number, row: number }>} 番号の順の各兵（x は中心、footY は足元の y、size は兵の大きさ、row は行（0 が前＝地面）。count が 0 以下なら空）
+   * @returns {Array<{ x: number, footY: number, size: number }>} 番号の順の各兵（x は中心、footY は足元の y、size は兵の大きさ。count が 0 以下なら空）
    */
   function hordeSlots(count) {
     if (count <= 0) return [];
-    const rowStep = HORDE_ROWS > 1 ? FIELD_H / (HORDE_ROWS - 1) : 0;
     const slots = [];
     for (let i = 0; i < count; i++) {
-      const col = Math.floor(i / HORDE_ROWS);
-      const row = i % HORDE_ROWS;
-      slots.push({
-        x: HORDE_RIGHT_X - col * HORDE_COL_STEP - (row % 2) * HORDE_COL_STEP / 2,
-        footY: groundY - rowStep * row,
-        size: TROOP_SIZE,
-        row,
-      });
+      const p = campSlot(hordeArea, i);
+      slots.push({ x: p.x, footY: p.y, size: TROOP_SIZE });
     }
     return slots;
   }

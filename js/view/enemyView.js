@@ -12,7 +12,7 @@ const HORDE_KIND = 'goblin';
 const HORDE_ENEMIES = new Set(['goblins']);
 
 /**
- * ゴブリンの軍勢の兵の群れ（HP の数）を、奥の行から順に描く。
+ * ゴブリンの軍勢の兵の群れ（HP の数）を、足元の y の小さい（奥の）順（同じなら番号の小さい順）に描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
  * @param {number} count 群れの兵の数（敵の HP）
@@ -21,15 +21,13 @@ const HORDE_ENEMIES = new Set(['goblins']);
  */
 function drawHorde(ctx, battleLayout, count, idle) {
   const slots = battleLayout.hordeSlots(count);
-  let maxRow = 0;
-  for (const slot of slots) maxRow = Math.max(maxRow, slot.row);
-  for (let row = maxRow; row >= 0; row--) {
-    for (let i = 0; i < slots.length; i++) {
-      const slot = slots[i];
-      if (slot.row !== row) continue;
-      const own = idle !== null && i < idle.count;
-      drawTroop(ctx, HORDE_KIND, slot.x, slot.footY, slot.size, 0, 1, own ? idle.scaleX[i] : 1, own ? idle.scaleY[i] : 1);
-    }
+  const order = [];
+  for (let i = 0; i < slots.length; i++) order.push(i);
+  order.sort((a, b) => slots[a].footY - slots[b].footY || a - b);
+  for (const i of order) {
+    const slot = slots[i];
+    const own = idle !== null && i < idle.count;
+    drawTroop(ctx, HORDE_KIND, slot.x, slot.footY, slot.size, 0, 1, own ? idle.scaleX[i] : 1, own ? idle.scaleY[i] : 1);
   }
 }
 
