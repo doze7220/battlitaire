@@ -1,6 +1,6 @@
 /**
  * 責務: 敵の行動の決まり（種類ごとの状態の初期値・次の行動の決め方・数え下ろしの問い合わせ）の表と呼び分け、
- * 行動の量の幅からの抽選、攻撃の直後の回復の抽選。渡された乱数だけを使う純粋な関数（ルール層）。
+ * 行動を作る小さな関数、行動の量の幅からの抽選、攻撃の直後の回復の抽選。渡された乱数だけを使う純粋な関数（ルール層）。
  */
 
 /**
@@ -10,8 +10,69 @@
  * @param {() => number} random 0以上1未満を返す乱数の関数
  * @returns {number} 抽選した量
  */
-function rollAmount(range, random) {
+export function rollAmount(range, random) {
   return range.min + Math.floor(random() * (range.max - range.min + 1));
+}
+
+/**
+ * 重みの行動の設定から行動を作る。量の抽選で `random()` を1回呼ぶ。
+ * @param {{ kind: string, range: { min: number, max: number } }} spec 行動の設定
+ * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @returns {import('./combatants.js').EnemyAction} 新しい行動
+ */
+export function weightedAction(spec, random) {
+  return { kind: spec.kind, amount: rollAmount(spec.range, random) };
+}
+
+/**
+ * 振りかぶりの行動を作る（乱数は呼ばない）。
+ * @returns {import('./combatants.js').EnemyAction} 新しい行動
+ */
+export function windupAction() {
+  return { kind: 'windup', amount: 0 };
+}
+
+/**
+ * 周期の決まり（巨人）の攻撃の行動を作る。量の抽選で `random()` を1回呼ぶ。
+ * @param {{ attackRange: { min: number, max: number } }} behavior 行動の決まりの設定
+ * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @returns {import('./combatants.js').EnemyAction} 新しい行動
+ */
+export function cycleAttackAction(behavior, random) {
+  return { kind: 'attack', amount: rollAmount(behavior.attackRange, random) };
+}
+
+/**
+ * 爪の攻撃の行動を作る。量の抽選で `random()` を1回呼ぶ。
+ * @param {{ claw: { range: { min: number, max: number } } }} behavior 行動の決まりの設定
+ * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @returns {import('./combatants.js').EnemyAction} 新しい行動
+ */
+export function clawAction(behavior, random) {
+  return { kind: 'attack', amount: rollAmount(behavior.claw.range, random), variant: 'claw' };
+}
+
+/**
+ * ブレスの攻撃の行動を作る。量の抽選で `random()` を1回呼ぶ。
+ * @param {{ breath: { range: { min: number, max: number }, burn: { min: number, max: number } } }} behavior 行動の決まりの設定
+ * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @returns {import('./combatants.js').EnemyAction} 新しい行動
+ */
+export function breathAction(behavior, random) {
+  return {
+    kind: 'attack',
+    amount: rollAmount(behavior.breath.range, random),
+    variant: 'breath',
+    burn: behavior.breath.burn,
+  };
+}
+
+/**
+ * 吸い込む（振りかぶりの一種）の行動を作る（乱数は呼ばない）。
+ * @returns {import('./combatants.js').EnemyAction} 新しい行動
+ */
+export function inhaleAction() {
+  return { kind: 'windup', amount: 0, variant: 'inhale' };
 }
 
 /**
@@ -32,7 +93,7 @@ export function pickWeighted(actions, random) {
       break;
     }
   }
-  return { kind: chosen.kind, amount: rollAmount(chosen.range, random) };
+  return weightedAction(chosen, random);
 }
 
 /**
@@ -59,8 +120,8 @@ const BEHAVIORS = Object.freeze({
         state.countdown === null || state.countdown <= 0 ? behavior.cycleLength - 1 : state.countdown - 1;
       const action =
         countdown === 0
-          ? { kind: 'attack', amount: rollAmount(behavior.attackRange, random) }
-          : { kind: 'windup', amount: 0 };
+          ? cycleAttackAction(behavior, random)
+          : windupAction();
       return { action, state: { countdown } };
     },
     countdown: (behavior, state) => state.countdown,
@@ -70,18 +131,13 @@ const BEHAVIORS = Object.freeze({
     planNext: (behavior, state, random) => {
       let action;
       if (state.lastVariant === 'inhale') {
-        action = {
-          kind: 'attack',
-          amount: rollAmount(behavior.breath.range, random),
-          variant: 'breath',
-          burn: behavior.breath.burn,
-        };
+        action = breathAction(behavior, random);
       } else if (state.lastVariant === 'breath') {
-        action = { kind: 'attack', amount: rollAmount(behavior.claw.range, random), variant: 'claw' };
+        action = clawAction(behavior, random);
       } else if (random() < behavior.inhaleChance) {
-        action = { kind: 'windup', amount: 0, variant: 'inhale' };
+        action = inhaleAction();
       } else {
-        action = { kind: 'attack', amount: rollAmount(behavior.claw.range, random), variant: 'claw' };
+        action = clawAction(behavior, random);
       }
       return { action, state: { lastVariant: action.variant } };
     },
@@ -137,7 +193,8 @@ export function behaviorCountdown(behavior, state) {
 
 /**
  * 攻撃の直後の回復の候補の量を抽選する。最大 HP での頭打ちは行わない（battle.js が行う）。
- * 攻撃以外の行動・回復の設定がない・量が 0 以下のときは乱数を呼ばず 0。それ以外は `random()` を1回だけ呼ぶ。
+ * 攻撃以外の行動・回復の設定がない・量が 0 以下のときは乱数を呼ばず 0。
+ * 予告に `sureHeal: true`（デバッグの指定）があれば乱数を呼ばず回復の量を返す。それ以外は `random()` を1回だけ呼ぶ。
  * @param {{ attackHeal?: { chance: number, amount: number } }} behavior 行動の決まりの設定
  * @param {import('./combatants.js').EnemyAction} action このフェーズの敵の行動
  * @param {() => number} random 0以上1未満を返す乱数の関数
@@ -146,5 +203,6 @@ export function behaviorCountdown(behavior, state) {
 export function rollAttackHeal(behavior, action, random) {
   const heal = behavior.attackHeal;
   if (action.kind !== 'attack' || !heal || heal.amount <= 0) return 0;
+  if (action.sureHeal === true) return heal.amount;
   return random() < heal.chance ? heal.amount : 0;
 }

@@ -11,6 +11,7 @@ import { createBehaviorState } from './enemyBehaviors.js';
  * @property {number} amount 行動の量（攻撃なら攻撃の値、防御なら防御の値、振りかぶりなら 0）。予告を決めるときに設定の幅から抽選した値
  * @property {'claw'|'breath'|'inhale'} [variant] 行動の中の種類（任意。攻撃の爪・ブレス、振りかぶりの吸い込む。表示の違いだけで、城へのダメージ・行動の扱いは種類で変わらない）
  * @property {{ min: number, max: number }} [burn] 行動に付く列の札を燃やす効果の枚数の範囲（任意）
+ * @property {boolean} [sureHeal] デバッグで「攻撃して回復」を指定した予告だけが持つ（任意）。攻撃の直後の回復が必ず当たる
  */
 
 /**
