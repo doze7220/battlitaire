@@ -1,6 +1,7 @@
 /**
- * @fileoverview 責務: 起動設定の受け取りと各モジュールの初期化、公開操作（シーン操作、timeScale、ボタンの登録、キーの状態の取得、
- * バーチャルパッドの登録と状態の取得）の各モジュールへの委譲。ゲームループの中身や描画処理は持たない。
+ * @fileoverview 責務: 起動設定の受け取りと各モジュールの初期化、公開操作（シーン操作、timeScale、ボタン・キー・バーチャルパッド、
+ * FPS の表示の有無・位置の読み書きと値の読み取り）の各モジュールへの委譲、キャンバスキャッシュへの画素の倍率の求め方と UI 部品への論理解像度の受け渡し。
+ * ゲームループの中身や描画処理は持たない。
  */
 import { Scene } from './Scene.js';
 import { GameLoop } from './GameLoop.js';
@@ -8,12 +9,14 @@ import { Time } from './Time.js';
 import { Screen } from './Screen.js';
 import { Scenes } from './Scenes.js';
 import { Layers } from './Layers.js';
-import { DebugOverlay } from './DebugOverlay.js';
+import { DebugOverlay, FPS_POSITIONS } from './DebugOverlay.js';
 import { Input } from './Input.js';
 import { Buttons } from './Buttons.js';
 import { Keys } from './Keys.js';
 import { VirtualPad, validatePadLayout } from './VirtualPad.js';
 import { VirtualPads } from './VirtualPads.js';
+import { setPixelRatioSource } from './CanvasCache.js';
+import { setUiScreenSize } from './Ui.js';
 
 /** tickRate を省略したときの既定値。 */
 const DEFAULT_TICK_RATE = 60;
@@ -28,6 +31,8 @@ let buttons = null;
 let keys = null;
 /** @type {VirtualPads|null} バーチャルパッドが有効なときの VirtualPads。起動前と無効のときは null */
 let pads = null;
+/** @type {DebugOverlay|null} 起動後の DebugOverlay。起動前は null */
+let overlay = null;
 
 /**
  * 正の有限数かを判定する。
@@ -91,6 +96,19 @@ function requireStarted(apiName) {
 }
 
 /**
+ * 起動済みであることを確認し、DebugOverlay を返す。
+ * @param {string} apiName エラーメッセージに含める公開API名
+ * @returns {DebugOverlay}
+ * @throws {Error} 起動前の場合
+ */
+function requireOverlay(apiName) {
+  if (overlay === null) {
+    throw new Error(`[oz] ${apiName}: Engine.start の前には使えません`);
+  }
+  return overlay;
+}
+
+/**
  * シーン引数を検証する。
  * @param {string} apiName エラーメッセージに含める公開API名
  * @param {*} scene 検証する値
@@ -116,7 +134,7 @@ export const Engine = {
    * @param {string[]} config.layers 奥から手前の順のレイヤー名（空でない配列）
    * @param {Scene} config.scene 最初のシーン（Scene のインスタンス）
    * @param {number} [config.tickRate=60] 1秒あたりのティック数（正の有限数）
-   * @param {boolean} [config.debug=false] true なら FPS を表示する
+   * @param {boolean} [config.debug=false] true なら FPS を表示した状態で始める
    * @param {boolean} [config.virtualPad=false] true ならバーチャルパッドの仕組みを有効にする
    * @returns {void}
    * @throws {Error} 設定が正しくない場合、または2回目の呼び出しの場合
@@ -128,6 +146,10 @@ export const Engine = {
     validateConfig(config);
 
     const screen = new Screen(config.canvas, config.width, config.height);
+    // キャンバスキャッシュへ、画素の倍率（Canvas の画素数 ÷ 論理解像度）の求め方を渡す。Layers の拡大の変換と同じ式。
+    setPixelRatioSource(() => config.canvas.width / config.width, () => config.canvas.height / config.height);
+    // UI 部品へ論理解像度を渡す（最初のシーンの init でも窓を作れるように、最初のシーンを積む前に渡す）。
+    setUiScreenSize(config.width, config.height);
     const ctx = config.canvas.getContext('2d');
     const newTime = new Time(config.tickRate === undefined ? DEFAULT_TICK_RATE : config.tickRate);
     const newScenes = new Scenes();
@@ -136,9 +158,11 @@ export const Engine = {
     const newKeys = new Keys();
     const newPads = Boolean(config.virtualPad) ? new VirtualPads() : null;
     const newInput = new Input({ canvas: config.canvas, screen, scenes: newScenes, buttons: newButtons, keys: newKeys, pads: newPads });
-    const overlay = Boolean(config.debug) ? new DebugOverlay(config.width, config.height) : null;
-    const loop = new GameLoop({ ctx, time: newTime, scenes: newScenes, layers, input: newInput, overlay });
+    const newOverlay = new DebugOverlay(config.width, config.height);
+    newOverlay.visible = Boolean(config.debug);
+    const loop = new GameLoop({ ctx, time: newTime, scenes: newScenes, layers, input: newInput, overlay: newOverlay });
 
+    overlay = newOverlay;
     time = newTime;
     scenes = newScenes;
     buttons = newButtons;
@@ -204,6 +228,63 @@ export const Engine = {
       throw new Error('[oz] Engine.timeScale: Engine.start の前には使えません');
     }
     time.timeScale = value;
+  },
+
+  /**
+   * FPS を表示するか。
+   * @returns {boolean}
+   * @throws {Error} 起動前の場合
+   */
+  get fpsVisible() {
+    return requireOverlay('Engine.fpsVisible').visible;
+  },
+
+  /**
+   * FPS を表示するかを設定する。次の表示から効く。
+   * @param {boolean} value true で表示、false で非表示
+   * @throws {Error} 起動前の場合
+   * @throws {RangeError} 真偽値でない場合（値は変わらない）
+   */
+  set fpsVisible(value) {
+    const target = requireOverlay('Engine.fpsVisible');
+    if (typeof value !== 'boolean') {
+      throw new RangeError(`[oz] Engine.fpsVisible: true か false で指定してください: ${String(value)}`);
+    }
+    target.visible = value;
+  },
+
+  /**
+   * 直近に計算された FPS（読み取り専用）。起動から約1秒は null。
+   * @returns {number|null}
+   * @throws {Error} 起動前の場合
+   */
+  get fps() {
+    return requireOverlay('Engine.fps').fps;
+  },
+
+  /**
+   * FPS を表示する隅。
+   * @returns {string} 'top-left'・'top-right'・'bottom-left'・'bottom-right' のどれか
+   * @throws {Error} 起動前の場合
+   */
+  get fpsPosition() {
+    return requireOverlay('Engine.fpsPosition').position;
+  },
+
+  /**
+   * FPS を表示する隅を設定する。次の表示から効く。
+   * @param {string} value 'top-left'・'top-right'・'bottom-left'・'bottom-right' のどれか
+   * @throws {Error} 起動前の場合
+   * @throws {RangeError} 4つのどれでもない場合（値は変わらない）
+   */
+  set fpsPosition(value) {
+    const target = requireOverlay('Engine.fpsPosition');
+    if (!FPS_POSITIONS.includes(value)) {
+      throw new RangeError(
+        `[oz] Engine.fpsPosition: 'top-left'・'top-right'・'bottom-left'・'bottom-right' のどれかで指定してください: ${String(value)}`,
+      );
+    }
+    target.position = value;
   },
 
   /**
