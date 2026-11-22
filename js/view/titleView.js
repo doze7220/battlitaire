@@ -1,5 +1,5 @@
 /**
- * 責務: タイトル画面（暗い背景・ゲーム名・「はじめる」ボタン・縁だけの「遊び方」「設定」ボタン）を描く。
+ * 責務: タイトル画面（暗い背景・ゲーム名・「はじめる」ボタン・縁だけの「遊び方」「設定」、あれば「デバッグスタート」ボタン）を描く。
  * 状態は変えず、座標は配置（TitleLayout）からだけ読む。
  */
 
@@ -35,7 +35,7 @@ const HOWTO_FONT = 'bold 40px sans-serif';
 const HOWTO_TEXT_COLOR = '#bfe8cf';
 
 /**
- * タイトル画面（背景・ゲーム名・「はじめる」ボタン・縁だけの「遊び方」「設定」ボタン）を描く。
+ * タイトル画面（背景・ゲーム名・「はじめる」ボタン・縁だけの「遊び方」「設定」ボタン、配置にあれば「デバッグスタート」ボタン）を描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').TitleLayout} titleLayout タイトル画面の配置
  * @returns {void}
@@ -80,5 +80,17 @@ export function drawTitle(ctx, titleLayout) {
   ctx.font = HOWTO_FONT;
   ctx.fillStyle = HOWTO_TEXT_COLOR;
   ctx.fillText(TITLE_TEXT.settings, s.x + s.w / 2, s.y + s.h / 2, titleLayout.startTextMaxW);
+
+  const d = titleLayout.debugStartButton;
+  if (d !== null) {
+    roundRectPath(ctx, d.x, d.y, d.w, d.h, BUTTON_RADIUS);
+    ctx.lineWidth = HOWTO_LINE_WIDTH;
+    ctx.strokeStyle = HOWTO_STROKE;
+    ctx.stroke();
+
+    ctx.font = HOWTO_FONT;
+    ctx.fillStyle = HOWTO_TEXT_COLOR;
+    ctx.fillText(TITLE_TEXT.debugStart, d.x + d.w / 2, d.y + d.h / 2, titleLayout.startTextMaxW);
+  }
   ctx.restore();
 }
