@@ -9,6 +9,8 @@ import { BootScene } from './scenes/BootScene.js';
 import { TitleScene } from './scenes/TitleScene.js';
 import { BoardScene } from './scenes/BoardScene.js';
 import { HowToScene } from './scenes/HowToScene.js';
+import { MenuScene } from './scenes/MenuScene.js';
+import { createMenuTabs } from './scenes/menuTabs.js';
 
 /** 解像度（縦長の画面。論理解像度 720×1280） */
 const screen = { width: 720, height: 1280 };
@@ -27,6 +29,14 @@ function createBoard() {
  */
 function createHowTo() {
   return new HowToScene({ screen, layer: 'main', back: createTitle });
+}
+
+/**
+ * メニューの窓のシーンを作る（標準のタブの一覧で組み立てる。開くたびに新しい窓）。
+ * @returns {Scene} 新しいメニューのシーン
+ */
+function createMenu() {
+  return new MenuScene({ layer: 'main', tabs: createMenuTabs() });
 }
 
 /**
