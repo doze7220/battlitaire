@@ -1,5 +1,6 @@
 /**
- * 責務: 段取り・連鎖・準備終了・BATTLE!・スタート・攻防のきっかけ（攻撃の音を含む）・決着と敵を倒したときの効果音を決め、Sound.playSe で鳴らすこと。
+ * 責務: 段取り・連鎖・準備終了・BATTLE!・スタート・攻防・決着の効果音を決め Sound.playSe で鳴らすこと、効果音の音量を Sound に渡すこと。
+ * 音量の確かめの音も鳴らす。
  * シーンから呼ばれる音の補助モジュール（Scene を継承しない）。ルールの判定はしない。
  */
 import { Sound } from 'oz';
@@ -203,4 +204,24 @@ export function outcomeSeName(outcome, defeat) {
 export function playOutcomeSe(outcome, defeat) {
   const name = outcomeSeName(outcome, defeat);
   if (name !== null) Sound.playSe(name);
+}
+
+/** 効果音の音量を変えたときの確かめの音の名前（既存の効果音 `place`）。 @type {string} */
+export const SE_VOLUME_CHECK_SE = 'place';
+
+/**
+ * 効果音の音量を Sound に渡す。
+ * @param {number} v 音量（0〜1）
+ * @returns {void}
+ */
+export function setSeVolume(v) {
+  Sound.seVolume = v;
+}
+
+/**
+ * 効果音の音量の確かめの音を鳴らす。
+ * @returns {void}
+ */
+export function playSeVolumeCheckSe() {
+  Sound.playSe(SE_VOLUME_CHECK_SE);
 }

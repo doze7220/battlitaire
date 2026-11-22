@@ -1,5 +1,5 @@
 /**
- * 責務: タイトル・ステージの BGM を流し、「はじめる」と HP が 0 になった瞬間に止める（Sound.playBgm・Sound.stopBgm を呼ぶのはここだけ）。
+ * 責務: タイトル・ステージの BGM を流し、「はじめる」と HP が 0 になった瞬間に止め、BGM の音量を Sound に渡す（Sound.playBgm・stopBgm・bgmVolume を触るのはここだけ）。
  * シーンから呼ばれる音の補助モジュール（Scene を継承しない）。状態は持たず、ルールの判定はしない。
  */
 import { Sound } from 'oz';
@@ -50,4 +50,13 @@ export function playStageBgm(typeId) {
  */
 export function stopBgmOnKnockout() {
   Sound.stopBgm({ fadeMs: BGM_TIMING.knockoutFadeOutMs });
+}
+
+/**
+ * BGM の音量を Sound に渡す（流れている曲にもその場で効く）。
+ * @param {number} v 音量（0〜1）
+ * @returns {void}
+ */
+export function setBgmVolume(v) {
+  Sound.bgmVolume = v;
 }

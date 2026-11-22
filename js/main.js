@@ -1,9 +1,10 @@
 /**
  * 責務: Engine.start の呼び出しと、レイヤーと画面の流れ（BOOT → TITLE ⇄ 遊び方、TITLE → 盤面 → 決着 → TITLE）を作る関数の定義を行う利用側のエントリポイント。
- * 起動の前の効果音と BGM の読み込みと SE・BGM の音量の設定も行う。
+ * 起動の前の保存された設定の反映（settingsStore.js の口を呼ぶ）と効果音・BGM の読み込みも行う。
  */
-import { Engine, Scene, Assets, Sound } from 'oz';
-import { SOUND_FILES, BGM_FILES, SE_VOLUME, BGM_VOLUME } from './audio/soundConfig.js';
+import { Engine, Scene, Assets, Storage } from 'oz';
+import { SOUND_FILES, BGM_FILES } from './audio/soundConfig.js';
+import { SETTINGS_STORAGE, applySoundSettings } from './scenes/settingsStore.js';
 import { BootScene } from './scenes/BootScene.js';
 import { TitleScene } from './scenes/TitleScene.js';
 import { BoardScene } from './scenes/BoardScene.js';
@@ -59,9 +60,9 @@ const config = {
   virtualPad: false,
 };
 
-// 起動の前の準備: SE と BGM の音量を設定し、効果音と BGM を読み込み終えてから Engine.start を呼ぶ（盤面で鳴らす音が未ロードにならないようにする）
-Sound.seVolume = SE_VOLUME;
-Sound.bgmVolume = BGM_VOLUME;
+// 起動の前の準備: 設定を開いて保存された音量を反映し、効果音と BGM を読み込み終えてから Engine.start を呼ぶ（盤面で鳴らす音が未ロードにならないようにする）
+Storage.open(SETTINGS_STORAGE);
+applySoundSettings();
 await Assets.load({ sounds: { ...SOUND_FILES, ...BGM_FILES } });
 
 Engine.start(config);
