@@ -16,11 +16,11 @@ import { createMenuTabs } from './scenes/menuTabs.js';
 const screen = { width: 720, height: 1280 };
 
 /**
- * 盤面のシーンを作る（乱数の関数 Math.random とタイトル画面を作る関数を渡す）。
+ * 盤面のシーンを作る（乱数の関数 Math.random とタイトル画面を作る関数、TURN の区画で積むメニューのシーンを作る関数を渡す）。
  * @returns {Scene} 新しい盤面のシーン
  */
 function createBoard() {
-  return new BoardScene({ screen, layer: 'main', random: Math.random, createTitle });
+  return new BoardScene({ screen, layer: 'main', random: Math.random, createTitle, createMenu });
 }
 
 /**
@@ -57,7 +57,7 @@ function createBoot() {
 
 /**
  * Engine.start に渡す設定。tickRate は書かない（既定の 60）。
- * scene: 最初の画面は BOOT。BOOT の next はタイトル画面を作る関数、タイトル画面の next は盤面を作る関数、howTo は遊び方の画面を作る関数（遊び方の画面の back はタイトル画面を作る関数）で、盤面のシーンにはタイトル画面を作る関数を渡す（決着後は TITLE へ戻り、BOOT へは戻らない）。
+ * scene: 最初の画面は BOOT。BOOT の next はタイトル画面を作る関数、タイトル画面の next は盤面を作る関数、howTo は遊び方の画面を作る関数（遊び方の画面の back はタイトル画面を作る関数）で、盤面のシーンにはタイトル画面を作る関数とメニューの窓を作る関数を渡す（決着後は TITLE へ戻り、BOOT へは戻らない。メニューの窓はタイトル画面の「設定」と盤面の TURN の区画のどちらからも同じ関数で開く）。
  * virtualPad: バーチャルパッドを使うなら true。false にすると表示も画像の読み込みもしない（今は使わないので false）。
  * @type {{canvas: HTMLCanvasElement, width: number, height: number, layers: string[], scene: Scene, debug?: boolean, virtualPad?: boolean}}
  */

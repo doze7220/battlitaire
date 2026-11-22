@@ -108,6 +108,17 @@ export class BoardFlow {
   }
 
   /**
+   * 盤面の最上部の TURN の区画を押してメニューの窓を開いてよいか（読むだけ。状態は変えない）。
+   * 真になる間: ステージ・フェーズの始まりを出し終えて合図が空のとき（札・玉・兵が動いている途中、行動を使い切ってから準備終了が出るまでの間を含む）。
+   * 偽になる間: スタートの待ち・ステージとフェーズの始まりの待ちと合図の間、準備終了が出ている間・BATTLE! の間。
+   * @param {{enemyIndex: number, phase: number}} game ルール層の状態（読むだけ）
+   * @returns {boolean} 開いてよければ true
+   */
+  canOpenMenu(game) {
+    return this.banner.isIdle() && !this.isPending(game);
+  }
+
+  /**
    * 段取りの間の敵の絵の入りの見た目。状態は変えず、毎回新しいオブジェクトを返す。
    * ステージの始まりを出す前の敵は描かない（入れ替わった直後の `draw` が `update` より先に来ても元の位置に見せないため）。
    * @param {{enemyIndex: number}} game ルール層の状態（読むだけ）

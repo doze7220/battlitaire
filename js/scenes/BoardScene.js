@@ -1,7 +1,7 @@
 /**
  * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面と合図を描くこと。
  * 操作の結果を anim に渡して時間を進め、段階の管理（boardFlow.js）を進めて、BATTLE! が終わったら攻防に入り待っていた兵の数を演出のシーンへ渡すこと。
- * 操作・連鎖のきっかけで効果音を鳴らし（soundCues.js）、積んだ演出のシーンから札が燃える段の盤面を読んで描くこと。
+ * 操作・連鎖のきっかけで効果音を鳴らし（soundCues.js）、積んだ演出のシーンから札が燃える段の盤面を読んで描き、TURN の区画でメニューの窓を積むこと。
  */
 import { Engine, Scene } from 'oz';
 import { Game } from '../rules/Game.js';
@@ -26,6 +26,7 @@ import { drawBanner } from '../view/bannerView.js';
  * @property {string} layer 描くレイヤー名
  * @property {() => number} random 乱数の関数（0以上1未満。ルール層へ渡す）
  * @property {() => Scene} createTitle タイトルの画面のシーンを作る関数（攻防の演出のシーンへ渡す）
+ * @property {() => Scene} createMenu メニューの窓のシーンを作る関数（TURN の区画を押したとき積む）
  */
 
 /** 盤面を表示し、置く・捨てる・手札に入れる・手札から置く・束の移し替え・放つをタップ／クリックで行い、段階の管理（boardFlow.js）を進めて、BATTLE! が終わったら攻防に入り、合図を描くシーン */
@@ -33,8 +34,10 @@ export class BoardScene extends Scene {
   /**
    * @param {BoardOptions} options オプション
    */
-  constructor({ screen, layer, random, createTitle }) {
+  constructor({ screen, layer, random, createTitle, createMenu }) {
     super();
+    /** @type {() => Scene} メニューの窓のシーンを作る関数（TURN の区画で積む） */
+    this.createMenu = createMenu;
     /** @type {() => Scene} タイトルの画面のシーンを作る関数 */
     this.createTitle = createTitle;
     /** @type {{ width: number, height: number }} 解像度 */
@@ -132,7 +135,8 @@ export class BoardScene extends Scene {
   }
 
   /**
-   * 押したとき（'down'）だけ、札の動き・山札のめくれ・玉に変わる前の札が残っている間は無視する。
+   * 押したとき（'down'）だけ処理する。最初に、TURN の区画（段階の管理の canOpenMenu が真で layout.turnHitTest に当たる）ならメニューの窓を積んで戻る（選択・盤面の操作・ルール層の操作には触れない。札が動いている間でも開ける）。
+   * 次に、札の動き・山札のめくれ・玉に変わる前の札が残っている間は無視する。
    * 続けて段階の管理（BoardFlow.tap）に渡し、準備終了ならそのタップで BATTLE! を始める。合図が出ている間・始まりの待ちの間（false が返る）は選択を外して戻る。
    * 行動を使い切っていれば選択を外して戻る。
    * それ以外は、当たった場所に応じてルール層の操作を呼ぶ（選択の扱いは boardSelection.js）。操作が成り立ったときに効果音を鳴らす（soundCues.js）。
@@ -141,6 +145,10 @@ export class BoardScene extends Scene {
    */
   onPointer(pointer) {
     if (pointer.type !== 'down') return;
+    if (this.flow.canOpenMenu(this.game) && this.layout.turnHitTest(pointer.x, pointer.y)) {
+      Engine.pushScene(this.createMenu());
+      return;
+    }
     if (this.animator.isBusy() || this.releaseShow.isHoldingCards()) return;
     const game = this.game;
     if (!this.flow.tap(game)) { this.selection = null; return; }
