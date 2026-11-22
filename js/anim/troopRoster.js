@@ -1,6 +1,6 @@
 /**
  * 兵1体ずつの名簿を作り、段ごとに兵へ脚と終わり方を割り当てる
- * （出す・置く・行進・当たる・相打ち・落とす・城へ入る・右へ帰す・家へ跳ばす）。
+ * （出す・置く・行進・当たる・相打ち・落とす・城へ入る・右へ帰す・家へ跳ばす・段取りの間の名簿から消す）。
  * 前から遅らせる式と、兵ごとのずれ（troopJitter.js）の足し方はここだけに置く。乱数は使わない。
  */
 
@@ -201,6 +201,22 @@ export function spawnTroops(roster, kind, count, t, appearMs) {
     list.push(unit);
   }
   sortRanked(list, kind);
+}
+
+/**
+ * 種類 kind の兵のうち、番号（index）の大きい方から count 体（いる数まで）を名簿から取り除く。
+ * 番号が 0 から続く段取りの間の名簿で使う前提。家の位置は番号だけで決まる（campSlot）ので、残った兵は動かない。
+ * @param {TroopRoster} roster 名簿（その場で書き換える）
+ * @param {string} kind 種類
+ * @param {number} count 取り除く数（0 以下なら何もしない）
+ * @returns {void}
+ */
+export function removeTroops(roster, kind, count) {
+  const list = roster.ranked[kind];
+  if (!list || count <= 0) return;
+  const removed = new Set([...list].sort((a, b) => b.index - a.index).slice(0, count));
+  roster.units = roster.units.filter((u) => !removed.has(u));
+  roster.ranked[kind] = list.filter((u) => !removed.has(u));
 }
 
 /**

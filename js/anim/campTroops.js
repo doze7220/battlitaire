@@ -1,10 +1,10 @@
 /**
  * 段取りの間に陣地で待つ自軍の兵（名簿と、全員の見た目の入れ物）を持ち、弾けた玉から兵を足し、時計から見た目を書き込み、種類ごとの数を答える。
- * 描画も状態の変更（ルール層）もしない。
+ * 種類の兵の数をその場でそろえる。描画も状態の変更（ルール層）もしない。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
-import { createTroopRoster, landTroops, OWN_KINDS } from './troopRoster.js';
+import { createTroopRoster, landTroops, OWN_KINDS, removeTroops, spawnTroops } from './troopRoster.js';
 import { TroopSwarm } from './troopSwarm.js';
 
 /**
@@ -51,6 +51,25 @@ export class CampTroops {
     this.settledAt = Math.max(this.settledAt, end);
     this.dirty = true;
     return end;
+  }
+
+  /**
+   * 種類の兵の数を、玉を飛ばさずその場で count 体にそろえる（足りなければ家にすぐ現し、多ければ番号の大きい方から消す）。
+   * 変えたときは入れ物を作り直し、今の時計で見た目を書き込む。
+   * @param {string} kind 兵の種類（'attack' | 'defense' | 'heal'）
+   * @param {number} count そろえる数（0 以上の整数）
+   * @param {number} clock 時計の値（ms）
+   * @returns {void}
+   */
+  setCount(kind, count, clock) {
+    const now = (this.roster.ranked[kind] ?? []).length;
+    if (count === now) return;
+    if (count > now) spawnTroops(this.roster, kind, count - now, clock, 0);
+    else removeTroops(this.roster, kind, now - count);
+    this.swarm = new TroopSwarm(this.roster.units);
+    this.dirty = true;
+    this.settledAt = Math.max(this.settledAt, clock);
+    this.sample(clock);
   }
 
   /**

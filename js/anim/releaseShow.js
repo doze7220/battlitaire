@@ -1,5 +1,5 @@
 /**
- * 放つ演出全体の管理（時計を進め、放つたびの玉の記録と段取りの間の兵を持ち、連鎖のきっかけ・札を止めているか・動いているか・ゲージの表示値・待っている兵の数・描画用の見た目の値を答える）。
+ * 放つ演出全体の管理（時計を進め、放つたびの玉の記録と段取りの間の兵を持ち、連鎖のきっかけ・札を止めているか・動いているか・ゲージの表示値・待っている兵の数・描画用の見た目の値を答え、段取りの間の兵の数をその場で合わせる）。
  * 描画せず、ゲームの状態に触れない。
  */
 
@@ -119,6 +119,17 @@ export class ReleaseShow {
    */
   waitingCounts() {
     return this.camp.counts();
+  }
+
+  /**
+   * 段取りの間の兵の数を、玉を飛ばさずその場で count 体にそろえる。
+   * 動いている間（`isBusy()`）は呼ばないこと（判断は呼ぶ側）。
+   * @param {string} kind 兵の種類（'attack' | 'defense' | 'heal'）
+   * @param {number} count そろえる数（0 以上の整数）
+   * @returns {void}
+   */
+  setCampCount(kind, count) {
+    this.camp.setCount(kind, count, this.clock);
   }
 
   /**
