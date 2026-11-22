@@ -1,6 +1,6 @@
 /**
- * 責務: タイトル画面のシーン。「はじめる」ボタンと Enter・Space キーで新しいゲームの盤面へ、「遊び方」ボタンで
- * 遊び方の画面へ、渡された関数で作って進むこと（ボタンはこのシーンで押して離したとき）。描くのは titleView.js。
+ * 責務: タイトル画面のシーン。「はじめる」と Enter・Space で盤面へ、「遊び方」で遊び方の画面へ進み、「設定」でメニューの窓を
+ * 積む（渡された関数でシーンを作る。ボタンはこのシーンで押して離したとき）。描くのは titleView.js。
  * タイトルの曲を流し、ゲームスタートでは曲を止めてスタートの音を鳴らす（音は bgmCues.js・soundCues.js 経由）。
  */
 import { Engine, Scene } from 'oz';
@@ -15,14 +15,15 @@ import { playStartSe } from './soundCues.js';
  * @property {string} layer 描くレイヤー名
  * @property {() => Scene} next 新しい盤面のシーンを作る関数（進むときに呼ぶ）
  * @property {() => Scene} howTo 遊び方の画面のシーンを作る関数（「遊び方」ボタンで進むときに呼ぶ）
+ * @property {() => Scene} menu メニューの窓のシーンを作る関数（「設定」ボタンで積むときに呼ぶ）
  */
 
-/** タイトル画面（ゲーム名と「はじめる」「遊び方」ボタン）。「はじめる」か Enter・Space で盤面へ、「遊び方」で遊び方の画面へ進む */
+/** タイトル画面（ゲーム名と「はじめる」「遊び方」「設定」ボタン）。「はじめる」か Enter・Space で盤面へ、「遊び方」で遊び方の画面へ進み、「設定」でメニューの窓を積む */
 export class TitleScene extends Scene {
   /**
    * @param {TitleOptions} options オプション
    */
-  constructor({ screen, layer, next, howTo }) {
+  constructor({ screen, layer, next, howTo, menu }) {
     super();
     /** @type {{ width: number, height: number }} 解像度 */
     this.screen = screen;
@@ -32,9 +33,11 @@ export class TitleScene extends Scene {
     this.next = next;
     /** @type {() => Scene} 遊び方の画面のシーンを作る関数 */
     this.howTo = howTo;
+    /** @type {() => Scene} メニューの窓のシーンを作る関数 */
+    this.menu = menu;
     /** @type {import('../view/layout.js').TitleLayout | null} タイトル画面の配置 */
     this.layout = null;
-    /** @type {('start'|'howTo'|null)} このシーンで押したボタン（前の画面で押した 'up' では進まないため） */
+    /** @type {('start'|'howTo'|'settings'|null)} このシーンで押したボタン（前の画面で押した 'up' では進まないため） */
     this.pressed = null;
   }
 
@@ -59,7 +62,7 @@ export class TitleScene extends Scene {
   }
 
   /**
-   * 押したボタンと同じボタンの中で離したとき、そのボタンの働き（スタートの音を鳴らして盤面へ／遊び方の画面へ）で進む。
+   * 押したボタンと同じボタンの中で離したとき、そのボタンの働き（スタートの音を鳴らして盤面へ／遊び方の画面へ／メニューの窓を積む）で進む。
    * @param {{ type: string, x: number, y: number }} pointer ポインタ入力
    * @returns {void}
    */
@@ -72,6 +75,7 @@ export class TitleScene extends Scene {
       this.pressed = null;
       if (button === 'start') this.startGame();
       else if (button === 'howTo') Engine.changeScene(this.howTo());
+      else if (button === 'settings') Engine.pushScene(this.menu());
     }
   }
 

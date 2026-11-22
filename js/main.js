@@ -40,11 +40,11 @@ function createMenu() {
 }
 
 /**
- * タイトル画面のシーンを作る。進む先は盤面のシーンを作る関数と遊び方の画面のシーンを作る関数。
+ * タイトル画面のシーンを作る。進む先は盤面のシーンを作る関数と遊び方の画面のシーンを作る関数、「設定」で積むメニューのシーンを作る関数。
  * @returns {Scene} 新しいタイトル画面のシーン
  */
 function createTitle() {
-  return new TitleScene({ screen, layer: 'main', next: createBoard, howTo: createHowTo });
+  return new TitleScene({ screen, layer: 'main', next: createBoard, howTo: createHowTo, menu: createMenu });
 }
 
 /**

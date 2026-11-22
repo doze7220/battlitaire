@@ -157,8 +157,9 @@ import { campSlot } from './campSlots.js';
  * @property {{ x: number, y: number, maxW: number }} title ゲーム名の中心と最大の幅
  * @property {Rect} startButton 「はじめる」ボタンの矩形
  * @property {Rect} howToButton 「遊び方」ボタンの矩形
- * @property {number} startTextMaxW ボタン（はじめる・遊び方）の文字の最大の幅
- * @property {function(number, number): ('start'|'howTo'|null)} titleHitTest 座標から、ボタンに当たったものを返す
+ * @property {Rect} settingsButton 「設定」ボタンの矩形（「遊び方」の下）
+ * @property {number} startTextMaxW ボタン（はじめる・遊び方・設定）の文字の最大の幅
+ * @property {function(number, number): ('start'|'howTo'|'settings'|null)} titleHitTest 座標から、ボタンに当たったものを返す
  */
 
 /**
@@ -871,15 +872,23 @@ export function createTitleLayout(screen) {
     h: TITLE_HOWTO_H,
   };
 
+  const settingsButton = {
+    x: startButton.x,
+    y: howToButton.y + howToButton.h + TITLE_HOWTO_GAP,
+    w: TITLE_BUTTON_W,
+    h: TITLE_HOWTO_H,
+  };
+
   /**
    * 座標から、タイトル画面のボタンに当たったものを返す。
    * @param {number} x x 座標
    * @param {number} y y 座標
-   * @returns {'start'|'howTo'|null} 当たったもの。なければ null
+   * @returns {'start'|'howTo'|'settings'|null} 当たったもの。なければ null
    */
   function titleHitTest(x, y) {
     if (inRect(startButton, x, y)) return 'start';
-    return inRect(howToButton, x, y) ? 'howTo' : null;
+    if (inRect(howToButton, x, y)) return 'howTo';
+    return inRect(settingsButton, x, y) ? 'settings' : null;
   }
 
   return {
@@ -887,6 +896,7 @@ export function createTitleLayout(screen) {
     title: { x: W / 2, y: H * TITLE_TEXT_RATIO, maxW: W - SIDE_MARGIN * 2 },
     startButton,
     howToButton,
+    settingsButton,
     startTextMaxW: TITLE_BUTTON_W - TITLE_BUTTON_PAD_X * 2,
     titleHitTest,
   };
