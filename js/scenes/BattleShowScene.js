@@ -1,11 +1,12 @@
 /**
  * 責務: 攻防の演出のシーン。結果を anim に渡して時間を進め、決着後・敵を倒した後のタップだけを受けること（演出の途中のタップでは何もしない）。
  * 終わったら次のフェーズへ進めて戻る／タイトルへ切り替え、見た目の値を view に渡して描き（決着の表示を含む）、背面の盤面のシーンへ札が燃える段の盤面の見た目を答えること。
- * 攻防のきっかけ・決着と敵の撃破の表示で効果音を鳴らし（soundCues.js）、HP が 0 になった瞬間に BGM を止めること（bgmCues.js）。
+ * 攻防のきっかけ・決着と敵の撃破の表示で効果音を鳴らし（soundCues.js）、HP が 0 になった瞬間に BGM を止めること（bgmCues.js）。設定の演出の速さで時間を進めること。
  */
 import { Engine, Scene } from 'oz';
 import { playBattleCueSe, playOutcomeSe } from './soundCues.js';
 import { stopBgmOnKnockout } from './bgmCues.js';
+import { battleSpeedRate } from './settingsStore.js';
 import { buildBattleSteps } from '../anim/battleSteps.js';
 import { buildBattleTimeline } from '../anim/battleTimeline.js';
 import { BattleDirector } from '../anim/battleDirector.js';
@@ -51,13 +52,16 @@ export class BattleShowScene extends Scene {
     this.outcomeSePlayed = false;
     /** @type {boolean} この攻防で HP が 0 になって BGM を止め済みか（止めるのを1回に限るためだけに使う） */
     this.bgmStopped = false;
+    /** @type {number} 演出の時計に足す時間の倍率（設定の演出の速さ。init で攻防ごとに1回読む） */
+    this.speedRate = 1;
   }
 
   /**
-   * 演出の管理を作る（シーンの操作はしない）。待っていた兵の数を時間割へ渡す。
+   * 演出の管理を作る（シーンの操作はしない）。待っていた兵の数を時間割へ渡し、設定の演出の速さの倍率を1回読む（次の攻防から効く。演出の途中ではメニューを開けない）。
    * @returns {void}
    */
   init() {
+    this.speedRate = battleSpeedRate();
     const troopLayout = this.layout.battle.troops;
     const steps = buildBattleSteps(this.result, this.before);
     this.director = new BattleDirector({
@@ -86,12 +90,12 @@ export class BattleShowScene extends Scene {
   }
 
   /**
-   * 演出の時計に dt を足し、その間に起きた攻防のきっかけの効果音を鳴らし、HP が 0 になったら BGM を止め、演出が終わったとき（決着・敵を倒したとき、1回だけ）にクリア・負けの音を鳴らす。決着も敵の撃破もしていなければ間の後に次のフェーズへ進めて戻る。
+   * 演出の時計に dt に倍率（speedRate）を掛けた時間を足し（ヒットストップ・音のきっかけ・BGM を止める時刻を含む演出の全体が同じ割合で速くなる。攻防の結果は変わらない）、その間に起きた攻防のきっかけの効果音を鳴らし、HP が 0 になったら BGM を止め、演出が終わったとき（決着・敵を倒したとき、1回だけ）にクリア・負けの音を鳴らす。決着も敵の撃破もしていなければ間の後に次のフェーズへ進めて戻る。
    * @param {number} dt 1ティックの長さ（ミリ秒）
    * @returns {void}
    */
   update(dt) {
-    this.director.update(dt);
+    this.director.update(dt * this.speedRate);
     for (const type of this.director.cuesInLastUpdate()) {
       playBattleCueSe(type, this.before.enemyTypeId, this.result.enemyAction.variant);
     }
