@@ -7,6 +7,8 @@
 
 ゲームの REQ で参照してよいエンジンの資料は `oz/ENGINE_API.md` だけである。その中身を本資料に書き写さない（二重管理になり、食い違うため）。
 
+エンジンは、キャンバスキャッシュ（`CanvasCache`。`ENGINE_API.md` 25章）、窓と UI 部品（`Ui`。26章）、FPS の表示の出し入れと値の読み取り（`Engine.fpsVisible`・`Engine.fps`・`Engine.fpsPosition`。14章）を持つ。ゲームはまだこれらを使っていない。使うときも、使い方を本資料に書き写さず、章の番号と機能の名前だけを挙げる。
+
 ---
 
 ### 1. プロジェクトフォルダ構造
@@ -28,7 +30,7 @@ battlitaire/
 │   ├── view/               # 描画の部品と画面の配置
 │   ├── anim/               # 演出（時間で進む見た目の動き）
 │   ├── audio/              # 音の設定（効果音と BGM の名前とパスの一覧・音量・BGM のフェードと待ち時間・敵の種類 → ステージの曲）
-│   └── ui/                 # 土台から残した UI の部品（バーチャルパッド）
+│   └── ui/                 # 土台から残したバーチャルパッド（エンジンの `Ui` とは別物）
 ├── assets/
 │   ├── images/
 │   ├── bgm/                # BGM（mp3。発注者が用意した音）
@@ -41,7 +43,7 @@ battlitaire/
 ```
 
 * import map（`index.html`）: `oz` は `./oz/index.js`、`assets/` は `./assets/`。
-* **スプライトの決まり:** `assets/sprites/` のスプライトは `js/view/spriteView.js` だけが import し、向きを変えるために回さず、描いた向きのまま描く（兵の揺れ（`drawTroopFigure` の `tilt`）と巨人・ドラゴンのための動き・待機の伸び縮み（`enemyView.js` の `applyFootPose`）で、足元を軸に少し傾けるのはよい）。敵（巨人・ドラゴン）は左（城の方）を向いて描く。基準点（原点）は絵の足元ではなく体の中ほどにあり、地面に立たせるときは絵の範囲の下端（`maxY`）を足元にそろえる。絵の範囲は `spriteView.js` の凍結した表に持ち、`bounds` は実行時に読まない。表の値はスプライトの `bounds` に合わせる。ただし兵（`unit_solder.js`）とゴブリン（`unit_goblin.js`）だけは、表が x ±99・y ±98（楕円＋太さ 2 の線の半分。前の書き出しの値）、`bounds` が x ±101・y ±100（太さ 6 の線を含む）で違う。表は兵の描く大きさの基準で、合わせると兵とゴブリンが約 2% 小さくなるため、見た目を変えないよう今の値のまま残す。2つのスプライトを描き直して差し替えるときに、表を `bounds` に合わせ直し、`layout.js` の `TROOP_SIZE` も一緒に見直す。`effect_hit.js`（ヒットマーク）は手で書いた仮のスプライトで、後で OZ Vector Editor の書き出しに差し替える。`effect_fire.js`（ブレスの炎・燃える札の炎）と `effect_hit.js` も `spriteView.js` だけが import する。
+* **スプライトの決まり:** `assets/sprites/` のスプライトは `js/view/spriteView.js` だけが import し、向きを変えるために回さず、描いた向きのまま描く（兵の揺れ（`drawTroopFigure` の `tilt`）と巨人・ドラゴンのための動き・待機の伸び縮み（`enemyView.js` の `applyFootPose`）で、足元を軸に少し傾けるのはよい）。敵（巨人・ドラゴン）は左（城の方）を向いて描く。基準点（原点）は絵の足元ではなく体の中ほどにあり、地面に立たせるときは絵の範囲の下端（`maxY`）を足元にそろえる。絵の範囲は `spriteView.js` の凍結した表に持ち、`bounds` は実行時に読まない（エンジンの資料では、キャンバスキャッシュ（25章）の範囲として `bounds` を読んでよいが、ゲームでキャッシュに `bounds` を使うかはまだ決めていない）。表の値はスプライトの `bounds` に合わせる。ただし兵（`unit_solder.js`）とゴブリン（`unit_goblin.js`）だけは、表が x ±99・y ±98（楕円＋太さ 2 の線の半分。前の書き出しの値）、`bounds` が x ±101・y ±100（太さ 6 の線を含む）で違う。表は兵の描く大きさの基準で、合わせると兵とゴブリンが約 2% 小さくなるため、見た目を変えないよう今の値のまま残す。2つのスプライトを描き直して差し替えるときに、表を `bounds` に合わせ直し、`layout.js` の `TROOP_SIZE` も一緒に見直す。`effect_hit.js`（ヒットマーク）は手で書いた仮のスプライトで、後で OZ Vector Editor の書き出しに差し替える。`effect_fire.js`（ブレスの炎・燃える札の炎）と `effect_hit.js` も `spriteView.js` だけが import する。
 * **カードのスプライト:** `card_front_sword.js`・`card_front_shield.js`・`card_front_hammer.js`・`card_front_gold.js`（スートごとのカードの表の枠。スートの識別子との対応は `sword` → sword、`shield` → shield、`potion` → hammer、`muscle` → gold で、スートの絵と同じ。未知のスートは剣の枠）と `card_back.js`（カードの裏）。手で書いた仮のスプライト（今の見た目を写したもの。`source` を持ち OZ Vector Editor の「開く」で開ける）で、後で発注者がエディタで調整して同じ名前で書き出し、差し替える（ゲーム側のコードは変えない）。**エディタでカードを描くときの約束:** 原点 (0, 0) をカードの中心にし、カードの外形を 幅 100 × 高さ 140（x −50〜50、y −70〜70）の実寸で描く（エディタの太さ 2px の線はゲームでも 2px）。ゲームはこの範囲をカードの矩形に合わせて縦横それぞれの倍率で拡大縮小して描き（`drawSpriteStretched`）、範囲の外にはみ出した部分も同じ倍率でそのまま描く。倍率の元の 100×140 は `spriteView.js` の `CARD_ART_RANGE` の1か所に持ち、`bounds` は読まない。カードの数字・中央のスートの絵・色の重ね・強調の枠・空き枠・捨て札の枠はスプライトにせず、コードで描く。
 * **ロゴ・数字のスプライト:** `logo_ready.js`（準備終了）・`logo_battle.js`（BATTLE!）・`logo_turn.js`（TURN。識別子は `LOGO_IDS.phase` のまま）・`logo_stage.js`（STAGE）・`logo_name_goblins.js`・`logo_name_giant.js`・`logo_name_dragon.js`（敵の名前）・`digit_0.js`〜`digit_9.js`（数字）。手で書いた仮のスプライト（直線だけの太いブロック体の英字・数字。ロゴの後ろに色の板。`source` を持ち OZ Vector Editor の「開く」で開ける）で、漢字の「準備終了」と敵の日本語の名前は、後で発注者がエディタで描いて同じ名前で差し替える（ゲーム側のコードは変えない）。**エディタでロゴ・数字を描くときの約束:** 原点 (0, 0) を絵の中心にする。ゲームはエディタの px をそのまま描き（倍率 1）、演出で拡大縮小するときはその倍率をかける。数字は 幅 56 × 高さ 76 の枠（x −28〜28、y −38〜38）の中に描き、ゲームは枠の幅 56 を間隔として左から並べ、全体の中心を置く位置に合わせる（枠は `spriteView.js` の `DIGIT_CELL`）。大きさの目安（板を含む）は、準備終了・BATTLE! が 幅 640 以内・高さ 120 以内、TURN・STAGE・敵の名前が 幅 480 以内・高さ 80 以内。ロゴ・数字は `SPRITE_IDS` とは別の `LOGO_IDS`・数字の表で引き、`bounds` は読まない。敵の名前のロゴと敵の種類の識別子の対応は `bannerView.js` の `ENEMY_NAME_LOGOS`（表にない敵の種類では描かない）。
 * **予告の絵のスプライト:** `intent_attack.js`（攻撃）・`intent_defend.js`（防御）・`intent_windup.js`（振りかぶり）・`intent_claw.js`（爪）・`intent_inhale.js`（吸い込む）・`intent_breath.js`（ブレス）。手で書いた仮のスプライト（`source` を持ち OZ Vector Editor の「開く」で開ける）で、後で発注者がエディタで描き直して同じ名前で差し替える（ゲーム側のコードは変えない）。**エディタで予告の絵を描くときの約束:** 原点 (0, 0) を絵の中心にし、幅 40 × 高さ 40 の枠（x −20〜20、y −20〜20）の中に描く。ゲームはエディタの px をそのまま描く（倍率 1。枠は `spriteView.js` の `INTENT_CELL`）。予告の種類（`variant` があれば `variant`、なければ `kind`）と絵の対応は `intentView.js` の `INTENT_ICONS`（表にない種類は「？」の文字）。予告の絵は `INTENT_IDS` で引き、`bounds` は読まない。味方の兵の剣・盾の絵と見分けやすい色と形にする。
@@ -217,7 +219,7 @@ battlitaire/
 | `js/scenes/bgmCues.js` | タイトルの曲・ステージの曲（敵の種類の識別子から `STAGE_BGM` で引く）を流し、「はじめる」と HP が 0 になった瞬間に止める BGM の補助（`Sound.playBgm`・`Sound.stopBgm` で鳴らす。シーンから呼ばれる。状態は持たない（どの曲が流れているかはエンジンが持つ）） |
 
 **土台から残したファイル**
-* `js/main.js`: 起動。`Engine.start` の前に効果音と BGM を読み込み、SE と BGM の音量を設定する。BOOT（`BootScene`）・TITLE（`TitleScene`）・遊び方の画面（`HowToScene`）・盤面のシーンを作る関数を持ち、互いに渡す（BOOT の進む先は TITLE、TITLE には盤面と遊び方の画面を作る関数を、遊び方の画面には TITLE を作る関数を、盤面には TITLE を作る関数を渡す）。最初のシーンは BOOT。乱数の関数として `Math.random` を渡す。`virtualPad` は `false`。
+* `js/main.js`: 起動。`Engine.start` の前に効果音と BGM を読み込み、SE と BGM の音量を設定する。BOOT（`BootScene`）・TITLE（`TitleScene`）・遊び方の画面（`HowToScene`）・盤面のシーンを作る関数を持ち、互いに渡す（BOOT の進む先は TITLE、TITLE には盤面と遊び方の画面を作る関数を、遊び方の画面には TITLE を作る関数を、盤面には TITLE を作る関数を渡す）。最初のシーンは BOOT。乱数の関数として `Math.random` を渡す。`virtualPad` は `false`。`debug` は書かない（FPS は表示しない。FPS の出し入れ（`ENGINE_API.md` 14章）は使っていない）。
 * `js/scenes/BootScene.js`: 最初の入力を受ける画面（「TAP SCREEN」）。進む先はタイトル画面（TITLE）で、決着後には戻らない。
 * `js/scenes/MenuScene.js`: プレイ中に開く、項目が縦に並んだメニューの仕組み。項目は呼ぶ側から渡す。まだ使っていない。
 * `js/ui/virtualPadConfig.js`・`js/ui/virtualPadView.js`: バーチャルパッド。操作はタップとドラッグだけなので使わない予定。`js/main.js` の `virtualPad` は `false`。配置は 1280×720 のときに決めたままで、縦画面では未調整（使わない）。
