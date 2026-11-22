@@ -1,6 +1,6 @@
 /**
  * 責務: 盤面のシーンの区切りの段階（スタートの待ち → ステージの始まり → フェーズの始まり → 段取り → 準備終了 → BATTLE!）を管理する。
- * ルール層の問い合わせを読み、ステージの曲・準備終了・BATTLE! の音を鳴らし、BannerShow を進める。ルールの操作は呼ばない（Scene を継承しない）。
+ * ルール層の問い合わせを読み、ステージの曲（デバッグで入れ替わった敵の曲を含む）・準備終了・BATTLE! の音を鳴らし、BannerShow を進める。ルールの操作は呼ばない（Scene を継承しない）。
  */
 import { BannerShow } from '../anim/bannerShow.js';
 import { BGM_TIMING } from '../audio/soundConfig.js';
@@ -76,6 +76,17 @@ export class BoardFlow {
       playReadySe();
     }
     return false;
+  }
+
+  /**
+   * デバッグで入れ替わった敵を、ステージの始まりを出したことにして、その敵のステージの曲を流す。
+   * ステージの始まりの演出は出さない（`update` が出さなくなり、`entranceLook` は見える・ずれなしになる）。
+   * フェーズの始まりの印（`introPhase`）は触らない。同じ曲ならエンジンが何もしないので、流れたままになる。
+   * @param {{enemyIndex: number, enemy: {typeId: string}}} game ルール層の状態（読むだけ）
+   */
+  enterSwitchedEnemy(game) {
+    this.stageEnemyIndex = game.enemyIndex;
+    playStageBgm(game.enemy.typeId);
   }
 
   /**
