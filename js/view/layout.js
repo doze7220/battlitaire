@@ -44,6 +44,8 @@ import { campSlot } from './campSlots.js';
  * @property {{ x: number, y: number }} enemyValue 敵の HP の数字の右端・中心 y
  * @property {{ x: number, y: number }} phaseLabel 「PHASE」の中心
  * @property {{ x: number, y: number }} phaseValue フェーズの番号の中心
+ * @property {Rect} turnBox 「TURN」と番号を囲む区画の見た目の矩形（中央にそろえる）
+ * @property {Rect} turnHit 「TURN」の区画の押せる範囲（`turnBox` より広い。中央にそろえる）
  * @property {Rect} coinBar 金貨のゲージ全体（城の HP ゲージの真下。右端は城の HP ゲージと同じで根元。左は「GOLD」の欄の分だけ狭い）
  * @property {{ x: number, y: number }} coinLabel 「GOLD」のラベルの右端 x・中心 y（右寄せで描く）
  * @property {Rect[]} coinBlocks 金貨のゲージのブロックの矩形（根元＝右端から順に `coinBlockCount` 個。0 以下なら空）
@@ -193,6 +195,7 @@ import { campSlot } from './campSlots.js';
  * @property {function(number, number): Rect[]} columnCardRects 列の番号と枚数から、下から順の各カードの矩形（長い列の詰めを含む）
  * @property {ResultLayout} result 決着の表示（結果）の配置
  * @property {function(number, number, number[]=): (Hit|null)} hitTest 座標（と列ごとのカードの枚数）から当たったものを返す
+ * @property {function(number, number): boolean} turnHitTest 座標が最上部の「TURN」の区画の押せる範囲（`topGauges.turnHit`。右端・下端は含まない）に入るか（`hitTest` には混ぜない）
  */
 
 /** 最上段（戦闘）の高さ。300〜480 の範囲で変えてよい。試遊で決め直す。 */
@@ -219,6 +222,18 @@ const HP_VALUE_INSET = 8;
 const PHASE_LABEL_Y = 16;
 /** フェーズの番号の中心 y。試遊で決め直す。 */
 const PHASE_VALUE_Y = 42;
+/** 「TURN」の区画の見た目の幅（中央にそろえる）。試遊で決め直す。 */
+const TURN_BOX_W = 84;
+/** 「TURN」の区画の見た目の高さ。試遊で決め直す。 */
+const TURN_BOX_H = 58;
+/** 「TURN」の区画の見た目の上端 y。試遊で決め直す。 */
+const TURN_BOX_Y = 2;
+/** 「TURN」の区画の押せる範囲の幅（中央にそろえる。見た目より広い）。試遊で決め直す。 */
+const TURN_HIT_W = 120;
+/** 「TURN」の区画の押せる範囲の高さ。試遊で決め直す。 */
+const TURN_HIT_H = 88;
+/** 「TURN」の区画の押せる範囲の上端 y。試遊で決め直す。 */
+const TURN_HIT_Y = 0;
 /** 城の HP ゲージと金貨のゲージの間。試遊で決め直す。 */
 const COIN_GAUGE_GAP_Y = 4;
 /** 金貨のゲージの太さ。試遊で決め直す。 */
@@ -508,6 +523,8 @@ function createTopGaugeLayout(width, coinBlockCount) {
     enemyValue: { x: enemyBar.x + enemyBar.w - HP_VALUE_INSET, y: enemyBar.y + enemyBar.h / 2 },
     phaseLabel: { x: width / 2, y: PHASE_LABEL_Y },
     phaseValue: { x: width / 2, y: PHASE_VALUE_Y },
+    turnBox: { x: (width - TURN_BOX_W) / 2, y: TURN_BOX_Y, w: TURN_BOX_W, h: TURN_BOX_H },
+    turnHit: { x: (width - TURN_HIT_W) / 2, y: TURN_HIT_Y, w: TURN_HIT_W, h: TURN_HIT_H },
     coinBar,
     coinLabel: { x: coinBar.x - COIN_LABEL_GAP_X, y: coinBar.y + coinBar.h / 2 },
     coinBlocks,
@@ -818,7 +835,17 @@ export function createLayout({ screen, deckCount, columnCount, handSize, actionB
 
   const result = createResultLayout(screen);
 
-  return { screen, sections, card: { w: cardW, h: cardH }, decks, discard, columns, hand, releaseButtons, actionGauge, battle, result, columnCardRects, hitTest };
+  /**
+   * 座標が最上部の「TURN」の区画の押せる範囲に入るかを返す（盤面の操作の `hitTest` とは別）。
+   * @param {number} x x 座標
+   * @param {number} y y 座標
+   * @returns {boolean} 入れば true
+   */
+  function turnHitTest(x, y) {
+    return inRect(battle.topGauges.turnHit, x, y);
+  }
+
+  return { screen, sections, card: { w: cardW, h: cardH }, decks, discard, columns, hand, releaseButtons, actionGauge, battle, result, columnCardRects, hitTest, turnHitTest };
 }
 
 /**

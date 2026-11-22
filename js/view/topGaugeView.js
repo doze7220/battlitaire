@@ -1,7 +1,9 @@
 /**
- * 責務: 画面の最上部のゲージ（城と敵の HP・フェーズ・金貨）を描く。
+ * 責務: 画面の最上部のゲージ（城と敵の HP・「TURN」の区画とフェーズ・金貨）を描く。
  * 状態は変えず、値は呼ぶ側から受け取る。ルール層・anim は実行時に import しない。
  */
+
+import { roundRectPath } from './cardView.js';
 
 /**
  * 最上部のゲージの描画に渡す値。
@@ -15,6 +17,15 @@
 
 /** @type {string} フェーズの見出しの文字。 */
 const PHASE_LABEL = 'TURN';
+
+/** @type {string} 「TURN」の区画の塗りの色（試遊で決め直す）。 */
+const TURN_BOX_FILL = 'rgba(0, 0, 0, 0.45)';
+/** @type {string} 「TURN」の区画の枠の色（試遊で決め直す）。 */
+const TURN_BOX_STROKE = '#ffe680';
+/** @type {number} 「TURN」の区画の枠の太さ（試遊で決め直す）。 */
+const TURN_BOX_LINE_WIDTH = 3;
+/** @type {number} 「TURN」の区画の角の丸み（試遊で決め直す）。 */
+const TURN_BOX_RADIUS = 10;
 
 /** @type {string} 城の HP ゲージの色（試遊で決め直す）。 */
 const CASTLE_COLOR = '#3d8bff';
@@ -197,7 +208,22 @@ function drawCoinGauge(ctx, topLayout, coins, conv) {
 }
 
 /**
- * 画面の最上部のゲージ（城と敵の HP・HP の数字・フェーズ・金貨）を描く。状態は変えない。
+ * 「TURN」の区画（角丸の塗りと枠）を描く。文字より先に呼ぶ。
+ * @param {CanvasRenderingContext2D} ctx 描画先
+ * @param {{ x: number, y: number, w: number, h: number }} box 区画の矩形
+ * @returns {void}
+ */
+function drawTurnBox(ctx, box) {
+  roundRectPath(ctx, box.x, box.y, box.w, box.h, TURN_BOX_RADIUS);
+  ctx.fillStyle = TURN_BOX_FILL;
+  ctx.fill();
+  ctx.strokeStyle = TURN_BOX_STROKE;
+  ctx.lineWidth = TURN_BOX_LINE_WIDTH;
+  ctx.stroke();
+}
+
+/**
+ * 画面の最上部のゲージ（城と敵の HP・HP の数字・「TURN」の区画とフェーズ・金貨）を描く。状態は変えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').TopGaugeLayout} topLayout 最上部のゲージの配置
  * @param {TopGaugeValues} values 表示する値
@@ -205,6 +231,7 @@ function drawCoinGauge(ctx, topLayout, coins, conv) {
  */
 export function drawTopGauges(ctx, topLayout, values) {
   ctx.save();
+  drawTurnBox(ctx, topLayout.turnBox);
   drawHpBar(ctx, topLayout.castleBar, hpRatio(values.castle.hp, values.castle.maxHp), true, CASTLE_COLOR);
   drawHpBar(ctx, topLayout.enemyBar, hpRatio(values.enemy.hp, values.enemy.maxHp), false, ENEMY_COLOR);
   drawCoinGauge(ctx, topLayout, values.coins, values.coinConversion);
