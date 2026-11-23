@@ -1,5 +1,5 @@
 /**
- * 責務: スプライトJSの import と識別子・絵の範囲の表、ロゴ・数字の表（原点中心に倍率をかけて描く）、予告の絵の表（原点中心に倍率 1 で描く）を持ち、draw(ctx) を呼ぶ。
+ * 責務: スプライトJSの import と識別子・絵の範囲の表、ロゴ・数字の表（原点中心に倍率をかけて描く）、予告の絵の表（原点中心に倍率 1 で描く）を持ち、draw(ctx) を呼ぶ。兵1体の焼き付ける範囲も求める。
  * assets/sprites/ を import するのはこのモジュールだけ。状態は変えず、ルール層・anim は import しない。
  */
 
@@ -78,7 +78,7 @@ export const SPRITE_IDS = Object.freeze({
 });
 
 /**
- * 絵の範囲（基準点 (0, 0) から見た範囲。単位 px、y は下向き）。スプライトの bounds は実行時に読まない。
+ * 絵の範囲（基準点 (0, 0) から見た範囲。単位 px、y は下向き）。描く位置・大きさにはスプライトの bounds を読まない。焼き付ける範囲（troopFigureBakeBounds）にだけ読む。
  * @typedef {object} SpriteEntry
  * @property {{draw: function(CanvasRenderingContext2D): void}} sprite import したスプライト
  * @property {number} minX x の最小
@@ -98,8 +98,9 @@ const CARD_ART_RANGE = Object.freeze({ minX: -50, maxX: 50, minY: -70, maxY: 70 
 
 /**
  * 識別子 → 絵と絵の範囲の凍結した表。
- * 兵（soldier）とゴブリン（goblin）の範囲（x ±99・y ±98）はスプライトの bounds（x ±101・y ±100。太さ 6 の線を含む）と違う。
- * 表は兵の描く大きさ（drawSpriteCentered の size）の基準で、bounds に合わせると約 2% 小さく描かれるため、見た目を変えないよう今の値を残す。
+ * 兵（soldier）とゴブリン（goblin）の範囲（x ±99・y ±98）はスプライトの bounds（x ±106・y ±105。太さ 16 の線を含む）と違う。
+ * 表は兵の描く大きさ（drawSpriteCentered の size）の基準で、bounds に合わせると約 7% 小さく描かれるため、見た目を変えないよう今の値を残す。
+ * 描く位置・大きさには bounds を使わない。焼き付ける範囲を求めるときだけ、表の範囲と bounds を合わせて使う（troopFigureBakeBounds）。
  * スプライトを描き直して差し替えるときに、表を新しい bounds に合わせ直し、layout.js の TROOP_SIZE も一緒に見直す。
  * @type {Readonly<Record<string, Readonly<SpriteEntry>>>}
  */
@@ -383,4 +384,77 @@ export function drawTroopFigure(ctx, bodyId, itemId, x, footY, size, tilt, itemS
     drawSpriteCentered(ctx, itemId, itemDX, -size / 2 + itemDY, itemSize);
   }
   ctx.restore();
+}
+
+/**
+ * 焼き付ける範囲の四方に足す余白（論理 px）。尖った角の線が bounds から少しはみ出す分を収める。
+ * @type {number}
+ */
+const BAKE_EDGE_PAD = 1;
+
+/**
+ * 表の範囲とスプライトの bounds を合わせた「焼き付けの元の範囲」を返す。
+ * bounds が minX・minY・maxX・maxY の有限の数を持たなければ表の範囲だけを返す。
+ * @param {Readonly<SpriteEntry>} e 表の項目
+ * @returns {{minX: number, minY: number, maxX: number, maxY: number}} 元の範囲（スプライトの座標）
+ */
+function bakeSourceRange(e) {
+  const b = e.sprite.bounds;
+  const ok = b !== null && typeof b === 'object'
+    && Number.isFinite(b.minX) && Number.isFinite(b.minY)
+    && Number.isFinite(b.maxX) && Number.isFinite(b.maxY);
+  if (!ok) return { minX: e.minX, minY: e.minY, maxX: e.maxX, maxY: e.maxY };
+  return {
+    minX: Math.min(e.minX, b.minX),
+    minY: Math.min(e.minY, b.minY),
+    maxX: Math.max(e.maxX, b.maxX),
+    maxY: Math.max(e.maxY, b.maxY),
+  };
+}
+
+/**
+ * 1つの絵を drawSpriteCentered(ctx, id, cx, cy, size) で描いたときの、焼き付けの元の範囲を移した矩形を求める。
+ * 倍率・中心は表の範囲から求める（drawSpriteCentered と同じ変換）。
+ * @param {string} id SPRITE_IDS の値
+ * @param {number} cx 絵の中心の x
+ * @param {number} cy 絵の中心の y
+ * @param {number} size 表の範囲の長い方の辺の長さ
+ * @returns {{minX: number, minY: number, maxX: number, maxY: number}} 描く座標での範囲
+ */
+function bakePartRange(id, cx, cy, size) {
+  const e = lookupSprite(id);
+  const s = size / Math.max(e.maxX - e.minX, e.maxY - e.minY);
+  const ox = cx - ((e.minX + e.maxX) / 2) * s;
+  const oy = cy - ((e.minY + e.maxY) / 2) * s;
+  const r = bakeSourceRange(e);
+  return { minX: ox + r.minX * s, minY: oy + r.minY * s, maxX: ox + r.maxX * s, maxY: oy + r.maxY * s };
+}
+
+/**
+ * 兵1体（体＋持ち物）を drawTroopFigure(ctx, bodyId, itemId, 0, 0, size, 0, itemSize, itemDX, itemDY, 1, 1) で描いたときの、
+ * 焼き付ける範囲（線の太さを含む。足元が原点の論理 px）を求める。四方に BAKE_EDGE_PAD の余白を足す。
+ * 描く位置・大きさは表の範囲のまま。スプライトの bounds は焼き付ける範囲にだけ使う。
+ * @param {string} bodyId 体の絵の識別子（SPRITE_IDS の値）
+ * @param {string|null} itemId 持ち物の絵の識別子（null なら体だけ）
+ * @param {number} size 体の直径（長い方の辺）
+ * @param {number} itemSize 持ち物の大きさ（長い方の辺）
+ * @param {number} itemDX 持ち物の中心の x のずれ
+ * @param {number} itemDY 持ち物の中心の y のずれ（下が正）
+ * @returns {{minX: number, minY: number, maxX: number, maxY: number}} 焼き付ける範囲
+ */
+export function troopFigureBakeBounds(bodyId, itemId, size, itemSize, itemDX, itemDY) {
+  const r = bakePartRange(bodyId, 0, -size / 2, size);
+  if (itemId !== null) {
+    const t = bakePartRange(itemId, itemDX, -size / 2 + itemDY, itemSize);
+    r.minX = Math.min(r.minX, t.minX);
+    r.minY = Math.min(r.minY, t.minY);
+    r.maxX = Math.max(r.maxX, t.maxX);
+    r.maxY = Math.max(r.maxY, t.maxY);
+  }
+  return {
+    minX: r.minX - BAKE_EDGE_PAD,
+    minY: r.minY - BAKE_EDGE_PAD,
+    maxX: r.maxX + BAKE_EDGE_PAD,
+    maxY: r.maxY + BAKE_EDGE_PAD,
+  };
 }
