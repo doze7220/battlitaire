@@ -1,11 +1,12 @@
 /**
- * 責務: DEBUG タブ（MenuTab）を作り、スクロールする領域の部品を盤面のデバッグの口（BoardDebug）と FPS の表示につなぐ。
- * FPS の下にルールの値の並び（debugRuleSliders.js）を足す。ルール層は import しない。
+ * 責務: DEBUG タブ（MenuTab）を作り、領域の部品を盤面のデバッグの口（BoardDebug）と FPS の表示につなぐ。
+ * FPS の下に焼き付けで描くかのチェックボックス（troopBakes.js の設定）とルールの値の並びを足す。ルール層は import しない。
  */
 import { Engine } from 'oz';
 import { addRuleSliders } from './debugRuleSliders.js';
 import { DEBUG_LAYOUT, DEBUG_FPS_POSITION } from '../view/debugLayout.js';
 import { DEBUG_TEXT, intentChoiceText, hpText, fpsText } from '../view/debugText.js';
+import { troopBakesEnabled, setTroopBakesEnabled } from '../view/troopBakes.js';
 
 /**
  * 兵の数のスライダーの範囲。1種類あたりの理論上の最大
@@ -56,7 +57,8 @@ function addHpControls(area, { value, buttons, label, target, setHp }) {
 }
 
 /**
- * DEBUG タブの中身を足す。最後（FPS の下）にルールの値の並び（debugRuleSliders.js）を足す。
+ * DEBUG タブの中身を足す。FPS の下に「焼き付けで描く」のチェックボックス（troopBakes.js の設定につなぐ）、
+ * 最後にルールの値の並び（debugRuleSliders.js）を足す。
  * @param {object} debug 盤面のデバッグの口（BoardDebug）
  * @param {object} tab addTabs が返したタブのオブジェクト
  * @returns {void}
@@ -133,6 +135,13 @@ function buildDebugTab(debug, tab) {
     label: DEBUG_TEXT.fps,
     read: () => Engine.fps,
     format: fpsText,
+  });
+
+  area.addCheckbox({
+    ...DEBUG_LAYOUT.bakeCheckbox,
+    label: DEBUG_TEXT.bakedDrawing,
+    read: () => troopBakesEnabled(),
+    write: (on) => setTroopBakesEnabled(on),
   });
 
   addRuleSliders(area, debug);

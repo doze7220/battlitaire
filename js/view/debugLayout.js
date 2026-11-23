@@ -1,6 +1,6 @@
 /**
- * 責務: DEBUG タブのスクロールする領域と中の部品の位置・大きさ、FPS の表示の隅を定数で持ち、
- * ルールの値の並びの矩形を項目の数から求める。座標は論理座標。import は menuLayout.js の MENU_LAYOUT だけ。
+ * 責務: DEBUG タブのスクロールする領域と中の部品（焼き付けのチェックボックスを含む）の位置・大きさ、FPS の表示の隅を
+ * 定数で持ち、ルールの値の並びの矩形を項目の数から求める。座標は論理座標。import は menuLayout.js の MENU_LAYOUT だけ。
  */
 import { MENU_LAYOUT } from './menuLayout.js';
 
@@ -68,6 +68,8 @@ const ENEMY_BUTTONS_Y = ENEMY_HP_Y + LABEL_H;
 const FPS_CHECK_Y = ENEMY_BUTTONS_Y + BUTTON_H + GAP;
 /** FPS の値の y。 */
 const FPS_VALUE_Y = FPS_CHECK_Y + CHECK_H + GAP;
+/** 「焼き付けで描く」のチェックボックスの y（FPS の値のすぐ下）。 */
+const BAKE_CHECK_Y = FPS_VALUE_Y + LABEL_H + GAP;
 
 /**
  * DEBUG タブの配置の定数（凍結。試遊で決め直す値）。`area` は窓の内側の原点から、
@@ -79,7 +81,7 @@ const FPS_VALUE_Y = FPS_CHECK_Y + CHECK_H + GAP;
  *   enemyLabel: object, enemyChoices: object, intentLabel: object, intentChoices: object,
  *   castleHp: object, castleButtons: Readonly<{ one: object, full: object }>,
  *   enemyHp: object, enemyButtons: Readonly<{ one: object, full: object }>,
- *   fpsCheckbox: object, fpsValue: object
+ *   fpsCheckbox: object, fpsValue: object, bakeCheckbox: object
  * }>}
  */
 export const DEBUG_LAYOUT = Object.freeze({
@@ -106,13 +108,14 @@ export const DEBUG_LAYOUT = Object.freeze({
   }),
   fpsCheckbox: rect(FPS_CHECK_Y, CHECK_H),
   fpsValue: rect(FPS_VALUE_Y, LABEL_H),
+  bakeCheckbox: rect(BAKE_CHECK_Y, CHECK_H),
 });
 
 /**
  * ルールの値の並び（元に戻すボタン・組の見出し・スライダー）の矩形を、組ごとの項目の数から求める。
- * FPS の値の下から積む。大きさの定数は試遊で決め直す値の定数から計算する。
- * 今の値（[1, 8, 7, 9]）では、ボタン y=1428、城の見出し 1532・スライダー 1604、
- * ゴブリンの軍勢の見出し 1752・スライダー 1824 から 148 おき、…、ドラゴンの最後のスライダー 5372。
+ * 焼き付けのチェックボックスの下から積む。大きさの定数は試遊で決め直す値の定数から計算する。
+ * 今の値（[1, 8, 7, 9]）では、ボタン y=1532、城の見出し 1636・スライダー 1708、
+ * ゴブリンの軍勢の見出し 1856・スライダー 1928 から 148 おき、…、ドラゴンの最後のスライダー 5476。
  * @param {number[]} groupSizes 組ごとの項目の数
  * @returns {Readonly<{
  *   resetButton: object,
@@ -120,7 +123,7 @@ export const DEBUG_LAYOUT = Object.freeze({
  * }>} 矩形は領域の中身の左上が原点
  */
 export function debugRuleLayout(groupSizes) {
-  const resetButton = rect(FPS_VALUE_Y + LABEL_H + GAP, BUTTON_H);
+  const resetButton = rect(BAKE_CHECK_Y + CHECK_H + GAP, BUTTON_H);
   let y = resetButton.y + BUTTON_H;
   const groups = groupSizes.map((size) => {
     y += GAP;

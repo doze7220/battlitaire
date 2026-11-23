@@ -10,7 +10,7 @@
  *   troops: Readonly<{ attack: string, defense: string, heal: string }>,
  *   enemy: string, intent: string, noChoice: string,
  *   castleHp: string, enemyHp: string, hpToOne: string, hpToFull: string,
- *   fpsVisible: string, fps: string,
+ *   fpsVisible: string, fps: string, bakedDrawing: string,
  *   rulesCastle: string, rulesReset: string
  * }>}
  */
@@ -28,6 +28,7 @@ export const DEBUG_TEXT = Object.freeze({
   hpToFull: '満タンにする',
   fpsVisible: 'FPS を表示',
   fps: 'FPS',
+  bakedDrawing: '焼き付けで描く',
   rulesCastle: '城',
   rulesReset: 'ルールの値を元に戻す',
 });
