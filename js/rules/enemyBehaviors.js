@@ -54,6 +54,7 @@ export function clawAction(behavior, random) {
 
 /**
  * ブレスの攻撃の行動を作る。量の抽選で `random()` を1回呼ぶ。
+ * 燃やす札の枚数の範囲は設定の写し（後から設定が変わっても予告は変わらない）。
  * @param {{ breath: { range: { min: number, max: number }, burn: { min: number, max: number } } }} behavior 行動の決まりの設定
  * @param {() => number} random 0以上1未満を返す乱数の関数
  * @returns {import('./combatants.js').EnemyAction} 新しい行動
@@ -63,7 +64,7 @@ export function breathAction(behavior, random) {
     kind: 'attack',
     amount: rollAmount(behavior.breath.range, random),
     variant: 'breath',
-    burn: behavior.breath.burn,
+    burn: { min: behavior.breath.burn.min, max: behavior.breath.burn.max },
   };
 }
 
