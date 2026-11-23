@@ -1,8 +1,9 @@
 /**
  * 責務: DEBUG タブ（MenuTab）を作り、スクロールする領域の部品を盤面のデバッグの口（BoardDebug）と FPS の表示につなぐ。
- * ルール層は import せず、ゲームの状態は debug の操作の口でだけ変える。
+ * FPS の下にルールの値の並び（debugRuleSliders.js）を足す。ルール層は import しない。
  */
 import { Engine } from 'oz';
+import { addRuleSliders } from './debugRuleSliders.js';
 import { DEBUG_LAYOUT, DEBUG_FPS_POSITION } from '../view/debugLayout.js';
 import { DEBUG_TEXT, intentChoiceText, hpText, fpsText } from '../view/debugText.js';
 
@@ -55,7 +56,7 @@ function addHpControls(area, { value, buttons, label, target, setHp }) {
 }
 
 /**
- * DEBUG タブの中身を足す。
+ * DEBUG タブの中身を足す。最後（FPS の下）にルールの値の並び（debugRuleSliders.js）を足す。
  * @param {object} debug 盤面のデバッグの口（BoardDebug）
  * @param {object} tab addTabs が返したタブのオブジェクト
  * @returns {void}
@@ -133,6 +134,8 @@ function buildDebugTab(debug, tab) {
     read: () => Engine.fps,
     format: fpsText,
   });
+
+  addRuleSliders(area, debug);
 }
 
 /**
