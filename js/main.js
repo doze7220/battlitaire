@@ -1,6 +1,6 @@
 /**
  * 責務: Engine.start の呼び出しと、レイヤーと画面の流れ（BOOT → TITLE ⇄ 遊び方、TITLE → 盤面（ふつう／デバッグスタート）→ 決着 → TITLE）を作る関数の定義を行う利用側のエントリポイント。
- * 起動の前の保存された設定の反映（settingsStore.js の口を呼ぶ）と効果音・BGM の読み込み、デバッグを有効にする定数 DEBUG_TOOLS_ENABLED の保持も行う。
+ * 起動の前の保存された設定の反映と効果音・BGM の読み込み、デバッグを有効にする定数 DEBUG_TOOLS_ENABLED と、デバッグスタートのルールの値の写し（debugRules）の保持も行う。
  */
 import { Engine, Scene, Assets, Storage } from 'oz';
 import { SOUND_FILES, BGM_FILES } from './audio/soundConfig.js';
@@ -13,6 +13,7 @@ import { MenuScene } from './scenes/MenuScene.js';
 import { createMenuTabs } from './scenes/menuTabs.js';
 import { BoardDebug } from './scenes/boardDebug.js';
 import { createDebugTab } from './scenes/debugTab.js';
+import { createDebugRules } from './rules/debugRules.js';
 
 /** 解像度（縦長の画面。論理解像度 720×1280） */
 const screen = { width: 720, height: 1280 };
@@ -33,11 +34,19 @@ function createBoard() {
 }
 
 /**
+ * デバッグスタートのゲームが使うルールの値の写し（config.js の RULES と同じ形）。最初のデバッグスタートで作り、ページを読み込み直すまで持つ。保存しない。
+ * @type {import('./rules/config.js').Rules|null}
+ */
+let debugRules = null;
+
+/**
  * デバッグスタートの盤面のシーンを作る（createBoard と同じで、メニューの窓を作る関数だけ DEBUG タブ付きの createDebugMenu を渡す）。
+ * ルールの値の写し（debugRules）を最初の1回だけ作り、盤面へ rules として渡す（同じ写しを次のデバッグスタートにも渡すので、変えた値は残る）。
  * @returns {Scene} 新しい盤面のシーン
  */
 function createDebugBoard() {
-  return new BoardScene({ screen, layer: 'main', random: Math.random, createTitle, createMenu: createDebugMenu });
+  if (debugRules === null) debugRules = createDebugRules();
+  return new BoardScene({ screen, layer: 'main', random: Math.random, createTitle, createMenu: createDebugMenu, rules: debugRules });
 }
 
 /**

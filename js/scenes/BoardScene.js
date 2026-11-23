@@ -27,6 +27,7 @@ import { drawBanner } from '../view/bannerView.js';
  * @property {() => number} random 乱数の関数（0以上1未満。ルール層へ渡す）
  * @property {() => Scene} createTitle タイトルの画面のシーンを作る関数（攻防の演出のシーンへ渡す）
  * @property {(target: import('./boardDebug.js').BoardMenuTarget) => Scene} createMenu メニューの窓のシーンを作る関数（TURN の区画を押したとき、盤面の部品 { game, releaseShow, flow } を渡して積む。使うかは関数の側が決める）
+ * @property {import('../rules/config.js').Rules} [rules] ゲームに渡すルールの値（省略は config.js の RULES。デバッグスタートでは RULES と同じ形の写しが渡される）
  */
 
 /** 盤面を表示し、置く・捨てる・手札に入れる・手札から置く・束の移し替え・放つをタップ／クリックで行い、段階の管理（boardFlow.js）を進めて、BATTLE! が終わったら攻防に入り、合図を描くシーン */
@@ -34,8 +35,10 @@ export class BoardScene extends Scene {
   /**
    * @param {BoardOptions} options オプション
    */
-  constructor({ screen, layer, random, createTitle, createMenu }) {
+  constructor({ screen, layer, random, createTitle, createMenu, rules }) {
     super();
+    /** @type {import('../rules/config.js').Rules|undefined} ゲームに渡すルールの値（undefined なら Game の既定の RULES） */
+    this.rules = rules;
     /** @type {(target: import('./boardDebug.js').BoardMenuTarget) => Scene} メニューの窓のシーンを作る関数（TURN の区画で、盤面の部品を渡して積む） */
     this.createMenu = createMenu;
     /** @type {() => Scene} タイトルの画面のシーンを作る関数 */
@@ -69,11 +72,11 @@ export class BoardScene extends Scene {
   }
 
   /**
-   * ゲームと画面の配置を作る。
+   * ゲームと画面の配置を作る（ゲームには this.rules を設定として渡す。undefined なら Game の既定の RULES）。
    * @returns {void}
    */
   init() {
-    this.game = new Game({ random: this.random });
+    this.game = new Game({ random: this.random, config: this.rules });
     this.layout = createLayout({
       screen: this.screen,
       deckCount: this.game.decks.length,
