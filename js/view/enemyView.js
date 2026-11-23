@@ -4,10 +4,12 @@
  */
 
 import { drawTroop } from './troopView.js';
-import { SPRITE_IDS, drawSpriteFit, drawSpriteCentered } from './spriteView.js';
+import { drawSpriteFit } from './spriteView.js';
 
 /** 群れの兵の種類（troopView.js の種類）。 */
 const HORDE_KIND = 'goblin';
+/** シールドマークの兵の種類（troopView.js の種類）。 */
+const SHIELD_KIND = 'shield';
 /** 群れで描く敵の種類の識別子。 */
 const HORDE_ENEMIES = new Set(['goblins']);
 
@@ -50,13 +52,14 @@ function applyFootPose(ctx, rect, pose) {
 }
 
 /**
- * シールドマーク（盾のスプライト）を1つ描く。
+ * シールドマーク（盾のスプライト）を drawTroop の 'shield' で1つ描く。
+ * 矩形は正方形（shieldRects）。足元を矩形の下端の中央にそろえ、大きさ rect.w で描くので、今と同じ位置・大きさ。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').Rect} rect マークの矩形
  * @returns {void}
  */
 function drawShieldMark(ctx, rect) {
-  drawSpriteCentered(ctx, SPRITE_IDS.shield, rect.x + rect.w / 2, rect.y + rect.h / 2, rect.w);
+  drawTroop(ctx, SHIELD_KIND, rect.x + rect.w / 2, rect.y + rect.h, rect.w, 0, 1, 1, 1);
 }
 
 /**
