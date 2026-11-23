@@ -1,6 +1,6 @@
 /**
- * 責務: DEBUG タブのスクロールする領域と中の部品の位置・大きさ、FPS の表示の隅を定数で持つ。
- * 座標は論理座標。import は menuLayout.js の MENU_LAYOUT だけ。
+ * 責務: DEBUG タブのスクロールする領域と中の部品の位置・大きさ、FPS の表示の隅を定数で持ち、
+ * ルールの値の並びの矩形を項目の数から求める。座標は論理座標。import は menuLayout.js の MENU_LAYOUT だけ。
  */
 import { MENU_LAYOUT } from './menuLayout.js';
 
@@ -107,6 +107,35 @@ export const DEBUG_LAYOUT = Object.freeze({
   fpsCheckbox: rect(FPS_CHECK_Y, CHECK_H),
   fpsValue: rect(FPS_VALUE_Y, LABEL_H),
 });
+
+/**
+ * ルールの値の並び（元に戻すボタン・組の見出し・スライダー）の矩形を、組ごとの項目の数から求める。
+ * FPS の値の下から積む。大きさの定数は試遊で決め直す値の定数から計算する。
+ * 今の値（[1, 8, 7, 9]）では、ボタン y=1428、城の見出し 1532・スライダー 1604、
+ * ゴブリンの軍勢の見出し 1752・スライダー 1824 から 148 おき、…、ドラゴンの最後のスライダー 5372。
+ * @param {number[]} groupSizes 組ごとの項目の数
+ * @returns {Readonly<{
+ *   resetButton: object,
+ *   groups: ReadonlyArray<Readonly<{ heading: object, sliders: ReadonlyArray<object> }>>
+ * }>} 矩形は領域の中身の左上が原点
+ */
+export function debugRuleLayout(groupSizes) {
+  const resetButton = rect(FPS_VALUE_Y + LABEL_H + GAP, BUTTON_H);
+  let y = resetButton.y + BUTTON_H;
+  const groups = groupSizes.map((size) => {
+    y += GAP;
+    const heading = rect(y, LABEL_H);
+    y += LABEL_H;
+    const sliders = [];
+    for (let i = 0; i < size; i += 1) {
+      if (i > 0) y += GAP;
+      sliders.push(rect(y, SLIDER_H));
+      y += SLIDER_H;
+    }
+    return Object.freeze({ heading, sliders: Object.freeze(sliders) });
+  });
+  return Object.freeze({ resetButton, groups: Object.freeze(groups) });
+}
 
 /**
  * FPS の表示の隅（Engine.fpsPosition に渡す。14章）。試遊で決め直す値。

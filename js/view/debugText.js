@@ -1,6 +1,6 @@
 /**
- * 責務: DEBUG タブの文字を凍結した定数で持ち、次の行動の選択肢・HP・FPS を文字にする。
- * 何も import しない。
+ * 責務: DEBUG タブの文字を凍結した定数で持ち、次の行動の選択肢・HP・FPS・
+ * ルールの値の項目名・効く時期・百分率を文字にする。何も import しない。
  */
 
 /**
@@ -10,7 +10,8 @@
  *   troops: Readonly<{ attack: string, defense: string, heal: string }>,
  *   enemy: string, intent: string, noChoice: string,
  *   castleHp: string, enemyHp: string, hpToOne: string, hpToFull: string,
- *   fpsVisible: string, fps: string
+ *   fpsVisible: string, fps: string,
+ *   rulesCastle: string, rulesReset: string
  * }>}
  */
 export const DEBUG_TEXT = Object.freeze({
@@ -27,7 +28,65 @@ export const DEBUG_TEXT = Object.freeze({
   hpToFull: '満タンにする',
   fpsVisible: 'FPS を表示',
   fps: 'FPS',
+  rulesCastle: '城',
+  rulesReset: 'ルールの値を元に戻す',
 });
+
+/**
+ * ルールの値の項目名の識別子（RuleItem.name）から文字を引く表（凍結）。
+ * @type {Readonly<Record<string, string>>}
+ */
+export const RULE_ITEM_TEXT = Object.freeze({
+  maxHp: '最大 HP',
+  armor: '常時防御力',
+  attackMin: '攻撃の量 最小',
+  attackMax: '攻撃の量 最大',
+  defendMin: '防御の量 最小',
+  defendMax: '防御の量 最大',
+  attackWeight: '攻撃の重み',
+  defendWeight: '防御の重み',
+  cycleLength: '攻撃までのターン数',
+  healChance: '攻撃後に回復する確率',
+  healAmount: '回復の量',
+  clawMin: '爪の量 最小',
+  clawMax: '爪の量 最大',
+  breathMin: 'ブレスの量 最小',
+  breathMax: 'ブレスの量 最大',
+  burnMin: '燃やす札 最小',
+  burnMax: '燃やす札 最大',
+  inhaleChance: '吸い込む確率',
+});
+
+/**
+ * ルールの値が効く時期の識別子から文字を引く表（凍結）。
+ * @type {Readonly<Record<string, string>>}
+ */
+export const RULE_TIMING_TEXT = Object.freeze({
+  now: 'すぐ',
+  nextIntent: '次の予告から',
+  nextCycle: '次の周期から',
+  nextBattle: '次の攻防から',
+  onAppear: '出てきたときから',
+});
+
+/**
+ * 項目名と効く時期を「項目名（時期）」の文字にする。
+ * @param {string} name 項目名の識別子
+ * @param {string} timing 効く時期の識別子
+ * @returns {string} 例「最大 HP（すぐ）」。表にない名前・時期は識別子そのもの
+ */
+export function ruleItemText(name, timing) {
+  return `${RULE_ITEM_TEXT[name] ?? name}（${RULE_TIMING_TEXT[timing] ?? timing}）`;
+}
+
+/**
+ * 0〜1 の値を百分率の文字にする。
+ * @param {number} v 値（0〜1）
+ * @returns {string} 例「25%」
+ */
+export function percentText(v) {
+  return `${Math.round(v * 100)}%`;
+}
 
 /**
  * 次の行動の識別子から選択肢の文字を引く表（凍結）。
