@@ -80,7 +80,7 @@ export const SPRITE_IDS = Object.freeze({
 /**
  * 絵の範囲（基準点 (0, 0) から見た範囲。単位 px、y は下向き）。描く位置・大きさにはスプライトの bounds を読まない。焼き付ける範囲（troopFigureBakeBounds）にだけ読む。
  * @typedef {object} SpriteEntry
- * @property {{draw: function(CanvasRenderingContext2D): void}} sprite import したスプライト
+ * @property {{draw: function(CanvasRenderingContext2D): void, bounds?: {minX: number, minY: number, maxX: number, maxY: number}}} sprite import したスプライト
  * @property {number} minX x の最小
  * @property {number} maxX x の最大
  * @property {number} minY y の最小

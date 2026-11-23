@@ -19,7 +19,7 @@ const SIZE_EPSILON = 1e-6;
 /**
  * 盤面のシーンが `init` で作り `destroy` で手放す描き方の資源。ゲームの状態ではない。
  */
-class TroopBakeSet {
+export class TroopBakeSet {
   /**
    * 指定のすべてを焼き付ける。途中で例外が出たら、作った分を手放してから投げ直す。
    * @param {TroopBakeEntry[]} entries 焼き付ける指定の一覧
