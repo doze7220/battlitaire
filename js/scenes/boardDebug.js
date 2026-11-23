@@ -1,6 +1,6 @@
 /**
- * 責務: 盤面のデバッグの口。ルール層のデバッグ用の操作を呼び、段取りの間の兵の数・ステージの曲・ステージの始まりの印を合わせ、
- * DEBUG タブが読む値を答える（Scene を継承しない）。
+ * 責務: 盤面のデバッグの口。ルール層のデバッグ用の操作（ルールの値を含む）を呼び、段取りの間の兵の数・ステージの曲・
+ * ステージの始まりの印を合わせ、DEBUG タブが読む値を答える（Scene を継承しない）。
  */
 import {
   setTroopGauge,
@@ -13,6 +13,14 @@ import {
   setCastleHp,
   setEnemyHp,
 } from '../rules/debugControls.js';
+import {
+  ruleGroups,
+  ruleItemInfo,
+  ruleValue,
+  ruleTiming,
+  setRuleValue,
+  resetRuleValues,
+} from '../rules/debugRules.js';
 
 /**
  * DEBUG タブの口が使う盤面の部品。メニューを開いている間は盤面の `update` が止まって攻防に入らないので、
@@ -47,6 +55,57 @@ export class BoardDebug {
      * @type {import('./boardFlow.js').BoardFlow}
      */
     this.flow = flow;
+  }
+
+  /**
+   * ルールの値の組の並び（城・敵の種類ごと）。
+   * @returns {{ group: string, enemyName: string|null, itemIds: string[] }[]} 組の識別子・敵の名前（城は null）・項目の識別子
+   */
+  ruleGroups() {
+    return ruleGroups(this.game.config);
+  }
+
+  /**
+   * ルールの値の項目の種類と名前。
+   * @param {string} id 項目の識別子
+   * @returns {{ kind: string, name: string }|null} 値の種類と項目の名前の識別子。知らない識別子は null
+   */
+  ruleItemInfo(id) {
+    return ruleItemInfo(id);
+  }
+
+  /**
+   * ルールの値（ゲームが使っている設定の値）。
+   * @param {string} id 項目の識別子
+   * @returns {number|null} 値。知らない識別子は null
+   */
+  ruleValue(id) {
+    return ruleValue(this.game, id);
+  }
+
+  /**
+   * ルールの値が効く時期の識別子。
+   * @param {string} id 項目の識別子
+   * @returns {string|null} 時期の識別子。知らない識別子は null
+   */
+  ruleTiming(id) {
+    return ruleTiming(this.game, id);
+  }
+
+  /**
+   * ルールの値を指定した値にする。見た目は描くときにルール層を読んで合うので、anim・段階の管理の口は呼ばない。
+   * @param {string} id 項目の識別子
+   * @param {number} value 新しい値
+   */
+  setRuleValue(id, value) {
+    setRuleValue(this.game, id, value);
+  }
+
+  /**
+   * ルールの値をすべて `RULES` の値に戻す。
+   */
+  resetRuleValues() {
+    resetRuleValues(this.game);
   }
 
   /**
