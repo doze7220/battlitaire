@@ -1,7 +1,7 @@
 /**
  * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面と合図を描くこと。
  * 操作の結果を anim に渡して時間を進め、段階の管理（boardFlow.js）を進めて、BATTLE! が終わったら攻防に入り待っていた兵の数を演出のシーンへ渡すこと。
- * 操作・連鎖のきっかけで効果音を鳴らし（soundCues.js）、積んだ演出のシーンから札が燃える段の盤面を読んで描き、TURN の区画でメニューの窓を積むこと。
+ * 操作・連鎖のきっかけで効果音を鳴らし（soundCues.js）、積んだ演出のシーンから札が燃える段の盤面を読んで描き、TURN の区画でメニューの窓を積み、兵の焼き付けを init で作り destroy で手放すこと。
  */
 import { Engine, Scene } from 'oz';
 import { Game } from '../rules/Game.js';
@@ -19,6 +19,7 @@ import { playPlanningSe, playChainSe } from './soundCues.js';
 import { BoardFlow } from './boardFlow.js';
 import { createBannerLayout } from '../view/bannerLayout.js';
 import { drawBanner } from '../view/bannerView.js';
+import { createTroopBakes } from '../view/troopView.js';
 
 /**
  * @typedef {Object} BoardOptions BoardScene に渡すオプション
@@ -69,10 +70,13 @@ export class BoardScene extends Scene {
     this.bannerLayout = null;
     /** @type {BoardFlow|null} 盤面の段階の管理（スタートの待ち・ステージとフェーズの始まり・準備終了・BATTLE!。init で作る） */
     this.flow = null;
+    /** @type {import('../view/troopBakes.js').TroopBakeSet|null} 兵の焼き付けの入れ物（init で作り destroy で手放す） */
+    this.troopBakes = null;
   }
 
   /**
    * ゲームと画面の配置を作る（ゲームには this.rules を設定として渡す。undefined なら Game の既定の RULES）。
+   * 最後に兵の焼き付けを作る（destroy で手放す）。
    * @returns {void}
    */
   init() {
@@ -93,6 +97,18 @@ export class BoardScene extends Scene {
     this.enemyIdle = new EnemyIdle();
     this.bannerLayout = createBannerLayout(this.layout);
     this.flow = new BoardFlow(this.bannerLayout.enemyEntryDX);
+    this.troopBakes = createTroopBakes(this.layout.battle);
+  }
+
+  /**
+   * 兵の焼き付けを手放す（あれば dispose して null に戻す。ほかの処理はしない）。
+   * @returns {void}
+   */
+  destroy() {
+    if (this.troopBakes !== null) {
+      this.troopBakes.dispose();
+      this.troopBakes = null;
+    }
   }
 
   /**
