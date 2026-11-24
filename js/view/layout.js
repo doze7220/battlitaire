@@ -172,7 +172,9 @@ import { campSlot } from './campSlots.js';
  * @property {{ x: number, y: number, maxW: number }} heading 見出しの左端・中心 y・最大の幅（左寄せ）
  * @property {{ x: number, y: number, maxW: number }} pageNumber ページ番号の右端・中心 y・最大の幅（右寄せ）
  * @property {{ x: number, y: number, w: number }} rule 区切り線の左端・y・長さ
- * @property {Rect} body 本文の範囲
+ * @property {Rect} art 1〜3ページの絵の区画
+ * @property {Rect} body 1〜3ページの本文の範囲（絵の区画の下）
+ * @property {function(number): Array<{ art: Rect, text: Rect }>} enemyRows 4ページ目の敵ごとの段 count 個（上から順。art は左の絵の区画、text は右の文字の範囲。count が 0 以下なら空）
  * @property {Rect} prevButton 「まえへ」ボタンの矩形
  * @property {Rect} backButton 「タイトルへ」ボタンの矩形
  * @property {Rect} nextButton 「つぎへ」ボタンの矩形
@@ -406,8 +408,18 @@ const HOWTO_PAGE_NUMBER_W = 120;
 const HOWTO_HEADING_GAP_X = 16;
 /** 遊び方の画面の見出しの下の区切り線の y */
 const HOWTO_RULE_Y = 140;
-/** 遊び方の画面の本文の上端 y */
+/** 遊び方の画面の中身（1〜3ページの絵の区画・4ページの敵ごとの段の並び）の上端 y */
 const HOWTO_BODY_TOP = 164;
+/** 遊び方の1〜3ページの絵の区画の高さ */
+const HOWTO_ART_H = 320;
+/** 遊び方の1〜3ページの絵の区画の下端と本文の上端の間のすき間 */
+const HOWTO_ART_GAP = 24;
+/** 遊び方の4ページ目の敵ごとの段の間のすき間 */
+const HOWTO_ROW_GAP_Y = 24;
+/** 遊び方の4ページ目の段の左の絵の区画の幅 */
+const HOWTO_ROW_ART_W = 180;
+/** 遊び方の4ページ目の段の絵の区画と文字の範囲の間のすき間 */
+const HOWTO_ROW_GAP_X = 16;
 /** 遊び方の画面の本文の下端とボタンの上端の間のすき間 */
 const HOWTO_BODY_GAP = 24;
 /** 遊び方の画面のボタンの高さ */
@@ -980,6 +992,30 @@ export function createHowToLayout(screen) {
     return inRect(nextButton, x, y) ? 'next' : null;
   }
 
+  const contentBottom = buttonY - HOWTO_BODY_GAP;
+  const bodyTop = HOWTO_BODY_TOP + HOWTO_ART_H + HOWTO_ART_GAP;
+
+  /**
+   * 遊び方の4ページ目の、敵ごとの段を count 個、中身の上端から下端まで同じ高さで上から並べる。
+   * 純粋な関数で、呼ぶたびに新しい配列を返す。
+   * @param {number} count 段の数
+   * @returns {Array<{ art: Rect, text: Rect }>} 上から順の段（art は左の絵の区画、text は右の文字の範囲）。count が 0 以下なら空
+   */
+  function enemyRows(count) {
+    if (!(count > 0)) return [];
+    const rowH = (contentBottom - HOWTO_BODY_TOP - HOWTO_ROW_GAP_Y * (count - 1)) / count;
+    const textX = HOWTO_PAD_X + HOWTO_ROW_ART_W + HOWTO_ROW_GAP_X;
+    const rows = [];
+    for (let i = 0; i < count; i++) {
+      const y = HOWTO_BODY_TOP + (rowH + HOWTO_ROW_GAP_Y) * i;
+      rows.push({
+        art: { x: HOWTO_PAD_X, y, w: HOWTO_ROW_ART_W, h: rowH },
+        text: { x: textX, y, w: HOWTO_PAD_X + innerW - textX, h: rowH },
+      });
+    }
+    return rows;
+  }
+
   return {
     screen,
     heading: {
@@ -989,12 +1025,14 @@ export function createHowToLayout(screen) {
     },
     pageNumber: { x: W - HOWTO_PAD_X, y: HOWTO_HEADING_Y, maxW: HOWTO_PAGE_NUMBER_W },
     rule: { x: HOWTO_PAD_X, y: HOWTO_RULE_Y, w: innerW },
+    art: { x: HOWTO_PAD_X, y: HOWTO_BODY_TOP, w: innerW, h: HOWTO_ART_H },
     body: {
       x: HOWTO_PAD_X,
-      y: HOWTO_BODY_TOP,
+      y: bodyTop,
       w: innerW,
-      h: buttonY - HOWTO_BODY_GAP - HOWTO_BODY_TOP,
+      h: contentBottom - bodyTop,
     },
+    enemyRows,
     prevButton,
     backButton,
     nextButton,

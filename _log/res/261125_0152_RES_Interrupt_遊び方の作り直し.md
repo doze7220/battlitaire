@@ -326,7 +326,7 @@ export function drawHowToArt(ctx, artId, rect) { … }
         *   先頭の責務（3行以内）: 「遊び方の絵（識別子ごとに、どのスプライトを区画のどこにどの大きさで描くか）を組み立てて描く。描く口は spriteView.js・cardView.js・troopView.js の export だけで、焼き付けの資源には触れない。止まった絵で、状態は変えない」の趣旨。
         *   確認: 2章の「絵の中身」の割合から、区画 640×320 と 180×301.3 での各絵の矩形を計算し（スクラッチパッドの使い捨てのスクリプトか手計算。スプライトの範囲は `spriteView.js` の `SPRITE_TABLE` の値を写す）、絵が区画からはみ出さないこと、3ページ目のロゴ（約束の上限 640×120 で倍率 0.7）と予告の札が重ならないこと、1ページ目・3ページ目の兵と城・敵が重ならないことを「4. 詳細作業内容」に書く。
 
-*   [ ] タスク4: 遊び方の配置（`layout.js`）
+*   [x] タスク4: 遊び方の配置（`layout.js`）
     *   **対象ファイル** :
         *   `./js/view/layout.js` :（更新。遊び方の画面の配置の部分だけ）
     *   **作業内容** :
@@ -386,7 +386,8 @@ export function drawHowToArt(ctx, artId, rect) { … }
 
 ### タスク4: 遊び方の配置（`layout.js`）
 *   **作業内容** :
-    *   （未記入）
+    *   `js/view/layout.js` の遊び方の部分だけ更新。定数 `HOWTO_ART_H`（320）・`HOWTO_ART_GAP`（24）・`HOWTO_ROW_GAP_Y`（24）・`HOWTO_ROW_ART_W`（180）・`HOWTO_ROW_GAP_X`（16）を JSDoc 付きで足し、`HOWTO_BODY_TOP` の JSDoc を直した（名前・値は不変）。`HowToLayout` の typedef に `art`・`enemyRows` を足し `body` の説明を直した。`createHowToLayout` に内部関数 `enemyRows(count)`（純粋・呼ぶたびに新しい配列・count が 0 以下なら空）を足し、`art`・`body`（y を 508 に下げた）・`enemyRows` を返す。ボタン・見出し・ページ番号・区切り線・`howToHitTest` は未変更。
+    *   構文チェック（`node --input-type=module --check`）は通った。実行での値確認は `spriteView.js` が import map の `assets` を使うため Node 単体では不可。手計算: art `{40,164,640,320}`、body `{40,508,640,608}`（下端 1116）、3段のとき段の高さ (952−48)/3 ≒ 301.33、段 y は 164・489.33・814.67、art 幅 180、text `{x:236, w:444}`。
 
 ### タスク5: 遊び方の画面の組み立て（`howToView.js`）
 *   **作業内容** :
