@@ -335,7 +335,7 @@ export function drawHowToArt(ctx, artId, rect) { … }
         *   `createHowToLayout` で `art`・`body`（y を絵の区画の下へ）・`enemyRows`（内部の関数。JSDoc 付き。純粋で、呼ぶたびに新しい配列）を作って返す。ボタン・見出し・ページ番号・区切り線・`howToHitTest` は変えない。
         *   遊び方の画面の配置の部分以外（盤面・タイトル画面・結果の表示の配置）は変えない。
 
-*   [ ] タスク5: 遊び方の画面の組み立て（`howToView.js`）
+*   [x] タスク5: 遊び方の画面の組み立て（`howToView.js`）
     *   **対象ファイル** :
         *   `./js/view/howToView.js` :（更新）
     *   **作業内容** :
@@ -391,7 +391,8 @@ export function drawHowToArt(ctx, artId, rect) { … }
 
 ### タスク5: 遊び方の画面の組み立て（`howToView.js`）
 *   **作業内容** :
-    *   （未記入）
+    *   `js/view/howToView.js` を更新。先頭の責務を新趣旨（絵・色付きの本文・敵ごとの段を含む組み立て）に書き直し、import に `suitStyle.js`（`SUIT_LOOKS`）・`howToRichText.js`・`howToArt.js` を足した。定数 `BODY_TONE_FONT`・`BODY_PARAGRAPH_GAP_RATIO`（0.5）・`TONE_COLORS`（key/sword/shield/hammer(=potion)/gold(=muscle)）・`BODY_TEXT_STYLE`・`ENEMY_NAME_FONT_PX`（40）・`ENEMY_NAME_FONT`・`ENEMY_NAME_LINE_RATIO`（1.4）を JSDoc 付きで足した。`NO_LINE_START`・`splitUnits`・`wrapParagraph` は削除。内部関数 `drawParagraphs`（段落を描き使った高さを返す）・`measureParagraphs`（塊の高さを数える）・`drawEnemyRows`（左に絵・右に名前と説明、塊は段の縦の中央）を足し、`drawHowTo` を「背景・見出し・ページ番号・区切り線 → rows があれば段、なければ絵＋本文 → ボタン3つ」に書き直した。背景・見出し・ページ番号・区切り線・ボタン・`HowToViewState` は不変。
+    *   構文チェック（`node --input-type=module --check`）は通った。ブラウザでの実描画は未確認（テストプレイで確認）。
 
 ### タスク6: JSDoc・構文チェック・決まりの通しの確認
 *   **作業内容** :
@@ -416,3 +417,4 @@ export function drawHowToArt(ctx, artId, rect) { … }
 * **3ページ目の予告の札の数字「20」:** 巨人の攻撃の量（`config.js` の 18〜22）の中の値を、飾りの文字として `howToText.js` の `HOW_TO_ART_LABELS` に書く。設定の値を変えたら手で直す必要がある（文章の数字と同じ扱い）。
 * **ロゴの大きさ:** 3ページ目の BATTLE! のロゴは倍率 0.7 で描く。今の仮のロゴ（404×106）では約 283×74。発注者がロゴを描き直しても、約束の上限（幅 640・高さ 120）の中なら区画に収まり予告の札と重ならない計算にしてある。
 * **絵の見た目の割合:** 絵の位置・大きさの割合（2章「絵の中身」）は見積もりで決めた。テストプレイで見て、詰めたい・大きくしたいところがあれば `howToArt.js` の割合の定数と `layout.js` の `HOWTO_ART_H` などで直せる。
+* **タスク5の補足:** `drawHowTo` は背景〜区切り線を `save`／`restore` で囲んだ後、絵・本文・段・ボタンを描く（それぞれの関数が自前で `save`／`restore`）。4ページ目の説明は塊の高さを数えるため同じ段落を2回割り付ける（`measureParagraphs` と `drawRichLines` 前の割り付け）。毎フレームの測り直しは今の方式と同じ考え方。
