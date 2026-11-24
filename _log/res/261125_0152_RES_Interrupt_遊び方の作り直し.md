@@ -307,7 +307,7 @@ export function drawHowToArt(ctx, artId, rect) { … }
         *   `HOW_TO_LABELS` は変えない。
         *   この時点では `howToView.js` は今のまま `paragraphs` を描く（印がそのまま見え、4ページ目は見出しだけになる）。タスク5で直る。
 
-*   [ ] タスク2: 印の読み取りと行への割り付け（`howToRichText.js`）
+*   [x] タスク2: 印の読み取りと行への割り付け（`howToRichText.js`）
     *   **対象ファイル** :
         *   `./js/view/howToRichText.js` :（新規）
     *   **作業内容** :
@@ -374,7 +374,9 @@ export function drawHowToArt(ctx, artId, rect) { … }
 
 ### タスク2: 印の読み取りと行への割り付け（`howToRichText.js`）
 *   **作業内容** :
-    *   （未記入）
+    *   `js/view/howToRichText.js` を新規作成（何も import しない・モジュールの状態なし）。`NO_LINE_START`・`BREAK_AFTER`（凍結 `Set`）、typedef `RichTextStyle`・`RichRun`・`RichLine`・`Glyph`、内部関数 `parseChunks`・`measureGlyphs`・`sumWidth`・`tailWidth`・`splitUnits`・`toLine`、export の `wrapRichText`・`drawRichLines` を JSDoc 付きで書いた。幅を測る処理は `ctx.save()`／`restore()` で囲み、`drawRichLines` も `save`／`restore` で囲む。
+    *   構文チェック（`node --input-type=module --check`）は通った。
+    *   確認（スクラッチパッドの使い捨てスクリプト。リポジトリには残していない。偽 ctx: 全角 34・英字 24・数字 19・空白 10・その他半角 19、太字の半角は 5% 増し）: 4ページ全段落（幅 640 と 444、hangW 34）で (1) 印の Error なし、(2) 行をつなぐと印を除いた段落と一致、(3) 行頭に `NO_LINE_START` の字なし、(4) 行の区切りは `BREAK_AFTER` の後か `|` の位置のみ、(5) 行数は 1ページ目 3／2ページ目 4＋3／3ページ目 4＋2／4ページ目 各 3 で 2章の表と一致、(6) `key`・`gold`・`shield`・`sword`・`hammer` の言葉が正しい `tone` のひと続きになる、をすべて確認。`|` のない 30 文字の段落は 2 行（612・408）に1文字単位で割り付けられた。`{unknown:語}`・閉じない `{`・対応のない `}`・空の言葉・`{}` 中の `|` はいずれも Error。
 
 ### タスク3: 遊び方の絵（`howToArt.js`）
 *   **作業内容** :
