@@ -296,7 +296,7 @@ export function drawHowToArt(ctx, artId, rect) { … }
 * 本 RES の「4. 詳細作業内容」の該当タスクを記載し、タスクを [x] にする。
 * 開発資料の記載に影響が出る場合は、資料本体は直さず、「開発資料の更新予定」欄に追記する。
 
-*   [ ] タスク1: 遊び方の文章と絵の識別子（`howToText.js`）
+*   [x] タスク1: 遊び方の文章と絵の識別子（`howToText.js`）
     *   **対象ファイル** :
         *   `./js/view/howToText.js` :（更新）
     *   **作業内容** :
@@ -369,7 +369,8 @@ export function drawHowToArt(ctx, artId, rect) { … }
 
 ### タスク1: 遊び方の文章と絵の識別子（`howToText.js`）
 *   **作業内容** :
-    *   （未記入）
+    *   `js/view/howToText.js` を更新。先頭の責務を新しい趣旨に書き直し（数字は手で直す旨は残した）、`HOW_TO_ART_IDS`・`HOW_TO_ART_LABELS`（`intentAmount: '20'`）・`HowToEnemyRow`・`HowToPage` の typedef を足し、`HOW_TO_PAGES` を4ページ（見出し・art・paragraphs・rows）に置き換えた。段落の文字列は REQ のコードブロックから `|`・`{種類:言葉}` も含めそのまま写した。各ページ・段・paragraphs・rows を `Object.freeze`。JSDoc に印の書き方を記載。`HOW_TO_LABELS` は変更なし。何も import していない。
+    *   構文チェック（`node --input-type=module --check`）は通った。`howToView.js` は未変更のため、印がそのまま見え4ページ目は見出しだけになる（タスク5で直る）。
 
 ### タスク2: 印の読み取りと行への割り付け（`howToRichText.js`）
 *   **作業内容** :
