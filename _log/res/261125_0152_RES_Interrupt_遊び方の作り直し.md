@@ -316,7 +316,7 @@ export function drawHowToArt(ctx, artId, rect) { … }
         *   先頭の責務（3行以内）: 「遊び方の本文の印（折り返してよい位置 `|`・色を付ける言葉 `{種類:言葉}`）を読み取り、幅に合わせて行に割り付け（句読点の後と `|` でだけ折り返す・行頭禁止・ぶら下げ）、色の付いた行を描く。状態を持たない」の趣旨。
         *   確認: スクラッチパッドに使い捨てのスクリプトを置き（リポジトリに残さない）、`howToRichText.js` と `howToText.js` を `.mjs` に写して import し、`measureText` が全角 34・半角 英字 24・数字 19・空白 10 を返す偽の `ctx`（`font`・`save`・`restore` を持つもの）で、4ページ分の全段落を `wrapRichText`（幅 640 と 444、`hangW` 34）にかけ、(1) 印の誤りの `Error` が出ないこと、(2) 行の文字をつなぐと印を除いた段落と一致すること、(3) 行頭に `NO_LINE_START` の字がないこと、(4) 行の区切りが `BREAK_AFTER` の字の後か `|` の位置だけであること、(5) 行数が 2章「収まるかの見積もり」の表と合うこと、(6) `{key:…}` などの色の言葉が正しい `tone` のひと続きになること を確かめ、結果を「4. 詳細作業内容」に書く。加えて、わざと長いかたまり（`|` のない 30 文字の段落）で1文字単位に戻ること、`{unknown:語}`・閉じない `{` で `Error` になることも確かめる。
 
-*   [ ] タスク3: 遊び方の絵（`howToArt.js`）
+*   [x] タスク3: 遊び方の絵（`howToArt.js`）
     *   **対象ファイル** :
         *   `./js/view/howToArt.js` :（新規）
     *   **作業内容** :
@@ -380,7 +380,9 @@ export function drawHowToArt(ctx, artId, rect) { … }
 
 ### タスク3: 遊び方の絵（`howToArt.js`）
 *   **作業内容** :
-    *   （未記入）
+    *   `js/view/howToArt.js` を新規作成。import は `howToText.js`・`spriteView.js`・`cardView.js`・`troopView.js` だけ（`troopBakes.js`・ルール層・`oz` は import していない）。`drawHowToArt(ctx, artId, rect)`、描く関数（`drawWelcome`・`drawCards`・`drawBattle`・`drawGoblins`・`drawGiant`・`drawDragon`。各 `save`／`restore`）、凍結した表 `ART_DRAWERS`（キーは `HOW_TO_ART_IDS`。未知の識別子は `Error`）、割合の定数（`WELCOME`・`CARDS`・`BATTLE`・`BATTLE_LOGO_SCALE`・`ROW_BOX`・`GOBLINS`）、`ART_CARDS`、`INTENT_PLATE`（`intentView.js` に似せた見た目）を JSDoc 付きで書いた。予告の札の数字の幅は `measureText` で測って板の幅を決める（時間・乱数は使わない）。
+    *   構文チェック（`node --input-type=module --check`）は通った。
+    *   確認（手計算。区画 640×320、スプライト範囲は `SPRITE_TABLE` の値）: welcome は城 約 128×262（x 25〜154）、兵（大きさ 64）x 218・288・358（左右 ±32 で 186〜390）、ドラゴン 約 211×262（x 420〜630）で、区画内・城と兵（154 < 186）・兵とドラゴン（390 < 420）は重ならない。cards は札 137×192、全体 272 で縦横とも中央（上端 24）。battle はロゴ 約 283×74（上限 640×120 でも 448×84、中心 y 48 で y 6〜90）、巨人 約 117×170（x 454〜570、頭の上端 y 142）、札は高さ 44・下端 136・上端 92 でロゴの下端（最大 90）と重ならず、幅 約 90（x 467〜557）で右端を越えない。兵は x 90・173・256（右端 288）で巨人（左端 454）と重ならない。4ページの段の箱（区画 180×301 → 箱 156×220）: giant 152×220、dragon 156×194、ゴブリン（大きさ 59）は箱内に収まる。
 
 ### タスク4: 遊び方の配置（`layout.js`）
 *   **作業内容** :
