@@ -357,7 +357,7 @@ export function drawHowToArt(ctx, artId, rect) { … }
         *   タスク2の確認のスクリプトを、タスク5の後の `howToText.js` でもう一度通し、行数が 2章の見積もりと合うことを「4. 詳細作業内容」に書く。
         *   結果を「4. 詳細作業内容」に書く。
 
-*   [ ] タスク7: 開発資料（`PROJECT_ARCHITECTURE.md`）への反映（固定タスク）
+*   [x] タスク7: 開発資料（`PROJECT_ARCHITECTURE.md`）への反映（固定タスク）
     *   **対象ファイル** :
         *   `./PROJECT_ARCHITECTURE.md` :（更新）
     *   **作業内容** :
@@ -404,7 +404,7 @@ export function drawHowToArt(ctx, artId, rect) { … }
 
 ### タスク7: 開発資料（`PROJECT_ARCHITECTURE.md`）への反映（固定タスク）
 *   **作業内容** :
-    *   （未記入）
+    *   `PROJECT_ARCHITECTURE.md` を更新: 3章の「8ページ」→「4ページ」、4章の `howToText.js`・`howToView.js` の行を書き直し、`howToRichText.js`・`howToArt.js` の行を追加、`layout.js` の行の遊び方の配置の部分を書き直した。他の箇所は変更していない。
 
 ## テストプレイで確かめること（発注者が見る点）
 *   タイトル画面の「遊び方」で1ページ目が開き、4ページを「まえへ」「つぎへ」（PC では ← →）で行き来でき、ページ番号が「1 / 4」〜「4 / 4」と出る。最初のページの「まえへ」、最後のページの「つぎへ」は薄く、押しても何も起きない。「タイトルへ」（PC では Escape）で戻り、もう一度開くと1ページ目から始まる。
