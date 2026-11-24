@@ -346,7 +346,7 @@ export function drawHowToArt(ctx, artId, rect) { … }
         *   `ctx` を変える描画は `save`／`restore` で囲む。状態を変えない。座標は `HowToLayout` からだけ読む。
         *   先頭の責務（3行以内）を2章「`howToView.js` の描く順」の最後のとおりに書き直す。
 
-*   [ ] タスク6: JSDoc・構文チェック・決まりの通しの確認
+*   [x] タスク6: JSDoc・構文チェック・決まりの通しの確認
     *   **対象ファイル** :
         *   （確認のみ。直すところが見つかったら、タスク1〜5の対象ファイルの中で直す）
     *   **作業内容** :
@@ -396,7 +396,11 @@ export function drawHowToArt(ctx, artId, rect) { … }
 
 ### タスク6: JSDoc・構文チェック・決まりの通しの確認
 *   **作業内容** :
-    *   （未記入）
+    *   JSDoc: 5ファイル（`howToText.js`・`howToRichText.js`・`howToArt.js`・`layout.js`・`howToView.js`）を確認。先頭の責務は3行以内。タスク2の監査の指摘どおり、`howToRichText.js` の `wrapRichText` 内の閉包 `commit` に `add` と同じ書き方の JSDoc（行を確定して次の行を空にする。`@returns {void}`）を足した（この1か所だけを直した）。
+    *   構文チェック: 5ファイルとも `node --input-type=module --check` が通った（`howToRichText.js` は JSDoc 追記後にも再実行）。
+    *   禁止語の grep（`addEventListener`・`requestAnimationFrame`・`getContext`・`setTimeout`・`setInterval`・`performance.now`・`Date.now`・`Math.random`・`window.`・`oz/src`・`'oz'` の import・`js/rules/` の import・`troopBakes` の import）: 5ファイルにコードとしての該当なし。`howToText.js` の 3 行目・21 行目のコメントに「js/rules/config.js」の文字があるだけで、import ではない。
+    *   `git status`（読むだけ）: タスク6の作業前は変更なし（タスク1〜5はコミット済み）、作業後の変更は `js/view/howToRichText.js`（`commit` の JSDoc）と本 RES のみ。`HowToScene.js`・`spriteView.js`・`cardView.js`・`troopView.js`・`suitStyle.js`・`intentView.js`・`troopBakes.js`・`js/rules/`・`assets/` は変わっていない。
+    *   タスク2の確認のスクリプトを、スクラッチパッドに作り直し（リポジトリに残していない）、タスク5の後の `howToText.js` で再実行: 偽 `ctx`（全角 34・英字 24・数字 19・空白 10・その他半角 19、太字の半角 5% 増し）、幅 640（4ページ目の段は 444）、`hangW` 34。行数は 1ページ目 3／2ページ目 4＋3／3ページ目 4＋2／4ページ目 各 3 で 2章の表と一致。行をつなぐと印を除いた段落と一致・行頭に `NO_LINE_START` の字なし・行の区切りは `BREAK_AFTER` の後か `|` の位置のみ・色の言葉の `tone` が正しい、すべて問題なし。`|` のない 30 文字は 2 行、`{unknown:語}`・閉じない `{`・対応のない `}`・空の言葉・`{}` 中の `|` はいずれも Error。
 
 ### タスク7: 開発資料（`PROJECT_ARCHITECTURE.md`）への反映（固定タスク）
 *   **作業内容** :

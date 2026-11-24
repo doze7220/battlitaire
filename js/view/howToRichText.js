@@ -212,6 +212,10 @@ export function wrapRichText(ctx, text, maxW, hangW, style) {
   let line = [];
   let lineW = 0;
 
+  /**
+   * 作りかけの行を確定して行の並びに足し、次の行を空にする。
+   * @returns {void}
+   */
   const commit = () => {
     lines.push(toLine(line));
     line = [];
