@@ -179,7 +179,7 @@
         *   `grep` で次を確かめ、結果を記録する: `js/` に「デバッグスタート」・`DEBUG_TOOLS_ENABLED`・`debugNext`・`debugStart` が残っていないこと。`location` を読むのが `js/main.js` の1か所だけであること。`Engine.debug` を読むのが `main.js` の `createBoard`・`debugModeLayer.js`・`settingsStore.js` の `writeValue` だけであること（コメントを除く）。`Storage.set` が `settingsStore.js` の `writeValue` の1か所だけであること。`Engine.fpsVisible` への代入が `main.js` の `Engine.start` の直後と `debugTab.js` の `write` だけであること。`drawDebugModeLayer(` を呼ぶのが4つのシーンの `draw` の頭だけであること。`js/view/` で `'oz'` を import するのが `troopBakes.js` だけ、`js/rules/` に `'oz'` がないこと。`js/` に `requestAnimationFrame`・`addEventListener`・`getContext`・`window.` がないこと（コメントを除く。`this.window.`・`MENU_LAYOUT.window.` は対象外）。
         *   `node` の一時的なスクリプト（スクラッチパッドに置き、リポジトリに残さない）に `isDebugQuery` の式を写し、`''`・`?debug`・`?debug=1`・`?debug=0`・`?a=1&debug`・`?debug=0&a=1`・`?debugx=1` の結果を記録する。
 
-*   [ ] タスク7: 開発資料（`PROJECT_ARCHITECTURE.md`）への反映（固定タスク）
+*   [x] タスク7: 開発資料（`PROJECT_ARCHITECTURE.md`）への反映（固定タスク）
     *   **対象ファイル** :
         *   `./PROJECT_ARCHITECTURE.md` :（更新）
     *   **作業内容** :
@@ -233,10 +233,12 @@
 
 ### タスク7: 開発資料（`PROJECT_ARCHITECTURE.md`）への反映（固定タスク）
 *   **作業内容** :
-    *   （未着手）
+    *   `PROJECT_ARCHITECTURE.md` を更新予定欄のとおり反映した。冒頭のエンジンの段落（`?debug` で `debug` を使う）、2章（設定（調整値）をデバッグ／ふつうの言い方に。設定の保存の段落にデバッグ時は保存しないことを追記）、3章（デバッグの決まりの段落を新設：`?debug`・`?debug=0`・URL を読むのは1か所・`Engine.debug` を読む3か所・「DEBUG MODE」のレイヤー・FPS を消すこと・保存しないこと。タイトル画面の「デバッグスタート」とキー割り当ての記述を削除。DEBUG タブの段落の言い方を直し、起動の段落に `Engine.fpsVisible = false` を追記）、4章（責務の表の `js/main.js`・`js/rules/`、作成済みのファイルに `debugModeView.js`・`debugModeLayer.js` の行を追加し、`config.js`・`debugRules.js`・`layout.js`・`titleText.js`・`titleView.js`・`TitleScene.js`・`BoardScene.js`・`HowToScene.js`・`debugTab.js`・`settingsStore.js` の行を直す。土台から残したファイルの `js/main.js`・`BootScene.js` を直す）。
+    *   grep: 資料に「デバッグスタート」・`DEBUG_TOOLS_ENABLED`・`debugNext`・`debugStart` は残っていない（0件）。
 
 ## 5. 懸念事項・要確認ポイント
 *   「DEBUG」の幅は書体で変わる（太字 14px でおよそ 44〜55px と見込む）。48px を超える書体では、`fillText` の最大の幅で横に縮む（指定した文字の大きさ 14px は変えない）。PC・スマホで読めるかを目視で確認してほしい。
 *   放つボタンは、今の配置の計算では y 1188〜1268（REQ の「y 1140〜1240」は遊び方のボタンの値と読んだ）で、「DEBUG MODE」と縦は重なる。横は、ボタンの縁の右端が x 666、文字の縁取りの左端が x 668 で、すき間は 2px ほど。目視で確認してほしい（動かすときは `debugModeView.js` の `CENTER_X`・`MAX_W`）。
 *   FPS の表示は `Engine.start` の直後に消す。`Engine.start` の中で最初のフレームが描かれるかどうかは `oz/ENGINE_API.md` に書かれていないので、`?debug` で開いた最初に左上へ一瞬も出ないことを目視で確認してほしい。
+*   開発資料の3章は、「デバッグ（URL の `?debug`）」の段落を DEBUG タブの段落の前に新設して書いた。長い段落になったので、読みやすさを目視で確認してほしい。
 *   デバッグでは、起動の前の音の読み込みの間（まだ `Engine.start` の前で黒い画面）は「DEBUG MODE」は出ない。BOOT（「TAP SCREEN」）から出る。
