@@ -67,7 +67,7 @@ export const HOW_TO_PAGES = Object.freeze([
     heading: '基本はソリティア！',
     art: HOW_TO_ART_IDS.cards,
     paragraphs: Object.freeze([
-      '使う|カードの|数字は|{key:1〜7}。山札の|カードを|{key:2回タップ}すると、そのまま|捨て札に|できる。{key:同じ絵柄}で|つなげるほど|ボーナスが|加算されるぞ！',
+      '使う|カードの|数字は|{key:1〜7}。山札の|カードを|{key:2回タップ}すると、そのまま|捨て札に|できる。{key:同じ絵柄}で|つなげるほど|ボーナスが|加算されるぞ！4つの|絵柄を|1列に|混ぜて|放つと、|{key:すべて +1}の|おまけ付き！',
       '{gold:金貨}が|5 たまる|ごとに、次の|ターンの|アクションポイントが|増える|（最大 +2）。準備が|できたら|{key:「放つ」}で|戦場へ|出撃だ！',
     ]),
     rows: Object.freeze([]),
@@ -90,7 +90,7 @@ export const HOW_TO_PAGES = Object.freeze([
         art: HOW_TO_ART_IDS.goblins,
         name: 'ゴブリンの軍勢',
         paragraphs: Object.freeze([
-          '雑魚だ！蹴散らせ！{key:防御してる}|ときが|準備の|チャンス！',
+          '毎ターン、攻撃と|防御を|同時に|してくる。{key:防御の薄い}|ターンが|攻めどき！',
         ]),
       }),
       Object.freeze({
