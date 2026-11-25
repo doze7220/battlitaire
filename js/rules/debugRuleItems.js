@@ -10,7 +10,7 @@ import { RULES } from './config.js';
  * @typedef {Object} RuleItem
  * @property {string} id 識別子（例 'castle.maxHp'、'goblins.attack.min'）。
  * @property {string} group 組（'castle' か敵の種類の識別子）。
- * @property {string} kind 値の種類（'castleMaxHp'|'enemyMaxHp'|'armor'|'amount'|'weight'|'chance'|'cycleLength'|'burn'）。
+ * @property {string} kind 値の種類（'castleMaxHp'|'enemyMaxHp'|'armor'|'amount'|'chance'|'cycleLength'|'burn'）。
  * @property {string} name 項目の名前の識別子（DEBUG タブが文字を引く）。
  * @property {string} timing 今の敵（城）のときに効く時期（'now'|'nextIntent'|'nextCycle'|'nextBattle'）。
  * @property {string|null} pairId 最小と最大の組の相手の id（組でなければ null）。
@@ -61,19 +61,8 @@ function rangeItems(baseId, group, baseName, kind, rangeOf) {
  * @type {Readonly<Object<string, (typeId: string, behavior: any) => Readonly<RuleItem>[]>>}
  */
 const BEHAVIOR_ITEMS = Object.freeze({
-  weighted: (typeId, behavior) => {
-    const amounts = [];
-    const weights = [];
-    behavior.actions.forEach((spec, i) => {
-      const k = spec.kind;
-      amounts.push(...rangeItems(`${typeId}.${k}`, typeId, k, 'amount',
-        (c) => c.enemies[typeId].behavior.actions[i].range));
-      weights.push(item(`${typeId}.${k}.weight`, typeId, 'weight', `${k}Weight`, 'nextIntent', null, null,
-        (c) => c.enemies[typeId].behavior.actions[i].weight,
-        (c, v) => { c.enemies[typeId].behavior.actions[i].weight = v; }));
-    });
-    return [...amounts, ...weights];
-  },
+  steady: (typeId) => rangeItems(`${typeId}.attack`, typeId, 'attack', 'amount',
+    (c) => c.enemies[typeId].behavior.attackRange),
   cycle: (typeId, behavior) => {
     const items = [
       item(`${typeId}.cycleLength`, typeId, 'cycleLength', 'cycleLength', 'nextCycle', null, null,

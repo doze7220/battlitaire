@@ -48,7 +48,6 @@ const VALIDATORS = Object.freeze({
   cycleLength: (v) => Number.isInteger(v) && v >= 1,
   armor: (v) => Number.isInteger(v) && v >= 0,
   amount: (v) => Number.isInteger(v) && v >= 0,
-  weight: (v) => Number.isInteger(v) && v >= 0,
   burn: (v) => Number.isInteger(v) && v >= 0,
   chance: (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1,
 });
@@ -144,7 +143,7 @@ export function ruleTiming(game, id) {
 }
 
 /**
- * ルールの値を変える。組の決まり（最小 ≤ 最大）・重みの決まり（組の重みを全部 0 にしない）を守り、すぐ効く値は効かせる。
+ * ルールの値を変える。組の決まり（最小 ≤ 最大）を守り、すぐ効く値は効かせる。
  * @param {import('./Game.js').Game} game ゲーム
  * @param {string} id 項目の識別子
  * @param {number} value 新しい値
@@ -156,10 +155,6 @@ export function setRuleValue(game, id, value) {
   if (!item) return false;
   if (!isValidValue(item.kind, value)) return false;
   if (item.get(game.config) === value) return false;
-  if (item.kind === 'weight' && value === 0) {
-    const others = RULE_ITEMS.filter((it) => it.kind === 'weight' && it.group === item.group && it.id !== item.id);
-    if (others.every((it) => it.get(game.config) === 0)) return false;
-  }
   item.set(game.config, value);
   const pair = item.pairId ? ruleItemById(item.pairId) : null;
   if (pair) {

@@ -16,7 +16,6 @@ export const RULE_SLIDERS = Object.freeze({
   enemyMaxHp: Object.freeze({ min: 5, max: 300, step: 5 }),
   armor: Object.freeze({ min: 0, max: 20, step: 1 }),
   amount: Object.freeze({ min: 0, max: 50, step: 1 }),
-  weight: Object.freeze({ min: 0, max: 10, step: 1 }),
   chance: Object.freeze({ min: 0, max: 1, step: 0.05 }),
   cycleLength: Object.freeze({ min: 1, max: 8, step: 1 }),
   burn: Object.freeze({ min: 0, max: 10, step: 1 }),

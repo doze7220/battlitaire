@@ -4,7 +4,7 @@
  */
 
 import {
-  weightedAction,
+  steadyAttackAction,
   windupAction,
   cycleAttackAction,
   clawAction,
@@ -24,14 +24,13 @@ import {
  * }>>}
  */
 const INTENT_TABLE = Object.freeze({
-  weighted: Object.freeze({
-    ids: (behavior) => behavior.actions.map((spec) => spec.kind),
+  steady: Object.freeze({
+    ids: () => ['attackDefend'],
     plan: (behavior, id, random) => {
-      const spec = behavior.actions.find((s) => s.kind === id);
-      if (!spec) throw new Error(`unknown intent id: ${id}`);
-      return { action: weightedAction(spec, random), state: {} };
+      if (id !== 'attackDefend') throw new Error(`unknown intent id: ${id}`);
+      return { action: steadyAttackAction(behavior, random), state: {} };
     },
-    chosen: (behavior, intent) => intent.kind,
+    chosen: () => 'attackDefend',
   }),
   cycle: Object.freeze({
     ids: (behavior) => {

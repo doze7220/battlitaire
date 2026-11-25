@@ -15,16 +15,6 @@ export function rollAmount(range, random) {
 }
 
 /**
- * 重みの行動の設定から行動を作る。量の抽選で `random()` を1回呼ぶ。
- * @param {{ kind: string, range: { min: number, max: number } }} spec 行動の設定
- * @param {() => number} random 0以上1未満を返す乱数の関数
- * @returns {import('./combatants.js').EnemyAction} 新しい行動
- */
-export function weightedAction(spec, random) {
-  return { kind: spec.kind, amount: rollAmount(spec.range, random) };
-}
-
-/**
  * 振りかぶりの行動を作る（乱数は呼ばない）。
  * @returns {import('./combatants.js').EnemyAction} 新しい行動
  */
@@ -77,28 +67,17 @@ export function inhaleAction() {
 }
 
 /**
- * 重みによって行動を1つ選び、量を幅から抽選する。`random()` は2回呼ぶ（種類 → 量の順）。
- * @param {ReadonlyArray<{ kind: string, range: { min: number, max: number }, weight: number }>} actions 行動の種類ごとの量の幅と重み
+ * 毎ターン攻撃の決まり（ゴブリン）の攻撃の行動を作る。量の抽選で `random()` を1回呼ぶ。
+ * @param {{ attackRange: { min: number, max: number } }} behavior 行動の決まりの設定
  * @param {() => number} random 0以上1未満を返す乱数の関数
- * @returns {import('./combatants.js').EnemyAction} 新しい行動オブジェクト（重みは含まない）
+ * @returns {import('./combatants.js').EnemyAction} 新しい行動
  */
-export function pickWeighted(actions, random) {
-  const total = actions.reduce((sum, spec) => sum + spec.weight, 0);
-  const r = random() * total;
-  let acc = 0;
-  let chosen = actions[actions.length - 1];
-  for (const spec of actions) {
-    acc += spec.weight;
-    if (acc > r) {
-      chosen = spec;
-      break;
-    }
-  }
-  return weightedAction(chosen, random);
+export function steadyAttackAction(behavior, random) {
+  return { kind: 'attack', amount: rollAmount(behavior.attackRange, random) };
 }
 
 /**
- * 行動の決まりの種類ごとの、状態の初期値・次の行動の決め方・数え下ろしの問い合わせの表。
+ * 行動の決まりの種類ごとの、状態の初期値・次の行動の決め方・数え下ろしの問い合わせ・隙かの問い合わせ（isOpening）の表。
  * @type {Readonly<Object<string, {
  *   initialState: (behavior: any) => object,
  *   planNext: (behavior: any, state: object, random: () => number) => { action: import('./combatants.js').EnemyAction, state: object },
@@ -107,10 +86,10 @@ export function pickWeighted(actions, random) {
  * }>>}
  */
 const BEHAVIORS = Object.freeze({
-  weighted: Object.freeze({
+  steady: Object.freeze({
     initialState: () => ({}),
     planNext: (behavior, state, random) => ({
-      action: pickWeighted(behavior.actions, random),
+      action: steadyAttackAction(behavior, random),
       state,
     }),
     countdown: () => null,
@@ -174,7 +153,7 @@ export function createBehaviorState(behavior) {
 
 /**
  * 次の行動を決める。引数の状態は書き換えず、新しい状態を返す。
- * 乱数の使い方は決まりごと（weighted: 種類→量。cycle: 攻撃のフェーズだけ量。inhale: ブレス・爪は量、それ以外は吸い込むの抽選→外れなら爪の量）。
+ * 乱数の使い方は決まりごと（steady: 攻撃の量。cycle: 攻撃のフェーズだけ量。inhale: ブレス・爪は量、それ以外は吸い込むの抽選→外れなら爪の量）。
  * @param {{ type: string }} behavior 行動の決まりの設定
  * @param {object} state いまの決まりの状態
  * @param {() => number} random 0以上1未満を返す乱数の関数

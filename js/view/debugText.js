@@ -42,10 +42,6 @@ export const RULE_ITEM_TEXT = Object.freeze({
   armor: '常時防御力',
   attackMin: '攻撃の量 最小',
   attackMax: '攻撃の量 最大',
-  defendMin: '防御の量 最小',
-  defendMax: '防御の量 最大',
-  attackWeight: '攻撃の重み',
-  defendWeight: '防御の重み',
   cycleLength: '攻撃までのターン数',
   healChance: '攻撃後に回復する確率',
   healAmount: '回復の量',
@@ -95,7 +91,7 @@ export function percentText(v) {
  */
 export const INTENT_CHOICE_TEXT = Object.freeze({
   attack: '攻撃',
-  defend: '防御',
+  attackDefend: '攻撃と防御',
   windup: '振りかぶり',
   attackHeal: '攻撃して回復',
   claw: '爪',
