@@ -56,6 +56,14 @@ export const RULE_ITEM_TEXT = Object.freeze({
   defenseChance: '防御を張る確率',
   defenseMin: '防御の量 最小',
   defenseMax: '防御の量 最大',
+  heavyMin: '大攻撃の量 最小',
+  heavyMax: '大攻撃の量 最大',
+  chargeChance: '溜める確率',
+  chargeTurns: '溜めのターン数',
+  attackChance: '攻撃する確率',
+  bigGuardChance: '大防御の確率',
+  bigGuardMin: '大防御の量 最小',
+  bigGuardMax: '大防御の量 最大',
 });
 
 /**
@@ -66,6 +74,7 @@ export const RULE_TIMING_TEXT = Object.freeze({
   now: 'すぐ',
   nextIntent: '次の予告から',
   nextCycle: '次の周期から',
+  nextCharge: '次の溜めから',
   nextBattle: '次の攻防から',
   onAppear: '出てきたときから',
 });
@@ -101,6 +110,10 @@ export const INTENT_CHOICE_TEXT = Object.freeze({
   claw: '爪',
   inhale: '吸い込む',
   breath: 'ブレス',
+  charge: '溜める',
+  heavy: '大攻撃',
+  guard: '防御',
+  bigGuard: '大防御',
 });
 
 /**

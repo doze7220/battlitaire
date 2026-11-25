@@ -4,7 +4,7 @@
  */
 import { Engine } from 'oz';
 import { addRuleSliders } from './debugRuleSliders.js';
-import { DEBUG_LAYOUT, DEBUG_FPS_POSITION } from '../view/debugLayout.js';
+import { createDebugLayout, DEBUG_FPS_POSITION } from '../view/debugLayout.js';
 import { DEBUG_TEXT, intentChoiceText, hpText, fpsText, stageStepText } from '../view/debugText.js';
 import { troopBakesEnabled, setTroopBakesEnabled } from '../view/troopBakes.js';
 
@@ -31,12 +31,12 @@ export const TURN_SLIDER = Object.freeze({ min: 1, max: 30, step: 1 });
 export const HP_LOW = 1;
 
 /**
- * ステージを移るボタンの移る数（DEBUG_LAYOUT.stageButtons の順）。DEBUG タブのボタンで、ルールの値ではない。
+ * ステージを移るボタンの移る数（`createDebugLayout` の `stageButtons` の順）。DEBUG タブのボタンで、ルールの値ではない。
  * @type {readonly number[]}
  */
 const STAGE_STEPS = Object.freeze([-5, -1, 1, 5]);
 
-/** 兵のスライダーを足す種類の並び（DEBUG_LAYOUT.troopSliders の項目の順）。 */
+/** 兵のスライダーを足す種類の並び（`createDebugLayout` の `troopSliders` の項目の順）。 */
 const TROOP_KINDS = Object.freeze(['attack', 'defense', 'heal']);
 
 /**
@@ -77,16 +77,17 @@ function addHpControls(area, { value, buttons, label, target, setHp }) {
  * @returns {void}
  */
 function buildDebugTab(debug, tab) {
-  const area = tab.addScroll(DEBUG_LAYOUT.area);
+  const layout = createDebugLayout(debug.enemyChoices().length);
+  const area = tab.addScroll(layout.area);
 
   area.addValue({
-    ...DEBUG_LAYOUT.troopNote,
+    ...layout.troopNote,
     label: () => (debug.troopsLocked() ? DEBUG_TEXT.troopsLocked : DEBUG_TEXT.troopsHeading),
     read: () => '',
   });
   for (const kind of TROOP_KINDS) {
     area.addSlider({
-      ...DEBUG_LAYOUT.troopSliders[kind],
+      ...layout.troopSliders[kind],
       label: DEBUG_TEXT.troops[kind],
       min: TROOP_SLIDER.min,
       max: TROOP_SLIDER.max,
@@ -97,31 +98,34 @@ function buildDebugTab(debug, tab) {
   }
 
   area.addValue({
-    ...DEBUG_LAYOUT.stageLabel,
+    ...layout.stageLabel,
     label: DEBUG_TEXT.stage,
     read: () => debug.stageNumber(),
     format: (n) => String(n),
   });
   STAGE_STEPS.forEach((delta, i) => {
     area.addButton({
-      ...DEBUG_LAYOUT.stageButtons[i],
+      ...layout.stageButtons[i],
       label: stageStepText(delta),
       onPress: () => debug.moveStage(delta),
     });
   });
 
-  area.addValue({ ...DEBUG_LAYOUT.enemyLabel, label: DEBUG_TEXT.enemy, read: () => '' });
-  area.addChoices({
-    ...DEBUG_LAYOUT.enemyChoices,
-    choices: debug.enemyChoices().map((e) => ({ label: e.name, value: e.typeId })),
-    read: () => debug.enemyTypeId(),
-    write: (v) => debug.switchEnemy(v),
-  });
+  area.addValue({ ...layout.enemyLabel, label: DEBUG_TEXT.enemy, read: () => '' });
+  const enemies = debug.enemyChoices();
+  for (const row of layout.enemyRows) {
+    area.addChoices({
+      ...row.rect,
+      choices: enemies.slice(row.from, row.to).map((e) => ({ label: e.name, value: e.typeId })),
+      read: () => debug.enemyTypeId(),
+      write: (v) => debug.switchEnemy(v),
+    });
+  }
 
-  area.addValue({ ...DEBUG_LAYOUT.intentLabel, label: DEBUG_TEXT.intent, read: () => '' });
+  area.addValue({ ...layout.intentLabel, label: DEBUG_TEXT.intent, read: () => '' });
   const slots = Array.from({ length: debug.intentSlotCount() }, (_, i) => i);
   area.addChoices({
-    ...DEBUG_LAYOUT.intentChoices,
+    ...layout.intentChoices,
     choices: slots.map((i) => ({
       label: () => {
         const id = debug.intentChoiceAt(i);
@@ -134,7 +138,7 @@ function buildDebugTab(debug, tab) {
   });
 
   area.addSlider({
-    ...DEBUG_LAYOUT.battleTurn,
+    ...layout.battleTurn,
     label: DEBUG_TEXT.battleTurn,
     min: TURN_SLIDER.min,
     max: TURN_SLIDER.max,
@@ -144,22 +148,22 @@ function buildDebugTab(debug, tab) {
   });
 
   addHpControls(area, {
-    value: DEBUG_LAYOUT.castleHp,
-    buttons: DEBUG_LAYOUT.castleButtons,
+    value: layout.castleHp,
+    buttons: layout.castleButtons,
     label: DEBUG_TEXT.castleHp,
     target: () => debug.castle(),
     setHp: (hp) => debug.setCastleHp(hp),
   });
   addHpControls(area, {
-    value: DEBUG_LAYOUT.enemyHp,
-    buttons: DEBUG_LAYOUT.enemyButtons,
+    value: layout.enemyHp,
+    buttons: layout.enemyButtons,
     label: DEBUG_TEXT.enemyHp,
     target: () => debug.enemy(),
     setHp: (hp) => debug.setEnemyHp(hp),
   });
 
   area.addCheckbox({
-    ...DEBUG_LAYOUT.fpsCheckbox,
+    ...layout.fpsCheckbox,
     label: DEBUG_TEXT.fpsVisible,
     read: () => Engine.fpsVisible,
     write: (on) => {
@@ -168,20 +172,20 @@ function buildDebugTab(debug, tab) {
     },
   });
   area.addValue({
-    ...DEBUG_LAYOUT.fpsValue,
+    ...layout.fpsValue,
     label: DEBUG_TEXT.fps,
     read: () => Engine.fps,
     format: fpsText,
   });
 
   area.addCheckbox({
-    ...DEBUG_LAYOUT.bakeCheckbox,
+    ...layout.bakeCheckbox,
     label: DEBUG_TEXT.bakedDrawing,
     read: () => troopBakesEnabled(),
     write: (on) => setTroopBakesEnabled(on),
   });
 
-  addRuleSliders(area, debug);
+  addRuleSliders(area, debug, layout.ruleTop);
 }
 
 /**

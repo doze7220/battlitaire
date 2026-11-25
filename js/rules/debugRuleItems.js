@@ -11,9 +11,9 @@ import { enemyTypeIds } from './enemyTypes.js';
  * @typedef {Object} RuleItem
  * @property {string} id 識別子（例 'castle.maxHp'、'goblins.attack.min'）。
  * @property {string} group 組（'castle' か敵の種類の識別子）。
- * @property {string} kind 値の種類（'castleMaxHp'|'enemyMaxHp'|'defense'|'amount'|'chance'|'cycleLength'|'burn'）。
+ * @property {string} kind 値の種類（'castleMaxHp'|'enemyMaxHp'|'defense'|'amount'|'chance'|'cycleLength'|'burn'|'chargeTurns'）。
  * @property {string} name 項目の名前の識別子（DEBUG タブが文字を引く）。
- * @property {string} timing 今の敵（城）のときに効く時期（'now'|'nextIntent'|'nextCycle'|'nextBattle'）。
+ * @property {string} timing 今の敵（城）のときに効く時期（'now'|'nextIntent'|'nextCycle'|'nextCharge'|'nextBattle'）。
  * @property {string|null} pairId 最小と最大の組の相手の id（組でなければ null）。
  * @property {'min'|'max'|null} side 組の中で自分が最小か最大か（組でなければ null）。
  * @property {(config: any) => number} get 設定から値を読む。
@@ -91,14 +91,37 @@ const BEHAVIOR_ITEMS = Object.freeze({
       (c) => c.enemies[typeId].behavior.inhaleChance,
       (c, v) => { c.enemies[typeId].behavior.inhaleChance = v; }),
   ],
+  buildup: (typeId) => [
+    ...rangeItems(`${typeId}.attack`, typeId, 'attack', 'amount', (c) => c.enemies[typeId].behavior.attackRange),
+    ...rangeItems(`${typeId}.heavy`, typeId, 'heavy', 'amount', (c) => c.enemies[typeId].behavior.heavyRange),
+    item(`${typeId}.chargeChance`, typeId, 'chance', 'chargeChance', 'nextIntent', null, null,
+      (c) => c.enemies[typeId].behavior.chargeChance,
+      (c, v) => { c.enemies[typeId].behavior.chargeChance = v; }),
+    item(`${typeId}.chargeTurns`, typeId, 'chargeTurns', 'chargeTurns', 'nextCharge', null, null,
+      (c) => c.enemies[typeId].behavior.chargeTurns,
+      (c, v) => { c.enemies[typeId].behavior.chargeTurns = v; }),
+  ],
+  either: (typeId) => [
+    item(`${typeId}.attackChance`, typeId, 'chance', 'attackChance', 'nextIntent', null, null,
+      (c) => c.enemies[typeId].behavior.attackChance,
+      (c, v) => { c.enemies[typeId].behavior.attackChance = v; }),
+    ...rangeItems(`${typeId}.attack`, typeId, 'attack', 'amount', (c) => c.enemies[typeId].behavior.attackRange),
+    ...rangeItems(`${typeId}.guard`, typeId, 'defense', 'defense', (c) => c.enemies[typeId].behavior.guardRange),
+    item(`${typeId}.bigGuardChance`, typeId, 'chance', 'bigGuardChance', 'nextIntent', null, null,
+      (c) => c.enemies[typeId].behavior.bigGuardChance,
+      (c, v) => { c.enemies[typeId].behavior.bigGuardChance = v; }),
+    ...rangeItems(`${typeId}.bigGuard`, typeId, 'bigGuard', 'defense', (c) => c.enemies[typeId].behavior.bigGuardRange),
+  ],
 });
 
 /**
- * 敵の防御の項目（張る確率と量の幅）を作る。3体共通。
+ * 敵の防御の項目（張る確率と量の幅）を作る。行動と別に防御を抽選する敵（`defense` を持つ敵）だけ。
  * @param {string} typeId 敵の種類の識別子
- * @returns {Readonly<RuleItem>[]} [確率, 最小, 最大]
+ * @param {any} spec 敵の設定
+ * @returns {Readonly<RuleItem>[]} [確率, 最小, 最大]。`defense` を持たない敵は空
  */
-function defenseItems(typeId) {
+function defenseItems(typeId, spec) {
+  if (!spec.defense) return [];
   return [
     item(`${typeId}.defense.chance`, typeId, 'chance', 'defenseChance', 'nextIntent', null, null,
       (c) => c.enemies[typeId].defense.chance,
@@ -126,7 +149,7 @@ function buildItems(rules) {
       item(`${typeId}.maxHp`, typeId, 'enemyMaxHp', 'maxHp', 'now', null, null,
         (c) => c.enemies[typeId].maxHp, (c, v) => { c.enemies[typeId].maxHp = v; }),
       ...build(typeId, behavior),
-      ...defenseItems(typeId),
+      ...defenseItems(typeId, rules.enemies[typeId]),
     );
   }
   return items;

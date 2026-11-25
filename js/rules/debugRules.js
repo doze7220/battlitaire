@@ -47,6 +47,7 @@ const VALIDATORS = Object.freeze({
   castleMaxHp: (v) => Number.isInteger(v) && v >= 1,
   enemyMaxHp: (v) => Number.isInteger(v) && v >= 1,
   cycleLength: (v) => Number.isInteger(v) && v >= 1,
+  chargeTurns: (v) => Number.isInteger(v) && v >= 1,
   defense: (v) => Number.isInteger(v) && v >= 0,
   amount: (v) => Number.isInteger(v) && v >= 0,
   burn: (v) => Number.isInteger(v) && v >= 0,
@@ -133,7 +134,7 @@ export function ruleValue(game, id) {
  * 項目がいつから効くかを答える。
  * @param {import('./Game.js').Game} game ゲーム
  * @param {string} id 項目の識別子
- * @returns {string|null} 'now'|'nextIntent'|'nextCycle'|'nextBattle'|'onAppear'。知らない id は null
+ * @returns {string|null} 'now'|'nextIntent'|'nextCycle'|'nextCharge'|'nextBattle'|'onAppear'。知らない id は null
  */
 export function ruleTiming(game, id) {
   const it = ruleItemById(id);

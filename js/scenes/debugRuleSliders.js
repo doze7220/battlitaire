@@ -8,16 +8,17 @@ import { DEBUG_TEXT, ruleItemText, percentText } from '../view/debugText.js';
 /**
  * ルールの値の種類ごとのスライダーの範囲と刻み。
  * DEBUG タブのスライダーの範囲で、ルールの値ではない。試遊で決め直す値。
- * `config.js` の値を範囲の外にしたら見直す。
+ * `config.js` の値を範囲の外にしたら見直す（敵の最大 HP は刻み 2。奇数の値にしたら見直す）。
  * @type {Readonly<Record<string, Readonly<{ min: number, max: number, step: number }>>>}
  */
 export const RULE_SLIDERS = Object.freeze({
   castleMaxHp: Object.freeze({ min: 5, max: 200, step: 5 }),
-  enemyMaxHp: Object.freeze({ min: 5, max: 300, step: 5 }),
+  enemyMaxHp: Object.freeze({ min: 2, max: 300, step: 2 }),
   defense: Object.freeze({ min: 0, max: 20, step: 1 }),
   amount: Object.freeze({ min: 0, max: 50, step: 1 }),
   chance: Object.freeze({ min: 0, max: 1, step: 0.05 }),
   cycleLength: Object.freeze({ min: 1, max: 8, step: 1 }),
+  chargeTurns: Object.freeze({ min: 1, max: 5, step: 1 }),
   burn: Object.freeze({ min: 0, max: 10, step: 1 }),
 });
 
@@ -50,11 +51,12 @@ function addRuleSlider(area, debug, id, rect) {
  * ルールの値の並び（元に戻すボタン、組ごとの見出しとスライダー）を領域に足す。
  * @param {object} area スクロールする領域のオブジェクト
  * @param {object} debug 盤面のデバッグの口（BoardDebug）
+ * @param {number} ruleTop 並びの始まりの y（`createDebugLayout` の `ruleTop`）
  * @returns {void}
  */
-export function addRuleSliders(area, debug) {
+export function addRuleSliders(area, debug, ruleTop) {
   const groups = debug.ruleGroups();
-  const layout = debugRuleLayout(groups.map((g) => g.itemIds.length));
+  const layout = debugRuleLayout(ruleTop, groups.map((g) => g.itemIds.length));
 
   area.addButton({
     ...layout.resetButton,

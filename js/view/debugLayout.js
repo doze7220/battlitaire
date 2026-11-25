@@ -1,6 +1,6 @@
 /**
  * 責務: DEBUG タブのスクロールする領域と中の部品（焼き付けのチェックボックスを含む）の位置・大きさ、FPS の表示の隅を
- * 定数で持ち、ルールの値の並びの矩形を項目の数から求める。座標は論理座標。import は menuLayout.js の MENU_LAYOUT だけ。
+ * 値で持ち、敵の数から配置を、ルールの値の並びの矩形を項目の数から求める。座標は論理座標。import は menuLayout.js の MENU_LAYOUT だけ。
  */
 import { MENU_LAYOUT } from './menuLayout.js';
 
@@ -58,86 +58,115 @@ const STAGE_BUTTONS_Y = STAGE_LABEL_Y + LABEL_H;
 const ENEMY_LABEL_Y = STAGE_BUTTONS_Y + BUTTON_H + GAP;
 /** 敵の選択肢の列の y（見出しのすぐ下）。 */
 const ENEMY_CHOICES_Y = ENEMY_LABEL_Y + LABEL_H;
-/** 次の行動の見出しの y。 */
-const INTENT_LABEL_Y = ENEMY_CHOICES_Y + CHOICES_H + GAP;
-/** 次の行動の選択肢の列の y（見出しのすぐ下）。 */
-const INTENT_CHOICES_Y = INTENT_LABEL_Y + LABEL_H;
-/** 戦闘のターンの番号のスライダーの y（次の行動の選択肢の下）。 */
-const BATTLE_TURN_Y = INTENT_CHOICES_Y + CHOICES_H + GAP;
-/** 城の HP の表示の y。 */
-const CASTLE_HP_Y = BATTLE_TURN_Y + SLIDER_H + GAP;
-/** 城の HP のボタンの y（表示のすぐ下）。 */
-const CASTLE_BUTTONS_Y = CASTLE_HP_Y + LABEL_H;
-/** 敵の HP の表示の y。 */
-const ENEMY_HP_Y = CASTLE_BUTTONS_Y + BUTTON_H + GAP;
-/** 敵の HP のボタンの y（表示のすぐ下）。 */
-const ENEMY_BUTTONS_Y = ENEMY_HP_Y + LABEL_H;
-/** FPS のチェックボックスの y。 */
-const FPS_CHECK_Y = ENEMY_BUTTONS_Y + BUTTON_H + GAP;
-/** FPS の値の y。 */
-const FPS_VALUE_Y = FPS_CHECK_Y + CHECK_H + GAP;
-/** 「焼き付けで描く」のチェックボックスの y（FPS の値のすぐ下）。 */
-const BAKE_CHECK_Y = FPS_VALUE_Y + LABEL_H + GAP;
+/** 敵の選択肢の1段に並べる数。試遊で決め直す値。 @type {number} */
+const ENEMY_COLS = 2;
 
 /**
- * DEBUG タブの配置の定数（凍結。試遊で決め直す値）。`area` は窓の内側の原点から、
+ * DEBUG タブの配置（凍結。試遊で決め直す値）。`area` は窓の内側の原点から、
  * ほかの矩形は領域の中身の左上が原点。どれも `addSlider` などにそのまま広げて渡せる。
- * @type {Readonly<{
+ * `enemyRows` は敵の切り替えの段（上から順）で、`from`〜`to`（`to` は含まない）がその段に並ぶ敵の番号の範囲。
+ * 最後の段が `ENEMY_COLS` に満たないときは、その数ぶんの幅にする。`ruleTop` はルールの値の並びの始まりの y。
+ * @typedef {Readonly<{
  *   area: Readonly<{ x: number, y: number, width: number, height: number }>,
  *   troopNote: object,
  *   troopSliders: Readonly<{ attack: object, defense: object, heal: object }>,
  *   stageLabel: object, stageButtons: ReadonlyArray<object>,
- *   enemyLabel: object, enemyChoices: object, intentLabel: object, intentChoices: object,
+ *   enemyLabel: object,
+ *   enemyRows: ReadonlyArray<Readonly<{ rect: object, from: number, to: number }>>,
+ *   intentLabel: object, intentChoices: object,
  *   battleTurn: object, castleHp: object, castleButtons: Readonly<{ one: object, full: object }>,
  *   enemyHp: object, enemyButtons: Readonly<{ one: object, full: object }>,
- *   fpsCheckbox: object, fpsValue: object, bakeCheckbox: object
- * }>}
+ *   fpsCheckbox: object, fpsValue: object, bakeCheckbox: object,
+ *   ruleTop: number
+ * }>} DebugLayout
  */
-export const DEBUG_LAYOUT = Object.freeze({
-  area: AREA,
-  troopNote: rect(TROOP_NOTE_Y, LABEL_H),
-  troopSliders: Object.freeze({
-    attack: rect(ATTACK_Y, SLIDER_H),
-    defense: rect(DEFENSE_Y, SLIDER_H),
-    heal: rect(HEAL_Y, SLIDER_H),
-  }),
-  stageLabel: rect(STAGE_LABEL_Y, LABEL_H),
-  stageButtons: Object.freeze(
-    [0, 1, 2, 3].map((i) => rect(STAGE_BUTTONS_Y, BUTTON_H, i * (QUARTER_W + BUTTON_GAP), QUARTER_W)),
-  ),
-  enemyLabel: rect(ENEMY_LABEL_Y, LABEL_H),
-  enemyChoices: rect(ENEMY_CHOICES_Y, CHOICES_H),
-  intentLabel: rect(INTENT_LABEL_Y, LABEL_H),
-  intentChoices: rect(INTENT_CHOICES_Y, CHOICES_H),
-  battleTurn: rect(BATTLE_TURN_Y, SLIDER_H),
-  castleHp: rect(CASTLE_HP_Y, LABEL_H),
-  castleButtons: Object.freeze({
-    one: rect(CASTLE_BUTTONS_Y, BUTTON_H, 0, HALF_W),
-    full: rect(CASTLE_BUTTONS_Y, BUTTON_H, HALF_W + BUTTON_GAP, HALF_W),
-  }),
-  enemyHp: rect(ENEMY_HP_Y, LABEL_H),
-  enemyButtons: Object.freeze({
-    one: rect(ENEMY_BUTTONS_Y, BUTTON_H, 0, HALF_W),
-    full: rect(ENEMY_BUTTONS_Y, BUTTON_H, HALF_W + BUTTON_GAP, HALF_W),
-  }),
-  fpsCheckbox: rect(FPS_CHECK_Y, CHECK_H),
-  fpsValue: rect(FPS_VALUE_Y, LABEL_H),
-  bakeCheckbox: rect(BAKE_CHECK_Y, CHECK_H),
-});
+
+/**
+ * 敵の数から、DEBUG タブの配置を求める（敵の切り替えの段の数で、その下の y が変わる）。
+ * @param {number} enemyCount 敵の種類の数
+ * @returns {DebugLayout} 配置
+ */
+export function createDebugLayout(enemyCount) {
+  const rowCount = Math.max(1, Math.ceil(enemyCount / ENEMY_COLS));
+  const enemyRows = [];
+  for (let r = 0; r < rowCount; r += 1) {
+    const from = r * ENEMY_COLS;
+    const to = Math.min(enemyCount, from + ENEMY_COLS);
+    const width = (ROW_W * (to - from)) / ENEMY_COLS;
+    enemyRows.push(Object.freeze({
+      rect: rect(ENEMY_CHOICES_Y + r * (CHOICES_H + GAP), CHOICES_H, 0, to - from > 0 ? width : ROW_W),
+      from,
+      to,
+    }));
+  }
+  const enemyEndY = ENEMY_CHOICES_Y + rowCount * CHOICES_H + (rowCount - 1) * GAP;
+  /** 次の行動の見出しの y。 */
+  const intentLabelY = enemyEndY + GAP;
+  /** 次の行動の選択肢の列の y（見出しのすぐ下）。 */
+  const intentChoicesY = intentLabelY + LABEL_H;
+  /** 戦闘のターンの番号のスライダーの y（次の行動の選択肢の下）。 */
+  const battleTurnY = intentChoicesY + CHOICES_H + GAP;
+  /** 城の HP の表示の y。 */
+  const castleHpY = battleTurnY + SLIDER_H + GAP;
+  /** 城の HP のボタンの y（表示のすぐ下）。 */
+  const castleButtonsY = castleHpY + LABEL_H;
+  /** 敵の HP の表示の y。 */
+  const enemyHpY = castleButtonsY + BUTTON_H + GAP;
+  /** 敵の HP のボタンの y（表示のすぐ下）。 */
+  const enemyButtonsY = enemyHpY + LABEL_H;
+  /** FPS のチェックボックスの y。 */
+  const fpsCheckY = enemyButtonsY + BUTTON_H + GAP;
+  /** FPS の値の y。 */
+  const fpsValueY = fpsCheckY + CHECK_H + GAP;
+  /** 「焼き付けで描く」のチェックボックスの y（FPS の値のすぐ下）。 */
+  const bakeCheckY = fpsValueY + LABEL_H + GAP;
+  return Object.freeze({
+    area: AREA,
+    troopNote: rect(TROOP_NOTE_Y, LABEL_H),
+    troopSliders: Object.freeze({
+      attack: rect(ATTACK_Y, SLIDER_H),
+      defense: rect(DEFENSE_Y, SLIDER_H),
+      heal: rect(HEAL_Y, SLIDER_H),
+    }),
+    stageLabel: rect(STAGE_LABEL_Y, LABEL_H),
+    stageButtons: Object.freeze(
+      [0, 1, 2, 3].map((i) => rect(STAGE_BUTTONS_Y, BUTTON_H, i * (QUARTER_W + BUTTON_GAP), QUARTER_W)),
+    ),
+    enemyLabel: rect(ENEMY_LABEL_Y, LABEL_H),
+    enemyRows: Object.freeze(enemyRows),
+    intentLabel: rect(intentLabelY, LABEL_H),
+    intentChoices: rect(intentChoicesY, CHOICES_H),
+    battleTurn: rect(battleTurnY, SLIDER_H),
+    castleHp: rect(castleHpY, LABEL_H),
+    castleButtons: Object.freeze({
+      one: rect(castleButtonsY, BUTTON_H, 0, HALF_W),
+      full: rect(castleButtonsY, BUTTON_H, HALF_W + BUTTON_GAP, HALF_W),
+    }),
+    enemyHp: rect(enemyHpY, LABEL_H),
+    enemyButtons: Object.freeze({
+      one: rect(enemyButtonsY, BUTTON_H, 0, HALF_W),
+      full: rect(enemyButtonsY, BUTTON_H, HALF_W + BUTTON_GAP, HALF_W),
+    }),
+    fpsCheckbox: rect(fpsCheckY, CHECK_H),
+    fpsValue: rect(fpsValueY, LABEL_H),
+    bakeCheckbox: rect(bakeCheckY, CHECK_H),
+    ruleTop: bakeCheckY + CHECK_H + GAP,
+  });
+}
 
 /**
  * ルールの値の並び（元に戻すボタン・組の見出し・スライダー）の矩形を、組ごとの項目の数から求める。
- * 焼き付けのチェックボックスの下から積む。大きさの定数は試遊で決め直す値の定数から計算する。
- * 今の値（[1, 6, 9, 11]）では、ボタン y=1856、城の見出し 1960・スライダー 2032、
- * ゴブリンの見出し 2180・スライダー 2252 から 148 おき、…、ドラゴンの最後のスライダー 6096。
+ * `ruleTop`（`createDebugLayout` の値。焼き付けのチェックボックスの下）から積む。
+ * 大きさの定数は試遊で決め直す値の定数から計算する。
+ * @param {number} ruleTop 並びの始まりの y（元に戻すボタンの y）
  * @param {number[]} groupSizes 組ごとの項目の数
  * @returns {Readonly<{
  *   resetButton: object,
  *   groups: ReadonlyArray<Readonly<{ heading: object, sliders: ReadonlyArray<object> }>>
  * }>} 矩形は領域の中身の左上が原点
  */
-export function debugRuleLayout(groupSizes) {
-  const resetButton = rect(BAKE_CHECK_Y + CHECK_H + GAP, BUTTON_H);
+export function debugRuleLayout(ruleTop, groupSizes) {
+  const resetButton = rect(ruleTop, BUTTON_H);
   let y = resetButton.y + BUTTON_H;
   const groups = groupSizes.map((size) => {
     y += GAP;

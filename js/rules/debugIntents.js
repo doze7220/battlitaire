@@ -10,6 +10,10 @@ import {
   clawAction,
   breathAction,
   inhaleAction,
+  chargeAction,
+  heavyAction,
+  guardAction,
+  bigGuardAction,
 } from './enemyBehaviors.js';
 
 /**
@@ -66,6 +70,43 @@ const INTENT_TABLE = Object.freeze({
       return { action, state: { lastVariant: action.variant } };
     },
     chosen: (behavior, intent) => intent.variant ?? null,
+  }),
+  buildup: Object.freeze({
+    ids: () => ['attack', 'charge', 'heavy'],
+    plan: (behavior, id, random) => {
+      if (id === 'attack') {
+        return { action: steadyAttackAction(behavior, random), state: { turnsToHeavy: null, chargeTurns: 0 } };
+      }
+      if (id === 'charge') {
+        return {
+          action: chargeAction(),
+          state: { turnsToHeavy: behavior.chargeTurns, chargeTurns: behavior.chargeTurns },
+        };
+      }
+      if (id === 'heavy') {
+        return {
+          action: heavyAction(behavior, random),
+          state: { turnsToHeavy: 0, chargeTurns: behavior.chargeTurns },
+        };
+      }
+      throw new Error(`unknown intent id: ${id}`);
+    },
+    chosen: (behavior, intent) => (intent.variant === 'heavy' || intent.variant === 'charge' ? intent.variant : 'attack'),
+  }),
+  either: Object.freeze({
+    ids: () => ['attack', 'guard', 'bigGuard'],
+    plan: (behavior, id, random) => {
+      let action;
+      if (id === 'attack') action = steadyAttackAction(behavior, random);
+      else if (id === 'guard') action = guardAction(behavior, random);
+      else if (id === 'bigGuard') action = bigGuardAction(behavior, random);
+      else throw new Error(`unknown intent id: ${id}`);
+      return { action, state: {} };
+    },
+    chosen: (behavior, intent) => {
+      if (intent.kind === 'attack') return 'attack';
+      return intent.variant === 'bigGuard' ? 'bigGuard' : 'guard';
+    },
   }),
 });
 
