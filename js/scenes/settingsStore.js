@@ -1,8 +1,8 @@
 /**
- * 責務: 設定（BGM・効果音の音量と攻防の演出の速さ）の値の表と保存の設定を持ち、Storage を通して今の値を答え・新しい値を保存し・起動時に音量を反映する口。
- * Sound は import せず、音量は bgmCues.js・soundCues.js の口で渡す。
+ * 責務: 設定（BGM・効果音の音量と攻防の演出の速さ）の値の表と保存の設定を持ち、今の値を答え・新しい値を保存し・起動時に音量を反映する口。
+ * デバッグ（Engine.debug）のときは保存せず、変えた値をページを閉じるまで持つ。Sound は import せず、音量は bgmCues.js・soundCues.js の口で渡す。
  */
-import { Storage } from 'oz';
+import { Engine, Storage } from 'oz';
 import { BGM_VOLUME, SE_VOLUME } from '../audio/soundConfig.js';
 import { setBgmVolume } from './bgmCues.js';
 import { setSeVolume } from './soundCues.js';
@@ -40,13 +40,44 @@ export const SETTINGS_STORAGE = Object.freeze({
 });
 
 /**
- * 保存された音量を読み、範囲 0〜1 の有限の数でなければ初期値にする（状態は変えない）。
+ * デバッグで変えた設定の値（名前 → 値）。ページを閉じるまで。デバッグのときだけ入る（デバッグかどうかの印としては使わない）。
+ * @type {Map<string, *>}
+ */
+const unsavedValues = new Map();
+
+/**
+ * 設定の値を読む。デバッグで変えた値があればそれを、なければ Storage の値を返す（状態は変えない）。
+ * Engine.debug は読まない（起動の前の applySoundSettings からも呼ばれる）。
+ * @param {string} name 保存の名前
+ * @returns {*} 値（なければ Storage.get の結果）
+ */
+function readValue(name) {
+  return unsavedValues.has(name) ? unsavedValues.get(name) : Storage.get(name);
+}
+
+/**
+ * 設定の値を書く。Engine.debug が真なら Storage には書かず unsavedValues に持ち、偽なら Storage.set で保存する。
+ * Engine.start の後（メニューの部品の write）だけ呼ぶ。
+ * @param {string} name 保存の名前
+ * @param {*} value 値
+ * @returns {void}
+ */
+function writeValue(name, value) {
+  if (Engine.debug) {
+    unsavedValues.set(name, value);
+    return;
+  }
+  Storage.set(name, value);
+}
+
+/**
+ * 保存された音量を readValue 経由で読み（デバッグで変えた値を優先）、範囲 0〜1 の有限の数でなければ初期値にする（状態は変えない）。
  * @param {string} name 保存の名前
  * @param {number} fallback 初期値
  * @returns {number} 音量
  */
 function readVolume(name, fallback) {
-  const v = Storage.get(name);
+  const v = readValue(name);
   return typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1 ? v : fallback;
 }
 
@@ -71,7 +102,7 @@ export function seVolume() {
  * @returns {string} `BATTLE_SPEEDS` の id
  */
 export function battleSpeedId() {
-  const id = Storage.get('battleSpeed');
+  const id = readValue('battleSpeed');
   return BATTLE_SPEEDS.some((s) => s.id === id) ? id : DEFAULT_BATTLE_SPEED;
 }
 
@@ -85,33 +116,33 @@ export function battleSpeedRate() {
 }
 
 /**
- * BGM の音量を保存し、その場で反映する。
+ * BGM の音量を保存し（デバッグのときは保存せず、ページを閉じるまで持つ）、その場で反映する。
  * @param {number} v 0〜1
  * @returns {void}
  */
 export function writeBgmVolume(v) {
-  Storage.set('bgmVolume', v);
+  writeValue('bgmVolume', v);
   setBgmVolume(v);
 }
 
 /**
- * 効果音の音量を保存し、その場で反映する。
+ * 効果音の音量を保存し（デバッグのときは保存せず、ページを閉じるまで持つ）、その場で反映する。
  * @param {number} v 0〜1
  * @returns {void}
  */
 export function writeSeVolume(v) {
-  Storage.set('seVolume', v);
+  writeValue('seVolume', v);
   setSeVolume(v);
 }
 
 /**
- * 攻防の演出の速さを保存する。表にない識別子は何もしない。
+ * 攻防の演出の速さを保存する（デバッグのときは保存せず、ページを閉じるまで持つ）。表にない識別子は何もしない。
  * @param {string} id `BATTLE_SPEEDS` の id
  * @returns {void}
  */
 export function writeBattleSpeed(id) {
   if (!BATTLE_SPEEDS.some((s) => s.id === id)) return;
-  Storage.set('battleSpeed', id);
+  writeValue('battleSpeed', id);
 }
 
 /**

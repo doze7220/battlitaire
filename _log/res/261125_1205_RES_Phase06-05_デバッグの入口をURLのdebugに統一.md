@@ -123,7 +123,7 @@
 * 本 RES の「4. 詳細作業内容」の該当タスクを記載し、タスクを [x] にする。
 * 開発資料の記載に影響が出る場合は、資料本体は直さず、「開発資料の更新予定」欄に追記する。
 
-*   [ ] タスク1: デバッグのときは設定を保存しない（`settingsStore.js`）
+*   [x] タスク1: デバッグのときは設定を保存しない（`settingsStore.js`）
     *   **対象ファイル** :
         *   `./js/scenes/settingsStore.js` :（更新）
     *   **作業内容** :
@@ -192,7 +192,10 @@
 
 ### タスク1: デバッグのときは設定を保存しない（`settingsStore.js`）
 *   **作業内容** :
-    *   （未着手）
+    *   `js/scenes/settingsStore.js` を更新。`import { Engine, Storage } from 'oz';` にし、`unsavedValues`（Map）・`readValue`・`writeValue` を JSDoc 付きで足した（export なし）。
+    *   `readVolume`・`battleSpeedId` の `Storage.get` を `readValue` に、`writeBgmVolume`・`writeSeVolume`・`writeBattleSpeed` の `Storage.set` を `writeValue` に替えた。`Storage.set` は `writeValue` の中だけ。3つの `write…` の JSDoc に「（デバッグのときは保存せず、ページを閉じるまで持つ）」を追記。
+    *   `readVolume` の JSDoc を、`readValue` 経由で読む実態（デバッグで変えた値を優先）に直した。
+    *   先頭の責務（3行以内）にデバッグ時の扱いを追記（「Storage を通して」は「今の値を答え」に短縮）。`SETTINGS_STORAGE`・値の表・`applySoundSettings` は未変更。
 
 ### タスク2: 「DEBUG MODE」の描画とレイヤーの口（新規2ファイル）
 *   **作業内容** :
