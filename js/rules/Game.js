@@ -369,14 +369,14 @@ export class Game {
   release(c) {
     if (!this.canRelease(c)) return null;
     const cards = this.columns[c].splice(0);
-    const { segments, gains } = computeRelease(cards, this.config);
+    const { segments, gains, allSuits } = computeRelease(cards, this.config);
     for (const gauge of Object.keys(gains)) {
       this.gauges[gauge] = (this.gauges[gauge] ?? 0) + gains[gauge];
     }
     this.discard.push(...cards);
     this.actionsLeft -= 1;
     const refills = refillEmptyDecks(this.decks, this.discard, this.random);
-    return { type: 'release', columnIndex: c, cards, segments, gains, actionsLeft: this.actionsLeft, refills };
+    return { type: 'release', columnIndex: c, cards, segments, gains, allSuits, actionsLeft: this.actionsLeft, refills };
   }
 
   /**

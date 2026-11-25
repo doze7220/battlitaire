@@ -31,7 +31,8 @@
  * @property {number} columnIndex 放った列の番号
  * @property {import('./card.js').Card[]} cards 放ったカード（列の下から順）
  * @property {import('./release.js').ReleaseSegment[]} segments 区切りごとの計算結果
- * @property {Object<string, number>} gains ゲージごとの加算量
+ * @property {Object<string, number>} gains ゲージごとの加算量（4スートそろいの加算を含む）
+ * @property {import('./release.js').AllSuitsBonus|null} allSuits 4スートそろいの加算（そろわない・量 0 なら `null`）
  * @property {number} actionsLeft 操作後の残り行動回数
  * @property {import('./piles.js').Refill[]} refills 操作後に起きた補充
  */
