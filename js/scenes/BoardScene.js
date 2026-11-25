@@ -1,12 +1,13 @@
 /**
  * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面と合図を描くこと。
- * 操作の結果を anim に渡して時間を進め、段階の管理（boardFlow.js）を進めて、BATTLE! が終わったら攻防に入り待っていた兵の数を演出のシーンへ渡すこと。
+ * 操作の結果を anim に渡して時間を進め、段階の管理（boardFlow.js）を進めて、BATTLE! が終わったら攻防に入り待っていた兵の数を演出のシーンへ渡し、新しいゲームの始まりを中断データに保存すること。
  * 操作・連鎖のきっかけで効果音を鳴らし（soundCues.js）、積んだ演出のシーンから札が燃える段の盤面を読んで描き、TURN の区画でメニューの窓を積み、兵の焼き付けを init で作り destroy で手放すこと。「DEBUG MODE」のレイヤーも描く（debugModeLayer.js）。
  */
 import { Engine, Scene } from 'oz';
 import { drawDebugModeLayer } from './debugModeLayer.js';
 import { Game } from '../rules/Game.js';
 import { BattleShowScene } from './BattleShowScene.js';
+import { saveSuspend } from './suspendStore.js';
 import { snapshotBattle } from '../anim/battleSteps.js';
 import { createLayout } from '../view/layout.js';
 import { drawBoard } from '../view/boardView.js';
@@ -80,11 +81,13 @@ export class BoardScene extends Scene {
 
   /**
    * ゲームと画面の配置を作る（ゲームには this.rules を設定として渡す。undefined なら Game の既定の RULES）。
+   * 新しいゲームを作った直後に、最初のターンの始まりを中断データとして保存する（saveSuspend。デバッグでは何もしない）。
    * 最後に兵の焼き付けを作る（destroy で手放す）。
    * @returns {void}
    */
   init() {
     this.game = new Game({ rng: this.rng, seed: this.seed, config: this.rules });
+    saveSuspend(this.game);
     this.layout = createLayout({
       screen: this.screen,
       deckCount: this.game.decks.length,

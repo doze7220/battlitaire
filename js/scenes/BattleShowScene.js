@@ -1,9 +1,10 @@
 /**
  * 責務: 攻防の演出のシーン。結果を anim に渡して時間を進め、決着後・敵を倒した後のタップだけを受けること（演出の途中のタップでは何もしない）。
- * 終わったら次のフェーズへ進めて戻る／タイトルへ切り替え、見た目の値を view に渡して描き（決着の表示を含む）、背面の盤面のシーンへ札が燃える段の盤面の見た目を答えること。
+ * 終わったら次のフェーズへ進めて（ターンの始まりを中断データに保存して）戻る／タイトルへ切り替え、負けの結果が出たとき中断データを消し、見た目の値を view に渡して描き、背面の盤面のシーンへ札が燃える段の盤面の見た目を答えること。
  * 攻防のきっかけ・決着と敵の撃破の表示で効果音を鳴らし（soundCues.js）、HP が 0 になった瞬間に BGM を止めること（bgmCues.js）。設定の演出の速さで時間を進めること。
  */
 import { Engine, Scene } from 'oz';
+import { saveSuspend, clearSuspend } from './suspendStore.js';
 import { playBattleCueSe, playOutcomeSe } from './soundCues.js';
 import { stopBgmOnKnockout } from './bgmCues.js';
 import { battleSpeedRate } from './settingsStore.js';
@@ -48,7 +49,7 @@ export class BattleShowScene extends Scene {
     this.waiting = waiting;
     /** @type {BattleDirector|null} 演出全体の管理（init で作る） */
     this.director = null;
-    /** @type {boolean} 決着（負け）・敵を倒したときの効果音を鳴らし済みか（音を1回に限るためだけに使い、演出の進み方には使わない） */
+    /** @type {boolean} 決着（負け）・敵を倒したときの効果音を鳴らし済みか（音を鳴らす・中断データを消すのを1回に限るためだけに使い、演出の進み方には使わない） */
     this.outcomeSePlayed = false;
     /** @type {boolean} この攻防で HP が 0 になって BGM を止め済みか（止めるのを1回に限るためだけに使う） */
     this.bgmStopped = false;
@@ -90,7 +91,17 @@ export class BattleShowScene extends Scene {
   }
 
   /**
-   * 演出の時計に dt に倍率（speedRate）を掛けた時間を足し（ヒットストップ・音のきっかけ・BGM を止める時刻を含む演出の全体が同じ割合で速くなる。攻防の結果は変わらない）、その間に起きた攻防のきっかけの効果音を鳴らし、HP が 0 になったら BGM を止め、演出が終わったとき（決着・敵を倒したとき、1回だけ）に負けの音（敵を倒したときは敵を倒した音）を鳴らす。決着も敵の撃破もしていなければ間の後に次のフェーズへ進めて戻る。
+   * 次のフェーズへ進め、新しいターンの始まりを中断データとして保存してから、この演出のシーンを外して盤面へ戻る（保存はここだけ。デバッグでは保存されない）。
+   * @returns {void}
+   */
+  goToNextPhase() {
+    this.game.startNextPhase();
+    saveSuspend(this.game);
+    Engine.popScene();
+  }
+
+  /**
+   * 演出の時計に dt に倍率（speedRate）を掛けた時間を足し（ヒットストップ・音のきっかけ・BGM を止める時刻を含む演出の全体が同じ割合で速くなる。攻防の結果は変わらない）、その間に起きた攻防のきっかけの効果音を鳴らし、HP が 0 になったら BGM を止め、演出が終わったとき（決着・敵を倒したとき、1回だけ）に負けの音（敵を倒したときは敵を倒した音）を鳴らし、負けの結果が出ていれば中断データを消す。決着も敵の撃破もしていなければ間の後に次のフェーズへ進めて戻る。
    * @param {number} dt 1ティックの長さ（ミリ秒）
    * @returns {void}
    */
@@ -103,10 +114,10 @@ export class BattleShowScene extends Scene {
     if (this.director.isFinished() && !this.outcomeSePlayed) {
       this.outcomeSePlayed = true;
       playOutcomeSe(this.result.outcome, this.result.defeat);
+      if (this.result.outcome !== null) clearSuspend();
     }
     if (this.result.outcome === null && this.result.defeat === null && this.director.isReadyToLeave() && this.game.canStartNextPhase()) {
-      this.game.startNextPhase();
-      Engine.popScene();
+      this.goToNextPhase();
     }
   }
 
@@ -121,8 +132,7 @@ export class BattleShowScene extends Scene {
     if (this.game.isOver()) {
       Engine.changeScene(this.createTitle());
     } else if (this.result.defeat !== null && this.game.canStartNextPhase()) {
-      this.game.startNextPhase();
-      Engine.popScene();
+      this.goToNextPhase();
     }
   }
 
