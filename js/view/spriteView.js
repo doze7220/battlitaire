@@ -24,9 +24,6 @@ import logoReady from 'assets/sprites/logo_ready.js';
 import logoBattle from 'assets/sprites/logo_battle.js';
 import logoTurn from 'assets/sprites/logo_turn.js';
 import logoStage from 'assets/sprites/logo_stage.js';
-import logoNameGoblins from 'assets/sprites/logo_name_goblins.js';
-import logoNameGiant from 'assets/sprites/logo_name_giant.js';
-import logoNameDragon from 'assets/sprites/logo_name_dragon.js';
 import digit0 from 'assets/sprites/digit_0.js';
 import digit1 from 'assets/sprites/digit_1.js';
 import digit2 from 'assets/sprites/digit_2.js';
@@ -126,16 +123,13 @@ const SPRITE_TABLE = Object.freeze({
 
 /**
  * ロゴのスプライトの識別子（SPRITE_IDS とは別。呼ぶ側はこの定数でロゴを指す）。
- * @type {Readonly<{ready: string, battle: string, phase: string, stage: string, nameGoblins: string, nameGiant: string, nameDragon: string}>}
+ * @type {Readonly<{ready: string, battle: string, phase: string, stage: string}>}
  */
 export const LOGO_IDS = Object.freeze({
   ready: 'ready',
   battle: 'battle',
   phase: 'phase',
   stage: 'stage',
-  nameGoblins: 'nameGoblins',
-  nameGiant: 'nameGiant',
-  nameDragon: 'nameDragon',
 });
 
 /**
@@ -148,9 +142,6 @@ const LOGO_TABLE = Object.freeze({
   [LOGO_IDS.battle]: logoBattle,
   [LOGO_IDS.phase]: logoTurn,
   [LOGO_IDS.stage]: logoStage,
-  [LOGO_IDS.nameGoblins]: logoNameGoblins,
-  [LOGO_IDS.nameGiant]: logoNameGiant,
-  [LOGO_IDS.nameDragon]: logoNameDragon,
 });
 
 /**
