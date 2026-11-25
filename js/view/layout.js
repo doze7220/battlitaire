@@ -146,7 +146,7 @@ import { campSlot } from './campSlots.js';
  * @property {Rect} curtain 暗幕（画面全体）
  * @property {Rect} panel 結果の板（画面の中央）
  * @property {number} x 板の中央の x
- * @property {number} outcomeY 「クリア」「負け」の文字の中心 y
+ * @property {number} outcomeY 「負け」の文字の中心 y
  * @property {number} labelX 見出しの左端 x（左寄せ）
  * @property {number} valueX 数字の右端 x（右寄せ）
  * @property {number} labelMaxW 見出しの最大の幅
@@ -451,7 +451,7 @@ const HOWTO_BUTTON_PAD_X = 12;
 const RESULT_PANEL_W = 600;
 /** 結果の板の高さ */
 const RESULT_PANEL_H = 620;
-/** 板の上端から「クリア」「負け」の文字の中心までの距離 */
+/** 板の上端から「負け」の文字の中心までの距離 */
 const RESULT_OUTCOME_DY = 110;
 /** 結果の板の左右の余白 */
 const RESULT_PAD_X = 40;

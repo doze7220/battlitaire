@@ -1,5 +1,5 @@
 /**
- * 責務: 段取り・連鎖・準備終了・BATTLE!・スタート・敵の攻撃の始まり・攻防・決着・途中の敵を倒したときの効果音を決め Sound.playSe で鳴らすこと、効果音の音量を Sound に渡すこと。
+ * 責務: 段取り・連鎖・準備終了・BATTLE!・スタート・敵の攻撃の始まり・攻防・決着・敵を倒したときの効果音を決め Sound.playSe で鳴らすこと、効果音の音量を Sound に渡すこと。
  * 音量の確かめの音も鳴らす。
  * シーンから呼ばれる音の補助モジュール（Scene を継承しない）。ルールの判定はしない。
  */
@@ -41,14 +41,13 @@ export const BATTLE_CUE_SE = Object.freeze({
  * @type {Readonly<Record<string, string>>}
  */
 export const OUTCOME_SE = Object.freeze({
-  win: 'win',
   lose: 'lose',
 });
 
 /** ゲームスタート（「はじめる」）の音の名前。 @type {string} */
 export const START_SE = 'start';
 
-/** 途中の敵を倒したときの音の名前（クリアの音と同じ）。 @type {string} */
+/** 敵を倒したときの音の名前（音の名前 `win`）。 @type {string} */
 export const DEFEAT_SE = 'win';
 
 /** めくる（山札を選んだ）音の名前。 @type {string} */
@@ -185,8 +184,8 @@ export function playBattleCueSe(type, enemyTypeId, variant) {
 
 /**
  * 決着・敵を倒したときの音の名前を決める（純粋関数）。
- * @param {'win'|'lose'|null} outcome 決着
- * @param {object|null|undefined} defeat 途中の敵を倒したときの情報
+ * @param {'lose'|null} outcome 決着
+ * @param {object|null|undefined} defeat 敵を倒したときの情報
  * @returns {string|null} 音の名前。鳴らさないなら null
  */
 export function outcomeSeName(outcome, defeat) {
@@ -197,8 +196,8 @@ export function outcomeSeName(outcome, defeat) {
 
 /**
  * 決着・敵を倒したときの音を鳴らす。鳴らさない場合は何もしない。
- * @param {'win'|'lose'|null} outcome 決着
- * @param {object|null|undefined} defeat 途中の敵を倒したときの情報
+ * @param {'lose'|null} outcome 決着
+ * @param {object|null|undefined} defeat 敵を倒したときの情報
  * @returns {void}
  */
 export function playOutcomeSe(outcome, defeat) {

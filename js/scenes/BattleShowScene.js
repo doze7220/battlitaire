@@ -48,7 +48,7 @@ export class BattleShowScene extends Scene {
     this.waiting = waiting;
     /** @type {BattleDirector|null} 演出全体の管理（init で作る） */
     this.director = null;
-    /** @type {boolean} 決着・敵を倒したときの効果音（クリア・負け）を鳴らし済みか（音を1回に限るためだけに使い、演出の進み方には使わない） */
+    /** @type {boolean} 決着（負け）・敵を倒したときの効果音を鳴らし済みか（音を1回に限るためだけに使い、演出の進み方には使わない） */
     this.outcomeSePlayed = false;
     /** @type {boolean} この攻防で HP が 0 になって BGM を止め済みか（止めるのを1回に限るためだけに使う） */
     this.bgmStopped = false;
@@ -90,7 +90,7 @@ export class BattleShowScene extends Scene {
   }
 
   /**
-   * 演出の時計に dt に倍率（speedRate）を掛けた時間を足し（ヒットストップ・音のきっかけ・BGM を止める時刻を含む演出の全体が同じ割合で速くなる。攻防の結果は変わらない）、その間に起きた攻防のきっかけの効果音を鳴らし、HP が 0 になったら BGM を止め、演出が終わったとき（決着・敵を倒したとき、1回だけ）にクリア・負けの音を鳴らす。決着も敵の撃破もしていなければ間の後に次のフェーズへ進めて戻る。
+   * 演出の時計に dt に倍率（speedRate）を掛けた時間を足し（ヒットストップ・音のきっかけ・BGM を止める時刻を含む演出の全体が同じ割合で速くなる。攻防の結果は変わらない）、その間に起きた攻防のきっかけの効果音を鳴らし、HP が 0 になったら BGM を止め、演出が終わったとき（決着・敵を倒したとき、1回だけ）に負けの音（敵を倒したときは敵を倒した音）を鳴らす。決着も敵の撃破もしていなければ間の後に次のフェーズへ進めて戻る。
    * @param {number} dt 1ティックの長さ（ミリ秒）
    * @returns {void}
    */

@@ -14,17 +14,16 @@
  * @property {number} enemyHp 攻防の前の敵の HP
  * @property {number} enemyMaxHp 敵の最大 HP（敵の回復の頭打ちに使う）
  * @property {number} enemyHeal 攻撃の直後の敵の回復の候補の量（抽選に外れた・対象外なら 0。最大 HP での頭打ちは計算側で行う）
- * @property {boolean} lastEnemy いまの敵が最後の敵か（最後の敵を倒すと勝ち、途中の敵なら回復へ進む）
  * @property {import('./cardBurn.js').BurnedCard[]} [burns] 行動で燃やす札の並び（省くと空。城が落ちたときは燃えない）
  */
 
 /**
  * 攻防で起きた出来事。量は実際に変わった値。
  * `block`・`castleDamage`・`cardBurn`・`enemyHeal`・`enemyDefend`・`enemyBlock`・`enemyDamage`・`heal` は量が0のとき並びに入らない（敵の行動 `enemyAttack`／`enemyWindup` は必ず1つ入る）。
- * `enemyWindup`（敵の振りかぶり）は量 0 で必ず入る。`enemyDefeat` は途中の敵を倒したとき（量 0）だけ入る。
+ * `enemyWindup`（敵の振りかぶり）は量 0 で必ず入る。`enemyDefeat` は敵の HP が 0 になったとき（量 0）に入る。
  * @typedef {Object} BattleEvent
- * @property {'enemyAttack'|'enemyDefend'|'enemyWindup'|'block'|'castleDamage'|'cardBurn'|'enemyHeal'|'enemyBlock'|'enemyDamage'|'enemyDefeat'|'heal'|'lose'|'win'} type 出来事の種類
- * @property {number} amount 量（`enemyWindup`・`lose`・`win`・`enemyDefeat` は 0。`cardBurn` は燃えた枚数）
+ * @property {'enemyAttack'|'enemyDefend'|'enemyWindup'|'block'|'castleDamage'|'cardBurn'|'enemyHeal'|'enemyBlock'|'enemyDamage'|'enemyDefeat'|'heal'|'lose'} type 出来事の種類
+ * @property {number} amount 量（`enemyWindup`・`lose`・`enemyDefeat` は 0。`cardBurn` は燃えた枚数）
  * @property {import('./cardBurn.js').BurnedCard[]} [burns] 燃えた札の並び（`cardBurn` のときだけ）
  */
 
@@ -34,8 +33,8 @@
  * @property {BattleEvent[]} events 出来事の並び（起きた順）
  * @property {number} castleHp 攻防の後の城の HP
  * @property {number} enemyHp 攻防の後の敵の HP
- * @property {boolean} enemyDefeated このフェーズで敵の HP が 0 になったか（最後の敵でも true）
- * @property {'win'|'lose'|null} outcome 決着（決着していなければ null。途中の敵を倒しただけなら null）
+ * @property {boolean} enemyDefeated このフェーズで敵の HP が 0 になったか（負けでは false）
+ * @property {'lose'|null} outcome 決着（城が落ちたら 'lose'、そうでなければ null。敵を倒しただけなら null）
  * @property {import('./cardBurn.js').BurnedCard[]} burned 実際に燃えた札の並び（城が落ちて負けで終わったときは空）
  */
 
@@ -43,12 +42,12 @@
  * 攻防を計算する。引数は書き換えない。余った防御は消える。
  * 敵の防御の余りも消える。未知の敵の行動の種類は Error を投げる。
  * 順序: 敵の行動（攻撃か振りかぶり）→ 敵の防御（量があれば）→ 相殺 → 城の被害（0なら負け）→ 札が燃える → 敵の回復（最大 HP で頭打ち）→ 敵の防御での相殺 → 敵への攻撃
- * （0になったとき、最後の敵なら勝ちで終わり、途中の敵なら撃破の出来事を入れて続ける）→ 回復。
+ * （0になったら撃破の出来事を入れて続ける）→ 回復。
  * @param {BattleInput} input 攻防の入力
  * @returns {BattleCalc} 計算結果
  */
 export function computeBattle(input) {
-  const { attack, defense, heal, enemyAction, castleMaxHp, enemyMaxHp, enemyHeal, lastEnemy } = input;
+  const { attack, defense, heal, enemyAction, castleMaxHp, enemyMaxHp, enemyHeal } = input;
   const burns = input.burns ?? [];
   let castleHp = input.castleHp;
   let enemyHp = input.enemyHp;
@@ -96,10 +95,6 @@ export function computeBattle(input) {
 
   const enemyDefeated = enemyHp === 0;
   if (enemyDefeated) {
-    if (lastEnemy) {
-      events.push({ type: 'win', amount: 0 });
-      return { events, castleHp, enemyHp, enemyDefeated, outcome: 'win', burned };
-    }
     events.push({ type: 'enemyDefeat', amount: 0 });
   }
 

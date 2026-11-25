@@ -34,7 +34,7 @@ import { enemyAttackShow, enemyDefenseShow, hasChargeShow, isHeavyAttack } from 
  */
 
 /** 「自軍の突撃」を、その直前に差し込む出来事の種類。 */
-const MARCH_BEFORE = new Set(['enemyBlock', 'enemyDamage', 'heal', 'win']);
+const MARCH_BEFORE = new Set(['enemyBlock', 'enemyDamage', 'heal']);
 
 /** 出来事の種類から、量をそのまま持つ段の種類への対応。 */
 const EVENT_TO_STEP = {
@@ -63,7 +63,7 @@ export function snapshotBattle(game) {
 
 /**
  * 攻防の出来事の並びから、演出の段の並びを組み立てる。
- * `lose`・`win` に来たらそこで読むのをやめる。量が 0 の段は作らない。
+ * `lose` に来たらそこで読むのをやめる。量が 0 の段は作らない。
  * @param {import('../rules/Game.js').BattleResult} result 攻防の結果
  * @param {BattleSnapshot} before 攻防の前の値
  * @returns {BattleStep[]} 段の並び
@@ -114,7 +114,6 @@ export function buildBattleSteps(result, before) {
       steps.push({ type: 'march', amount: before.attack, pairs: enemyBlockPairs });
       marchDone = true;
     }
-    if (event.type === 'win') break;
     if (event.type === 'cardBurn') {
       if (event.amount > 0 && !burnPlaced) {
         steps.push({ type: 'burn', amount: event.amount, burns: [...event.burns] });

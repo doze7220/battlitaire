@@ -8,6 +8,7 @@
  * 本番の音に差し替えるときは、同じ名前のファイルを置き換えるか、ここのパスを書き換える。
  * - ready: 「準備終了」のロゴが出たときの音
  * - battleStart: 「BATTLE!」のロゴが出たときの音
+ * - win: 敵を倒したときの音
  * 今は ready・battleStart はどちらも仮に行動終了の音のファイル（turnEnd.wav）を指す。後で別の音に差し替える。
  * @type {Readonly<Record<string, string>>}
  */

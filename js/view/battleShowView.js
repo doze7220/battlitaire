@@ -13,8 +13,8 @@ import { defeatText, healAmountText, defeatHintText } from './battleText.js';
 
 /** 敵を倒したときの案内の暗幕の色。 */
 const CURTAIN_FILL = 'rgba(0, 0, 0, 0.55)';
-/** 敵を倒したときの文字の色（黄）。 */
-const WIN_COLOR = '#ffe680';
+/** 敵を倒したときの「〜を倒した！」の文字の色（黄）。 */
+const DEFEAT_TITLE_COLOR = '#ffe680';
 /** 敵を倒したときの案内のフォント。 */
 const OUTCOME_HINT_FONT = 'bold 32px sans-serif';
 /** 敵を倒したときの案内の文字の色。 */
@@ -41,7 +41,7 @@ function drawDefeat(ctx, battleLayout, defeat) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font = DEFEAT_TITLE_FONT;
-  ctx.fillStyle = WIN_COLOR;
+  ctx.fillStyle = DEFEAT_TITLE_COLOR;
   ctx.fillText(defeatText(defeat.enemyName), pos.x, pos.titleY, pos.maxW);
   ctx.font = OUTCOME_HINT_FONT;
   ctx.fillStyle = OUTCOME_HINT_COLOR;

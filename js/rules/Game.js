@@ -31,7 +31,7 @@ import { createGameStats, tallyBattle } from './gameStats.js';
  * @property {import('./battle.js').BattleEvent[]} events 出来事の並び（起きた順）
  * @property {number} castleHp 攻防の後の城の HP
  * @property {number} enemyHp 攻防の後の敵の HP
- * @property {'win'|'lose'|null} outcome 決着（決着していなければ null。途中の敵を倒しただけなら null）
+ * @property {'lose'|null} outcome 決着（負けたら 'lose'、そうでなければ null。敵を倒しただけなら null）
  * @property {{ enemyName: string }|null} defeat 敵を倒したときの倒した敵の名前（そうでなければ null）
  */
 
@@ -95,7 +95,7 @@ export class Game {
     this.battleTurn = 1;
     /** @type {'planning'|'result'|'over'} 段階（段取り中・攻防の結果を見ている・決着） */
     this.stage = 'planning';
-    /** @type {'win'|'lose'|null} 決着（決着前は null） */
+    /** @type {'lose'|null} 決着（決着前は null） */
     this.outcome = null;
     /** @type {import('./combatants.js').Castle} 城 */
     this.castle = createCastle(config);
@@ -407,7 +407,7 @@ export class Game {
 
   /**
    * 攻防を計算し、城・敵の HP と段階を更新する。条件を満たさなければ何もしない。
-   * 決着しなければ段階は 'result'、決着したら 'over' になる（途中の敵を倒しただけなら 'result'）。
+   * 決着しなければ段階は 'result'、決着したら 'over' になる（敵を倒しただけなら 'result'）。
    * 敵は入れ替えない（入れ替わりは次のフェーズの頭）。行動の `burn` があれば列の札を燃やして捨て札へ移す。
    * @returns {BattleResult|null} 結果。攻防に入れなければ `null`
    */
@@ -427,7 +427,6 @@ export class Game {
       enemyHp: this.enemy.hp,
       enemyMaxHp: this.enemy.maxHp,
       enemyHeal,
-      lastEnemy: false,
       burns,
     });
     this.castle.hp = calc.castleHp;
@@ -447,7 +446,7 @@ export class Game {
       castleHp: calc.castleHp,
       enemyHp: calc.enemyHp,
       outcome: calc.outcome,
-      defeat: calc.enemyDefeated && calc.outcome === null ? { enemyName: this.enemy.name } : null,
+      defeat: calc.enemyDefeated ? { enemyName: this.enemy.name } : null,
     };
   }
 

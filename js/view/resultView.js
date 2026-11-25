@@ -1,5 +1,5 @@
 /**
- * 責務: 決着したときの結果の表示（画面全体の暗幕・結果の板・クリアか負けか・集計の4行・タップでタイトルへの案内）を描く。
+ * 責務: 決着したときの結果の表示（画面全体の暗幕・結果の板・負けの見出し・集計の4行・タップでタイトルへの案内）を描く。
  * 状態は変えず、ルール層は実行時に import しない。
  */
 
@@ -18,12 +18,8 @@ const PANEL_LINE_WIDTH = 4;
 const PANEL_RADIUS = 24;
 /** 決着の大きな文字のフォント。 */
 const OUTCOME_FONT = 'bold 96px sans-serif';
-/** 勝ちの文字の色。 */
-const WIN_COLOR = '#ffe680';
 /** 負けの文字の色。 */
 const LOSE_COLOR = '#ff7a7a';
-/** 勝ちを表す決着の値。 */
-const OUTCOME_WIN = 'win';
 /** 集計の見出しのフォント。 */
 const LABEL_FONT = 'bold 32px sans-serif';
 /** 集計の数字のフォント。 */
@@ -36,7 +32,7 @@ const HINT_FONT = 'bold 32px sans-serif';
 const HINT_COLOR = '#c8ccd4';
 
 /**
- * 結果の表示（暗幕・板・クリアか負けか・集計の4行・案内）を描く。
+ * 結果の表示（暗幕・板・負けの見出し・集計の4行・案内）を描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').ResultLayout} resultLayout 結果の表示の配置
  * @param {string} outcome 決着（BattleResult.outcome の null でない値）
@@ -59,7 +55,7 @@ export function drawResult(ctx, resultLayout, outcome, stats) {
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'center';
   ctx.font = OUTCOME_FONT;
-  ctx.fillStyle = outcome === OUTCOME_WIN ? WIN_COLOR : LOSE_COLOR;
+  ctx.fillStyle = LOSE_COLOR;
   ctx.fillText(outcomeText(outcome), resultLayout.x, resultLayout.outcomeY, resultLayout.maxW);
 
   resultStatLines(stats).forEach((line, i) => {

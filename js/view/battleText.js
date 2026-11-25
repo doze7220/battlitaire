@@ -13,7 +13,6 @@ const SIDE_SEPARATOR = ' ／ ';
  * @type {Readonly<Record<string, string>>}
  */
 const OUTCOME_LABELS = Object.freeze({
-  win: 'クリア',
   lose: '負け',
 });
 
@@ -74,8 +73,8 @@ const UNKNOWN_ACTION_LABEL = '？';
 
 /**
  * 決着を表示文字にする。
- * @param {'win'|'lose'|null} outcome 決着
- * @returns {string} 「クリア」「負け」。それ以外は空文字
+ * @param {'lose'|null} outcome 決着
+ * @returns {string} 「負け」。それ以外は空文字
  */
 export function outcomeText(outcome) {
   return Object.prototype.hasOwnProperty.call(OUTCOME_LABELS, outcome) ? OUTCOME_LABELS[outcome] : '';
