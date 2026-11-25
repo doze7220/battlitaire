@@ -160,7 +160,7 @@
         *   `layout.js` の `createTitleLayout` から `options`・`debugStartButton`・`'debugStart'` を消し、`TitleLayout` の typedef（`debugStartButton` の行・`startTextMaxW` の説明・`titleHitTest` の型）と関数の JSDoc を合わせる。ほかの配置・定数は変えない。
         *   `titleView.js` の `debugStartButton` の描画を消し、先頭の責務と `drawTitle` の JSDoc を合わせる。`titleText.js` の `debugStart` を消し、型と先頭の責務を合わせる。
 
-*   [ ] タスク5: 起動（`js/main.js`）とルール層の説明
+*   [x] タスク5: 起動（`js/main.js`）とルール層の説明
     *   **対象ファイル** :
         *   `./js/main.js` :（更新）
         *   `./js/rules/debugRules.js` :（更新。先頭の責務の説明だけ）
@@ -218,7 +218,10 @@
 
 ### タスク5: 起動（`js/main.js`）とルール層の説明
 *   **作業内容** :
-    *   （未着手）
+    *   `main.js`: `DEBUG_TOOLS_ENABLED` を削除。`createTitle` は `debugNext` なしの形に。`createBoard` は頭で `if (Engine.debug) return createDebugBoard();`。`isDebugQuery(search)` を JSDoc 付きで追加。`config` に `debug: isDebugQuery(location.search)`、`layers: ['main', DEBUG_MODE_LAYER]`（`./scenes/debugModeLayer.js` から import）。`Engine.start(config);` の直後に `Engine.fpsVisible = false;`（コメント付き）。起動前の準備の順は不変。
+    *   先頭の責務（3行以内）・`debugRules`・`createDebugBoard`・`createMenu`・`createDebugMenu`・`config` の JSDoc を「デバッグのゲーム」の言い方に直した。
+    *   `debugRules.js`: 先頭の責務の「デバッグスタートのゲーム」を「デバッグのゲーム」に直した（コードは不変）。
+    *   構文チェック: 2ファイルとも ok。両ファイルに「デバッグスタート」は残っていない。
 
 ### タスク6: JSDoc・構文チェック・決まりの通しの確認
 *   **作業内容** :

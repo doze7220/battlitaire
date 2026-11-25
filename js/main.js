@@ -1,10 +1,11 @@
 /**
- * 責務: Engine.start の呼び出しと、レイヤーと画面の流れ（BOOT → TITLE ⇄ 遊び方、TITLE → 盤面（ふつう／デバッグスタート）→ 決着 → TITLE）を作る関数の定義を行う利用側のエントリポイント。
- * 起動の前の保存された設定の反映と効果音・BGM の読み込み、デバッグを有効にする定数 DEBUG_TOOLS_ENABLED と、デバッグスタートのルールの値の写し（debugRules）の保持も行う。
+ * 責務: Engine.start の呼び出しと、レイヤーと画面の流れ（BOOT → TITLE ⇄ 遊び方、TITLE → 盤面 → 決着 → TITLE）を作る関数の定義を行う利用側のエントリポイント。
+ * 起動の前の保存された設定の反映と効果音・BGM の読み込み、URL の ?debug を読んで起動設定に渡すこと、起動の直後の FPS の表示の消去、デバッグのゲームのルールの値の写し（debugRules）の保持も行う。
  */
 import { Engine, Scene, Assets, Storage } from 'oz';
 import { SOUND_FILES, BGM_FILES } from './audio/soundConfig.js';
 import { SETTINGS_STORAGE, applySoundSettings } from './scenes/settingsStore.js';
+import { DEBUG_MODE_LAYER } from './scenes/debugModeLayer.js';
 import { BootScene } from './scenes/BootScene.js';
 import { TitleScene } from './scenes/TitleScene.js';
 import { BoardScene } from './scenes/BoardScene.js';
@@ -19,29 +20,35 @@ import { createDebugRules } from './rules/debugRules.js';
 const screen = { width: 720, height: 1280 };
 
 /**
- * デバッグの入口（タイトル画面の「デバッグスタート」）を出すか。Phase 06 の間は ON（true）でコミットする。
- * OFF にすると、デバッグスタート・DEBUG タブ・FPS の表示はどこにも出ない。読むのは createTitle だけ。
- * @type {boolean}
+ * URL の検索部分（location.search）がデバッグ（?debug）を表すか。引数の文字列だけから答える。
+ * ?debug・?debug=1・?a=1&debug は真。なし・?debug=0（ふつう）・?debugx=1 は偽。同じ名前が2つあるときは初めの値で決まる。
+ * @param {string} search URL の検索部分（例: '?debug=1'）
+ * @returns {boolean} デバッグなら true
  */
-const DEBUG_TOOLS_ENABLED = true;
+function isDebugQuery(search) {
+  const value = new URLSearchParams(search).get('debug');
+  return value !== null && value !== '0';
+}
 
 /**
- * 盤面のシーンを作る（乱数の関数 Math.random とタイトル画面を作る関数、TURN の区画で積むメニューのシーンを作る関数を渡す）。DEBUG タブは付かない。
+ * 盤面のシーンを作る。デバッグ（Engine.debug が真）のときは createDebugBoard の盤面。
+ * Engine.start の後（タイトル画面のゲームスタート）だけ呼ばれる。ふつうのときは乱数の関数 Math.random とタイトル画面を作る関数、TURN の区画で積むメニューのシーンを作る関数を渡す（DEBUG タブなし）。
  * @returns {Scene} 新しい盤面のシーン
  */
 function createBoard() {
+  if (Engine.debug) return createDebugBoard();
   return new BoardScene({ screen, layer: 'main', random: Math.random, createTitle, createMenu });
 }
 
 /**
- * デバッグスタートのゲームが使うルールの値の写し（config.js の RULES と同じ形）。最初のデバッグスタートで作り、ページを読み込み直すまで持つ。保存しない。
+ * デバッグのゲームが使うルールの値の写し（config.js の RULES と同じ形）。最初のデバッグのゲームで作り、ページを読み込み直すまで持つ。保存しない。
  * @type {import('./rules/config.js').Rules|null}
  */
 let debugRules = null;
 
 /**
- * デバッグスタートの盤面のシーンを作る（createBoard と同じで、メニューの窓を作る関数だけ DEBUG タブ付きの createDebugMenu を渡す）。
- * ルールの値の写し（debugRules）を最初の1回だけ作り、盤面へ rules として渡す（同じ写しを次のデバッグスタートにも渡すので、変えた値は残る）。
+ * デバッグのゲームの盤面のシーンを作る（ふつうの盤面と同じで、メニューの窓を作る関数だけ DEBUG タブ付きの createDebugMenu を渡す）。
+ * ルールの値の写し（debugRules）を最初の1回だけ作り、盤面へ rules として渡す（同じ写しを次のデバッグのゲームにも渡すので、変えた値は残る）。
  * @returns {Scene} 新しい盤面のシーン
  */
 function createDebugBoard() {
@@ -58,7 +65,7 @@ function createHowTo() {
 }
 
 /**
- * メニューの窓のシーンを作る（標準のタブの一覧で組み立てる。開くたびに新しい窓）。盤面から渡される引数は使わない（DEBUG タブなし）。
+ * メニューの窓のシーンを作る（標準のタブの一覧で組み立てる。開くたびに新しい窓）。盤面から渡される引数は使わない（DEBUG タブなし。デバッグのゲームの盤面は createDebugMenu を使う）。
  * @returns {Scene} 新しいメニューのシーン
  */
 function createMenu() {
@@ -66,7 +73,7 @@ function createMenu() {
 }
 
 /**
- * DEBUG タブ付きのメニューの窓のシーンを作る（標準のタブの一覧の後ろに DEBUG タブを足す。開くたびに新しい窓）。
+ * DEBUG タブ付きのメニューの窓のシーンを作る（標準のタブの一覧の後ろに DEBUG タブを足す。開くたびに新しい窓。デバッグのゲームの盤面だけが使う）。
  * @param {import('./scenes/boardDebug.js').BoardMenuTarget} target 盤面の部品（game・releaseShow・flow）
  * @returns {Scene} 新しいメニューのシーン
  */
@@ -76,11 +83,10 @@ function createDebugMenu(target) {
 
 /**
  * タイトル画面のシーンを作る。進む先は盤面のシーンを作る関数と遊び方の画面のシーンを作る関数、「設定」で積むメニューのシーンを作る関数。
- * 「デバッグスタート」で進む先は、DEBUG_TOOLS_ENABLED が ON のときだけ createDebugBoard（OFF なら null でボタンは出ない。定数を読むのはここだけ）。
  * @returns {Scene} 新しいタイトル画面のシーン
  */
 function createTitle() {
-  return new TitleScene({ screen, layer: 'main', next: createBoard, howTo: createHowTo, menu: createMenu, debugNext: DEBUG_TOOLS_ENABLED ? createDebugBoard : null });
+  return new TitleScene({ screen, layer: 'main', next: createBoard, howTo: createHowTo, menu: createMenu });
 }
 
 /**
@@ -93,17 +99,19 @@ function createBoot() {
 
 /**
  * Engine.start に渡す設定。tickRate は書かない（既定の 60）。
- * scene: 最初の画面は BOOT。BOOT の next はタイトル画面を作る関数、タイトル画面の next は盤面を作る関数、howTo は遊び方の画面を作る関数（遊び方の画面の back はタイトル画面を作る関数）で、盤面のシーンにはタイトル画面を作る関数とメニューの窓を作る関数を渡す（決着後は TITLE へ戻り、BOOT へは戻らない。メニューの窓はタイトル画面の「設定」と盤面の TURN の区画から開く。タイトル画面の「デバッグスタート」は定数が ON のときだけ出て、DEBUG タブ付きのメニューを渡した盤面へ進む）。
- * debug は書かない（FPS の出し入れは DEBUG タブから）。
+ * layers: 奥から 'main'、いちばん手前に「DEBUG MODE」のレイヤー（デバッグのときだけ描かれる）。
+ * scene: 最初の画面は BOOT。BOOT の next はタイトル画面を作る関数、タイトル画面の next は盤面を作る関数、howTo は遊び方の画面を作る関数（遊び方の画面の back はタイトル画面を作る関数）で、盤面のシーンにはタイトル画面を作る関数とメニューの窓を作る関数を渡す（決着後は TITLE へ戻り、BOOT へは戻らない。メニューの窓はタイトル画面の「設定」と盤面の TURN の区画から開く）。
+ * debug: URL に ?debug があるか（isDebugQuery。URL を読むのはここだけ）。真のとき、盤面はデバッグのゲーム（DEBUG タブ付き）になる。
  * virtualPad: バーチャルパッドを使うなら true。false にすると表示も画像の読み込みもしない（今は使わないので false）。
- * @type {{canvas: HTMLCanvasElement, width: number, height: number, layers: string[], scene: Scene, debug?: boolean, virtualPad?: boolean}}
+ * @type {{canvas: HTMLCanvasElement, width: number, height: number, layers: string[], scene: Scene, debug: boolean, virtualPad?: boolean}}
  */
 const config = {
   canvas: document.querySelector('canvas'),
   width: screen.width,
   height: screen.height,
-  layers: ['main'],
+  layers: ['main', DEBUG_MODE_LAYER],
   scene: createBoot(),
+  debug: isDebugQuery(location.search),
   virtualPad: false,
 };
 
@@ -113,3 +121,5 @@ applySoundSettings();
 await Assets.load({ sounds: { ...SOUND_FILES, ...BGM_FILES } });
 
 Engine.start(config);
+// デバッグでは FPS を左上に出した状態で始まるので消す（出し入れは DEBUG タブから）
+Engine.fpsVisible = false;
