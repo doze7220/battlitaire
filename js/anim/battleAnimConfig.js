@@ -76,6 +76,10 @@
  * @property {number} chargeDim ための段で戦闘の段が暗くなる濃さ（0〜1）。試遊で決め直す。
  * @property {number} fireFlashMs 撃つ瞬間の段の光が消えるまで（ms）。試遊で決め直す。
  * @property {number} fireFlashAlpha 撃つ瞬間の段の光の濃さ（0〜1）。試遊で決め直す。
+ * @property {number} dentInMs スライムの体に当たってから、へこみが 0→1 になるまで（ms）。試遊で決め直す。
+ * @property {number} dentOutMs へこみが 1→0 に戻るまで（ms。倒れ始めの手前でへこみを消す長さにも使う）。試遊で決め直す。
+ * @property {number} dentSquash へこみの量 1 のときの縦の縮み（割合）。試遊で決め直す。
+ * @property {number} dentWiden へこみの量 1 のときの横の広がり（割合）。試遊で決め直す。
  */
 
 /**
@@ -153,6 +157,10 @@ export const BATTLE_ANIM = Object.freeze({
   chargeDim: 0.35,
   fireFlashMs: 220,
   fireFlashAlpha: 0.6,
+  dentInMs: 60,
+  dentOutMs: 220,
+  dentSquash: 0.18,
+  dentWiden: 0.08,
 });
 
 /**

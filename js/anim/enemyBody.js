@@ -4,7 +4,7 @@
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
-import { enemyBodyStyle } from './enemyShows.js';
+import { enemyBodyStyle, enemyDents } from './enemyShows.js';
 import { createFigureDash, sampleFigureDash } from './figureDash.js';
 import { createTroopUnit, sampleTroop, setTroopEnd } from './troopMotion.js';
 import { chargePairs, chargeTo, placeTroops, popTroops } from './troopRoster.js';
@@ -20,6 +20,7 @@ import { bodyScale, scaledShieldArea, scaledX } from '../view/figureScale.js';
  * @property {number} maxHp 敵の最大 HP（倍率を求めるのに使う。群れは 0）
  * @property {import('./figureDash.js').FigureDash|null} dash 絵の駆け寄りの記録（絵だけ。群れは null）
  * @property {number|null} contactX 絵の左の縁の x（攻防の前の HP の倍率をかけた位置。駆け寄りの行き先から横のずれを求める。群れは null）
+ * @property {number[]|null} dents 体に当たった兵の着いた時刻（ms。昇順。当たるとへこむ敵だけ。へこまない敵・群れは null）
  * @property {import('./troopMotion.js').TroopUnit|null} fall 倒れる動きだけに使う1体（群れは null。名簿には入れない）
  * @property {number} fallOutY 絵が消える足元の y（群れは 0）
  */
@@ -59,6 +60,7 @@ const BODY_SETUPS = Object.freeze({
         maxHp: 0,
         dash: null,
         contactX: null,
+        dents: null,
         fall: null,
         fallOutY: 0,
       },
@@ -82,6 +84,7 @@ const BODY_SETUPS = Object.freeze({
         maxHp,
         dash: createFigureDash(),
         contactX: hitX,
+        dents: enemyDents(typeId) ? [] : null,
         fall: createTroopUnit('figure', 0, figure.rect.x + figure.rect.w / 2, figure.rect.y + figure.rect.h, 0, 0),
         fallOutY: battleLayout.area.y + battleLayout.area.h + figure.rect.h,
       },
@@ -154,7 +157,7 @@ export function hitEnemyShield(body, roster, count, t) {
 
 /**
  * 攻撃の兵を count 体、敵に当たる位置へ進める（群れは1対1で2体とも落ち、絵は着いた時刻に兵が落ちる）。
- * 敵に当たる間隔（`hitStaggerMs`・上限 `hitStaggerMaxMs`）で1体ずつずらす。
+ * 敵に当たる間隔（`hitStaggerMs`・上限 `hitStaggerMaxMs`）で1体ずつずらす。へこむ敵は着いた時刻を `body.dents` に記録する（シールドに当たった兵は記録しない）。
  * @param {EnemyBody} body 敵の体
  * @param {import('./troopRoster.js').TroopRoster} roster 名簿
  * @param {number} count 当たる数
@@ -164,7 +167,11 @@ export function hitEnemyShield(body, roster, count, t) {
  * @throws {Error} 群れの数が足りないとき
  */
 export function hitEnemyBody(body, roster, count, t, shownHp) {
-  return BODY_HITS[body.style](body, roster, count, t, shownHp);
+  const arrivals = BODY_HITS[body.style](body, roster, count, t, shownHp);
+  if (body.dents !== null) {
+    for (const time of arrivals) body.dents.push(time);
+  }
+  return arrivals;
 }
 
 /**
@@ -196,6 +203,15 @@ export function enemyBodyEnd(body) {
  */
 export function enemyFigureFalling(body, clock) {
   return body.fall !== null && body.fall.end !== null && clock >= body.fall.end.time;
+}
+
+/**
+ * 倒れ始めの時刻を返す（へこみを倒れ始めの手前で消すのに読む）。
+ * @param {EnemyBody} body 敵の体
+ * @returns {number|null} 時刻（ms。群れ・倒れる記録のない絵は null）
+ */
+export function enemyFigureFallAt(body) {
+  return body.fall !== null && body.fall.end !== null ? body.fall.end.time : null;
 }
 
 /**

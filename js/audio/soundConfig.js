@@ -65,6 +65,7 @@ export const STAGE_BGM = Object.freeze({
   wolf: 'stage',
   boar: 'stage',
   skeletons: 'stage',
+  slime: 'stage',
   giant: 'stage',
   dragon: 'dragon',
 });

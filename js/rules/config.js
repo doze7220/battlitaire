@@ -194,6 +194,19 @@ export const RULES = Object.freeze({
         bigGuardRange: Object.freeze({ min: 7, max: 9 }),
       }),
     }),
+    slime: Object.freeze({
+      name: 'スライム',
+      star: 1,
+      maxHp: 40,
+      behavior: Object.freeze({
+        type: 'either',
+        attackChance: 0.4,
+        attackRange: Object.freeze({ min: 2, max: 3 }),
+        guardRange: Object.freeze({ min: 2, max: 4 }),
+        bigGuardChance: 0.2,
+        bigGuardRange: Object.freeze({ min: 5, max: 7 }),
+      }),
+    }),
     giant: Object.freeze({
       name: '巨人',
       star: 2,

@@ -56,6 +56,15 @@ const ENEMY_FIGURES = Object.freeze({
     intent: Object.freeze({ x: 0.5, gap: 30 }),
     minScale: 1,
   }),
+  slime: Object.freeze({
+    sprite: SPRITE_IDS.slime,
+    height: 120,
+    shield: Object.freeze({ cx: 0.5, cy: 0.55, w: 0.75, h: 0.5 }),
+    hit: 0.12,
+    mouth: null,
+    intent: Object.freeze({ x: 0.5, gap: 30 }),
+    minScale: 0.5,
+  }),
   giant: Object.freeze({
     sprite: SPRITE_IDS.giant,
     height: 200,

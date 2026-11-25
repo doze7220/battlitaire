@@ -43,10 +43,10 @@ export const DEFENSE_SHOWS = Object.freeze({
 });
 
 /**
- * 敵の種類の識別子ごとの見せ方の表。`attacks` は行動の中の種類（`variant`）→ 攻撃の見せ方の名前（`default` は既定）。
+ * 敵の種類の識別子ごとの見せ方の表。`dents` は体に当たるとへこむか（スライムだけ真）。`attacks` は行動の中の種類（`variant`）→ 攻撃の見せ方の名前（`default` は既定）。
  * `heavy` は大きな一撃とみなす攻撃の中の種類の並び、`charge` はための動きを見せる振りかぶりの中の種類の並び
  * （中の種類のない行動は `default`）。
- * @type {Readonly<Record<string, Readonly<{body: 'horde'|'figure', attacks: Readonly<Record<string, string>>, heavy: readonly string[], charge: readonly string[]}>>>}
+ * @type {Readonly<Record<string, Readonly<{body: 'horde'|'figure', attacks: Readonly<Record<string, string>>, heavy: readonly string[], charge: readonly string[], dents: boolean}>>>}
  */
 export const ENEMY_SHOWS = Object.freeze({
   goblins: Object.freeze({
@@ -54,36 +54,49 @@ export const ENEMY_SHOWS = Object.freeze({
     attacks: Object.freeze({ default: 'march' }),
     heavy: Object.freeze([]),
     charge: Object.freeze([]),
+    dents: false,
   }),
   wolf: Object.freeze({
     body: 'figure',
     attacks: Object.freeze({ default: 'dashSwift' }),
     heavy: Object.freeze(['heavy']),
     charge: Object.freeze(['charge']),
+    dents: false,
   }),
   boar: Object.freeze({
     body: 'figure',
     attacks: Object.freeze({ default: 'dashStraight' }),
     heavy: Object.freeze(['heavy']),
     charge: Object.freeze(['charge']),
+    dents: false,
+  }),
+  slime: Object.freeze({
+    body: 'figure',
+    attacks: Object.freeze({ default: 'dashBounce' }),
+    heavy: Object.freeze([]),
+    charge: Object.freeze([]),
+    dents: true,
   }),
   skeletons: Object.freeze({
     body: 'horde',
     attacks: Object.freeze({ default: 'march' }),
     heavy: Object.freeze([]),
     charge: Object.freeze([]),
+    dents: false,
   }),
   giant: Object.freeze({
     body: 'figure',
     attacks: Object.freeze({ default: 'strike' }),
     heavy: Object.freeze(['default']),
     charge: Object.freeze(['default']),
+    dents: false,
   }),
   dragon: Object.freeze({
     body: 'figure',
     attacks: Object.freeze({ default: 'strike', breath: 'flames' }),
     heavy: Object.freeze(['breath']),
     charge: Object.freeze(['inhale']),
+    dents: false,
   }),
 });
 
@@ -91,7 +104,7 @@ export const ENEMY_SHOWS = Object.freeze({
  * 敵の種類の見せ方の項目を引く。
  * @param {string} typeId 敵の種類の識別子
  * @param {string} name 呼び出し元の関数名（Error の文の頭）
- * @returns {Readonly<{body: 'horde'|'figure', attacks: Readonly<Record<string, string>>, heavy: readonly string[], charge: readonly string[]}>}
+ * @returns {Readonly<{body: 'horde'|'figure', attacks: Readonly<Record<string, string>>, heavy: readonly string[], charge: readonly string[], dents: boolean}>}
  */
 function showOf(typeId, name) {
   if (!Object.prototype.hasOwnProperty.call(ENEMY_SHOWS, typeId)) {
@@ -161,4 +174,13 @@ export function isHeavyAttack(typeId, variant) {
  */
 export function hasChargeShow(typeId, variant) {
   return showOf(typeId, 'hasChargeShow').charge.includes(variantKey(variant));
+}
+
+/**
+ * 体に当たるとへこむ敵かを返す（スライムだけ true）。
+ * @param {string} typeId 敵の種類の識別子
+ * @returns {boolean} へこむなら true
+ */
+export function enemyDents(typeId) {
+  return showOf(typeId, 'enemyDents').dents;
 }

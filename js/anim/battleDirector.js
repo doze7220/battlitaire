@@ -12,7 +12,8 @@ import { sampleTroopCounts } from './troopCounter.js';
 import { buildBattleCues, knockoutTime } from './battleCues.js';
 import { sampleBurnBoard } from './burnTrack.js';
 import { HitMarkSwarm } from './hitMarks.js';
-import { enemyFigureFalling, sampleEnemyFigure } from './enemyBody.js';
+import { enemyFigureFallAt, enemyFigureFalling, sampleEnemyFigure } from './enemyBody.js';
+import { applyDent } from './figureDent.js';
 import { BattleFx } from './battleFx.js';
 import { chargeLevel } from './chargeShow.js';
 import { sampleFigurePose } from './enemyIdle.js';
@@ -95,6 +96,7 @@ export class BattleDirector {
       this.clock,
       this.pose,
     );
+    applyDent(this.timeline.body.dents, this.clock, enemyFigureFallAt(this.timeline.body), this.pose);
   }
 
   /**
