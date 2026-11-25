@@ -1,4 +1,4 @@
-/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・防御（張る確率と量の幅）・行動の決まり（毎ターン攻撃と防御・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率））と攻撃・防御の量の幅）と敵の順番、力こぶの換算、疲弊（長引いた敵の防御の減り方）、4スートそろいの加算量）を1か所に集める設定ファイル。 */
+/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・防御（張る確率と量の幅）・行動の決まり（毎ターン攻撃と防御・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率））と攻撃・防御の量の幅）と敵の順番、敵の★とステージごとの★の決まり、力こぶの換算、疲弊（長引いた敵の防御の減り方）、4スートそろいの加算量）を1か所に集める設定ファイル。 */
 
 /**
  * 行動の量の幅（予告を決めるたびに、この中から整数を1つ抽選する）。
@@ -64,9 +64,17 @@
  * 敵の種類の設定。
  * @typedef {Object} EnemySpec
  * @property {string} name 敵の名前（表示用）。
+ * @property {number} star 敵の★（1〜3。ステージの★と同じ敵の中から選ばれる）。
  * @property {number} maxHp 敵の最大 HP（戦い始めの HP でもある）。
  * @property {Readonly<EnemyDefenseSpec>} defense 防御（ターンごとの張る確率と量の幅）。
  * @property {Readonly<EnemyBehaviorSpec>} behavior 行動の決まり。
+ */
+
+/**
+ * ステージの★の決まり（上から順に、最初に割り切れた of の star。どれにも当たらなければ base）。
+ * @typedef {Object} StageStarsSpec
+ * @property {number} base どの倍数にも当たらないステージの★。
+ * @property {readonly Readonly<{of: number, star: number}>[]} multiples 倍数ごとの★（上から順に判定する）。
  */
 
 /**
@@ -87,6 +95,7 @@
  * @property {number} castleMaxHp 城の最大 HP（ゲーム開始時の HP でもある）。
  * @property {readonly string[]} enemyOrder 敵の種類の識別子の並び（戦う順）。
  * @property {Readonly<Object<string, Readonly<EnemySpec>>>} enemies 敵の種類の識別子から、敵の種類の設定への対応。
+ * @property {Readonly<StageStarsSpec>} stageStars ステージの番号から★を決める設定。
  * @property {readonly string[]} keptGauges フェーズをまたいで値を残すゲージの識別子。
  * @property {Readonly<{gauge: string, per: number, maxBonus: number}>} muscleConversion 力こぶの換算。gauge のゲージが per ごとに行動回数 +1、最大 maxBonus。
  * @property {readonly Readonly<FatigueStage>[]} fatigue 疲弊の段（fromTurn の昇順）。
@@ -119,6 +128,7 @@ export const RULES = Object.freeze({
   enemies: Object.freeze({
     goblins: Object.freeze({
       name: 'ゴブリンの軍勢',
+      star: 1,
       maxHp: 30,
       defense: Object.freeze({ chance: 1, range: Object.freeze({ min: 1, max: 2 }) }),
       behavior: Object.freeze({
@@ -128,6 +138,7 @@ export const RULES = Object.freeze({
     }),
     giant: Object.freeze({
       name: '巨人',
+      star: 2,
       maxHp: 60,
       defense: Object.freeze({ chance: 0.75, range: Object.freeze({ min: 2, max: 6 }) }),
       behavior: Object.freeze({
@@ -139,6 +150,7 @@ export const RULES = Object.freeze({
     }),
     dragon: Object.freeze({
       name: 'ドラゴン',
+      star: 3,
       maxHp: 90,
       defense: Object.freeze({ chance: 0.75, range: Object.freeze({ min: 3, max: 7 }) }),
       behavior: Object.freeze({
@@ -151,6 +163,13 @@ export const RULES = Object.freeze({
         inhaleChance: 0.3,
       }),
     }),
+  }),
+  stageStars: Object.freeze({
+    base: 1,
+    multiples: Object.freeze([
+      Object.freeze({ of: 10, star: 3 }),
+      Object.freeze({ of: 5, star: 2 }),
+    ]),
   }),
   keptGauges: Object.freeze(['muscle']),
   muscleConversion: Object.freeze({ gauge: 'muscle', per: 5, maxBonus: 2 }),
