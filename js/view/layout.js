@@ -160,9 +160,8 @@ import { campSlot } from './campSlots.js';
  * @property {Rect} startButton 「はじめる」ボタンの矩形
  * @property {Rect} howToButton 「遊び方」ボタンの矩形
  * @property {Rect} settingsButton 「設定」ボタンの矩形（「遊び方」の下）
- * @property {Rect|null} debugStartButton 「デバッグスタート」ボタンの矩形（「設定」の下。出さないときは null）
- * @property {number} startTextMaxW ボタン（はじめる・遊び方・設定・デバッグスタート）の文字の最大の幅
- * @property {function(number, number): ('start'|'howTo'|'settings'|'debugStart'|null)} titleHitTest 座標から、ボタンに当たったものを返す
+ * @property {number} startTextMaxW ボタン（はじめる・遊び方・設定）の文字の最大の幅
+ * @property {function(number, number): ('start'|'howTo'|'settings'|null)} titleHitTest 座標から、ボタンに当たったものを返す
  */
 
 /**
@@ -893,10 +892,9 @@ function createResultLayout(screen) {
 /**
  * タイトル画面の配置を作る。
  * @param {{ width: number, height: number }} screen 画面の大きさ
- * @param {{ debugStart?: boolean }} [options] 省略可。debugStart が真のときだけ「デバッグスタート」ボタンを作る（既定は false）
  * @returns {TitleLayout} タイトル画面の配置
  */
-export function createTitleLayout(screen, options = {}) {
+export function createTitleLayout(screen) {
   const W = screen.width;
   const H = screen.height;
   const startButton = {
@@ -920,26 +918,16 @@ export function createTitleLayout(screen, options = {}) {
     h: TITLE_HOWTO_H,
   };
 
-  const debugStartButton = options.debugStart
-    ? {
-        x: startButton.x,
-        y: settingsButton.y + settingsButton.h + TITLE_HOWTO_GAP,
-        w: TITLE_BUTTON_W,
-        h: TITLE_HOWTO_H,
-      }
-    : null;
-
   /**
    * 座標から、タイトル画面のボタンに当たったものを返す。
    * @param {number} x x 座標
    * @param {number} y y 座標
-   * @returns {'start'|'howTo'|'settings'|'debugStart'|null} 当たったもの。なければ null
+   * @returns {'start'|'howTo'|'settings'|null} 当たったもの。なければ null
    */
   function titleHitTest(x, y) {
     if (inRect(startButton, x, y)) return 'start';
     if (inRect(howToButton, x, y)) return 'howTo';
-    if (inRect(settingsButton, x, y)) return 'settings';
-    return debugStartButton !== null && inRect(debugStartButton, x, y) ? 'debugStart' : null;
+    return inRect(settingsButton, x, y) ? 'settings' : null;
   }
 
   return {
@@ -948,7 +936,6 @@ export function createTitleLayout(screen, options = {}) {
     startButton,
     howToButton,
     settingsButton,
-    debugStartButton,
     startTextMaxW: TITLE_BUTTON_W - TITLE_BUTTON_PAD_X * 2,
     titleHitTest,
   };

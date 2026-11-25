@@ -149,7 +149,7 @@
         *   `BoardScene.js` の `BoardOptions` の `rules` の JSDoc の「デバッグスタートでは `RULES` と同じ形の写しが渡される」を、「デバッグ（`Engine.debug` が真）のゲームでは `RULES` と同じ形の写しが渡される」に直す。
         *   `MenuScene.js`・`BattleShowScene.js` には足さない。
 
-*   [ ] タスク4: タイトル画面の「デバッグスタート」を消す・タイトル画面の「DEBUG MODE」のレイヤー
+*   [x] タスク4: タイトル画面の「デバッグスタート」を消す・タイトル画面の「DEBUG MODE」のレイヤー
     *   **対象ファイル** :
         *   `./js/scenes/TitleScene.js` :（更新）
         *   `./js/view/layout.js` :（更新）
@@ -211,7 +211,10 @@
 
 ### タスク4: タイトル画面の「デバッグスタート」を消す・タイトル画面の「DEBUG MODE」のレイヤー
 *   **作業内容** :
-    *   （未着手）
+    *   `TitleScene.js`: `debugNext`・`'debugStart'` を消し、`startGame()` を引数なし（`this.next()`）にして `onPointer`・`onKeyDown` を合わせた。`createTitleLayout(this.screen)` に変更。`draw` の頭に `drawDebugModeLayer(ctx, layer);`（import 追加）。先頭の責務（3行）・`TitleOptions`・クラス JSDoc・`pressed`・`startGame`・`onPointer`・`draw` の JSDoc を合わせた。
+    *   `layout.js`: `createTitleLayout(screen)`（`options` 削除）、`debugStartButton`・`'debugStart'` を削除し、typedef・JSDoc を合わせた。
+    *   `titleView.js`: `debugStartButton` の描画と記述を削除。`titleText.js`: `debugStart` と記述を削除。
+    *   4ファイルとも構文チェック ok。4ファイルに「デバッグスタート」「debugNext」「debugStart」は残っていない。`main.js` はタスク5で `debugNext` を渡さなくするまで、まだ渡している（無害）。
 
 ### タスク5: 起動（`js/main.js`）とルール層の説明
 *   **作業内容** :
