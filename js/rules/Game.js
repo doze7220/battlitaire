@@ -18,6 +18,7 @@ import {
 import { planActionBurns, applyBurns } from './cardBurn.js';
 import { enemyTypeIdAt, enemySpecAt, isLastEnemy, nextEnemyName } from './enemyProgress.js';
 import { computeBattle } from './battle.js';
+import { createIntent, isFatigued } from './enemyDefense.js';
 import { computePhaseStart } from './phase.js';
 import { createGameStats, tallyBattle } from './gameStats.js';
 
@@ -25,7 +26,7 @@ import { createGameStats, tallyBattle } from './gameStats.js';
  * 「攻防」操作の結果。
  * @typedef {Object} BattleResult
  * @property {'battle'} type 操作の種類
- * @property {import('./combatants.js').EnemyAction} enemyAction この攻防での敵の行動（予告の写し。`variant`・`burn` を含む）
+ * @property {import('./combatants.js').EnemyIntent} enemyAction この攻防での敵の行動（予告の写し。`variant`・`burn` を含む）
  * @property {import('./battle.js').BattleEvent[]} events 出来事の並び（起きた順）
  * @property {number} castleHp 攻防の後の城の HP
  * @property {number} enemyHp 攻防の後の敵の HP
@@ -37,13 +38,14 @@ import { createGameStats, tallyBattle } from './gameStats.js';
  * 「次のフェーズ」操作の結果。
  * @typedef {Object} NextPhaseResult
  * @property {'nextPhase'} type 操作の種類
- * @property {number} phase 新しいフェーズの番号
+ * @property {number} phase 新しいフェーズの番号（通しの番号）
+ * @property {number} battleTurn 新しい戦闘のターン数（その敵との戦闘で何ターン目か。1 から）
  * @property {number} bonusActions 力こぶの換算で増えた行動回数
  * @property {number} muscleSpent 換算で使った力こぶの量
  * @property {number} muscleLeft 換算後に残った力こぶの量
  * @property {number} actionsMax このフェーズの行動回数
  * @property {number} actionsLeft 残りの行動回数（フェーズの頭では actionsMax と同じ）
- * @property {import('./combatants.js').EnemyAction} enemyAction 敵の次の行動の予告
+ * @property {import('./combatants.js').EnemyIntent} enemyAction 敵の次の行動の予告
  * @property {boolean} enemyChanged このフェーズの頭で敵が入れ替わったか
  */
 
@@ -82,6 +84,8 @@ export class Game {
     this.actionsLeft = config.baseActions;
     /** @type {number} 今のフェーズの番号（1から） */
     this.phase = 1;
+    /** @type {number} いまの敵との戦闘で何ターン目か（1 から。敵が替わると 1 に戻る） */
+    this.battleTurn = 1;
     /** @type {'planning'|'result'|'over'} 段階（段取り中・攻防の結果を見ている・決着） */
     this.stage = 'planning';
     /** @type {'win'|'lose'|null} 決着（決着前は null） */
@@ -106,13 +110,21 @@ export class Game {
   }
 
   /**
-   * いまの敵の次の行動を、行動の決まりで決めて予告と決まりの状態に入れる（乱数は決まりと行動によって0〜2回（種類の抽選と量の抽選）。決まりの種類ごとの使い方は `enemyBehaviors.js` に従う）。
+   * いまの敵の次の行動を、行動の決まりで決めて予告と決まりの状態に入れる（乱数は決まりの抽選のあと、隙でなければ防御の抽選（張るか・量の2回）。決まりの種類ごとの使い方は `enemyBehaviors.js`、防御は `enemyDefense.js` に従う）。
    */
   planIntent() {
     const spec = enemySpecAt(this.config, this.enemyIndex);
     const { action, state } = planBehaviorAction(spec.behavior, this.enemy.behaviorState, this.random);
-    this.enemy.intent = action;
+    this.enemy.intent = createIntent(spec, action, this.battleTurn, this.config.fatigue, this.random);
     this.enemy.behaviorState = state;
+  }
+
+  /**
+   * いまの敵が疲弊しているか。
+   * @returns {boolean} 疲弊していれば true
+   */
+  isEnemyFatigued() {
+    return isFatigued(this.battleTurn, this.config.fatigue);
   }
 
   /**
@@ -434,11 +446,13 @@ export class Game {
       this.enemyIndex += 1;
       this.enemy = createEnemy(enemyTypeIdAt(this.config, this.enemyIndex), enemySpecAt(this.config, this.enemyIndex));
     }
+    this.battleTurn = enemyChanged ? 1 : this.battleTurn + 1;
     this.planIntent();
     this.stage = 'planning';
     return {
       type: 'nextPhase',
       phase: this.phase,
+      battleTurn: this.battleTurn,
       bonusActions: start.bonusActions,
       muscleSpent: start.muscleSpent,
       muscleLeft: this.gauges[this.config.muscleConversion.gauge],

@@ -5,6 +5,7 @@
 
 import { createEnemy } from './combatants.js';
 import { enemyTypeIdAt, enemySpecAt } from './enemyProgress.js';
+import { createIntent } from './enemyDefense.js';
 import { intentChoiceIds, planChosenIntent, chosenIntentOf } from './debugIntents.js';
 
 /**
@@ -53,7 +54,7 @@ export function enemyChoices(config) {
 
 /**
  * 今の敵を指定した番号の敵（HP 満タン・決まりの状態は初期値）に入れ替え、ふつうに予告を決める。
- * 段取り中で、範囲内の整数で、今の番号と違うときだけ。TURN・城・盤面・ゲージ・行動の回数・結果の集計は触らない。
+ * 段取り中で、範囲内の整数で、今の番号と違うときだけ。通しのターンの番号・城・盤面・ゲージ・行動の回数・結果の集計は触らない。戦闘のターンの番号は 1 に戻す。
  * @param {import('./Game.js').Game} game ゲーム
  * @param {number} index 敵の番号（0から）
  * @returns {boolean} 入れ替えたら true
@@ -64,6 +65,7 @@ export function switchEnemy(game, index) {
   if (index === game.enemyIndex) return false;
   game.enemyIndex = index;
   game.enemy = createEnemy(enemyTypeIdAt(game.config, index), enemySpecAt(game.config, index));
+  game.battleTurn = 1;
   game.planIntent();
   return true;
 }
@@ -121,7 +123,13 @@ export function chooseEnemyIntent(game, id) {
   if (!intentChoiceIdsOf(game).includes(id)) return false;
   if (currentIntentChoice(game) === id) return false;
   const { action, state } = planChosenIntent(currentBehavior(game), id, game.random);
-  game.enemy.intent = action;
+  game.enemy.intent = createIntent(
+    enemySpecAt(game.config, game.enemyIndex),
+    action,
+    game.battleTurn,
+    game.config.fatigue,
+    game.random,
+  );
   game.enemy.behaviorState = state;
   return true;
 }

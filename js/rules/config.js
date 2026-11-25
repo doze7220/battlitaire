@@ -1,10 +1,24 @@
-/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・常時防御力・行動の決まり（重みによる抽選・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率））と攻撃・防御の量の幅）と敵の順番、力こぶの換算）を1か所に集める設定ファイル。 */
+/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・常時防御力・防御（張る確率と量の幅）・行動の決まり（重みによる抽選・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率））と攻撃・防御の量の幅）と敵の順番、力こぶの換算、疲弊（長引いた敵の防御の減り方））を1か所に集める設定ファイル。 */
 
 /**
  * 行動の量の幅（予告を決めるたびに、この中から整数を1つ抽選する）。
  * @typedef {Object} AmountRangeSpec
  * @property {number} min 量の最小（整数）。
  * @property {number} max 量の最大（min 以上の整数）。
+ */
+
+/**
+ * 敵の防御（そのターンだけの防御の量）の設定。
+ * @typedef {Object} EnemyDefenseSpec
+ * @property {number} chance 防御を張る確率（0〜1）。
+ * @property {Readonly<AmountRangeSpec>} range 防御の量の幅。
+ */
+
+/**
+ * 疲弊の段（戦闘のターン数が fromTurn 以上のとき、防御の量に defenseRate を掛けて切り捨てる）。
+ * @typedef {Object} FatigueStage
+ * @property {number} fromTurn この段が効き始める戦闘のターン数（1 から）。
+ * @property {number} defenseRate 防御の量に掛ける率（0〜1）。
  */
 
 /**
@@ -61,6 +75,7 @@
  * @property {string} name 敵の名前（表示用）。
  * @property {number} maxHp 敵の最大 HP（戦い始めの HP でもある）。
  * @property {number} armor 常時防御力（毎フェーズ、自軍の攻撃から差し引かれる量）。
+ * @property {Readonly<EnemyDefenseSpec>} defense 防御（ターンごとの張る確率と量の幅）。
  * @property {Readonly<EnemyBehaviorSpec>} behavior 行動の決まり。
  */
 
@@ -83,6 +98,7 @@
  * @property {Readonly<Object<string, Readonly<EnemySpec>>>} enemies 敵の種類の識別子から、敵の種類の設定への対応。
  * @property {readonly string[]} keptGauges フェーズをまたいで値を残すゲージの識別子。
  * @property {Readonly<{gauge: string, per: number, maxBonus: number}>} muscleConversion 力こぶの換算。gauge のゲージが per ごとに行動回数 +1、最大 maxBonus。
+ * @property {readonly Readonly<FatigueStage>[]} fatigue 疲弊の段（fromTurn の昇順）。
  */
 
 /**
@@ -113,6 +129,7 @@ export const RULES = Object.freeze({
       name: 'ゴブリンの軍勢',
       maxHp: 30,
       armor: 0,
+      defense: Object.freeze({ chance: 1, range: Object.freeze({ min: 1, max: 2 }) }),
       behavior: Object.freeze({
         type: 'weighted',
         actions: Object.freeze([
@@ -125,6 +142,7 @@ export const RULES = Object.freeze({
       name: '巨人',
       maxHp: 60,
       armor: 3,
+      defense: Object.freeze({ chance: 0.75, range: Object.freeze({ min: 2, max: 6 }) }),
       behavior: Object.freeze({
         type: 'cycle',
         cycleLength: 4,
@@ -136,6 +154,7 @@ export const RULES = Object.freeze({
       name: 'ドラゴン',
       maxHp: 80,
       armor: 4,
+      defense: Object.freeze({ chance: 0.75, range: Object.freeze({ min: 3, max: 7 }) }),
       behavior: Object.freeze({
         type: 'inhale',
         claw: Object.freeze({ range: Object.freeze({ min: 4, max: 6 }) }),
@@ -149,4 +168,8 @@ export const RULES = Object.freeze({
   }),
   keptGauges: Object.freeze(['muscle']),
   muscleConversion: Object.freeze({ gauge: 'muscle', per: 5, maxBonus: 2 }),
+  fatigue: Object.freeze([
+    Object.freeze({ fromTurn: 21, defenseRate: 0.5 }),
+    Object.freeze({ fromTurn: 26, defenseRate: 0 }),
+  ]),
 });

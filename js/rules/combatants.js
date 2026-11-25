@@ -15,6 +15,13 @@ import { createBehaviorState } from './enemyBehaviors.js';
  */
 
 /**
+ * 敵の予告（行動に防御の量を足したもの）。
+ * baseDefense は抽選した防御の量（疲弊の前。隙のターンは 0）、
+ * defense は疲弊を掛けた後の防御の量（予告・シールド・攻防が読むのはこれだけ）。
+ * @typedef {EnemyAction & { baseDefense: number, defense: number }} EnemyIntent
+ */
+
+/**
  * 城の状態。
  * @typedef {Object} Castle
  * @property {number} hp 現在の HP
@@ -29,7 +36,7 @@ import { createBehaviorState } from './enemyBehaviors.js';
  * @property {number} hp 現在の HP
  * @property {number} maxHp 最大 HP
  * @property {number} armor 常時防御力
- * @property {EnemyAction|null} intent 次の行動の予告（未決定なら null）
+ * @property {EnemyIntent|null} intent 次の行動の予告（未決定なら null）
  * @property {object} behaviorState 行動の決まりの状態（weighted では {}、cycle では { countdown }、inhale では { lastVariant }）
  */
 

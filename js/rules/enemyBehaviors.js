@@ -1,5 +1,5 @@
 /**
- * 責務: 敵の行動の決まり（種類ごとの状態の初期値・次の行動の決め方・数え下ろしの問い合わせ）の表と呼び分け、
+ * 責務: 敵の行動の決まり（種類ごとの状態の初期値・次の行動の決め方・数え下ろし・隙かの問い合わせ）の表と呼び分け、
  * 行動を作る小さな関数、行動の量の幅からの抽選、攻撃の直後の回復の抽選。渡された乱数だけを使う純粋な関数（ルール層）。
  */
 
@@ -102,7 +102,8 @@ export function pickWeighted(actions, random) {
  * @type {Readonly<Object<string, {
  *   initialState: (behavior: any) => object,
  *   planNext: (behavior: any, state: object, random: () => number) => { action: import('./combatants.js').EnemyAction, state: object },
- *   countdown: (behavior: any, state: object) => number|null
+ *   countdown: (behavior: any, state: object) => number|null,
+ *   isOpening: (action: import('./combatants.js').EnemyAction) => boolean
  * }>>}
  */
 const BEHAVIORS = Object.freeze({
@@ -113,6 +114,7 @@ const BEHAVIORS = Object.freeze({
       state,
     }),
     countdown: () => null,
+    isOpening: () => false,
   }),
   cycle: Object.freeze({
     initialState: () => ({ countdown: null }),
@@ -126,6 +128,7 @@ const BEHAVIORS = Object.freeze({
       return { action, state: { countdown } };
     },
     countdown: (behavior, state) => state.countdown,
+    isOpening: (action) => action.kind === 'attack',
   }),
   inhale: Object.freeze({
     initialState: () => ({ lastVariant: null }),
@@ -143,13 +146,14 @@ const BEHAVIORS = Object.freeze({
       return { action, state: { lastVariant: action.variant } };
     },
     countdown: () => null,
+    isOpening: (action) => action.variant === 'inhale',
   }),
 });
 
 /**
  * 種類に対応する決まりの実装を引く。
  * @param {{ type: string }} behavior 行動の決まりの設定
- * @returns {{ initialState: Function, planNext: Function, countdown: Function }} 決まりの実装
+ * @returns {{ initialState: Function, planNext: Function, countdown: Function, isOpening: Function }} 決まりの実装
  * @throws {Error} 未知の種類のとき
  */
 function lookupBehavior(behavior) {
@@ -190,6 +194,17 @@ export function planBehaviorAction(behavior, state, random) {
  */
 export function behaviorCountdown(behavior, state) {
   return lookupBehavior(behavior).countdown(behavior, state);
+}
+
+/**
+ * その行動が隙（敵が防御を張らないターン）かを答える（乱数は呼ばない）。
+ * @param {{ type: string }} behavior 行動の決まりの設定
+ * @param {import('./combatants.js').EnemyAction} action 敵の行動
+ * @returns {boolean} 隙なら true
+ * @throws {Error} 未知の種類のとき
+ */
+export function isOpeningAction(behavior, action) {
+  return lookupBehavior(behavior).isOpening(action);
 }
 
 /**
