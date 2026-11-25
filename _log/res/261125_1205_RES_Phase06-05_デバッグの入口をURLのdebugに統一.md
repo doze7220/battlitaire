@@ -131,7 +131,7 @@
         *   `readVolume`・`battleSpeedId` の `Storage.get` を `readValue` に、`writeBgmVolume`・`writeSeVolume`・`writeBattleSpeed` の `Storage.set` を `writeValue` に替える。3つの `write…` の JSDoc の「保存し」「保存する」に「（デバッグのときは保存せず、ページを閉じるまで持つ）」を足す。
         *   先頭の責務（3行以内）に「デバッグ（`Engine.debug`）のときは保存せず、変えた値をページを閉じるまで持つ」を足す。`SETTINGS_STORAGE`・値の表・`applySoundSettings` は変えない。
 
-*   [ ] タスク2: 「DEBUG MODE」の描画とレイヤーの口（新規2ファイル）
+*   [x] タスク2: 「DEBUG MODE」の描画とレイヤーの口（新規2ファイル）
     *   **対象ファイル** :
         *   `./js/view/debugModeView.js` :（新規）
         *   `./js/scenes/debugModeLayer.js` :（新規）
@@ -199,7 +199,9 @@
 
 ### タスク2: 「DEBUG MODE」の描画とレイヤーの口（新規2ファイル）
 *   **作業内容** :
-    *   （未着手）
+    *   `js/view/debugModeView.js` を新規作成。定数 `LINES`（項目も凍結）・`CENTER_X`・`MAX_W`・`FONT`・`TEXT_COLOR`・`OUTLINE_COLOR`・`OUTLINE_WIDTH`（JSDoc に「試遊で決め直す値」）と `drawDebugMode(ctx)`（save → 設定 → 行ごとに strokeText・fillText → restore）。何も import しない。
+    *   `js/scenes/debugModeLayer.js` を新規作成。`DEBUG_MODE_LAYER = 'debugMode'` と `drawDebugModeLayer(ctx, layer)`（`Engine.debug` と `drawDebugMode` を使う）。
+    *   2ファイルとも構文チェック ok。
 
 ### タスク3: 盤面・遊び方・BOOT のシーンで「DEBUG MODE」のレイヤーを描く
 *   **作業内容** :
