@@ -171,7 +171,7 @@
         *   `main.js`: `debugRules`・`createDebugBoard`・`createMenu`・`createDebugMenu`・先頭の責務（3行以内）の JSDoc の「デバッグスタート」を「デバッグのゲーム」に直す（先頭の責務は、URL の `?debug` を読んで起動設定に渡すこと・起動の直後に FPS の表示を消すことも書く）。
         *   `debugRules.js`: 先頭の責務の「デバッグスタートのゲームが使う」を「デバッグのゲームが使う」に直す（URL・エンジンの名前は書かない。コードは変えない）。
 
-*   [ ] タスク6: JSDoc・構文チェック・決まりの通しの確認
+*   [x] タスク6: JSDoc・構文チェック・決まりの通しの確認
     *   **対象ファイル** :
         *   タスク1〜5 で変更・作成したすべての .js ファイル（確認だけ。直すのは漏れがあったときだけ）
     *   **作業内容** :
@@ -225,7 +225,11 @@
 
 ### タスク6: JSDoc・構文チェック・決まりの通しの確認
 *   **作業内容** :
-    *   （未着手）
+    *   監査のメモに従い、`debugModeLayer.js`・`debugModeView.js` の先頭の説明の書き出しを「責務:」に揃えた（ほかの変更なし）。
+    *   先頭の責務は変更・作成した全ファイルで3行以内。足した・変えた関数・定数・型に JSDoc があることを確認。
+    *   構文チェック: `git diff 5e41ed9 --name-only -- js` の12ファイルすべて ok。
+    *   grep: `js/` に「デバッグスタート」・`DEBUG_TOOLS_ENABLED`・`debugNext`・`debugStart` なし。`location` は `main.js` のみ（`location.search` 1か所＋コメント）。`Engine.debug` の読みは `main.js` の `createBoard`・`debugModeLayer.js`・`settingsStore.js` の `writeValue` のみ（ほかはコメント）。`Storage.set` は `writeValue` の1か所のみ。`Engine.fpsVisible` の代入は `main.js`（`Engine.start` の直後）と `debugTab.js` の `write` のみ。`drawDebugModeLayer(` の呼び出しは Board・Boot・HowTo・Title の `draw` の頭の4か所のみ。`js/view/` で `'oz'` を import するのは `troopBakes.js` のみ、`js/rules/` に `'oz'` なし。`requestAnimationFrame`・`addEventListener`・`getContext`・`window.` は `this.window.`・`MENU_LAYOUT.window.` 以外なし。
+    *   `isDebugQuery` の結果（スクラッチパッドの一時スクリプト）: `''`=false、`?debug`=true、`?debug=1`=true、`?debug=0`=false、`?a=1&debug`=true、`?debug=0&a=1`=false、`?debugx=1`=false。
 
 ### タスク7: 開発資料（`PROJECT_ARCHITECTURE.md`）への反映（固定タスク）
 *   **作業内容** :

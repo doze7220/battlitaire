@@ -1,5 +1,5 @@
 /**
- * 「DEBUG MODE」のいちばん手前のレイヤーの名前を持ち、デバッグ（Engine.debug）のときだけそのレイヤーに描く。
+ * 責務: 「DEBUG MODE」のいちばん手前のレイヤーの名前を持ち、デバッグ（Engine.debug）のときだけそのレイヤーに描く。
  * シーンの補助（Scene を継承しない）。
  */
 import { Engine } from 'oz';
