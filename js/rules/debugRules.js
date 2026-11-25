@@ -46,7 +46,7 @@ const VALIDATORS = Object.freeze({
   castleMaxHp: (v) => Number.isInteger(v) && v >= 1,
   enemyMaxHp: (v) => Number.isInteger(v) && v >= 1,
   cycleLength: (v) => Number.isInteger(v) && v >= 1,
-  armor: (v) => Number.isInteger(v) && v >= 0,
+  defense: (v) => Number.isInteger(v) && v >= 0,
   amount: (v) => Number.isInteger(v) && v >= 0,
   burn: (v) => Number.isInteger(v) && v >= 0,
   chance: (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1,
@@ -81,8 +81,6 @@ function applyNow(game, item) {
   if (item.kind === 'enemyMaxHp') {
     game.enemy.maxHp = value;
     if (game.enemy.hp > value) game.enemy.hp = value;
-  } else if (item.kind === 'armor') {
-    game.enemy.armor = value;
   }
 }
 

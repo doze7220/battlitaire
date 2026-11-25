@@ -1,4 +1,4 @@
-/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・常時防御力・防御（張る確率と量の幅）・行動の決まり（毎ターン攻撃と防御・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率））と攻撃・防御の量の幅）と敵の順番、力こぶの換算、疲弊（長引いた敵の防御の減り方））を1か所に集める設定ファイル。 */
+/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・防御（張る確率と量の幅）・行動の決まり（毎ターン攻撃と防御・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率））と攻撃・防御の量の幅）と敵の順番、力こぶの換算、疲弊（長引いた敵の防御の減り方））を1か所に集める設定ファイル。 */
 
 /**
  * 行動の量の幅（予告を決めるたびに、この中から整数を1つ抽選する）。
@@ -65,7 +65,6 @@
  * @typedef {Object} EnemySpec
  * @property {string} name 敵の名前（表示用）。
  * @property {number} maxHp 敵の最大 HP（戦い始めの HP でもある）。
- * @property {number} armor 常時防御力（毎フェーズ、自軍の攻撃から差し引かれる量）。
  * @property {Readonly<EnemyDefenseSpec>} defense 防御（ターンごとの張る確率と量の幅）。
  * @property {Readonly<EnemyBehaviorSpec>} behavior 行動の決まり。
  */
@@ -119,7 +118,6 @@ export const RULES = Object.freeze({
     goblins: Object.freeze({
       name: 'ゴブリンの軍勢',
       maxHp: 30,
-      armor: 0,
       defense: Object.freeze({ chance: 1, range: Object.freeze({ min: 1, max: 2 }) }),
       behavior: Object.freeze({
         type: 'steady',
@@ -129,7 +127,6 @@ export const RULES = Object.freeze({
     giant: Object.freeze({
       name: '巨人',
       maxHp: 60,
-      armor: 3,
       defense: Object.freeze({ chance: 0.75, range: Object.freeze({ min: 2, max: 6 }) }),
       behavior: Object.freeze({
         type: 'cycle',
@@ -141,7 +138,6 @@ export const RULES = Object.freeze({
     dragon: Object.freeze({
       name: 'ドラゴン',
       maxHp: 90,
-      armor: 4,
       defense: Object.freeze({ chance: 0.75, range: Object.freeze({ min: 3, max: 7 }) }),
       behavior: Object.freeze({
         type: 'inhale',

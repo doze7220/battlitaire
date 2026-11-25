@@ -39,7 +39,6 @@ export const DEBUG_TEXT = Object.freeze({
  */
 export const RULE_ITEM_TEXT = Object.freeze({
   maxHp: '最大 HP',
-  armor: '常時防御力',
   attackMin: '攻撃の量 最小',
   attackMax: '攻撃の量 最大',
   cycleLength: '攻撃までのターン数',
@@ -52,6 +51,9 @@ export const RULE_ITEM_TEXT = Object.freeze({
   burnMin: '燃やす札 最小',
   burnMax: '燃やす札 最大',
   inhaleChance: '吸い込む確率',
+  defenseChance: '防御を張る確率',
+  defenseMin: '防御の量 最小',
+  defenseMax: '防御の量 最大',
 });
 
 /**

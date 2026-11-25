@@ -39,7 +39,7 @@ const TROOP_LOOKS = Object.freeze({
 });
 
 /**
- * シールドの焼き付けを用意する数の上限。DEBUG タブの常時防御力のスライダーの最大（`debugRuleSliders.js` の `RULE_SLIDERS.armor.max`）に合わせる。
+ * シールドの焼き付けを用意する数の上限。DEBUG タブの防御の量のスライダーの最大（`debugRuleSliders.js` の `RULE_SLIDERS.defense.max`）に合わせる。
  * 変えたら手で見直す。超えた数の大きさは焼き付けがなく直接描く（見た目は同じ）。ルールの値ではない。
  * @type {number}
  */

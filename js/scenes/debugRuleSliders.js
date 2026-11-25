@@ -14,7 +14,7 @@ import { DEBUG_TEXT, ruleItemText, percentText } from '../view/debugText.js';
 export const RULE_SLIDERS = Object.freeze({
   castleMaxHp: Object.freeze({ min: 5, max: 200, step: 5 }),
   enemyMaxHp: Object.freeze({ min: 5, max: 300, step: 5 }),
-  armor: Object.freeze({ min: 0, max: 20, step: 1 }),
+  defense: Object.freeze({ min: 0, max: 20, step: 1 }),
   amount: Object.freeze({ min: 0, max: 50, step: 1 }),
   chance: Object.freeze({ min: 0, max: 1, step: 0.05 }),
   cycleLength: Object.freeze({ min: 1, max: 8, step: 1 }),

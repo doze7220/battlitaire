@@ -35,7 +35,6 @@ import { createBehaviorState } from './enemyBehaviors.js';
  * @property {string} name 敵の名前
  * @property {number} hp 現在の HP
  * @property {number} maxHp 最大 HP
- * @property {number} armor 常時防御力
  * @property {EnemyIntent|null} intent 次の行動の予告（未決定なら null）
  * @property {object} behaviorState 行動の決まりの状態（steady では {}、cycle では { countdown }、inhale では { lastVariant }）
  */
@@ -61,7 +60,6 @@ export function createEnemy(typeId, spec) {
     name: spec.name,
     hp: spec.maxHp,
     maxHp: spec.maxHp,
-    armor: spec.armor,
     intent: null,
     behaviorState: createBehaviorState(spec.behavior),
   };

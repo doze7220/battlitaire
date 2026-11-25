@@ -10,7 +10,7 @@ import { RULES } from './config.js';
  * @typedef {Object} RuleItem
  * @property {string} id 識別子（例 'castle.maxHp'、'goblins.attack.min'）。
  * @property {string} group 組（'castle' か敵の種類の識別子）。
- * @property {string} kind 値の種類（'castleMaxHp'|'enemyMaxHp'|'armor'|'amount'|'chance'|'cycleLength'|'burn'）。
+ * @property {string} kind 値の種類（'castleMaxHp'|'enemyMaxHp'|'defense'|'amount'|'chance'|'cycleLength'|'burn'）。
  * @property {string} name 項目の名前の識別子（DEBUG タブが文字を引く）。
  * @property {string} timing 今の敵（城）のときに効く時期（'now'|'nextIntent'|'nextCycle'|'nextBattle'）。
  * @property {string|null} pairId 最小と最大の組の相手の id（組でなければ null）。
@@ -57,7 +57,7 @@ function rangeItems(baseId, group, baseName, kind, rangeOf) {
 }
 
 /**
- * 行動の決まりの種類ごとの、敵の行動の項目（最大 HP・常時防御力より後）の組み立ての表。
+ * 行動の決まりの種類ごとの、敵の行動の項目（最大 HP より後）の組み立ての表。
  * @type {Readonly<Object<string, (typeId: string, behavior: any) => Readonly<RuleItem>[]>>}
  */
 const BEHAVIOR_ITEMS = Object.freeze({
@@ -93,6 +93,20 @@ const BEHAVIOR_ITEMS = Object.freeze({
 });
 
 /**
+ * 敵の防御の項目（張る確率と量の幅）を作る。3体共通。
+ * @param {string} typeId 敵の種類の識別子
+ * @returns {Readonly<RuleItem>[]} [確率, 最小, 最大]
+ */
+function defenseItems(typeId) {
+  return [
+    item(`${typeId}.defense.chance`, typeId, 'chance', 'defenseChance', 'nextIntent', null, null,
+      (c) => c.enemies[typeId].defense.chance,
+      (c, v) => { c.enemies[typeId].defense.chance = v; }),
+    ...rangeItems(`${typeId}.defense`, typeId, 'defense', 'defense', (c) => c.enemies[typeId].defense.range),
+  ];
+}
+
+/**
  * 設定から項目の表を組み立てる（城 → enemyOrder の順の敵）。
  * @param {any} rules ルールの調整値
  * @returns {readonly Readonly<RuleItem>[]} 項目の並び
@@ -110,9 +124,8 @@ function buildItems(rules) {
     items.push(
       item(`${typeId}.maxHp`, typeId, 'enemyMaxHp', 'maxHp', 'now', null, null,
         (c) => c.enemies[typeId].maxHp, (c, v) => { c.enemies[typeId].maxHp = v; }),
-      item(`${typeId}.armor`, typeId, 'armor', 'armor', 'now', null, null,
-        (c) => c.enemies[typeId].armor, (c, v) => { c.enemies[typeId].armor = v; }),
       ...build(typeId, behavior),
+      ...defenseItems(typeId),
     );
   }
   return items;
