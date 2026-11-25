@@ -217,7 +217,7 @@ export class BoardScene extends Scene {
     const burn = this.battleShow === null ? null : this.battleShow.boardLook();
     drawBoard(ctx, this.layout, game, boardUiFor(game, this.selection), this.animator.view(), this.releaseShow.view(game.gauges), burn, this.enemyIdle.look(), this.flow.entranceLook(game));
     drawBanner(ctx, this.bannerLayout, this.flow.bannerLook(), {
-      phase: game.phase,
+      turn: game.battleTurn,
       enemyIndex: game.enemyIndex,
       enemyTypeId: game.enemy.typeId,
       intent: game.enemy.intent,

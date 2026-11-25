@@ -36,14 +36,16 @@ import { campSlot } from './campSlots.js';
  */
 
 /**
- * 画面の最上部のゲージ（城と敵の HP・フェーズ・金貨）の配置。
+ * 画面の最上部のゲージ（城と敵の HP・敵の名前と「疲弊」・戦闘ごとの TURN の番号・金貨）の配置。
  * @typedef {Object} TopGaugeLayout
  * @property {Rect} castleBar 城の HP ゲージ（右端が根元）
  * @property {Rect} enemyBar 敵の HP ゲージ（左端が根元）
  * @property {{ x: number, y: number }} castleValue 城の HP の数字の左端・中心 y
  * @property {{ x: number, y: number }} enemyValue 敵の HP の数字の右端・中心 y
+ * @property {{ x: number, y: number, maxW: number }} enemyName 敵の名前の左端・中心 y・最大の幅（敵の HP ゲージの下）
+ * @property {{ x: number, y: number }} fatigue 「疲弊」の右端・中心 y（敵の HP ゲージの下）
  * @property {{ x: number, y: number }} phaseLabel 「PHASE」の中心
- * @property {{ x: number, y: number }} phaseValue フェーズの番号の中心
+ * @property {{ x: number, y: number }} phaseValue 戦闘ごとの TURN の番号の中心
  * @property {Rect} turnBox 「TURN」と番号を囲む区画の見た目の矩形（中央にそろえる）
  * @property {Rect} turnHit 「TURN」の区画の押せる範囲（`turnBox` より広い。中央にそろえる）
  * @property {Rect} coinBar 金貨のゲージ全体（城の HP ゲージの真下。右端は城の HP ゲージと同じで根元。左は「GOLD」の欄の分だけ狭い）
@@ -95,13 +97,13 @@ import { campSlot } from './campSlots.js';
  * @property {number} hitX 攻撃の兵が当たって止まる足元の x（`rect.x + rect.w × hit`）
  * @property {{ x: number, y: number }|null} mouth 炎が出る口の位置（口のない敵は null）
  * @property {{ x: number, y: number }} healText 敵の回復の量の文字の中心
- * @property {IntentSpot} intent 予告の札の上端の中央（札の下端は人数の表示の枠の下端にそろう）
+ * @property {IntentSpot} intent 予告の札の上端の基準（中央。右端からはみ出すときは左へ寄る。札の下端は人数の表示の枠の下端にそろう）
  */
 
 /**
- * 予告の札の置き場所（札の上端の中央）。
+ * 予告の札の置き場所（札の上端の基準）。札が段の右端からはみ出すときは、`intentView.js` が左へ寄せる。
  * @typedef {Object} IntentSpot
- * @property {number} x 札の中心の x
+ * @property {number} x 札の中心の基準の x（札が右端に収まるときの中心。収まらないと左へ寄る）
  * @property {number} y 札の上端の y
  */
 
@@ -129,7 +131,7 @@ import { campSlot } from './campSlots.js';
  * @property {Object<string, EnemyFigure>} enemyFigures 敵の種類の識別子 → 敵の絵の配置（凍結。絵を持たない敵は含まれない）
  * @property {TopGaugeLayout} topGauges 画面の最上部のゲージ（城と敵の HP・フェーズ・金貨）の配置
  * @property {{ x: number, y: number }} enemyHealText 絵を持たない敵の回復の量の文字の中心（群れの矩形の上寄り）
- * @property {IntentSpot} enemyIntent 絵を持たない敵（ゴブリンの群れ）の予告の札の上端の中央（札の下端は人数の表示の枠の下端にそろう）
+ * @property {IntentSpot} enemyIntent 絵を持たない敵（ゴブリンの群れ）の予告の札の上端の基準（中央。右端からはみ出すときは左へ寄る。札の下端は人数の表示の枠の下端にそろう）
  * @property {IntentBadgeLayout} intentBadge 予告の札の大きさと数え下ろしの文字の配置
  * @property {TroopLayout} troops 兵の配置
  * @property {{ box: Rect, iconSize: number, items: Array<{ iconX: number, iconY: number, textX: number, textY: number }> }} troopCounter 人数の表示の配置（枠・アイコンの大きさ・攻撃・防御・修理の順の各項目のアイコン中心と文字の左端・中心 y）
@@ -222,6 +224,10 @@ const HP_GAUGE_H = 20;
 const TOP_GAUGE_CENTER_W = 100;
 /** HP の数字の、ゲージの外側の端から内側への距離。試遊で決め直す。 */
 const HP_VALUE_INSET = 8;
+/** 敵の名前・「疲弊」の行の中心 y（敵の HP ゲージの下）。試遊で決め直す。 */
+const ENEMY_LABEL_Y = 44;
+/** 敵の名前の最大の幅。試遊で決め直す。 */
+const ENEMY_NAME_MAX_W = 220;
 /** 「PHASE」の文字の中心 y。試遊で決め直す。 */
 const PHASE_LABEL_Y = 16;
 /** フェーズの番号の中心 y。試遊で決め直す。 */
@@ -544,6 +550,8 @@ function createTopGaugeLayout(width, coinBlockCount) {
     enemyBar,
     castleValue: { x: castleBar.x + HP_VALUE_INSET, y: castleBar.y + castleBar.h / 2 },
     enemyValue: { x: enemyBar.x + enemyBar.w - HP_VALUE_INSET, y: enemyBar.y + enemyBar.h / 2 },
+    enemyName: { x: enemyBar.x, y: ENEMY_LABEL_Y, maxW: ENEMY_NAME_MAX_W },
+    fatigue: { x: enemyBar.x + enemyBar.w, y: ENEMY_LABEL_Y },
     phaseLabel: { x: width / 2, y: PHASE_LABEL_Y },
     phaseValue: { x: width / 2, y: PHASE_VALUE_Y },
     turnBox: { x: (width - TURN_BOX_W) / 2, y: TURN_BOX_Y, w: TURN_BOX_W, h: TURN_BOX_H },

@@ -54,9 +54,10 @@ function troopCounts(game, release) {
 function topGaugeValues(game, release) {
   const conv = game.config.muscleConversion;
   return {
-    phase: game.phase,
+    turn: game.battleTurn,
     castle: game.castle,
     enemy: game.enemy,
+    fatigued: game.isEnemyFatigued(),
     coins: release.gaugeValues[conv.gauge] ?? game.gauges[conv.gauge] ?? 0,
     coinConversion: conv,
   };

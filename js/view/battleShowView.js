@@ -1,6 +1,6 @@
 /**
  * 責務: 攻防の演出中の最上段の描画の取りまとめ（揺らして段の中で切り抜く戦闘の段（倒れる絵・兵を渡す）・ヒットマーク・エフェクト、段の暗さと光、
- * 人数の表示・敵の回復の量・最上部の HP・フェーズ・金貨のゲージ・敵を倒したときの案内）。
+ * 人数の表示・敵の回復の量・最上部の HP・敵の名前・「疲弊」・TURN・金貨のゲージ・敵を倒したときの案内）。
  * 状態は変えず、ルール層・anim は実行時に import しない。
  */
 
@@ -107,9 +107,10 @@ export function drawBattleShow(ctx, battleLayout, game, result, look) {
   if (look.enemyHealPop !== null) drawEnemyHealPop(ctx, battleLayout, game.enemy.typeId, look.enemyHealPop);
   const conv = game.config.muscleConversion;
   drawTopGauges(ctx, battleLayout.topGauges, {
-    phase: game.phase,
+    turn: game.battleTurn,
     castle: { hp: look.castleHp, maxHp: game.castle.maxHp },
-    enemy: { hp: look.enemyHp, maxHp: game.enemy.maxHp },
+    enemy: { name: game.enemy.name, hp: look.enemyHp, maxHp: game.enemy.maxHp },
+    fatigued: game.isEnemyFatigued(),
     coins: game.gauges[conv.gauge] ?? 0,
     coinConversion: conv,
   });
