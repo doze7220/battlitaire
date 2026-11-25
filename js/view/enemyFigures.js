@@ -38,6 +38,24 @@ import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * minScale は HP が 0 に近いときの体の倍率（1 なら縮まない）。
  */
 const ENEMY_FIGURES = Object.freeze({
+  wolf: Object.freeze({
+    sprite: SPRITE_IDS.wolf,
+    height: 110,
+    shield: null,
+    hit: 0.12,
+    mouth: null,
+    intent: Object.freeze({ x: 0.5, gap: 30 }),
+    minScale: 1,
+  }),
+  boar: Object.freeze({
+    sprite: SPRITE_IDS.boar,
+    height: 130,
+    shield: null,
+    hit: 0.12,
+    mouth: null,
+    intent: Object.freeze({ x: 0.5, gap: 30 }),
+    minScale: 1,
+  }),
   giant: Object.freeze({
     sprite: SPRITE_IDS.giant,
     height: 200,

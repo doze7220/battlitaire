@@ -157,6 +157,30 @@ export const RULES = Object.freeze({
         attackRange: Object.freeze({ min: 1, max: 3 }),
       }),
     }),
+    wolf: Object.freeze({
+      name: '狼',
+      star: 1,
+      maxHp: 36,
+      behavior: Object.freeze({
+        type: 'buildup',
+        attackRange: Object.freeze({ min: 1, max: 3 }),
+        heavyRange: Object.freeze({ min: 7, max: 9 }),
+        chargeChance: 0.3,
+        chargeTurns: 1,
+      }),
+    }),
+    boar: Object.freeze({
+      name: '猪',
+      star: 1,
+      maxHp: 44,
+      behavior: Object.freeze({
+        type: 'buildup',
+        attackRange: Object.freeze({ min: 1, max: 2 }),
+        heavyRange: Object.freeze({ min: 13, max: 16 }),
+        chargeChance: 0.3,
+        chargeTurns: 2,
+      }),
+    }),
     skeletons: Object.freeze({
       name: '骸骨の軍勢',
       star: 1,

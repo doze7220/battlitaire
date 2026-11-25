@@ -55,6 +55,18 @@ export const ENEMY_SHOWS = Object.freeze({
     heavy: Object.freeze([]),
     charge: Object.freeze([]),
   }),
+  wolf: Object.freeze({
+    body: 'figure',
+    attacks: Object.freeze({ default: 'dashSwift' }),
+    heavy: Object.freeze(['heavy']),
+    charge: Object.freeze(['charge']),
+  }),
+  boar: Object.freeze({
+    body: 'figure',
+    attacks: Object.freeze({ default: 'dashStraight' }),
+    heavy: Object.freeze(['heavy']),
+    charge: Object.freeze(['charge']),
+  }),
   skeletons: Object.freeze({
     body: 'horde',
     attacks: Object.freeze({ default: 'march' }),

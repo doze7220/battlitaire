@@ -62,6 +62,8 @@ export const BGM_VOLUME = 0.5;
  */
 export const STAGE_BGM = Object.freeze({
   goblins: 'stage',
+  wolf: 'stage',
+  boar: 'stage',
   skeletons: 'stage',
   giant: 'stage',
   dragon: 'dragon',
