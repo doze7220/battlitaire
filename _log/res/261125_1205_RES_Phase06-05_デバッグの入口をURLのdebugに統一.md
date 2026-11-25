@@ -139,7 +139,7 @@
         *   `debugModeView.js`: 2章 要件4 の表の定数（JSDoc 付き。`LINES` は項目も凍結。「試遊で決め直す値」）と `export function drawDebugMode(ctx)`（JSDoc 付き）を書く。何も import しない。先頭の責務: デバッグのときに画面の右下に出す2行「DEBUG」「MODE」の文字・位置・見た目を定数で持ち、描く。出すかどうかは呼ぶ側（`debugModeLayer.js`）が決める。状態は変えない。
         *   `debugModeLayer.js`: 2章 要件4 のコードのとおり、`DEBUG_MODE_LAYER` と `drawDebugModeLayer(ctx, layer)` を JSDoc 付きで書く（`import { Engine } from 'oz';` と `drawDebugMode`）。JSDoc に「いちばん下に積まれるシーン（`Engine.changeScene` で切り替わるシーン）の `draw` の頭で、レイヤーごとに呼ぶ。上に積むシーンからは呼ばない」を書く。先頭の責務: 「DEBUG MODE」のいちばん手前のレイヤーの名前を持ち、デバッグ（`Engine.debug`）のときだけそのレイヤーに描くこと（シーンの補助。`Scene` を継承しない）。
 
-*   [ ] タスク3: 盤面・遊び方・BOOT のシーンで「DEBUG MODE」のレイヤーを描く
+*   [x] タスク3: 盤面・遊び方・BOOT のシーンで「DEBUG MODE」のレイヤーを描く
     *   **対象ファイル** :
         *   `./js/scenes/BootScene.js` :（更新）
         *   `./js/scenes/HowToScene.js` :（更新）
@@ -205,7 +205,9 @@
 
 ### タスク3: 盤面・遊び方・BOOT のシーンで「DEBUG MODE」のレイヤーを描く
 *   **作業内容** :
-    *   （未着手）
+    *   `BootScene.js`・`HowToScene.js`・`BoardScene.js` に `import { drawDebugModeLayer } from './debugModeLayer.js';` を足し、各 `draw` の頭（`if (layer !== this.layer) return;` の前）に `drawDebugModeLayer(ctx, layer);` を1行足した。`draw` の JSDoc と先頭の責務（いずれも3行以内）に「DEBUG MODE」のレイヤーを描く旨を足した。
+    *   `BoardScene.js` の `BoardOptions.rules` の JSDoc を「デバッグ（`Engine.debug` が真）のゲームでは…」に直した。`MenuScene.js`・`BattleShowScene.js` は触っていない。
+    *   構文チェック: 3ファイルとも ok。
 
 ### タスク4: タイトル画面の「デバッグスタート」を消す・タイトル画面の「DEBUG MODE」のレイヤー
 *   **作業内容** :

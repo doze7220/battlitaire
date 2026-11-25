@@ -1,9 +1,10 @@
 /**
  * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面と合図を描くこと。
  * 操作の結果を anim に渡して時間を進め、段階の管理（boardFlow.js）を進めて、BATTLE! が終わったら攻防に入り待っていた兵の数を演出のシーンへ渡すこと。
- * 操作・連鎖のきっかけで効果音を鳴らし（soundCues.js）、積んだ演出のシーンから札が燃える段の盤面を読んで描き、TURN の区画でメニューの窓を積み、兵の焼き付けを init で作り destroy で手放すこと。
+ * 操作・連鎖のきっかけで効果音を鳴らし（soundCues.js）、積んだ演出のシーンから札が燃える段の盤面を読んで描き、TURN の区画でメニューの窓を積み、兵の焼き付けを init で作り destroy で手放すこと。「DEBUG MODE」のレイヤーも描く（debugModeLayer.js）。
  */
 import { Engine, Scene } from 'oz';
+import { drawDebugModeLayer } from './debugModeLayer.js';
 import { Game } from '../rules/Game.js';
 import { BattleShowScene } from './BattleShowScene.js';
 import { snapshotBattle } from '../anim/battleSteps.js';
@@ -28,7 +29,7 @@ import { createTroopBakes } from '../view/troopView.js';
  * @property {() => number} random 乱数の関数（0以上1未満。ルール層へ渡す）
  * @property {() => Scene} createTitle タイトルの画面のシーンを作る関数（攻防の演出のシーンへ渡す）
  * @property {(target: import('./boardDebug.js').BoardMenuTarget) => Scene} createMenu メニューの窓のシーンを作る関数（TURN の区画を押したとき、盤面の部品 { game, releaseShow, flow } を渡して積む。使うかは関数の側が決める）
- * @property {import('../rules/config.js').Rules} [rules] ゲームに渡すルールの値（省略は config.js の RULES。デバッグスタートでは RULES と同じ形の写しが渡される）
+ * @property {import('../rules/config.js').Rules} [rules] ゲームに渡すルールの値（省略は config.js の RULES。デバッグ（`Engine.debug` が真）のゲームでは RULES と同じ形の写しが渡される）
  */
 
 /** 盤面を表示し、置く・捨てる・手札に入れる・手札から置く・束の移し替え・放つをタップ／クリックで行い、段階の管理（boardFlow.js）を進めて、BATTLE! が終わったら攻防に入り、合図を描くシーン */
@@ -204,11 +205,13 @@ export class BoardScene extends Scene {
    * ルール層の問い合わせと anim の見た目の値から盤面を描く（状態は変えない）。
    * 攻防の演出のシーンを積んでいれば、その `boardLook()`（燃える段の盤面の見た目。なければ null）を読んで `drawBoard` に渡す。
    * 盤面の最後に、段階の管理の敵の入りの見た目を渡し、その上に合図（準備終了・BATTLE!・フェーズ・ステージの始まり）を描く。
+   * 頭で「DEBUG MODE」のレイヤーも描く（debugModeLayer.js）。
    * @param {CanvasRenderingContext2D} ctx 描画先
    * @param {string} layer レイヤー名
    * @returns {void}
    */
   draw(ctx, layer) {
+    drawDebugModeLayer(ctx, layer);
     if (layer !== this.layer) return;
     const game = this.game;
     const burn = this.battleShow === null ? null : this.battleShow.boardLook();

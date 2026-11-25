@@ -1,7 +1,9 @@
 /**
  * 責務: 最初の入力を受ける画面（黒い背景と「TAP SCREEN」の表示）と、入力で次の画面へ進むこと。
+ * 「DEBUG MODE」のレイヤーを描くこと（debugModeLayer.js）。
  */
 import { Engine, Scene } from 'oz';
+import { drawDebugModeLayer } from './debugModeLayer.js';
 
 /**
  * @typedef {Object} BootOptions BootScene に渡すオプション
@@ -37,12 +39,13 @@ export class BootScene extends Scene {
   }
 
   /**
-   * 黒い背景と「TAP SCREEN」を画面の中央に描く。
+   * 黒い背景と「TAP SCREEN」を画面の中央に描く。「DEBUG MODE」のレイヤーも描く（debugModeLayer.js）。
    * @param {CanvasRenderingContext2D} ctx 描画先
    * @param {string} layer レイヤー名
    * @returns {void}
    */
   draw(ctx, layer) {
+    drawDebugModeLayer(ctx, layer);
     if (layer !== this.layer) return;
     ctx.save();
     ctx.fillStyle = BACKGROUND_COLOR;

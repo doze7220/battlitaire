@@ -1,8 +1,10 @@
 /**
  * 責務: 遊び方の画面のシーン。今のページの番号を持ち、まえへ／つぎへ／タイトルへのボタン（このシーンで押して離したとき）と
  * ← → ・Escape キーで、ページを移る・渡された関数で作ったタイトル画面へ戻ること。描くのは howToView.js。
+ * 「DEBUG MODE」のレイヤーも描く（debugModeLayer.js）。
  */
 import { Engine, Scene } from 'oz';
+import { drawDebugModeLayer } from './debugModeLayer.js';
 import { createHowToLayout } from '../view/layout.js';
 import { drawHowTo } from '../view/howToView.js';
 import { HOW_TO_PAGES } from '../view/howToText.js';
@@ -107,12 +109,13 @@ export class HowToScene extends Scene {
   }
 
   /**
-   * 遊び方の画面を描く（状態は変えない）。
+   * 遊び方の画面を描く（状態は変えない）。「DEBUG MODE」のレイヤーも描く（debugModeLayer.js）。
    * @param {CanvasRenderingContext2D} ctx 描画先
    * @param {string} layer レイヤー名
    * @returns {void}
    */
   draw(ctx, layer) {
+    drawDebugModeLayer(ctx, layer);
     if (layer !== this.layer) return;
     drawHowTo(ctx, this.layout, {
       page: this.page,
