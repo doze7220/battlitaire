@@ -1,6 +1,6 @@
 /**
  * 責務: Engine.start の呼び出しと、レイヤーと画面の流れ（BOOT → TITLE ⇄ 遊び方、TITLE → 盤面 → 決着 → TITLE）を作る関数の定義を行う利用側のエントリポイント。
- * 起動の前の保存された設定の反映と効果音・BGM の読み込み、URL の ?debug を読んで起動設定に渡すこと、起動の直後の FPS の表示の消去、デバッグのゲームのルールの値の写し（debugRules）の保持も行う。
+ * 起動の前の設定・中断データの保存先の用意（Storage.open）と保存された設定の反映、効果音・BGM の読み込み、URL の ?debug を読んで起動設定に渡すこと、起動の直後の FPS の表示の消去、デバッグのゲームのルールの値の写し（debugRules）の保持も行う。
  */
 import { Engine, Scene, Assets, Storage } from 'oz';
 import { SOUND_FILES, BGM_FILES } from './audio/soundConfig.js';
@@ -17,6 +17,7 @@ import { createDebugTab } from './scenes/debugTab.js';
 import { createDebugRules } from './rules/debugRules.js';
 import { todaySeed } from './scenes/dateSeed.js';
 import { newPlayRng } from './scenes/playRng.js';
+import { SUSPEND_DEFAULTS } from './scenes/suspendStore.js';
 
 /** 解像度（縦長の画面。論理解像度 720×1280） */
 const screen = { width: 720, height: 1280 };
@@ -123,8 +124,8 @@ const config = {
   virtualPad: false,
 };
 
-// 起動の前の準備: 設定を開いて保存された音量を反映し、効果音と BGM を読み込み終えてから Engine.start を呼ぶ（盤面で鳴らす音が未ロードにならないようにする）
-Storage.open(SETTINGS_STORAGE);
+// 起動の前の準備: 設定と中断データの名前を1つの Storage に開いて保存された音量を反映し（key・version は設定のまま）、効果音と BGM を読み込み終えてから Engine.start を呼ぶ（盤面で鳴らす音が未ロードにならないようにする）
+Storage.open({ ...SETTINGS_STORAGE, defaults: { ...SETTINGS_STORAGE.defaults, ...SUSPEND_DEFAULTS } });
 applySoundSettings();
 await Assets.load({ sounds: { ...SOUND_FILES, ...BGM_FILES } });
 
