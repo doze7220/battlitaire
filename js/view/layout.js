@@ -129,7 +129,7 @@ import { campSlot } from './campSlots.js';
  * @property {Rect} castle 城の絵の矩形
  * @property {Rect} enemy ゴブリンの群れの矩形（群れの兵の体が入る範囲）。いまは layout.js の中で敵の回復の文字の位置（`enemyHealText`）の基準にだけ使い、layout.js の外から読む箇所はない
  * @property {Object<string, EnemyFigure>} enemyFigures 敵の種類の識別子 → 敵の絵の配置（凍結。絵を持たない敵は含まれない）
- * @property {TopGaugeLayout} topGauges 画面の最上部のゲージ（城と敵の HP・フェーズ・金貨）の配置
+ * @property {TopGaugeLayout} topGauges 画面の最上部のゲージ（城と敵の HP・敵の名前とレベル・戦闘ごとの TURN の番号・金貨）の配置
  * @property {{ x: number, y: number }} enemyHealText 絵を持たない敵の回復の量の文字の中心（群れの矩形の上寄り）
  * @property {IntentSpot} enemyIntent 絵を持たない敵（ゴブリンの群れ）の予告の札の上端の基準（中央。右端からはみ出すときは左へ寄る。札の下端は人数の表示の枠の下端にそろう）
  * @property {IntentBadgeLayout} intentBadge 予告の札の大きさと数え下ろしの文字の配置

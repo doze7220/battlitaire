@@ -59,7 +59,7 @@ export const HOW_TO_PAGES = Object.freeze([
     heading: 'バトリティアへようこそ！',
     art: HOW_TO_ART_IDS.welcome,
     paragraphs: Object.freeze([
-      '{key:ソリティア}で|兵を|集めて、攻めてくる|敵を|倒そう！城の|HP が|0 に|なる前に、すべての|敵を|倒せば|クリアだ！',
+      '{key:ソリティア}で|兵を|集めて、次々に|攻めてくる|敵を|倒そう！城の|HP が|0 に|なるまで、{key:何体}|倒せるかに|挑戦だ！',
     ]),
     rows: Object.freeze([]),
   }),

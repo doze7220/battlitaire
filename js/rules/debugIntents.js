@@ -1,5 +1,5 @@
 /**
- * 責務: 行動の決まりの種類ごとに、指定できる次の行動の識別子と、指定した行動からの予告・決まりの状態の作り方、今の予告がどれに当たるかを持つ。
+ * 責務: 行動の決まりの種類ごとに、指定できる次の行動の識別子と、指定した行動からの行動・決まりの状態の作り方、今の予告がどれに当たるかを持つ。
  * 渡された乱数だけを使う純粋な関数（ルール層。デバッグ用）。
  */
 
@@ -92,12 +92,12 @@ export function intentChoiceIds(behavior) {
 }
 
 /**
- * 指定した行動から、予告と決まりの状態を作る。量の抽選は渡された乱数だけを使う。
+ * 指定した行動から、行動と決まりの状態を作る。量の抽選は渡された乱数だけを使う。
  * 識別子は呼ぶ側が `intentChoiceIds` で確かめてから渡すこと。
  * @param {{ type: string }} behavior 行動の決まりの設定
  * @param {string} id 指定する行動の識別子
  * @param {() => number} random 0以上1未満を返す乱数の関数
- * @returns {{ action: import('./combatants.js').EnemyAction, state: object }} 予告と、決まりの状態
+ * @returns {{ action: import('./combatants.js').EnemyAction, state: object }} 行動と、決まりの状態
  * @throws {Error} 未知の種類、または表にない識別子のとき
  */
 export function planChosenIntent(behavior, id, random) {
