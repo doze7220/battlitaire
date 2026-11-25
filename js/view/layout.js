@@ -164,8 +164,11 @@ import { campSlot } from './campSlots.js';
  * @property {Rect} startButton 「はじめる」ボタンの矩形
  * @property {Rect} howToButton 「遊び方」ボタンの矩形
  * @property {Rect} settingsButton 「設定」ボタンの矩形（「遊び方」の下）
- * @property {number} startTextMaxW ボタン（はじめる・遊び方・設定）の文字の最大の幅
- * @property {function(number, number): ('start'|'howTo'|'settings'|null)} titleHitTest 座標から、ボタンに当たったものを返す
+ * @property {Rect|null} resumeButton 「再開」ボタンの矩形（「はじめる」の上。中断データがないときは null）
+ * @property {number|null} resumeTextY 「再開」の文字の中心 y（ボタンがないときは null）
+ * @property {number|null} resumePlaceY 「再開」の下の STAGE・TURN の文字の中心 y（ボタンがないときは null）
+ * @property {number} startTextMaxW ボタン（再開・はじめる・遊び方・設定）の文字の最大の幅
+ * @property {function(number, number): ('resume'|'start'|'howTo'|'settings'|null)} titleHitTest 座標から、ボタンに当たったものを返す（'resume' は「再開」ボタンがあるときだけ）
  */
 
 /**
@@ -413,6 +416,12 @@ const TITLE_BUTTON_PAD_X = 24;
 const TITLE_HOWTO_GAP = 32;
 /** タイトル画面の「遊び方」ボタンの高さ */
 const TITLE_HOWTO_H = 96;
+/** タイトル画面の「再開」ボタンの高さ（「再開」と、その下の STAGE・TURN の2行が入る） */
+const TITLE_RESUME_H = 140;
+/** 「再開」ボタンの上端から「再開」の文字の中心 y までの距離 */
+const TITLE_RESUME_LABEL_DY = 50;
+/** 「再開」ボタンの上端から STAGE・TURN の文字の中心 y までの距離 */
+const TITLE_RESUME_PLACE_DY = 104;
 
 /** 遊び方の画面の左右の余白（本文・見出し・ボタンの列の左右の端） */
 const HOWTO_PAD_X = 40;
@@ -915,9 +924,10 @@ function createResultLayout(screen) {
 /**
  * タイトル画面の配置を作る。
  * @param {{ width: number, height: number }} screen 画面の大きさ
+ * @param {boolean} hasResume 「再開」ボタンを置くか（中断データがあるとき true）
  * @returns {TitleLayout} タイトル画面の配置
  */
-export function createTitleLayout(screen) {
+export function createTitleLayout(screen, hasResume) {
   const W = screen.width;
   const H = screen.height;
   const startButton = {
@@ -941,13 +951,23 @@ export function createTitleLayout(screen) {
     h: TITLE_HOWTO_H,
   };
 
+  const resumeButton = hasResume
+    ? {
+        x: startButton.x,
+        y: startButton.y - TITLE_HOWTO_GAP - TITLE_RESUME_H,
+        w: TITLE_BUTTON_W,
+        h: TITLE_RESUME_H,
+      }
+    : null;
+
   /**
    * 座標から、タイトル画面のボタンに当たったものを返す。
    * @param {number} x x 座標
    * @param {number} y y 座標
-   * @returns {'start'|'howTo'|'settings'|null} 当たったもの。なければ null
+   * @returns {'resume'|'start'|'howTo'|'settings'|null} 当たったもの。なければ null
    */
   function titleHitTest(x, y) {
+    if (resumeButton !== null && inRect(resumeButton, x, y)) return 'resume';
     if (inRect(startButton, x, y)) return 'start';
     if (inRect(howToButton, x, y)) return 'howTo';
     return inRect(settingsButton, x, y) ? 'settings' : null;
@@ -959,6 +979,9 @@ export function createTitleLayout(screen) {
     startButton,
     howToButton,
     settingsButton,
+    resumeButton,
+    resumeTextY: resumeButton === null ? null : resumeButton.y + TITLE_RESUME_LABEL_DY,
+    resumePlaceY: resumeButton === null ? null : resumeButton.y + TITLE_RESUME_PLACE_DY,
     startTextMaxW: TITLE_BUTTON_W - TITLE_BUTTON_PAD_X * 2,
     titleHitTest,
   };

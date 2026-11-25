@@ -1,5 +1,5 @@
 /**
- * 責務: Engine.start の呼び出しと、レイヤーと画面の流れ（BOOT → TITLE ⇄ 遊び方、TITLE → 盤面 → 決着 → TITLE）を作る関数の定義を行う利用側のエントリポイント。
+ * 責務: Engine.start の呼び出しと、レイヤーと画面の流れ（BOOT → TITLE ⇄ 遊び方、TITLE → 盤面（新規か再開）→ 決着 → TITLE）を作る関数の定義を行う利用側のエントリポイント。
  * 起動の前の設定・中断データの保存先の用意（Storage.open）と保存された設定の反映、効果音・BGM の読み込み、URL の ?debug を読んで起動設定に渡すこと、起動の直後の FPS の表示の消去、デバッグのゲームのルールの値の写し（debugRules）の保持も行う。
  */
 import { Engine, Scene, Assets, Storage } from 'oz';
@@ -48,6 +48,16 @@ function createBoard() {
 }
 
 /**
+ * 中断データから再開する盤面のシーンを作る（タイトル画面の「再開」で進むときだけ呼ばれる）。
+ * 日付の種も乱数も新しく作らない（種 seed と乱数の状態 rng は中断データの中）。タイトル画面を作る関数・メニューの窓を作る関数は新しい盤面と同じ。
+ * @param {import('./rules/suspendData.js').SuspendData} suspend 中断データ（loadSuspend を通ったもの）
+ * @returns {Scene} 再開する盤面のシーン
+ */
+function createResumedBoard(suspend) {
+  return new BoardScene({ screen, layer: 'main', suspend, createTitle, createMenu });
+}
+
+/**
  * デバッグのゲームが使うルールの値の写し（config.js の RULES と同じ形）。最初のデバッグのゲームで作り、ページを読み込み直すまで持つ。保存しない。
  * @type {import('./rules/config.js').Rules|null}
  */
@@ -91,11 +101,18 @@ function createDebugMenu(target) {
 }
 
 /**
- * タイトル画面のシーンを作る。進む先は盤面のシーンを作る関数と遊び方の画面のシーンを作る関数、「設定」で積むメニューのシーンを作る関数。
+ * タイトル画面のシーンを作る。進む先は盤面のシーンを作る関数・再開する盤面のシーンを作る関数（createResumedBoard）と遊び方の画面のシーンを作る関数、「設定」で積むメニューのシーンを作る関数。
  * @returns {Scene} 新しいタイトル画面のシーン
  */
 function createTitle() {
-  return new TitleScene({ screen, layer: 'main', next: createBoard, howTo: createHowTo, menu: createMenu });
+  return new TitleScene({
+    screen,
+    layer: 'main',
+    next: createBoard,
+    resume: createResumedBoard,
+    howTo: createHowTo,
+    menu: createMenu,
+  });
 }
 
 /**
@@ -109,7 +126,7 @@ function createBoot() {
 /**
  * Engine.start に渡す設定。tickRate は書かない（既定の 60）。
  * layers: 奥から 'main'、いちばん手前に「DEBUG MODE」のレイヤー（デバッグのときだけ描かれる）。
- * scene: 最初の画面は BOOT。BOOT の next はタイトル画面を作る関数、タイトル画面の next は盤面を作る関数、howTo は遊び方の画面を作る関数（遊び方の画面の back はタイトル画面を作る関数）で、盤面のシーンにはタイトル画面を作る関数とメニューの窓を作る関数を渡す（決着後は TITLE へ戻り、BOOT へは戻らない。メニューの窓はタイトル画面の「設定」と盤面の TURN の区画から開く）。
+ * scene: 最初の画面は BOOT。BOOT の next はタイトル画面を作る関数、タイトル画面の next は盤面を作る関数、resume は中断データから再開する盤面を作る関数（createResumedBoard）、howTo は遊び方の画面を作る関数（遊び方の画面の back はタイトル画面を作る関数）で、盤面のシーンにはタイトル画面を作る関数とメニューの窓を作る関数を渡す（決着後は TITLE へ戻り、BOOT へは戻らない。メニューの窓はタイトル画面の「設定」と盤面の TURN の区画から開く）。
  * debug: URL に ?debug があるか（isDebugQuery。URL を読むのはここだけ）。真のとき、盤面はデバッグのゲーム（DEBUG タブ付き）になる。
  * virtualPad: バーチャルパッドを使うなら true。false にすると表示も画像の読み込みもしない（今は使わないので false）。
  * @type {{canvas: HTMLCanvasElement, width: number, height: number, layers: string[], scene: Scene, debug: boolean, virtualPad?: boolean}}
