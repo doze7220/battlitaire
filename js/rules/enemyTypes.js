@@ -20,6 +20,23 @@ export function enemyTypeIdsOfStar(config, star) {
 }
 
 /**
+ * 指定した★の敵を、動き（`behavior.type`）ごとに、書いた順でまとめる。
+ * @param {{enemies: Readonly<Object<string, {star: number, behavior: {type: string}}>>}} config ルールの設定。
+ * @param {number} star ★。
+ * @returns {string[][]} 動きごとの敵の種類の識別子の並び（動きの現れる順。その★の敵がなければ空）。
+ */
+export function enemyMotionsOfStar(config, star) {
+  /** @type {Map<string, string[]>} */
+  const groups = new Map();
+  for (const typeId of enemyTypeIdsOfStar(config, star)) {
+    const type = config.enemies[typeId].behavior.type;
+    if (!groups.has(type)) groups.set(type, []);
+    groups.get(type).push(typeId);
+  }
+  return [...groups.values()];
+}
+
+/**
  * 敵の種類の識別子から、敵の種類の設定を引く。
  * @param {{enemies: Readonly<Object<string, object>>}} config ルールの設定。
  * @param {string} typeId 敵の種類の識別子。

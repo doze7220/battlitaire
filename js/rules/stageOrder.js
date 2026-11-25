@@ -1,30 +1,7 @@
-/** ステージの番号と種から、そのステージの★と敵の種類を決める純粋関数（乱数は呼ばない）。 */
-import { enemyTypeIdsOfStar } from './enemyTypes.js';
-
-/**
- * 32 ビット整数の混ぜ合わせ（混ぜ合わせの定数であり、ルールの数値ではない）。
- * @param {number} v 入力の整数。
- * @returns {number} 0 以上 2^32 未満の整数。
- */
-function mix32(v) {
-  let h = v >>> 0;
-  h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b);
-  h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35);
-  h ^= h >>> 16;
-  return h >>> 0;
-}
-
-/**
- * 種とステージの番号から、0 以上 count 未満の整数を決める（前のステージを順に計算しない）。
- * @param {number} seed 種（整数）。
- * @param {number} stageNumber ステージの番号。
- * @param {number} count 候補の数。
- * @returns {number} 0 以上 count 未満の整数。
- */
-export function seededIndex(seed, stageNumber, count) {
-  const h = mix32(mix32(seed ^ 0x9e3779b9) + Math.imul(stageNumber, 0x9e3779b1));
-  return Math.floor((h / 0x100000000) * count);
-}
+/** ステージの番号と種から、そのステージの★・同じ★の中の何番目か・敵の種類を決める純粋関数（乱数は呼ばない）。 */
+import { enemyMotionsOfStar } from './enemyTypes.js';
+import { motionIndexAt } from './motionOrder.js';
+import { seededIndex, STREAM } from './seededIndex.js';
 
 /**
  * ステージの番号から★を決める。
@@ -40,8 +17,40 @@ export function starOfStage(stageStars, stageNumber) {
 }
 
 /**
+ * 最大公約数。
+ * @param {number} a 正の整数。
+ * @param {number} b 正の整数。
+ * @returns {number} 最大公約数。
+ */
+function gcd(a, b) {
+  return b === 0 ? a : gcd(b, a % b);
+}
+
+/**
+ * そのステージが、同じ★のステージの中で何番目か（0 から）を求める。
+ * 倍数の最小公倍数を周期とし、周期の中の数と端の数から求める（前のステージの敵は計算しない）。
+ * @param {{base: number, multiples: readonly {of: number, star: number}[]}} stageStars ★の決まり。
+ * @param {number} stageNumber ステージの番号（1 以上の整数）。
+ * @returns {number} 同じ★の中での番号（0 以上の整数）。
+ */
+export function starPositionOfStage(stageStars, stageNumber) {
+  const star = starOfStage(stageStars, stageNumber);
+  const period = stageStars.multiples.reduce((p, m) => (p * m.of) / gcd(p, m.of), 1);
+  let perPeriod = 0;
+  let upToEdge = 0;
+  const edge = ((stageNumber - 1) % period) + 1;
+  for (let n = 1; n <= period; n++) {
+    if (starOfStage(stageStars, n) !== star) continue;
+    perPeriod++;
+    if (n <= edge) upToEdge++;
+  }
+  return Math.floor((stageNumber - 1) / period) * perPeriod + upToEdge - 1;
+}
+
+/**
  * 種とステージの番号から、そのステージの敵の種類の識別子を決める。
- * @param {{enemies: Readonly<Object<string, {star: number}>>, stageStars: object}} config ルールの設定。
+ * 動きは同じ★の中で隣り合わず、同じ動きの中の敵は番号から選ぶ。
+ * @param {{enemies: Readonly<Object<string, {star: number, behavior: {type: string}}>>, stageStars: object}} config ルールの設定。
  * @param {number} seed 種（整数）。
  * @param {number} stageNumber ステージの番号（1 以上の整数）。
  * @returns {string} 敵の種類の識別子。
@@ -52,9 +61,11 @@ export function enemyTypeIdOfStage(config, seed, stageNumber) {
     throw new Error(`enemyTypeIdOfStage: ステージの番号は 1 以上の整数です: ${stageNumber}`);
   }
   const star = starOfStage(config.stageStars, stageNumber);
-  const candidates = enemyTypeIdsOfStar(config, star);
-  if (candidates.length === 0) {
+  const motions = enemyMotionsOfStar(config, star);
+  if (motions.length === 0) {
     throw new Error(`enemyTypeIdOfStage: ★${star} の敵がいません`);
   }
-  return candidates[seededIndex(seed, stageNumber, candidates.length)];
+  const position = starPositionOfStage(config.stageStars, stageNumber);
+  const members = motions[motionIndexAt(seed, position, motions.length)];
+  return members[seededIndex(seed, STREAM.member, stageNumber, members.length)];
 }
