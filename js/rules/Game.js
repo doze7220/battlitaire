@@ -58,26 +58,28 @@ import { createGameStats, tallyBattle } from './gameStats.js';
 export class Game {
   /**
    * @param {Object} options 生成オプション
-   * @param {() => number} options.random `[0, 1)` の値を返す乱数の関数（必須。敵の並び以外の抽選（山札・敵の行動・燃える札など）に使う）
-   * @param {number} options.seed 敵の並びを決める種（整数・必須。始めた日付から作られる。`random` とは別で、並びの決定には `random` を呼ばない）
+   * @param {import('./rng.js').Rng} options.rng 乱数（必須。`rng.next` は `[0, 1)` の値を返す。敵の並び以外の抽選（山札・敵の行動・燃える札など）に使う）
+   * @param {number} options.seed 敵の並びを決める種（整数・必須。始めた日付から作られる。`rng` とは別で、並びの決定には乱数を呼ばない）
    * @param {Readonly<import('./config.js').Rules>} [options.config] ルールの設定（既定は `RULES`）
-   * @throws {Error} `random` が関数でないとき、`seed` が整数でないとき
+   * @throws {Error} `rng.next` が関数でないとき、`seed` が整数でないとき
    */
-  constructor({ random, seed, config = RULES } = {}) {
-    if (typeof random !== 'function') {
-      throw new Error('Game: random は関数で渡してください');
+  constructor({ rng, seed, config = RULES } = {}) {
+    if (!rng || typeof rng.next !== 'function') {
+      throw new Error('Game: rng は乱数（next が関数）で渡してください');
     }
     if (!Number.isInteger(seed)) {
       throw new Error('Game: seed は整数で渡してください');
     }
     /** @type {Readonly<import('./config.js').Rules>} ルールの設定 */
     this.config = config;
-    /** @type {() => number} 乱数の関数 */
-    this.random = random;
+    /** @type {import('./rng.js').Rng} 乱数（状態を取り出し・戻せる） */
+    this.rng = rng;
+    /** @type {() => number} 乱数の関数（`rng.next`） */
+    this.random = rng.next;
     /** @type {number} 敵の並びを決める種（整数。ステージの番号と合わせて敵の種類を決める） */
     this.seed = seed;
     /** @type {import('./piles.js').Deck[]} 山札（スートごと） */
-    this.decks = createDecks(config, random);
+    this.decks = createDecks(config, this.random);
     /** @type {import('./card.js').Card[]} 捨て札 */
     this.discard = [];
     /** @type {import('./card.js').Card[][]} 列 */

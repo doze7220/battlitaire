@@ -16,6 +16,7 @@ import { BoardDebug } from './scenes/boardDebug.js';
 import { createDebugTab } from './scenes/debugTab.js';
 import { createDebugRules } from './rules/debugRules.js';
 import { todaySeed } from './scenes/dateSeed.js';
+import { newPlayRng } from './scenes/playRng.js';
 
 /** 解像度（縦長の画面。論理解像度 720×1280） */
 const screen = { width: 720, height: 1280 };
@@ -34,13 +35,15 @@ function isDebugQuery(search) {
 /**
  * 盤面のシーンを作る。デバッグ（Engine.debug が真）のときは createDebugBoard の盤面。
  * Engine.start の後（タイトル画面のゲームスタート）だけ呼ばれる。ここで今日の日付の種（todaySeed）を1回だけ読み、盤面（デバッグのときは createDebugBoard）へ渡す。
- * ふつうのときは乱数の関数 Math.random と種、タイトル画面を作る関数、TURN の区画で積むメニューのシーンを作る関数を渡す（DEBUG タブなし）。
+ * プレイ用の乱数（newPlayRng）も1回だけ作り、ふつうの盤面・デバッグの盤面の両方へ渡す。
+ * ふつうのときは乱数と種、タイトル画面を作る関数、TURN の区画で積むメニューのシーンを作る関数を渡す（DEBUG タブなし）。
  * @returns {Scene} 新しい盤面のシーン
  */
 function createBoard() {
   const seed = todaySeed();
-  if (Engine.debug) return createDebugBoard(seed);
-  return new BoardScene({ screen, layer: 'main', random: Math.random, seed, createTitle, createMenu });
+  const rng = newPlayRng();
+  if (Engine.debug) return createDebugBoard(seed, rng);
+  return new BoardScene({ screen, layer: 'main', rng, seed, createTitle, createMenu });
 }
 
 /**
@@ -53,11 +56,12 @@ let debugRules = null;
  * デバッグのゲームの盤面のシーンを作る（ふつうの盤面と同じで、メニューの窓を作る関数だけ DEBUG タブ付きの createDebugMenu を渡す）。
  * ルールの値の写し（debugRules）を最初の1回だけ作り、盤面へ rules として渡す（同じ写しを次のデバッグのゲームにも渡すので、変えた値は残る）。
  * @param {number} seed 敵の並びを決める種（createBoard が読んだ今日の種）
+ * @param {import('./rules/rng.js').Rng} rng プレイ用の乱数（createBoard が作ったもの）
  * @returns {Scene} 新しい盤面のシーン
  */
-function createDebugBoard(seed) {
+function createDebugBoard(seed, rng) {
   if (debugRules === null) debugRules = createDebugRules();
-  return new BoardScene({ screen, layer: 'main', random: Math.random, seed, createTitle, createMenu: createDebugMenu, rules: debugRules });
+  return new BoardScene({ screen, layer: 'main', rng, seed, createTitle, createMenu: createDebugMenu, rules: debugRules });
 }
 
 /**
