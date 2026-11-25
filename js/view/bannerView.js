@@ -35,7 +35,7 @@ const COUNTDOWN_FONT = 'bold 30px sans-serif';
  * 描くときにシーンが渡すゲームの値（ルール層の問い合わせから作る）。
  * @typedef {Object} BannerValues
  * @property {number} turn いまの敵との戦闘で何ターン目か（1 から。始まりの演出の TURN N）
- * @property {number} enemyIndex 敵の番号（0 から。ステージの番号は +1）
+ * @property {number} stageNumber ステージの番号（1 から。何体目の敵か）
  * @property {string} enemyTypeId 敵の種類の識別子
  * @property {import('../rules/combatants.js').EnemyIntent|null} intent 敵の予告（なければ null）
  * @property {number|null} countdown 攻撃までの残りフェーズ数（数え下ろしがなければ null）
@@ -134,7 +134,7 @@ function drawPhaseIntro(ctx, bannerLayout, look, values) {
 function drawStageIntro(ctx, bannerLayout, look, values) {
   const { intro } = bannerLayout;
   drawLogo(ctx, LOGO_IDS.stage, intro.x, intro.logoY, look.scale);
-  drawDigits(ctx, values.enemyIndex + 1, intro.x, intro.numberY, look.scale);
+  drawDigits(ctx, values.stageNumber, intro.x, intro.numberY, look.scale);
   const nameLogo = nameLogoOf(values.enemyTypeId);
   if (nameLogo !== null) drawLogo(ctx, nameLogo, intro.x, intro.nameY, look.scale);
 }

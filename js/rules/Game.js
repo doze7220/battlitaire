@@ -1,7 +1,7 @@
 /**
  * 責務: ゲーム全体の状態（山札・捨て札・列・手札・ゲージ・行動回数・フェーズと段階・城・敵）の保持と、
  * 問い合わせ・操作（置く・捨てる・放つ・手札に入れる・手札から置く・束を移す・攻防・次のフェーズ）の提供。
- * 敵の順番の中の今の敵（倒した敵の入れ替わりを含む）と結果の集計（数え方は gameStats.js）を持つ。攻防では札の燃やしを反映する。操作は「何が起きたか」を返す。
+ * ステージの番号とその今の敵（倒した敵の入れ替わりを含む）と結果の集計（数え方は gameStats.js）を持つ。攻防では札の燃やしを反映する。操作は「何が起きたか」を返す。
  */
 
 import { RULES } from './config.js';
@@ -16,7 +16,8 @@ import {
   rollAttackHeal,
 } from './enemyBehaviors.js';
 import { planActionBurns, applyBurns } from './cardBurn.js';
-import { enemyTypeIdAt, enemySpecAt, isLastEnemy, nextEnemyName } from './enemyProgress.js';
+import { enemySpecOf } from './enemyTypes.js';
+import { enemyTypeIdOfStage } from './stageOrder.js';
 import { computeBattle } from './battle.js';
 import { createIntent, isFatigued } from './enemyDefense.js';
 import { computePhaseStart } from './phase.js';
@@ -31,7 +32,7 @@ import { createGameStats, tallyBattle } from './gameStats.js';
  * @property {number} castleHp 攻防の後の城の HP
  * @property {number} enemyHp 攻防の後の敵の HP
  * @property {'win'|'lose'|null} outcome 決着（決着していなければ null。途中の敵を倒しただけなら null）
- * @property {{ enemyName: string, nextEnemyName: string|null }|null} defeat 途中の敵を倒したときの倒した敵と次の敵の名前（そうでなければ null）
+ * @property {{ enemyName: string }|null} defeat 敵を倒したときの倒した敵の名前（そうでなければ null）
  */
 
 /**
@@ -71,7 +72,7 @@ export class Game {
     this.config = config;
     /** @type {() => number} 乱数の関数 */
     this.random = random;
-    /** @type {number} 敵の並びを決める種（整数。今は使わない） */
+    /** @type {number} 敵の並びを決める種（整数。ステージの番号と合わせて敵の種類を決める） */
     this.seed = seed;
     /** @type {import('./piles.js').Deck[]} 山札（スートごと） */
     this.decks = createDecks(config, random);
@@ -98,13 +99,32 @@ export class Game {
     this.outcome = null;
     /** @type {import('./combatants.js').Castle} 城 */
     this.castle = createCastle(config);
-    /** @type {number} いま戦っている敵の、`config.enemyOrder` の中の番号（0から） */
-    this.enemyIndex = 0;
+    /** @type {number} ステージの番号（1 から。何体目の敵か。段階 `stage` とは別） */
+    this.stageNumber = 1;
     /** @type {import('./combatants.js').Enemy} 敵 */
-    this.enemy = createEnemy(enemyTypeIdAt(config, 0), enemySpecAt(config, 0));
+    this.enemy = undefined;
+    this.enterStage(1);
     /** @type {import('./gameStats.js').GameStats} 結果の集計（攻防ごとに足す。新しいゲームで 0 から） */
     this.stats = createGameStats();
     this.planIntent();
+  }
+
+  /**
+   * ステージの番号を入れ、そのステージの敵（種と番号から決まる種類）に入れ替える（乱数は呼ばない。予告は呼ぶ側が `planIntent` で決める）。
+   * @param {number} stageNumber 新しいステージの番号（1 以上の整数）
+   */
+  enterStage(stageNumber) {
+    this.stageNumber = stageNumber;
+    this.spawnEnemy(enemyTypeIdOfStage(this.config, this.seed, stageNumber));
+  }
+
+  /**
+   * 指定した種類の敵（HP 満タン・決まりの状態は初期値・予告は null）に入れ替え、戦闘のターンを 1 に戻す（乱数は呼ばない。予告は呼ぶ側が `planIntent` で決める）。
+   * @param {string} typeId 敵の種類の識別子
+   */
+  spawnEnemy(typeId) {
+    this.enemy = createEnemy(typeId, enemySpecOf(this.config, typeId));
+    this.battleTurn = 1;
   }
 
   /**
@@ -119,7 +139,7 @@ export class Game {
    * いまの敵の次の行動を、行動の決まりで決めて予告と決まりの状態に入れる（乱数は決まりの抽選のあと、隙でなければ防御の抽選（張るか・量の2回）。決まりの種類ごとの使い方は `enemyBehaviors.js`、防御は `enemyDefense.js` に従う）。
    */
   planIntent() {
-    const spec = enemySpecAt(this.config, this.enemyIndex);
+    const spec = enemySpecOf(this.config, this.enemy.typeId);
     const { action, state } = planBehaviorAction(spec.behavior, this.enemy.behaviorState, this.random);
     this.enemy.intent = createIntent(spec, action, this.battleTurn, this.config.fatigue, this.random);
     this.enemy.behaviorState = state;
@@ -138,7 +158,7 @@ export class Game {
    * @returns {number|null} 残りフェーズ数。数え下ろしを持たなければ `null`
    */
   attackCountdown() {
-    return behaviorCountdown(enemySpecAt(this.config, this.enemyIndex).behavior, this.enemy.behaviorState);
+    return behaviorCountdown(enemySpecOf(this.config, this.enemy.typeId).behavior, this.enemy.behaviorState);
   }
 
   /**
@@ -394,7 +414,7 @@ export class Game {
   resolveBattle() {
     if (!this.canResolveBattle()) return null;
     const enemyAction = this.enemy.intent;
-    const spec = enemySpecAt(this.config, this.enemyIndex);
+    const spec = enemySpecOf(this.config, this.enemy.typeId);
     const enemyHeal = rollAttackHeal(spec.behavior, enemyAction, this.random);
     const burns = planActionBurns(enemyAction, this.columns, this.random);
     const calc = computeBattle({
@@ -407,7 +427,7 @@ export class Game {
       enemyHp: this.enemy.hp,
       enemyMaxHp: this.enemy.maxHp,
       enemyHeal,
-      lastEnemy: isLastEnemy(this.config, this.enemyIndex),
+      lastEnemy: false,
       burns,
     });
     this.castle.hp = calc.castleHp;
@@ -427,16 +447,13 @@ export class Game {
       castleHp: calc.castleHp,
       enemyHp: calc.enemyHp,
       outcome: calc.outcome,
-      defeat:
-        calc.enemyDefeated && calc.outcome === null
-          ? { enemyName: this.enemy.name, nextEnemyName: nextEnemyName(this.config, this.enemyIndex) }
-          : null,
+      defeat: calc.enemyDefeated && calc.outcome === null ? { enemyName: this.enemy.name } : null,
     };
   }
 
   /**
    * 次のフェーズを始める（ゲージの戻し・力こぶの換算・行動回数・倒した敵の入れ替わり・敵の予告）。条件を満たさなければ何もしない。
-   * 倒した敵（HP 0）は次の敵（HP 最大）に入れ替わる。山札・列・捨て札・城の HP には触れない。
+   * 倒した敵（HP 0）は次のステージの敵（HP 最大）に入れ替わる。山札・列・捨て札・城の HP には触れない。
    * @returns {NextPhaseResult|null} 結果。進めなければ `null`
    */
   startNextPhase() {
@@ -448,10 +465,10 @@ export class Game {
     this.actionsLeft = start.actions;
     const enemyChanged = this.enemy.hp === 0;
     if (enemyChanged) {
-      this.enemyIndex += 1;
-      this.enemy = createEnemy(enemyTypeIdAt(this.config, this.enemyIndex), enemySpecAt(this.config, this.enemyIndex));
+      this.enterStage(this.stageNumber + 1);
+    } else {
+      this.battleTurn += 1;
     }
-    this.battleTurn = enemyChanged ? 1 : this.battleTurn + 1;
     this.planIntent();
     this.stage = 'planning';
     return {

@@ -128,18 +128,18 @@ export class BoardDebug {
 
   /**
    * 切り替えられる敵の一覧。
-   * @returns {{ index: number, name: string }[]} 敵の番号と名前
+   * @returns {{ typeId: string, name: string }[]} 敵の種類の識別子と名前
    */
   enemyChoices() {
     return enemyChoices(this.game.config);
   }
 
   /**
-   * 今の敵の番号。
-   * @returns {number} 敵の番号
+   * 今の敵の種類の識別子。
+   * @returns {string} 敵の種類の識別子
    */
-  enemyIndex() {
-    return this.game.enemyIndex;
+  enemyTypeId() {
+    return this.game.enemy.typeId;
   }
 
   /**
@@ -207,10 +207,10 @@ export class BoardDebug {
 
   /**
    * 敵を入れ替える。入れ替わったら、ステージの始まりを出さずにステージの曲を流す。
-   * @param {number} index 敵の番号
+   * @param {string} typeId 敵の種類の識別子
    */
-  switchEnemy(index) {
-    if (switchEnemy(this.game, index)) this.flow.enterSwitchedEnemy(this.game);
+  switchEnemy(typeId) {
+    if (switchEnemy(this.game, typeId)) this.flow.enterSwitchedEnemy(this.game);
   }
 
   /**

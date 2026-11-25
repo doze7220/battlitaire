@@ -30,7 +30,7 @@ const ENEMY_HEAL_COLOR = '#6ee07a';
  * 敵を倒したときの案内（暗幕・「〜を倒した！」・「タップで次へ」）を描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
- * @param {{ enemyName: string, nextEnemyName: string|null }} defeat 倒した敵と次の敵の名前（BattleResult.defeat）
+ * @param {{ enemyName: string }} defeat 倒した敵の名前（BattleResult.defeat）
  * @returns {void}
  */
 function drawDefeat(ctx, battleLayout, defeat) {

@@ -222,7 +222,7 @@ export class BoardScene extends Scene {
     drawBoard(ctx, this.layout, game, boardUiFor(game, this.selection), this.animator.view(), this.releaseShow.view(game.gauges), burn, this.enemyIdle.look(), this.flow.entranceLook(game));
     drawBanner(ctx, this.bannerLayout, this.flow.bannerLook(), {
       turn: game.battleTurn,
-      enemyIndex: game.enemyIndex,
+      stageNumber: game.stageNumber,
       enemyTypeId: game.enemy.typeId,
       intent: game.enemy.intent,
       countdown: game.attackCountdown(),

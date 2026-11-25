@@ -93,8 +93,8 @@ function buildDebugTab(debug, tab) {
   area.addValue({ ...DEBUG_LAYOUT.enemyLabel, label: DEBUG_TEXT.enemy, read: () => '' });
   area.addChoices({
     ...DEBUG_LAYOUT.enemyChoices,
-    choices: debug.enemyChoices().map((e) => ({ label: e.name, value: e.index })),
-    read: () => debug.enemyIndex(),
+    choices: debug.enemyChoices().map((e) => ({ label: e.name, value: e.typeId })),
+    read: () => debug.enemyTypeId(),
     write: (v) => debug.switchEnemy(v),
   });
 

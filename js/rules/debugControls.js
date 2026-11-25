@@ -3,8 +3,7 @@
  * 段取り中だけ効き、行動の回数は使わない（ルール層）。
  */
 
-import { createEnemy } from './combatants.js';
-import { enemyTypeIdAt, enemySpecAt } from './enemyProgress.js';
+import { enemyTypeIds, enemySpecOf } from './enemyTypes.js';
 import { createIntent, refreshIntent } from './enemyDefense.js';
 import { intentChoiceIds, planChosenIntent, chosenIntentOf } from './debugIntents.js';
 
@@ -44,28 +43,26 @@ export function setTroopGauge(game, gauge, count) {
 }
 
 /**
- * 切り替えられる敵の一覧（戦う順）。
- * @param {import('./enemyProgress.js').ProgressConfig} config ルールの設定
- * @returns {{ index: number, name: string }[]} 敵の番号と名前
+ * 切り替えられる敵の一覧（設定に書いた順）。
+ * @param {import('./config.js').Rules} config ルールの設定
+ * @returns {{ typeId: string, name: string }[]} 敵の種類の識別子と名前
  */
 export function enemyChoices(config) {
-  return config.enemyOrder.map((_, index) => ({ index, name: enemySpecAt(config, index).name }));
+  return enemyTypeIds(config).map((typeId) => ({ typeId, name: enemySpecOf(config, typeId).name }));
 }
 
 /**
- * 今の敵を指定した番号の敵（HP 満タン・決まりの状態は初期値）に入れ替え、ふつうに予告を決める。
- * 段取り中で、範囲内の整数で、今の番号と違うときだけ。通しのターンの番号・城・盤面・ゲージ・行動の回数・結果の集計は触らない。戦闘のターンの番号は 1 に戻す。
+ * 今の敵を指定した種類の敵（HP 満タン・決まりの状態は初期値）に入れ替え、ふつうに予告を決める。
+ * 段取り中で、設定にある識別子で、今の敵の種類と違うときだけ。ステージの番号・通しのターンの番号・城・盤面・ゲージ・行動の回数・結果の集計は触らない。戦闘のターンの番号は 1 に戻す。
  * @param {import('./Game.js').Game} game ゲーム
- * @param {number} index 敵の番号（0から）
+ * @param {string} typeId 敵の種類の識別子
  * @returns {boolean} 入れ替えたら true
  */
-export function switchEnemy(game, index) {
+export function switchEnemy(game, typeId) {
   if (!isPlanning(game)) return false;
-  if (!Number.isInteger(index) || index < 0 || index >= game.config.enemyOrder.length) return false;
-  if (index === game.enemyIndex) return false;
-  game.enemyIndex = index;
-  game.enemy = createEnemy(enemyTypeIdAt(game.config, index), enemySpecAt(game.config, index));
-  game.battleTurn = 1;
+  if (!enemyTypeIds(game.config).includes(typeId)) return false;
+  if (typeId === game.enemy.typeId) return false;
+  game.spawnEnemy(typeId);
   game.planIntent();
   return true;
 }
@@ -94,7 +91,7 @@ export function setBattleTurn(game, turn) {
  * @returns {any} 行動の決まりの設定
  */
 function currentBehavior(game) {
-  return enemySpecAt(game.config, game.enemyIndex).behavior;
+  return enemySpecOf(game.config, game.enemy.typeId).behavior;
 }
 
 /**
@@ -108,13 +105,13 @@ export function intentChoiceIdsOf(game) {
 
 /**
  * 敵の次の行動の選択肢の最大の数（全部の敵の中で最も多いもの）。
- * @param {import('./enemyProgress.js').ProgressConfig} config ルールの設定
+ * @param {import('./config.js').Rules} config ルールの設定
  * @returns {number} 選択肢の数の最大
  */
 export function intentChoiceSlotCount(config) {
   let max = 0;
-  for (let i = 0; i < config.enemyOrder.length; i += 1) {
-    max = Math.max(max, intentChoiceIds(enemySpecAt(config, i).behavior).length);
+  for (const typeId of enemyTypeIds(config)) {
+    max = Math.max(max, intentChoiceIds(enemySpecOf(config, typeId).behavior).length);
   }
   return max;
 }
@@ -142,7 +139,7 @@ export function chooseEnemyIntent(game, id) {
   if (currentIntentChoice(game) === id) return false;
   const { action, state } = planChosenIntent(currentBehavior(game), id, game.random);
   game.enemy.intent = createIntent(
-    enemySpecAt(game.config, game.enemyIndex),
+    enemySpecOf(game.config, game.enemy.typeId),
     action,
     game.battleTurn,
     game.config.fatigue,

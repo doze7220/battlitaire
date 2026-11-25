@@ -1,9 +1,10 @@
 /**
- * 責務: DEBUG タブで変えられるルールの値の項目の表（RULE_ITEMS）を、`RULES` の形から城と敵の順番・行動の決まりの種類ごとに組み立てて持つ。
+ * 責務: DEBUG タブで変えられるルールの値の項目の表（RULE_ITEMS）を、`RULES` の形から城と敵の種類・行動の決まりの種類ごとに組み立てて持つ。
  * 状態を持たない純粋な表と引く関数（ルール層）。
  */
 
 import { RULES } from './config.js';
+import { enemyTypeIds } from './enemyTypes.js';
 
 /**
  * DEBUG タブで変えられるルールの値の項目。
@@ -107,7 +108,7 @@ function defenseItems(typeId) {
 }
 
 /**
- * 設定から項目の表を組み立てる（城 → enemyOrder の順の敵）。
+ * 設定から項目の表を組み立てる（城 → 設定に書いた順の敵）。
  * @param {any} rules ルールの調整値
  * @returns {readonly Readonly<RuleItem>[]} 項目の並び
  * @throws {Error} 知らない行動の決まりの種類のとき
@@ -117,7 +118,7 @@ function buildItems(rules) {
     item('castle.maxHp', 'castle', 'castleMaxHp', 'maxHp', 'now', null, null,
       (c) => c.castleMaxHp, (c, v) => { c.castleMaxHp = v; }),
   ];
-  for (const typeId of rules.enemyOrder) {
+  for (const typeId of enemyTypeIds(rules)) {
     const behavior = rules.enemies[typeId].behavior;
     const build = BEHAVIOR_ITEMS[behavior.type];
     if (!build) throw new Error(`unknown enemy behavior type: ${behavior.type}`);
