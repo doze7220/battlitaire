@@ -1,5 +1,5 @@
 /**
- * 責務: DEBUG タブから呼ばれる、ゲームの状態を書き換えるデバッグ用の操作（兵のゲージ・敵の切り替え・次の行動の指定・戦闘のターンの番号・城と敵の HP）と問い合わせ。
+ * 責務: DEBUG タブから呼ばれる、ゲームの状態を書き換えるデバッグ用の操作（兵のゲージ・ステージを移る・敵の切り替え・次の行動の指定・戦闘のターンの番号・城と敵の HP）と問い合わせ。
  * 段取り中だけ効き、行動の回数は使わない（ルール層）。
  */
 
@@ -63,6 +63,24 @@ export function switchEnemy(game, typeId) {
   if (!enemyTypeIds(game.config).includes(typeId)) return false;
   if (typeId === game.enemy.typeId) return false;
   game.spawnEnemy(typeId);
+  game.planIntent();
+  return true;
+}
+
+/**
+ * ステージの番号を今から delta だけ移し、そのステージのふつうの敵（HP 満タン・決まりの状態は初期値）にして予告を決める。
+ * 段取り中で、delta が整数のときだけ。行き先は 1 以上（上の限りはない）で、今と同じなら何もしない。
+ * 通しのターンの番号・城・盤面・ゲージ・行動の回数・結果の集計は触らない。戦闘のターンの番号は 1 に戻る。
+ * @param {import('./Game.js').Game} game ゲーム
+ * @param {number} delta 移る数（整数。負なら戻る）
+ * @returns {boolean} 移したら true
+ */
+export function moveStage(game, delta) {
+  if (!isPlanning(game)) return false;
+  if (!Number.isInteger(delta)) return false;
+  const target = Math.max(1, game.stageNumber + delta);
+  if (target === game.stageNumber) return false;
+  game.enterStage(target);
   game.planIntent();
   return true;
 }

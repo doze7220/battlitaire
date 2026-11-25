@@ -27,6 +27,8 @@ const AREA = Object.freeze({ ...MENU_LAYOUT.creditArea });
 const ROW_W = AREA.width - SCROLL_BAND;
 /** 横に2つ並べるボタンの1つの幅。 @type {number} */
 const HALF_W = (ROW_W - BUTTON_GAP) / 2;
+/** 横に4つ並べるボタンの1つの幅。 @type {number} */
+const QUARTER_W = (ROW_W - BUTTON_GAP * 3) / 4;
 
 /**
  * 領域の中の矩形を作って凍結する。
@@ -48,8 +50,12 @@ const ATTACK_Y = TROOP_NOTE_Y + LABEL_H + GAP;
 const DEFENSE_Y = ATTACK_Y + SLIDER_H + GAP;
 /** 修理の兵のスライダーの y。 */
 const HEAL_Y = DEFENSE_Y + SLIDER_H + GAP;
+/** ステージの表示の y。 */
+const STAGE_LABEL_Y = HEAL_Y + SLIDER_H + GAP;
+/** ステージを移るボタンの y（表示のすぐ下）。 */
+const STAGE_BUTTONS_Y = STAGE_LABEL_Y + LABEL_H;
 /** 敵の見出しの y。 */
-const ENEMY_LABEL_Y = HEAL_Y + SLIDER_H + GAP;
+const ENEMY_LABEL_Y = STAGE_BUTTONS_Y + BUTTON_H + GAP;
 /** 敵の選択肢の列の y（見出しのすぐ下）。 */
 const ENEMY_CHOICES_Y = ENEMY_LABEL_Y + LABEL_H;
 /** 次の行動の見出しの y。 */
@@ -80,6 +86,7 @@ const BAKE_CHECK_Y = FPS_VALUE_Y + LABEL_H + GAP;
  *   area: Readonly<{ x: number, y: number, width: number, height: number }>,
  *   troopNote: object,
  *   troopSliders: Readonly<{ attack: object, defense: object, heal: object }>,
+ *   stageLabel: object, stageButtons: ReadonlyArray<object>,
  *   enemyLabel: object, enemyChoices: object, intentLabel: object, intentChoices: object,
  *   battleTurn: object, castleHp: object, castleButtons: Readonly<{ one: object, full: object }>,
  *   enemyHp: object, enemyButtons: Readonly<{ one: object, full: object }>,
@@ -94,6 +101,10 @@ export const DEBUG_LAYOUT = Object.freeze({
     defense: rect(DEFENSE_Y, SLIDER_H),
     heal: rect(HEAL_Y, SLIDER_H),
   }),
+  stageLabel: rect(STAGE_LABEL_Y, LABEL_H),
+  stageButtons: Object.freeze(
+    [0, 1, 2, 3].map((i) => rect(STAGE_BUTTONS_Y, BUTTON_H, i * (QUARTER_W + BUTTON_GAP), QUARTER_W)),
+  ),
   enemyLabel: rect(ENEMY_LABEL_Y, LABEL_H),
   enemyChoices: rect(ENEMY_CHOICES_Y, CHOICES_H),
   intentLabel: rect(INTENT_LABEL_Y, LABEL_H),
@@ -117,8 +128,8 @@ export const DEBUG_LAYOUT = Object.freeze({
 /**
  * ルールの値の並び（元に戻すボタン・組の見出し・スライダー）の矩形を、組ごとの項目の数から求める。
  * 焼き付けのチェックボックスの下から積む。大きさの定数は試遊で決め直す値の定数から計算する。
- * 今の値（[1, 6, 9, 11]）では、ボタン y=1680、城の見出し 1784・スライダー 1856、
- * ゴブリンの見出し 2004・スライダー 2076 から 148 おき、…、ドラゴンの最後のスライダー 5920。
+ * 今の値（[1, 6, 9, 11]）では、ボタン y=1856、城の見出し 1960・スライダー 2032、
+ * ゴブリンの見出し 2180・スライダー 2252 から 148 おき、…、ドラゴンの最後のスライダー 6096。
  * @param {number[]} groupSizes 組ごとの項目の数
  * @returns {Readonly<{
  *   resetButton: object,

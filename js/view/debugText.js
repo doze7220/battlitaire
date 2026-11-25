@@ -1,5 +1,5 @@
 /**
- * 責務: DEBUG タブの文字を凍結した定数で持ち、次の行動の選択肢・HP・FPS・
+ * 責務: DEBUG タブの文字を凍結した定数で持ち、ステージを移るボタン・次の行動の選択肢・HP・FPS・
  * ルールの値の項目名・効く時期・百分率を文字にする。何も import しない。
  */
 
@@ -8,7 +8,7 @@
  * @type {Readonly<{
  *   tab: string, troopsHeading: string, troopsLocked: string,
  *   troops: Readonly<{ attack: string, defense: string, heal: string }>,
- *   enemy: string, intent: string, noChoice: string, battleTurn: string,
+ *   stage: string, enemy: string, intent: string, noChoice: string, battleTurn: string,
  *   castleHp: string, enemyHp: string, hpToOne: string, hpToFull: string,
  *   fpsVisible: string, fps: string, bakedDrawing: string,
  *   rulesCastle: string, rulesReset: string
@@ -19,6 +19,7 @@ export const DEBUG_TEXT = Object.freeze({
   troopsHeading: '兵の数',
   troopsLocked: '兵が動いている間は変えられません',
   troops: Object.freeze({ attack: '攻撃の兵', defense: '防御の兵', heal: '修理の兵' }),
+  stage: 'ステージ',
   enemy: '敵',
   intent: '敵の次の行動',
   noChoice: '－',
@@ -119,6 +120,15 @@ export function intentChoiceText(id) {
  */
 export function hpText(hp, maxHp) {
   return `${hp} / ${maxHp}`;
+}
+
+/**
+ * ステージを移るボタンの文字にする。
+ * @param {number} delta 移る数（負なら戻る）
+ * @returns {string} 例「−5」「+1」
+ */
+export function stageStepText(delta) {
+  return delta < 0 ? `−${-delta}` : `+${delta}`;
 }
 
 /**

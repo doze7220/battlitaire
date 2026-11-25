@@ -6,6 +6,7 @@ import {
   setTroopGauge,
   enemyChoices,
   switchEnemy,
+  moveStage,
   intentChoiceIdsOf,
   intentChoiceSlotCount,
   currentIntentChoice,
@@ -143,6 +144,14 @@ export class BoardDebug {
   }
 
   /**
+   * 今のステージの番号。
+   * @returns {number} ステージの番号（1 から）
+   */
+  stageNumber() {
+    return this.game.stageNumber;
+  }
+
+  /**
    * 次の行動の選択肢の枠の数。
    * @returns {number} 枠の数
    */
@@ -211,6 +220,14 @@ export class BoardDebug {
    */
   switchEnemy(typeId) {
     if (switchEnemy(this.game, typeId)) this.flow.enterSwitchedEnemy(this.game);
+  }
+
+  /**
+   * ステージを移る。移ったら、ステージの始まりを出さずにステージの曲を流す（敵の入れ替えと同じ）。
+   * @param {number} delta 移る数（負なら戻る。1 より前には戻れない）
+   */
+  moveStage(delta) {
+    if (moveStage(this.game, delta)) this.flow.enterSwitchedEnemy(this.game);
   }
 
   /**

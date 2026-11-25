@@ -5,7 +5,7 @@
 import { Engine } from 'oz';
 import { addRuleSliders } from './debugRuleSliders.js';
 import { DEBUG_LAYOUT, DEBUG_FPS_POSITION } from '../view/debugLayout.js';
-import { DEBUG_TEXT, intentChoiceText, hpText, fpsText } from '../view/debugText.js';
+import { DEBUG_TEXT, intentChoiceText, hpText, fpsText, stageStepText } from '../view/debugText.js';
 import { troopBakesEnabled, setTroopBakesEnabled } from '../view/troopBakes.js';
 
 /**
@@ -29,6 +29,12 @@ export const TURN_SLIDER = Object.freeze({ min: 1, max: 30, step: 1 });
  * @type {number}
  */
 export const HP_LOW = 1;
+
+/**
+ * ステージを移るボタンの移る数（DEBUG_LAYOUT.stageButtons の順）。DEBUG タブのボタンで、ルールの値ではない。
+ * @type {readonly number[]}
+ */
+const STAGE_STEPS = Object.freeze([-5, -1, 1, 5]);
 
 /** 兵のスライダーを足す種類の並び（DEBUG_LAYOUT.troopSliders の項目の順）。 */
 const TROOP_KINDS = Object.freeze(['attack', 'defense', 'heal']);
@@ -89,6 +95,20 @@ function buildDebugTab(debug, tab) {
       write: (v) => debug.setTroops(kind, v),
     });
   }
+
+  area.addValue({
+    ...DEBUG_LAYOUT.stageLabel,
+    label: DEBUG_TEXT.stage,
+    read: () => debug.stageNumber(),
+    format: (n) => String(n),
+  });
+  STAGE_STEPS.forEach((delta, i) => {
+    area.addButton({
+      ...DEBUG_LAYOUT.stageButtons[i],
+      label: stageStepText(delta),
+      onPress: () => debug.moveStage(delta),
+    });
+  });
 
   area.addValue({ ...DEBUG_LAYOUT.enemyLabel, label: DEBUG_TEXT.enemy, read: () => '' });
   area.addChoices({
