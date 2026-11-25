@@ -1,6 +1,6 @@
 /**
  * 責務: 盤面のシーンの区切りの段階（スタートの待ち → ステージの始まり → フェーズの始まり → 段取り → 準備終了 → BATTLE!）を管理する。
- * ルール層の問い合わせを読み、ステージの曲（デバッグで入れ替わった敵の曲を含む）・準備終了・BATTLE! の音を鳴らし、BannerShow を進める。ルールの操作は呼ばない（Scene を継承しない）。
+ * ルール層の問い合わせを読み、ステージの曲（デバッグで入れ替わった敵の曲を含む）・準備終了・BATTLE! の音を鳴らし、BannerShow を進める。中断データから戻した盤面（TURN 2 以降）の始まり方も決める。ルールの操作は呼ばない（Scene を継承しない）。
  */
 import { BannerShow } from '../anim/bannerShow.js';
 import { BGM_TIMING } from '../audio/soundConfig.js';
@@ -21,7 +21,7 @@ export class BoardFlow {
      */
     this.banner = new BannerShow(enterDistance);
     /**
-     * 最初のステージの始まりまでの、スタートの待ちの残り時間（ミリ秒）。0 になるまで待つ。
+     * 最初のステージの始まり（再開の盤面ではフェーズの始まりと曲）までの、スタートの待ちの残り時間（ミリ秒）。0 になるまで待つ。
      * @type {number}
      */
     this.stageWaitMs = BGM_TIMING.startToStageMs;
@@ -35,6 +35,24 @@ export class BoardFlow {
      * @type {number|null}
      */
     this.introPhase = null;
+    /**
+     * 再開した盤面（TURN 2 以降）で、スタートの待ちが終わったときにステージの曲を鳴らす約束が残っているか。`resumeFrom` が立て、鳴らしたら false に戻る。
+     * @type {boolean}
+     */
+    this.resumeBgmPending = false;
+  }
+
+  /**
+   * 中断データから戻した盤面の始まり方を決める（`init` で作った直後に1回呼ぶ）。
+   * 戦闘のターンが 1 ならふつうにステージへ入ったときと同じ流れにするので何もしない。
+   * 2 以上なら「STAGE N」を出さず（`introStageNumber` を今のステージの番号にする。敵は初めから立つ）、スタートの待ちが終わったときに曲を鳴らす約束（`resumeBgmPending`）を立てる。
+   * @param {{stageNumber: number, battleTurn: number}} game ルール層の状態（読むだけ）
+   * @returns {void}
+   */
+  resumeFrom(game) {
+    if (game.battleTurn <= 1) return;
+    this.introStageNumber = game.stageNumber;
+    this.resumeBgmPending = true;
   }
 
   /**
@@ -42,7 +60,7 @@ export class BoardFlow {
    * 1. BATTLE! が終わった → BATTLE! を消して true を返す（呼ぶ側が攻防に入る）。
    * 2. 合図が出ている → 何もしない。
    * 3. ステージの始まりをまだ出していないステージの番号 → スタートの待ちが残っていれば待ち、0 ならステージの曲とステージの始まりを同時に始める。
-   * 4. フェーズの始まりをまだ出していない → フェーズの始まりを出す。
+   * 4. フェーズの始まりをまだ出していない → スタートの待ちが残っていれば待ち（ふつうの流れでは 3 で 0 になっているので待たない。再開の盤面だけここで待つ）、0 なら（再開の曲の約束があれば曲を鳴らして）フェーズの始まりを出す。
    * 5. 段取りが止まっていて攻防を計算できる → 準備終了を出し、音を鳴らす。
    * @param {number} dt 経過時間（ミリ秒）
    * @param {{stageNumber: number, phase: number, enemy: {typeId: string}, canResolveBattle: function(): boolean}} game ルール層の状態（読むだけ）
@@ -67,6 +85,11 @@ export class BoardFlow {
       return false;
     }
     if (this.introPhase !== game.phase) {
+      if (this.stageWaitMs > 0) return false;
+      if (this.resumeBgmPending) {
+        this.resumeBgmPending = false;
+        playStageBgm(game.enemy.typeId);
+      }
       this.introPhase = game.phase;
       this.banner.showPhase();
       return false;
@@ -108,7 +131,7 @@ export class BoardFlow {
   }
 
   /**
-   * ステージまたはフェーズの始まりを、まだ出していない（待っている）か。
+   * ステージまたはフェーズの始まりを、まだ出していない（待っている。再開の盤面のスタートの待ちを含む）か。
    * `BattleShowScene` が外れた直後のフレームでは `BoardScene.update` より先に入力が届くことがあるため、
    * 合図が空でもこの待ちの間は盤面を触らせないために `tap` が見る。
    * @param {{stageNumber: number, phase: number}} game ルール層の状態（読むだけ）

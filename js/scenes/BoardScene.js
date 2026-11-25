@@ -1,11 +1,12 @@
 /**
  * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面と合図を描くこと。
- * 操作の結果を anim に渡して時間を進め、段階の管理（boardFlow.js）を進めて、BATTLE! が終わったら攻防に入り待っていた兵の数を演出のシーンへ渡し、新しいゲームの始まりを中断データに保存すること。
+ * 操作の結果を anim に渡して時間を進め、段階の管理（boardFlow.js）を進めて、BATTLE! が終わったら攻防に入り待っていた兵の数を演出のシーンへ渡し、新しいゲームの始まりを中断データに保存し、中断データがあればそのターンの始まりへ戻して始めること。
  * 操作・連鎖のきっかけで効果音を鳴らし（soundCues.js）、積んだ演出のシーンから札が燃える段の盤面を読んで描き、TURN の区画でメニューの窓を積み、兵の焼き付けを init で作り destroy で手放すこと。「DEBUG MODE」のレイヤーも描く（debugModeLayer.js）。
  */
 import { Engine, Scene } from 'oz';
 import { drawDebugModeLayer } from './debugModeLayer.js';
 import { Game } from '../rules/Game.js';
+import { restoreGame } from '../rules/suspendData.js';
 import { BattleShowScene } from './BattleShowScene.js';
 import { saveSuspend } from './suspendStore.js';
 import { snapshotBattle } from '../anim/battleSteps.js';
@@ -27,8 +28,9 @@ import { createTroopBakes } from '../view/troopView.js';
  * @typedef {Object} BoardOptions BoardScene に渡すオプション
  * @property {{ width: number, height: number }} screen 解像度
  * @property {string} layer 描くレイヤー名
- * @property {import('../rules/rng.js').Rng} rng 乱数（状態を取り出し・戻せる。ルール層へ渡す）
- * @property {number} seed 敵の並びを決める種（整数・必須。始めた日付から作られる。ゲームへ渡す）
+ * @property {import('../rules/rng.js').Rng} [rng] 乱数（状態を取り出し・戻せる。ルール層へ渡す。新しいゲームのときだけ必須）
+ * @property {number} [seed] 敵の並びを決める種（整数。始めた日付から作られる。ゲームへ渡す。新しいゲームのときだけ必須）
+ * @property {import('../rules/suspendData.js').SuspendData|null} [suspend] 中断データ（省略は null＝新しいゲーム。あれば rng・seed はその中のものを使い、渡した値は使わない）
  * @property {() => Scene} createTitle タイトルの画面のシーンを作る関数（攻防の演出のシーンへ渡す）
  * @property {(target: import('./boardDebug.js').BoardMenuTarget) => Scene} createMenu メニューの窓のシーンを作る関数（TURN の区画を押したとき、盤面の部品 { game, releaseShow, flow } を渡して積む。使うかは関数の側が決める）
  * @property {import('../rules/config.js').Rules} [rules] ゲームに渡すルールの値（省略は config.js の RULES。デバッグ（`Engine.debug` が真）のゲームでは RULES と同じ形の写しが渡される）
@@ -39,8 +41,10 @@ export class BoardScene extends Scene {
   /**
    * @param {BoardOptions} options オプション
    */
-  constructor({ screen, layer, rng, seed, createTitle, createMenu, rules }) {
+  constructor({ screen, layer, rng, seed, suspend = null, createTitle, createMenu, rules }) {
     super();
+    /** @type {import('../rules/suspendData.js').SuspendData|null} 戻す中断データ（なければ null＝新しいゲーム） */
+    this.suspend = suspend;
     /** @type {number} 敵の並びを決める種（整数。ゲームへ渡す） */
     this.seed = seed;
     /** @type {import('../rules/config.js').Rules|undefined} ゲームに渡すルールの値（undefined なら Game の既定の RULES） */
@@ -80,14 +84,18 @@ export class BoardScene extends Scene {
   }
 
   /**
-   * ゲームと画面の配置を作る（ゲームには this.rules を設定として渡す。undefined なら Game の既定の RULES）。
-   * 新しいゲームを作った直後に、最初のターンの始まりを中断データとして保存する（saveSuspend。デバッグでは何もしない）。
+   * ゲームと画面の配置を作る。中断データ（this.suspend）があれば restoreGame で戻し（保存はしない）、段階の管理を作った後に resumeFrom を呼ぶ。
+   * なければ新しいゲームを作り（this.rules を設定として渡す。undefined なら Game の既定の RULES）、直後に最初のターンの始まりを中断データとして保存する（saveSuspend。デバッグでは何もしない）。
    * 最後に兵の焼き付けを作る（destroy で手放す）。
    * @returns {void}
    */
   init() {
-    this.game = new Game({ rng: this.rng, seed: this.seed, config: this.rules });
-    saveSuspend(this.game);
+    if (this.suspend !== null) {
+      this.game = restoreGame(this.suspend);
+    } else {
+      this.game = new Game({ rng: this.rng, seed: this.seed, config: this.rules });
+      saveSuspend(this.game);
+    }
     this.layout = createLayout({
       screen: this.screen,
       deckCount: this.game.decks.length,
@@ -104,6 +112,7 @@ export class BoardScene extends Scene {
     this.enemyIdle = new EnemyIdle();
     this.bannerLayout = createBannerLayout(this.layout);
     this.flow = new BoardFlow(this.bannerLayout.enemyEntryDX);
+    if (this.suspend !== null) this.flow.resumeFrom(this.game);
     this.troopBakes = createTroopBakes(this.layout.battle);
   }
 
