@@ -49,7 +49,7 @@ export function starPositionOfStage(stageStars, stageNumber) {
 
 /**
  * 種とステージの番号から、そのステージの敵の種類の識別子を決める。
- * 動きは同じ★の中で隣り合わず、同じ動きの中の敵は番号から選ぶ。
+ * 動きが2つ以上ある★では、動きは同じ★の中で隣り合わない（動きが1つの★では、同じ動きの敵が続く）。同じ動きの中の敵は番号から選ぶ。
  * @param {{enemies: Readonly<Object<string, {star: number, behavior: {type: string}}>>, stageStars: object}} config ルールの設定。
  * @param {number} seed 種（整数）。
  * @param {number} stageNumber ステージの番号（1 以上の整数）。

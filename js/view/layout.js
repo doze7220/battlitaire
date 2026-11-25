@@ -282,7 +282,7 @@ const BODY_GAP = 16;
 const CASTLE_CX = 240;
 /** 城の絵の高さ（大きさを変える1か所） */
 const CASTLE_H = 190;
-/** 敵の中心の x（巨人・ドラゴンの絵の中心） */
+/** 敵の中心の x（絵の敵の絵の中心） */
 const ENEMY_CX = 620;
 /** 城の打撃のヒットマークを出す範囲の、城の絵の矩形に対する割合（x・y は左上、w・h は幅・高さ。試遊で決め直す） */
 const CASTLE_HIT_AREA = Object.freeze({ x: 0.15, y: 0.3, w: 0.7, h: 0.5 });
@@ -533,7 +533,7 @@ function createTopGaugeLayout(width, coinBlockCount) {
 /**
  * 最上段（戦闘）の配置を作る。地面の下端（groundY）は段の下端から GROUND_OFFSET 上、城・敵の絵はその上に足元をそろえて立つ。
  * 兵の足元の範囲は groundY から FIELD_H 上まで。
- * 城の絵は CASTLE_CX、巨人・ドラゴンの絵の中心は ENEMY_CX、ゴブリンの群れは HORDE_AREA_X の範囲。巨人・ドラゴンの絵の配置は enemyFigures.js の表で決める。
+ * 城の絵は CASTLE_CX、絵の敵の絵の中心は ENEMY_CX、群れの敵（ゴブリン・骸骨）の群れは HORDE_AREA_X の範囲。絵の敵の絵の配置は enemyFigures.js の表で決める。
  * @param {number} width 画面の幅
  * @param {number} coinBlockCount 金貨のゲージのブロックの数
  * @returns {BattleLayout} 戦闘の段の配置
@@ -577,7 +577,7 @@ function createBattleLayout(width, coinBlockCount) {
     countdownDy: intentBadgeH + INTENT_COUNTDOWN_GAP_Y + INTENT_COUNTDOWN_LINE_H / 2,
     countdownMaxW: INTENT_COUNTDOWN_MAX_W,
   };
-  /** 予告の札の上端の y（札の下端を人数の表示の枠の下端にそろえる。どの敵でも同じ高さ） */
+  /** 予告の札の上端の y（札の下端を人数の表示の枠の下端にそろえる。絵の敵のうち gap が null の敵（巨人・ドラゴン）と群れの敵では同じ高さ。gap を持つ背の低い絵の敵は絵の上端から決める） */
   const intentTop = counterBox.y + counterBox.h - intentBadge.h;
   const enemyFigures = createEnemyFigures({
     groundY,

@@ -26,7 +26,7 @@ import { sampleFigurePose } from './enemyIdle.js';
  * @property {import('./enemyBody.js').EnemyFigureLook} figure 倒れる絵の見た目（読むだけ。毎回同じ入れ物）
  * @property {import('./impactFx.js').ImpactFxLook} fx 当たりの光・数字・粒の見た目（読むだけ。毎回同じ入れ物）
  * @property {import('./stageFx.js').StageFxLook} stage 戦闘の段の揺れ・暗さ・撃つ瞬間の光（読むだけ。毎回同じ入れ物）
- * @property {import('./chargeShow.js').ChargePoseLook} pose 絵の姿勢（ための姿勢に待機の伸び縮みを重ねたもの。読むだけ。毎回同じ入れ物）
+ * @property {import('./chargeShow.js').ChargePoseLook} pose 絵の姿勢（ための姿勢に待機の伸び縮みと、へこむ敵（スライム）のへこみを重ねたもの。読むだけ。毎回同じ入れ物）
  * @property {{attack: number, defense: number, heal: number}} troopCounts 攻撃・防御・修理の人数の表示値
  * @property {number} castleHp 表示する城の HP
  * @property {number} enemyHp 表示する敵の HP
@@ -75,7 +75,7 @@ export class BattleDirector {
     this.figureScratch = { visible: false, x: 0, footY: 0, sortY: 0, tilt: 0, alpha: 1, idle: false };
     /** @type {BattleFx} 攻防のエフェクトの見た目の入れ物 */
     this.fx = new BattleFx(timeline);
-    /** @type {import('./chargeShow.js').ChargePoseLook} 絵の姿勢の入れ物（ための姿勢に待機の伸び縮みを重ねる） */
+    /** @type {import('./chargeShow.js').ChargePoseLook} 絵の姿勢の入れ物（ための姿勢に待機の伸び縮みと、へこむ敵のへこみを重ねる） */
     this.pose = { tilt: 0, scaleX: 1, scaleY: 1 };
     this.sampleLooks();
   }
