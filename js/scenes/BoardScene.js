@@ -195,6 +195,7 @@ export class BoardScene extends Scene {
             step.result.cards.length,
             step.result.segments.map((s) => s.gauge),
             game.config.muscleConversion.gauge,
+            step.result.allSuits === null ? [] : step.result.allSuits.parts.map((p) => p.gauge),
           ),
         );
       }

@@ -1,10 +1,10 @@
 /**
- * 放つ演出の見た目（玉に変わる前の札・スートの色の光の玉・弾ける玉・区切りの式の文字）を描く。
+ * 放つ演出の見た目（玉に変わる前の札・スートの色の光の玉・弾ける玉・区切りの式の文字・4スートそろいの文字）を描く。
  * 状態は変えず、ルール層・anim は実行時に import しない。
  */
 import { drawCardFace } from './cardView.js';
 import { suitLook } from './suitStyle.js';
-import { releaseFormulaText } from './battleText.js';
+import { releaseFormulaText, allSuitsText } from './battleText.js';
 
 /** 玉の中心の色（白に近い色）。 */
 const ORB_CORE_COLOR = '#fffbe8';
@@ -22,6 +22,12 @@ const FORMULA_STROKE = '#222222';
 const FORMULA_STROKE_W = 4;
 /** 式の文字の塗りの色。 */
 const FORMULA_COLOR = '#ffffff';
+/** 4スートそろいの文字のフォント。試遊で決め直す。 */
+const ALL_SUITS_FONT = 'bold 32px sans-serif';
+/** 4スートそろいの文字の縁取りの太さ（px）。 */
+const ALL_SUITS_STROKE_W = 6;
+/** 4スートそろいの文字の塗りの色。 */
+const ALL_SUITS_COLOR = '#ffe680';
 
 /**
  * 玉に変わる前の札を元の矩形のまま表で描く。
@@ -39,8 +45,9 @@ export function drawReleaseCards(ctx, cards) {
  * 玉（スートの色の光）と、区切りの式の文字を描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {{orbs: {suit: string, x: number, y: number, size: number, alpha: number}[],
- *   formulas: {sum: number, bonus: number, amount: number, x: number, y: number, gap: number, dir: number}[]}} look
- *   描く見た目（ReleaseLook のうち orbs と formulas）
+ *   formulas: {sum: number, bonus: number, amount: number, x: number, y: number, gap: number, dir: number}[],
+ *   labels: {suitCount: number, amount: number, x: number, y: number, maxW: number, scale: number, alpha: number}[]}} look
+ *   描く見た目（ReleaseLook のうち orbs と formulas と labels）
  * @returns {void}
  */
 export function drawReleaseOrbs(ctx, look) {
@@ -71,6 +78,23 @@ export function drawReleaseOrbs(ctx, look) {
     const tx = f.x + f.dir * (f.gap + FORMULA_PAD);
     ctx.strokeText(text, tx, f.y);
     ctx.fillText(text, tx, f.y);
+    ctx.restore();
+  }
+  for (const l of look.labels) {
+    ctx.save();
+    ctx.translate(l.x, l.y);
+    ctx.scale(l.scale, l.scale);
+    ctx.globalAlpha = l.alpha;
+    ctx.font = ALL_SUITS_FONT;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = ALL_SUITS_STROKE_W;
+    ctx.strokeStyle = FORMULA_STROKE;
+    ctx.fillStyle = ALL_SUITS_COLOR;
+    const text = allSuitsText(l.suitCount, l.amount);
+    ctx.strokeText(text, 0, 0, l.maxW);
+    ctx.fillText(text, 0, 0, l.maxW);
     ctx.restore();
   }
 }

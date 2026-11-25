@@ -98,6 +98,24 @@ function progress(clock, start, length) {
 }
 
 /**
+ * 玉が飛ぶ弧（2次ベジェ）の上の位置を求める。区切りの玉と4スートそろいの玉で共用する。
+ * @param {{x:number,y:number}} from 飛び始める位置（玉の中心）。
+ * @param {{x:number,y:number}} to 飛ぶ先（玉の中心）。
+ * @param {number} rise 弧の持ち上がり（px）。
+ * @param {number} u 進み具合（イージング前の 0〜1。中で `easeInOutQuad` を掛ける）。
+ * @returns {{x:number,y:number}} 位置（玉の中心）。
+ */
+export function flyPoint(from, to, rise, u) {
+  const e = easeInOutQuad(u);
+  const cx = (from.x + to.x) / 2;
+  const cy = Math.min(from.y, to.y) - rise;
+  const a = (1 - e) * (1 - e);
+  const b = 2 * (1 - e) * e;
+  const c = e * e;
+  return { x: a * from.x + b * cx + c * to.x, y: a * from.y + b * cy + c * to.y };
+}
+
+/**
  * 1回の放つの玉の記録を組み立てる。
  * @param {Array<{suit:string, gauge:string, cards:Array<*>, sum:number, bonus:number, amount:number}>} segments 放った結果の区切り（下の区切りから順）。
  * @param {{cardRects:Array<{x:number,y:number,w:number,h:number}>, mergePoints:Array<{x:number,y:number}>, targets:Array<{x:number,y:number}>, smallSize:number, bigSize:number, burstSize:number, arcRise:number, labelDir:number}} geometry 放つ演出の配置。
@@ -203,19 +221,8 @@ export function sampleReleaseOrbs(orbs, clock, out) {
         dir: orbs.labelDir,
       });
     } else if (clock < seg.arriveAt) {
-      const u = easeInOutQuad(progress(clock, seg.flyStart, ANIM_TIMING.orbFlyMs));
-      const cx = (point.x + target.x) / 2;
-      const cy = Math.min(point.y, target.y) - orbs.arcRise;
-      const a = (1 - u) * (1 - u);
-      const b = 2 * (1 - u) * u;
-      const c = u * u;
-      out.orbs.push({
-        suit: seg.suit,
-        x: a * point.x + b * cx + c * target.x,
-        y: a * point.y + b * cy + c * target.y,
-        size: orbs.bigSize,
-        alpha: 1,
-      });
+      const p = flyPoint(point, target, orbs.arcRise, progress(clock, seg.flyStart, ANIM_TIMING.orbFlyMs));
+      out.orbs.push({ suit: seg.suit, x: p.x, y: p.y, size: orbs.bigSize, alpha: 1 });
     } else {
       const p = progress(clock, seg.arriveAt, ANIM_TIMING.orbBurstMs);
       out.orbs.push({ suit: seg.suit, x: target.x, y: target.y, size: lerp(orbs.bigSize, orbs.burstSize, p), alpha: 1 - p });

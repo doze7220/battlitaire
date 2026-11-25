@@ -1,6 +1,6 @@
 /**
  * 演出の時間の設定（カードの移動・めくれ・めくれの待ち・長い列の詰め直し・放つときの玉（玉に変わる・
- * 上る・合体・式・飛ぶ・弾ける）と金貨の数字が増える時間）を1か所に凍結して持つ。演出の時間の数値は、ほかのファイルに書かない。
+ * 上る・合体・式・飛ぶ・弾ける）・4スートそろいの文字と玉・金貨の数字が増える時間）を1か所に凍結して持つ。演出の時間の数値は、ほかのファイルに書かない。
  */
 
 /**
@@ -19,6 +19,11 @@
  * @property {number} orbFlyMs 大きい玉が飛ぶ先まで飛ぶ時間（ms）。試遊で決め直す。
  * @property {number} orbBurstMs 着いた玉が広がって消える時間（ms）。試遊で決め直す。
  * @property {number} coinCountMs 金貨の玉が着いてから数字が増え終わるまでの時間（ms。0 なら着いた瞬間）。試遊で決め直す。
+ * @property {number} allSuitsAppearMs 4スートそろいの文字と玉が現れる（倍率・直径が 0 から育つ）時間（ms）。試遊で決め直す。
+ * @property {number} allSuitsHoldMs 4スートそろいの玉が現れてから、1つ目が飛び始めるまでの待ち（ms）。試遊で決め直す。
+ * @property {number} allSuitsFlyStaggerMs 4スートそろいの玉が飛び始めるずらしの間隔（ms）。試遊で決め直す。
+ * @property {number} allSuitsLabelMs 4スートそろいの文字を出している全体の時間（ms）。試遊で決め直す。
+ * @property {number} allSuitsFadeMs 4スートそろいの文字が消える（濃さ 1→0）時間（ms。出している時間の終わりの部分）。試遊で決め直す。
  */
 
 /**
@@ -39,4 +44,9 @@ export const ANIM_TIMING = Object.freeze({
   orbFlyMs: 500,
   orbBurstMs: 200,
   coinCountMs: 300,
+  allSuitsAppearMs: 150,
+  allSuitsHoldMs: 300,
+  allSuitsFlyStaggerMs: 80,
+  allSuitsLabelMs: 900,
+  allSuitsFadeMs: 200,
 });

@@ -1,10 +1,11 @@
 /**
- * 放つ演出全体の管理（時計を進め、放つたびの玉の記録と段取りの間の兵を持ち、連鎖のきっかけ・札を止めているか・動いているか・ゲージの表示値・待っている兵の数・描画用の見た目の値を答え、段取りの間の兵の数をその場で合わせる）。
+ * 放つ演出全体の管理（時計を進め、放つたびの玉の記録（4スートそろいの文字と玉を含む）と段取りの間の兵を持ち、連鎖のきっかけ・札を止めているか・動いているか・ゲージの表示値・待っている兵の数・描画用の見た目の値を答え、段取りの間の兵の数をその場で合わせる）。
  * 描画せず、ゲームの状態に触れない。
  */
 
 import { ANIM_TIMING } from './animConfig.js';
 import { createReleaseOrbs, sampleReleaseOrbs } from './orbTrack.js';
+import { createAllSuitsTrack, sampleAllSuits } from './allSuitsTrack.js';
 import { CampTroops } from './campTroops.js';
 import { OWN_KINDS } from './troopRoster.js';
 import { createGaugeCount, sampleGaugeCount, gaugeCountEnd } from './gaugeCount.js';
@@ -15,6 +16,7 @@ import { createGaugeCount, sampleGaugeCount, gaugeCountEnd } from './gaugeCount.
  * @property {import('./orbTrack.js').OrbCardLook[]} cards 玉に変わる前の札
  * @property {import('./orbTrack.js').OrbLook[]} orbs 玉
  * @property {import('./orbTrack.js').FormulaLook[]} formulas 式
+ * @property {import('./allSuitsTrack.js').AllSuitsLabelLook[]} labels 4スートそろいの文字
  * @property {import('./troopSwarm.js').TroopSwarmLook} troops 段取りの間の兵
  * @property {Object<string, number>} gaugeValues まだ数えていない分のあるゲージだけの表示値
  */
@@ -33,6 +35,8 @@ export class ReleaseShow {
     this.prevClock = 0;
     /** @type {import('./orbTrack.js').ReleaseOrbs[]} 動いている放つの記録 */
     this.releases = [];
+    /** @type {import('./allSuitsTrack.js').AllSuitsTrack[]} 動いている4スートそろいの記録 */
+    this.allSuits = [];
     /** @type {import('./gaugeCount.js').GaugeCount[]} 区切りごとの数え上げ */
     this.counts = [];
     /** @type {{time: number, ordinal: number}[]} 連鎖のきっかけ（時刻の昇順） */
@@ -45,7 +49,7 @@ export class ReleaseShow {
 
   /**
    * 放った結果を、玉の動きと兵として記録に足す。
-   * @param {{segments: Array<{suit: string, gauge: string, cards: Array<*>, sum: number, bonus: number, amount: number}>}} result 放った結果（`ReleaseResult`）
+   * @param {{segments: Array<{suit: string, gauge: string, cards: Array<*>, sum: number, bonus: number, amount: number}>, allSuits: ({amount: number, parts: Array<{suit: string, gauge: string}>}|null)}} result 放った結果（`ReleaseResult`）
    * @param {import('../view/releaseLayout.js').ReleaseGeometry} geometry 放つ演出の配置
    * @returns {void}
    */
@@ -57,20 +61,43 @@ export class ReleaseShow {
     let end = Math.max(this.endTime, orbs.endTime);
     orbs.segments.forEach((seg) => {
       if (seg.amount <= 0) return;
-      let duration;
-      if (OWN_KINDS.includes(seg.gauge)) {
-        const last = this.camp.land(seg.gauge, seg.amount, seg.target.x, seg.target.y, seg.arriveAt);
-        duration = last - seg.arriveAt;
-      } else {
-        duration = ANIM_TIMING.coinCountMs;
-      }
-      const count = createGaugeCount({ gauge: seg.gauge, from: 0, to: seg.amount, delay: seg.arriveAt, duration });
-      this.counts.push(count);
-      end = Math.max(end, gaugeCountEnd(count));
+      end = Math.max(end, this.addArrival(seg.gauge, seg.amount, seg.target, seg.arriveAt));
     });
+    if (result.allSuits !== null && result.allSuits !== undefined && orbs.segments.length > 0) {
+      const base = orbs.segments[orbs.segments.length - 1].flyStart;
+      const track = createAllSuitsTrack(result.allSuits, geometry, base);
+      this.allSuits.push(track);
+      end = Math.max(end, track.endTime);
+      track.orbs.forEach((o) => {
+        if (o.amount <= 0) return;
+        end = Math.max(end, this.addArrival(o.gauge, o.amount, o.target, o.arriveAt));
+      });
+    }
     this.endTime = end;
     // 作り直した入れ物は visible が 0 なので、update が0回のフレームでも消えないよう今の時計で書き込む
     this.camp.sample(this.clock);
+  }
+
+  /**
+   * 玉が着いたときの兵・金貨の加算を記録に足す（区切りの玉と4スートそろいの玉で共用）。
+   * 自軍の兵のゲージなら陣地へ兵を `amount` 体着かせ、それ以外（金貨）は `coinCountMs` で数え上げる。
+   * @param {string} gauge 加算先のゲージ
+   * @param {number} amount 加算量（1 以上）
+   * @param {{x: number, y: number}} target 飛ぶ先（玉の中心）
+   * @param {number} arriveAt 玉が着く時刻
+   * @returns {number} 数え上げ・兵の到着が終わる時刻
+   */
+  addArrival(gauge, amount, target, arriveAt) {
+    let duration;
+    if (OWN_KINDS.includes(gauge)) {
+      const last = this.camp.land(gauge, amount, target.x, target.y, arriveAt);
+      duration = last - arriveAt;
+    } else {
+      duration = ANIM_TIMING.coinCountMs;
+    }
+    const count = createGaugeCount({ gauge, from: 0, to: amount, delay: arriveAt, duration });
+    this.counts.push(count);
+    return gaugeCountEnd(count);
   }
 
   /**
@@ -84,6 +111,7 @@ export class ReleaseShow {
     this.clock += ms;
     this.camp.sample(this.clock);
     this.releases = this.releases.filter((r) => r.endTime > this.clock);
+    this.allSuits = this.allSuits.filter((a) => a.endTime > this.clock);
     this.counts = this.counts.filter((c) => gaugeCountEnd(c) > this.clock);
   }
 
@@ -138,14 +166,15 @@ export class ReleaseShow {
    * @returns {ReleaseLook}
    */
   view(gauges) {
-    const out = { cards: [], orbs: [], formulas: [] };
+    const out = { cards: [], orbs: [], formulas: [], labels: [] };
     for (const r of this.releases) sampleReleaseOrbs(r, this.clock, out);
+    for (const a of this.allSuits) sampleAllSuits(a, this.clock, out);
     /** @type {Object<string, number>} */
     const gaugeValues = {};
     for (const c of this.counts) {
       const pending = c.to - sampleGaugeCount(c, this.clock);
       if (pending > 0) gaugeValues[c.gauge] = (gaugeValues[c.gauge] ?? gauges[c.gauge]) - pending;
     }
-    return { cards: out.cards, orbs: out.orbs, formulas: out.formulas, troops: this.camp.look(), gaugeValues };
+    return { cards: out.cards, orbs: out.orbs, formulas: out.formulas, labels: out.labels, troops: this.camp.look(), gaugeValues };
   }
 }

@@ -1,5 +1,5 @@
 /**
- * 責務: 敵の行動（爪・吸い込む・ブレスの種類と防御を含む）・予告の量の数字・表にない予告の印・決着・結果の集計の見出し・タップでタイトルへの案内・敵を倒したときの案内・数え下ろし・回復の量・当たりのダメージの数字・放った区切りの式を、画面に出す文字に直す。
+ * 責務: 敵の行動（爪・吸い込む・ブレスの種類と防御を含む）・予告の量の数字・表にない予告の印・決着・結果の集計の見出し・タップでタイトルへの案内・敵を倒したときの案内・数え下ろし・回復の量・当たりのダメージの数字・放った区切りの式・4スートそろいの文字を、画面に出す文字に直す。
  * 計算はせず、量をそのまま文字にする。ルール層は実行時に import しない。
  */
 
@@ -206,4 +206,14 @@ export function damagePopText() {
  */
 export function releaseFormulaText(sum, bonus, amount) {
   return bonus > 0 ? `${sum} +${bonus} = ${amount}` : `${amount}`;
+}
+
+/**
+ * 4スートそろいの文字を「4スート +1」のような文字にする。数は引数をそのまま文字にする。
+ * @param {number} suitCount そろったスートの数
+ * @param {number} amount それぞれのゲージに足す量
+ * @returns {string} 「Nスート +量」
+ */
+export function allSuitsText(suitCount, amount) {
+  return `${suitCount}スート +${amount}`;
 }

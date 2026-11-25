@@ -113,7 +113,7 @@ export const RULES = Object.freeze({
     muscle: 'muscle',
   }),
   releaseBonus: Object.freeze({ perCard: 1, max: 6 }),
-  allSuitsBonus: 0,
+  allSuitsBonus: 1,
   castleMaxHp: 50,
   enemyOrder: Object.freeze(['goblins', 'giant', 'dragon']),
   enemies: Object.freeze({

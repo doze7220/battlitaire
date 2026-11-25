@@ -1,5 +1,5 @@
 /**
- * 責務: 放つ演出の配置（放った札の矩形・区切りごとの合体する位置と飛ぶ先・玉の大きさ・弧の持ち上がり・式の向き）を、`layout.js` の配置の矩形から求める。
+ * 責務: 放つ演出の配置（放った札の矩形・区切りごとの合体する位置と飛ぶ先・玉の大きさ・弧の持ち上がり・式の向き・4スートそろいの文字と玉）を、`layout.js` の配置の矩形から求める。
  * 状態は変えず、ルール層は import しない。
  */
 
@@ -21,6 +21,18 @@ export const ORB_SEGMENT_STEP = 56;
 /** 飛ぶ弧の持ち上がり（px）。試遊で決め直す。 */
 export const ORB_ARC_RISE = 80;
 
+/** 4スートそろいの玉どうしの横の間隔（px）。試遊で決め直す。 */
+export const ALL_SUITS_ORB_STEP = 40;
+
+/** 4スートそろいの文字の中心が、玉の列の中心（一番下の合体位置）より上にある量（px）。試遊で決め直す。 */
+export const ALL_SUITS_LABEL_DY = 44;
+
+/** 4スートそろいの文字の最大の幅（px）。 */
+export const ALL_SUITS_LABEL_MAX_W = 180;
+
+/** 4スートそろいの文字・玉の列が、画面の左右の端から空ける間（px）。 */
+export const ALL_SUITS_EDGE = 8;
+
 /**
  * 放つ演出の配置。
  * @typedef {Object} ReleaseGeometry
@@ -30,8 +42,10 @@ export const ORB_ARC_RISE = 80;
  * @property {number} smallSize 小さい玉の直径
  * @property {number} bigSize 大きい玉の直径
  * @property {number} burstSize 弾けて広がり切ったときの直径
+ * @property {number} smallBurstSize 4スートそろいの玉が弾けて広がり切ったときの直径
  * @property {number} arcRise 飛ぶ弧の持ち上がり
  * @property {(1|-1)} labelDir 式を出す向き（1 は玉の右、-1 は左）
+ * @property {{label: {x: number, y: number, maxW: number}, starts: Array<{x: number, y: number}>, targets: Array<{x: number, y: number}>}|null} allSuits 4スートそろいの配置（文字の中心と最大の幅・玉の現れる位置と飛ぶ先。玉は `bonusGauges` の順。そろわないときは null）
  */
 
 /**
@@ -50,10 +64,11 @@ function centerOf(r) {
  * @param {number} cardCount 放った札の枚数
  * @param {string[]} segmentGauges 区切りごとのゲージ名（下の区切りから順）
  * @param {string} coinGauge 金貨のゲージの識別子（陣地のない区切りのうち、最上部の金貨のゲージへ飛ぶもの）
+ * @param {string[]} [bonusGauges] 4スートそろいの玉ごとのゲージ名（そろわないときは空。省くと空）
  * @returns {ReleaseGeometry} 放つ演出の配置
- * @throws {Error} 陣地（`layout.battle.troops.camps`）になく、金貨のゲージ（coinGauge）でもない区切りがあるとき
+ * @throws {Error} 陣地（`layout.battle.troops.camps`）になく、金貨のゲージ（coinGauge）でもない区切り・玉があるとき
  */
-export function releaseGeometry(layout, columnIndex, cardCount, segmentGauges, coinGauge) {
+export function releaseGeometry(layout, columnIndex, cardCount, segmentGauges, coinGauge, bonusGauges = []) {
   const cardRects = layout.columnCardRects(columnIndex, cardCount);
   const col = layout.columns[columnIndex];
   const cardW = layout.card.w;
@@ -69,18 +84,61 @@ export function releaseGeometry(layout, columnIndex, cardCount, segmentGauges, c
 
   const mergePoints = [];
   const targets = [];
-  const camps = layout.battle.troops.camps;
   for (let s = 0; s < n; s++) {
     mergePoints.push({ x: centerX, y: baseY - s * step });
-    const gauge = segmentGauges[s];
-    if (Object.prototype.hasOwnProperty.call(camps, gauge)) {
-      targets.push(centerOf(camps[gauge]));
-    } else {
-      if (gauge !== coinGauge) throw new Error(`releaseGeometry: 飛ぶ先のないゲージ ${gauge}`);
-      targets.push(centerOf(layout.battle.topGauges.coinBar));
-    }
+    targets.push(flyTarget(layout, segmentGauges[s], coinGauge));
   }
 
   const labelDir = centerX < layout.screen.width / 2 ? 1 : -1;
-  return { cardRects, mergePoints, targets, smallSize, bigSize, burstSize, arcRise: ORB_ARC_RISE, labelDir };
+  return {
+    cardRects,
+    mergePoints,
+    targets,
+    smallSize,
+    bigSize,
+    burstSize,
+    smallBurstSize: smallSize * ORB_BURST_RATIO,
+    arcRise: ORB_ARC_RISE,
+    labelDir,
+    allSuits: allSuitsGeometry(layout, centerX, baseY, smallSize, bonusGauges, coinGauge),
+  };
+}
+
+/**
+ * 4スートそろいの文字と玉の配置を求める。そろわないとき（`bonusGauges` が空）は null。
+ * @param {import('./layout.js').Layout} layout 画面の配置
+ * @param {number} centerX 放った列の中心 x
+ * @param {number} baseY 一番下の合体位置の y（玉の列の中心 y）
+ * @param {number} smallSize 小さい玉の直径
+ * @param {string[]} bonusGauges 玉ごとのゲージ名
+ * @param {string} coinGauge 金貨のゲージの識別子
+ * @returns {{label: {x: number, y: number, maxW: number}, starts: Array<{x: number, y: number}>, targets: Array<{x: number, y: number}>}|null} 配置
+ */
+function allSuitsGeometry(layout, centerX, baseY, smallSize, bonusGauges, coinGauge) {
+  const n = bonusGauges.length;
+  if (n === 0) return null;
+  const rowHalf = ((n - 1) * ALL_SUITS_ORB_STEP) / 2 + smallSize / 2;
+  const half = Math.max(ALL_SUITS_LABEL_MAX_W / 2, rowHalf);
+  const lo = ALL_SUITS_EDGE + half;
+  const x = Math.min(Math.max(centerX, lo), layout.screen.width - lo);
+  return {
+    label: { x, y: baseY - ALL_SUITS_LABEL_DY, maxW: ALL_SUITS_LABEL_MAX_W },
+    starts: bonusGauges.map((_, k) => ({ x: x + (k - (n - 1) / 2) * ALL_SUITS_ORB_STEP, y: baseY })),
+    targets: bonusGauges.map((gauge) => flyTarget(layout, gauge, coinGauge)),
+  };
+}
+
+/**
+ * ゲージごとの飛ぶ先（玉の中心）を求める。陣地があればその中心、金貨のゲージなら金貨の棒の中心。
+ * @param {import('./layout.js').Layout} layout 画面の配置
+ * @param {string} gauge ゲージの識別子
+ * @param {string} coinGauge 金貨のゲージの識別子
+ * @returns {{x: number, y: number}} 飛ぶ先
+ * @throws {Error} 陣地になく、金貨のゲージでもないとき
+ */
+function flyTarget(layout, gauge, coinGauge) {
+  const camps = layout.battle.troops.camps;
+  if (Object.prototype.hasOwnProperty.call(camps, gauge)) return centerOf(camps[gauge]);
+  if (gauge !== coinGauge) throw new Error(`releaseGeometry: 飛ぶ先のないゲージ ${gauge}`);
+  return centerOf(layout.battle.topGauges.coinBar);
 }
