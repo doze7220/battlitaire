@@ -8,7 +8,7 @@
  * @type {Readonly<{
  *   tab: string, troopsHeading: string, troopsLocked: string,
  *   troops: Readonly<{ attack: string, defense: string, heal: string }>,
- *   enemy: string, intent: string, noChoice: string,
+ *   enemy: string, intent: string, noChoice: string, battleTurn: string,
  *   castleHp: string, enemyHp: string, hpToOne: string, hpToFull: string,
  *   fpsVisible: string, fps: string, bakedDrawing: string,
  *   rulesCastle: string, rulesReset: string
@@ -22,6 +22,7 @@ export const DEBUG_TEXT = Object.freeze({
   enemy: '敵',
   intent: '敵の次の行動',
   noChoice: '－',
+  battleTurn: 'この戦闘のターン',
   castleHp: '城の HP',
   enemyHp: '敵の HP',
   hpToOne: '1 にする',

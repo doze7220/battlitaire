@@ -10,12 +10,19 @@ import { troopBakesEnabled, setTroopBakesEnabled } from '../view/troopBakes.js';
 
 /**
  * 兵の数のスライダーの範囲。1種類あたりの理論上の最大
- * （REQ の根拠: 7 枚の束を放つ +34 → 5 枚を置いて放つ +29）。
- * `config.js` の値（数字の範囲・束の補正・行動回数・力こぶの換算）を変えたら見直す。
+ * （根拠: 7 枚の束を放つ 28 + 6 + 4スートそろい 1 = 35 → 5 枚を置いて放つ 25 + 4 + 1 = 30。合計 65）。
+ * `config.js` の値（数字の範囲・束の補正・行動回数・力こぶの換算・4スートそろいの量 `allSuitsBonus`）を変えたら見直す。
  * DEBUG タブのスライダーの範囲で、ルールの値ではない。
  * @type {Readonly<{ min: number, max: number, step: number }>}
  */
-export const TROOP_SLIDER = Object.freeze({ min: 0, max: 63, step: 1 });
+export const TROOP_SLIDER = Object.freeze({ min: 0, max: 65, step: 1 });
+
+/**
+ * 戦闘のターンの番号のスライダーの範囲。DEBUG タブのスライダーの範囲で、ルールの値ではない。
+ * 疲弊の始まり（21・26 ターン目）を試せる範囲。ふつうに 31 ターン目以降へ進んだときは、つまみが端に描かれ数字は値のまま出る。
+ * @type {Readonly<{ min: number, max: number, step: number }>}
+ */
+export const TURN_SLIDER = Object.freeze({ min: 1, max: 30, step: 1 });
 
 /**
  * 「1 にする」ボタンの HP の値。
@@ -104,6 +111,16 @@ function buildDebugTab(debug, tab) {
     })),
     read: () => debug.selectedIntentSlot(),
     write: (i) => debug.chooseIntentSlot(i),
+  });
+
+  area.addSlider({
+    ...DEBUG_LAYOUT.battleTurn,
+    label: DEBUG_TEXT.battleTurn,
+    min: TURN_SLIDER.min,
+    max: TURN_SLIDER.max,
+    step: TURN_SLIDER.step,
+    read: () => debug.battleTurn(),
+    write: (v) => debug.setBattleTurn(v),
   });
 
   addHpControls(area, {

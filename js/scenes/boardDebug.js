@@ -12,6 +12,7 @@ import {
   chooseEnemyIntent,
   setCastleHp,
   setEnemyHp,
+  setBattleTurn,
 } from '../rules/debugControls.js';
 import {
   ruleGroups,
@@ -169,6 +170,14 @@ export class BoardDebug {
   }
 
   /**
+   * 今の戦闘のターンの番号。
+   * @returns {number} 戦闘のターンの番号（1 から）
+   */
+  battleTurn() {
+    return this.game.battleTurn;
+  }
+
+  /**
    * 城の状態（読むだけ）。
    * @returns {import('../rules/combatants.js').Castle} 城
    */
@@ -212,6 +221,14 @@ export class BoardDebug {
     const id = this.intentChoiceAt(slot);
     if (id === null) return;
     chooseEnemyIntent(this.game, id);
+  }
+
+  /**
+   * 今の戦闘のターンの番号を指定した値にする。見た目は描くときにルール層を読んで合うので、anim・段階の管理の口は呼ばない。
+   * @param {number} turn 新しい番号（1 以上の整数）
+   */
+  setBattleTurn(turn) {
+    setBattleTurn(this.game, turn);
   }
 
   /**

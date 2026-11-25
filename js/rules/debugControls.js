@@ -1,11 +1,11 @@
 /**
- * 責務: DEBUG タブから呼ばれる、ゲームの状態を書き換えるデバッグ用の操作（兵のゲージ・敵の切り替え・次の行動の指定・城と敵の HP）と問い合わせ。
+ * 責務: DEBUG タブから呼ばれる、ゲームの状態を書き換えるデバッグ用の操作（兵のゲージ・敵の切り替え・次の行動の指定・戦闘のターンの番号・城と敵の HP）と問い合わせ。
  * 段取り中だけ効き、行動の回数は使わない（ルール層）。
  */
 
 import { createEnemy } from './combatants.js';
 import { enemyTypeIdAt, enemySpecAt } from './enemyProgress.js';
-import { createIntent } from './enemyDefense.js';
+import { createIntent, refreshIntent } from './enemyDefense.js';
 import { intentChoiceIds, planChosenIntent, chosenIntentOf } from './debugIntents.js';
 
 /**
@@ -67,6 +67,24 @@ export function switchEnemy(game, index) {
   game.enemy = createEnemy(enemyTypeIdAt(game.config, index), enemySpecAt(game.config, index));
   game.battleTurn = 1;
   game.planIntent();
+  return true;
+}
+
+/**
+ * 戦闘のターンの番号を指定した値にし、今の予告の防御の量を数え直す（乱数は呼ばない）。
+ * 段取り中で、1 以上の整数で、今の番号と違うときだけ。通しの番号・行動の回数・盤面・集計は触らない。
+ * @param {import('./Game.js').Game} game ゲーム
+ * @param {number} turn 新しい番号（1 以上の整数）
+ * @returns {boolean} 書き換えたら true
+ */
+export function setBattleTurn(game, turn) {
+  if (!isPlanning(game)) return false;
+  if (!Number.isInteger(turn) || turn < 1) return false;
+  if (game.battleTurn === turn) return false;
+  game.battleTurn = turn;
+  if (game.enemy.intent) {
+    game.enemy.intent = refreshIntent(game.enemy.intent, turn, game.config.fatigue);
+  }
   return true;
 }
 

@@ -56,8 +56,10 @@ const ENEMY_CHOICES_Y = ENEMY_LABEL_Y + LABEL_H;
 const INTENT_LABEL_Y = ENEMY_CHOICES_Y + CHOICES_H + GAP;
 /** 次の行動の選択肢の列の y（見出しのすぐ下）。 */
 const INTENT_CHOICES_Y = INTENT_LABEL_Y + LABEL_H;
+/** 戦闘のターンの番号のスライダーの y（次の行動の選択肢の下）。 */
+const BATTLE_TURN_Y = INTENT_CHOICES_Y + CHOICES_H + GAP;
 /** 城の HP の表示の y。 */
-const CASTLE_HP_Y = INTENT_CHOICES_Y + CHOICES_H + GAP;
+const CASTLE_HP_Y = BATTLE_TURN_Y + SLIDER_H + GAP;
 /** 城の HP のボタンの y（表示のすぐ下）。 */
 const CASTLE_BUTTONS_Y = CASTLE_HP_Y + LABEL_H;
 /** 敵の HP の表示の y。 */
@@ -79,7 +81,7 @@ const BAKE_CHECK_Y = FPS_VALUE_Y + LABEL_H + GAP;
  *   troopNote: object,
  *   troopSliders: Readonly<{ attack: object, defense: object, heal: object }>,
  *   enemyLabel: object, enemyChoices: object, intentLabel: object, intentChoices: object,
- *   castleHp: object, castleButtons: Readonly<{ one: object, full: object }>,
+ *   battleTurn: object, castleHp: object, castleButtons: Readonly<{ one: object, full: object }>,
  *   enemyHp: object, enemyButtons: Readonly<{ one: object, full: object }>,
  *   fpsCheckbox: object, fpsValue: object, bakeCheckbox: object
  * }>}
@@ -96,6 +98,7 @@ export const DEBUG_LAYOUT = Object.freeze({
   enemyChoices: rect(ENEMY_CHOICES_Y, CHOICES_H),
   intentLabel: rect(INTENT_LABEL_Y, LABEL_H),
   intentChoices: rect(INTENT_CHOICES_Y, CHOICES_H),
+  battleTurn: rect(BATTLE_TURN_Y, SLIDER_H),
   castleHp: rect(CASTLE_HP_Y, LABEL_H),
   castleButtons: Object.freeze({
     one: rect(CASTLE_BUTTONS_Y, BUTTON_H, 0, HALF_W),
@@ -114,8 +117,8 @@ export const DEBUG_LAYOUT = Object.freeze({
 /**
  * ルールの値の並び（元に戻すボタン・組の見出し・スライダー）の矩形を、組ごとの項目の数から求める。
  * 焼き付けのチェックボックスの下から積む。大きさの定数は試遊で決め直す値の定数から計算する。
- * 今の値（[1, 8, 7, 9]）では、ボタン y=1532、城の見出し 1636・スライダー 1708、
- * ゴブリンの軍勢の見出し 1856・スライダー 1928 から 148 おき、…、ドラゴンの最後のスライダー 5476。
+ * 今の値（[1, 6, 9, 11]）では、ボタン y=1680、城の見出し 1784・スライダー 1856、
+ * ゴブリンの見出し 2004・スライダー 2076 から 148 おき、…、ドラゴンの最後のスライダー 5920。
  * @param {number[]} groupSizes 組ごとの項目の数
  * @returns {Readonly<{
  *   resetButton: object,
