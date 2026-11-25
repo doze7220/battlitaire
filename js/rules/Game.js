@@ -55,18 +55,24 @@ import { createGameStats, tallyBattle } from './gameStats.js';
 export class Game {
   /**
    * @param {Object} options 生成オプション
-   * @param {() => number} options.random `[0, 1)` の値を返す乱数の関数（必須）
+   * @param {() => number} options.random `[0, 1)` の値を返す乱数の関数（必須。敵の並び以外の抽選（山札・敵の行動・燃える札など）に使う）
+   * @param {number} options.seed 敵の並びを決める種（整数・必須。始めた日付から作られる。`random` とは別で、並びの決定には `random` を呼ばない）
    * @param {Readonly<import('./config.js').Rules>} [options.config] ルールの設定（既定は `RULES`）
-   * @throws {Error} `random` が関数でないとき
+   * @throws {Error} `random` が関数でないとき、`seed` が整数でないとき
    */
-  constructor({ random, config = RULES } = {}) {
+  constructor({ random, seed, config = RULES } = {}) {
     if (typeof random !== 'function') {
       throw new Error('Game: random は関数で渡してください');
+    }
+    if (!Number.isInteger(seed)) {
+      throw new Error('Game: seed は整数で渡してください');
     }
     /** @type {Readonly<import('./config.js').Rules>} ルールの設定 */
     this.config = config;
     /** @type {() => number} 乱数の関数 */
     this.random = random;
+    /** @type {number} 敵の並びを決める種（整数。今は使わない） */
+    this.seed = seed;
     /** @type {import('./piles.js').Deck[]} 山札（スートごと） */
     this.decks = createDecks(config, random);
     /** @type {import('./card.js').Card[]} 捨て札 */

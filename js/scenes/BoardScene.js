@@ -27,6 +27,7 @@ import { createTroopBakes } from '../view/troopView.js';
  * @property {{ width: number, height: number }} screen 解像度
  * @property {string} layer 描くレイヤー名
  * @property {() => number} random 乱数の関数（0以上1未満。ルール層へ渡す）
+ * @property {number} seed 敵の並びを決める種（整数・必須。始めた日付から作られる。ゲームへ渡す）
  * @property {() => Scene} createTitle タイトルの画面のシーンを作る関数（攻防の演出のシーンへ渡す）
  * @property {(target: import('./boardDebug.js').BoardMenuTarget) => Scene} createMenu メニューの窓のシーンを作る関数（TURN の区画を押したとき、盤面の部品 { game, releaseShow, flow } を渡して積む。使うかは関数の側が決める）
  * @property {import('../rules/config.js').Rules} [rules] ゲームに渡すルールの値（省略は config.js の RULES。デバッグ（`Engine.debug` が真）のゲームでは RULES と同じ形の写しが渡される）
@@ -37,8 +38,10 @@ export class BoardScene extends Scene {
   /**
    * @param {BoardOptions} options オプション
    */
-  constructor({ screen, layer, random, createTitle, createMenu, rules }) {
+  constructor({ screen, layer, random, seed, createTitle, createMenu, rules }) {
     super();
+    /** @type {number} 敵の並びを決める種（整数。ゲームへ渡す） */
+    this.seed = seed;
     /** @type {import('../rules/config.js').Rules|undefined} ゲームに渡すルールの値（undefined なら Game の既定の RULES） */
     this.rules = rules;
     /** @type {(target: import('./boardDebug.js').BoardMenuTarget) => Scene} メニューの窓のシーンを作る関数（TURN の区画で、盤面の部品を渡して積む） */
@@ -81,7 +84,7 @@ export class BoardScene extends Scene {
    * @returns {void}
    */
   init() {
-    this.game = new Game({ random: this.random, config: this.rules });
+    this.game = new Game({ random: this.random, seed: this.seed, config: this.rules });
     this.layout = createLayout({
       screen: this.screen,
       deckCount: this.game.decks.length,
