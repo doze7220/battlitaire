@@ -110,6 +110,7 @@ export function drawBattleShow(ctx, battleLayout, game, result, look) {
     turn: game.battleTurn,
     castle: { hp: look.castleHp, maxHp: game.castle.maxHp },
     enemy: { name: game.enemy.name, hp: look.enemyHp, maxHp: game.enemy.maxHp },
+    level: game.stageNumber,
     fatigued: game.isEnemyFatigued(),
     coins: game.gauges[conv.gauge] ?? 0,
     coinConversion: conv,

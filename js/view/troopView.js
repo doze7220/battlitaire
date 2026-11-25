@@ -39,11 +39,11 @@ const TROOP_LOOKS = Object.freeze({
 });
 
 /**
- * シールドの焼き付けを用意する数の上限。DEBUG タブの防御の量のスライダーの最大（`debugRuleSliders.js` の `RULE_SLIDERS.defense.max`）に合わせる。
- * 変えたら手で見直す。超えた数の大きさは焼き付けがなく直接描く（見た目は同じ）。ルールの値ではない。
+ * シールドの焼き付けを用意する数の上限。防御の量はステージの加算で増え、ステージ 50 ほどまでは 30 以内。
+ * 超えた数は直接描く（見た目は同じ）。変えたら手で見直す。ルールの値ではない。
  * @type {number}
  */
-const SHIELD_BAKE_MAX_COUNT = 20;
+const SHIELD_BAKE_MAX_COUNT = 30;
 
 /**
  * 焼き付ける大きさの並びを求める。シールド以外は配置の兵の大きさ1つ、シールドは絵を持つ敵のシールドの並べ先ごとの数 1〜SHIELD_BAKE_MAX_COUNT の1マスの大きさ（重ねない）。

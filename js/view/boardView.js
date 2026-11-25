@@ -57,6 +57,7 @@ function topGaugeValues(game, release) {
     turn: game.battleTurn,
     castle: game.castle,
     enemy: game.enemy,
+    level: game.stageNumber,
     fatigued: game.isEnemyFatigued(),
     coins: release.gaugeValues[conv.gauge] ?? game.gauges[conv.gauge] ?? 0,
     coinConversion: conv,

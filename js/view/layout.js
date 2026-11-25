@@ -42,7 +42,7 @@ import { campSlot } from './campSlots.js';
  * @property {Rect} enemyBar 敵の HP ゲージ（左端が根元）
  * @property {{ x: number, y: number }} castleValue 城の HP の数字の左端・中心 y
  * @property {{ x: number, y: number }} enemyValue 敵の HP の数字の右端・中心 y
- * @property {{ x: number, y: number, maxW: number }} enemyName 敵の名前の左端・中心 y・最大の幅（敵の HP ゲージの下）
+ * @property {{ x: number, y: number, maxW: number }} enemyName 敵の名前とレベルの左端・中心 y・最大の幅（敵の HP ゲージの下）
  * @property {{ x: number, y: number }} fatigue 「疲弊」の右端・中心 y（敵の HP ゲージの下）
  * @property {{ x: number, y: number }} phaseLabel 「PHASE」の中心
  * @property {{ x: number, y: number }} phaseValue 戦闘ごとの TURN の番号の中心

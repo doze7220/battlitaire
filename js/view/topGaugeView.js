@@ -1,9 +1,10 @@
 /**
- * 責務: 画面の最上部のゲージ（城と敵の HP・敵の名前と「疲弊」・「TURN」の区画と戦闘ごとのターン番号・金貨）を描く。
+ * 責務: 画面の最上部のゲージ（城と敵の HP・敵の名前とレベルと「疲弊」・「TURN」の区画と戦闘ごとのターン番号・金貨）を描く。
  * 状態は変えず、値は呼ぶ側から受け取る。ルール層・anim は実行時に import しない。
  */
 
 import { roundRectPath } from './cardView.js';
+import { enemyLabelText } from './battleText.js';
 
 /**
  * 最上部のゲージの描画に渡す値。
@@ -11,6 +12,7 @@ import { roundRectPath } from './cardView.js';
  * @property {number} turn いまの敵との戦闘で何ターン目か（1 から）
  * @property {{ hp: number, maxHp: number }} castle 城の HP（表示値）と最大 HP
  * @property {{ name: string, hp: number, maxHp: number }} enemy 敵の名前と HP（表示値）と最大 HP
+ * @property {number} level 敵のレベル（ステージの番号。名前に「Lv」を付けて描く）
  * @property {boolean} fatigued 敵が疲弊しているか
  * @property {number} coins 金貨の表示値
  * @property {{ per: number, maxBonus: number }} coinConversion 金貨の換算（満タン = per。1 ブロック＝金貨 1 枚）
@@ -239,7 +241,7 @@ function drawTurnBox(ctx, box) {
 }
 
 /**
- * 画面の最上部のゲージ（城と敵の HP・HP の数字・敵の名前と「疲弊」・「TURN」の区画と戦闘ごとのターン番号・金貨）を描く。状態は変えない。
+ * 画面の最上部のゲージ（城と敵の HP・HP の数字・敵の名前とレベルと「疲弊」・「TURN」の区画と戦闘ごとのターン番号・金貨）を描く。状態は変えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').TopGaugeLayout} topLayout 最上部のゲージの配置
  * @param {TopGaugeValues} values 表示する値
@@ -255,7 +257,7 @@ export function drawTopGauges(ctx, topLayout, values) {
   drawOutlinedText(ctx, String(values.enemy.hp), topLayout.enemyValue.x, topLayout.enemyValue.y, 'right', HP_FONT);
   drawOutlinedText(ctx, PHASE_LABEL, topLayout.phaseLabel.x, topLayout.phaseLabel.y, 'center', PHASE_LABEL_FONT);
   drawOutlinedText(
-    ctx, values.enemy.name, topLayout.enemyName.x, topLayout.enemyName.y, 'left', ENEMY_LABEL_FONT,
+    ctx, enemyLabelText(values.enemy.name, values.level), topLayout.enemyName.x, topLayout.enemyName.y, 'left', ENEMY_LABEL_FONT,
     TEXT_COLOR, ENEMY_LABEL_STROKE_WIDTH, topLayout.enemyName.maxW,
   );
   if (values.fatigued) {
