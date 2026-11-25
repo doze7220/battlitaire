@@ -4,6 +4,7 @@
  */
 
 import { drawTroop } from './troopView.js';
+import { isHordeEnemy } from './hordeSkins.js';
 import { drawSpriteFit } from './spriteView.js';
 import { bodyScale, scaledShieldArea } from './figureScale.js';
 
@@ -11,20 +12,19 @@ import { bodyScale, scaledShieldArea } from './figureScale.js';
 const HORDE_KIND = 'goblin';
 /** シールドマークの兵の種類（troopView.js の種類）。 */
 const SHIELD_KIND = 'shield';
-/** 群れで描く敵の種類の識別子。 */
-const HORDE_ENEMIES = new Set(['goblins']);
 /** 姿勢なし（傾きなし・伸び縮みなし）。体の縮みだけを重ねるときの基準。 */
 const NO_POSE = Object.freeze({ tilt: 0, scaleX: 1, scaleY: 1 });
 
 /**
- * ゴブリンの軍勢の兵の群れ（HP の数）を、足元の y の小さい（奥の）順（同じなら番号の小さい順）に描く。
+ * 群れの敵（ゴブリン・骸骨の軍勢）の兵の群れ（HP の数）を、足元の y の小さい（奥の）順（同じなら番号の小さい順）に描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
+ * @param {string} typeId 敵の種類の識別子（群れの兵の絵を選ぶ）
  * @param {number} count 群れの兵の数（敵の HP）
  * @param {{ count: number, scaleX: Float64Array, scaleY: Float64Array }|null} idle 待機の伸び縮み（並びの番号 i が idle.count 未満ならその値、そうでなければ 1・1。null なら伸び縮みなし）
  * @returns {void}
  */
-function drawHorde(ctx, battleLayout, count, idle) {
+function drawHorde(ctx, battleLayout, typeId, count, idle) {
   const slots = battleLayout.hordeSlots(count);
   const order = [];
   for (let i = 0; i < slots.length; i++) order.push(i);
@@ -32,7 +32,7 @@ function drawHorde(ctx, battleLayout, count, idle) {
   for (const i of order) {
     const slot = slots[i];
     const own = idle !== null && i < idle.count;
-    drawTroop(ctx, HORDE_KIND, slot.x, slot.footY, slot.size, 0, 1, own ? idle.scaleX[i] : 1, own ? idle.scaleY[i] : 1);
+    drawTroop(ctx, HORDE_KIND, slot.x, slot.footY, slot.size, 0, 1, own ? idle.scaleX[i] : 1, own ? idle.scaleY[i] : 1, typeId);
   }
 }
 
@@ -113,8 +113,8 @@ export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = 
       const shieldArea = scale === 1 ? fig.shieldArea : scaledShieldArea(fig, scale);
       for (const rect of battleLayout.shieldRects(enemy.intent.defense, shieldArea)) drawShieldMark(ctx, rect);
     }
-  } else if (HORDE_ENEMIES.has(enemy.typeId)) {
-    drawHorde(ctx, battleLayout, enemy.hp, idle);
+  } else if (isHordeEnemy(enemy.typeId)) {
+    drawHorde(ctx, battleLayout, enemy.typeId, enemy.hp, idle);
   }
   ctx.restore();
 }

@@ -24,15 +24,16 @@ function drawBackground(ctx, battleLayout) {
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置（段の区画・兵の大きさ・境目 groundY）
  * @param {import('../anim/troopSwarm.js').TroopSwarmLook} troops 兵の見た目
  * @param {'back'|'front'} layer 描く層（back: 奥の兵、front: 手前の兵）
+ * @param {string} enemyTypeId 敵の種類の識別子（群れの敵の兵の絵を選ぶ）
  * @returns {void}
  */
-function drawTroopLayer(ctx, battleLayout, troops, layer) {
+function drawTroopLayer(ctx, battleLayout, troops, layer, enemyTypeId) {
   const { area } = battleLayout;
   ctx.save();
   ctx.beginPath();
   ctx.rect(area.x, area.y, area.w, area.h);
   ctx.clip();
-  drawTroopSwarm(ctx, troops, battleLayout.troops.size, layer, battleLayout.groundY);
+  drawTroopSwarm(ctx, troops, battleLayout.troops.size, layer, battleLayout.groundY, enemyTypeId);
   ctx.restore();
 }
 
@@ -45,9 +46,9 @@ function drawTroopLayer(ctx, battleLayout, troops, layer) {
  */
 export function drawBattleStage(ctx, battleLayout, { enemy, figure = null, countdown = null, pose = null, idle = null, entrance = null, troops = null }) {
   drawBackground(ctx, battleLayout);
-  if (troops !== null) drawTroopLayer(ctx, battleLayout, troops, 'back');
+  if (troops !== null) drawTroopLayer(ctx, battleLayout, troops, 'back', enemy.typeId);
   drawSpriteFit(ctx, SPRITE_IDS.castle, battleLayout.castle);
   drawEnemyFigure(ctx, battleLayout, enemy, figure, pose, idle, entrance);
-  if (troops !== null) drawTroopLayer(ctx, battleLayout, troops, 'front');
+  if (troops !== null) drawTroopLayer(ctx, battleLayout, troops, 'front', enemy.typeId);
   drawEnemyIntent(ctx, battleLayout, enemy, countdown, entrance);
 }

@@ -51,6 +51,12 @@ export const ENEMY_SHOWS = Object.freeze({
     heavy: Object.freeze([]),
     charge: Object.freeze([]),
   }),
+  skeletons: Object.freeze({
+    body: 'horde',
+    attacks: Object.freeze({ default: 'march' }),
+    heavy: Object.freeze([]),
+    charge: Object.freeze([]),
+  }),
   giant: Object.freeze({
     body: 'figure',
     attacks: Object.freeze({ default: 'strike' }),

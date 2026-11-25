@@ -157,6 +157,19 @@ export const RULES = Object.freeze({
         attackRange: Object.freeze({ min: 1, max: 3 }),
       }),
     }),
+    skeletons: Object.freeze({
+      name: '骸骨の軍勢',
+      star: 1,
+      maxHp: 24,
+      behavior: Object.freeze({
+        type: 'either',
+        attackChance: 0.4,
+        attackRange: Object.freeze({ min: 4, max: 6 }),
+        guardRange: Object.freeze({ min: 3, max: 5 }),
+        bigGuardChance: 0.2,
+        bigGuardRange: Object.freeze({ min: 7, max: 9 }),
+      }),
+    }),
     giant: Object.freeze({
       name: '巨人',
       star: 2,

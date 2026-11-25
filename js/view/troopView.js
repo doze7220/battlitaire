@@ -6,6 +6,7 @@
 import { SPRITE_IDS, drawTroopFigure, troopFigureBakeBounds } from './spriteView.js';
 import { gaugeSprite } from './suitStyle.js';
 import { openTroopBakes, findTroopBake } from './troopBakes.js';
+import { HORDE_SKINS, hordeSkinOf } from './hordeSkins.js';
 
 /** 持ち物の大きさの、体の直径に対する割合。 */
 const ITEM_SIZE_RATIO = 0.7;
@@ -20,10 +21,11 @@ const ITEM_DY_RATIO = 0.1;
  * @property {string} body 体の絵
  * @property {string|null} item 持ち物の絵
  * @property {string} bake 焼き付けの識別子（同じ見た目の種類は1枚を共有する）
+ * @property {boolean} [horde] 群れの敵の兵の種類か（真なら drawTroop の enemyTypeId の群れの絵で描く。この項目の体・持ち物は絵を引けないときの既定）
  */
 
 /**
- * 兵の種類 → 見た目の表。自軍は白い丸に剣・盾・ハンマー、敵の側は緑の丸（持ち物なし。goblin はゴブリンの軍勢の HP の群れ）、
+ * 兵の種類 → 見た目の表。自軍は白い丸に剣・盾・ハンマー、敵の側（enemy・enemyGuard・goblin＝HP の群れ）は群れの敵の絵（持ち物なし。既定はゴブリンの緑の丸。敵の種類ごとの絵は hordeSkins.js）、
  * shield は巨人・ドラゴンのシールド（盾の絵）、flame はブレスの炎（炎の絵）。
  * @type {Readonly<Object<string, TroopLook>>}
  */
@@ -31,9 +33,9 @@ const TROOP_LOOKS = Object.freeze({
   attack: Object.freeze({ body: SPRITE_IDS.soldier, item: gaugeSprite('attack'), bake: 'attack' }),
   defense: Object.freeze({ body: SPRITE_IDS.soldier, item: gaugeSprite('defense'), bake: 'defense' }),
   heal: Object.freeze({ body: SPRITE_IDS.soldier, item: gaugeSprite('heal'), bake: 'heal' }),
-  enemy: Object.freeze({ body: SPRITE_IDS.goblin, item: null, bake: 'goblin' }),
-  enemyGuard: Object.freeze({ body: SPRITE_IDS.goblin, item: null, bake: 'goblin' }),
-  goblin: Object.freeze({ body: SPRITE_IDS.goblin, item: null, bake: 'goblin' }),
+  enemy: Object.freeze({ body: SPRITE_IDS.goblin, item: null, bake: 'goblin', horde: true }),
+  enemyGuard: Object.freeze({ body: SPRITE_IDS.goblin, item: null, bake: 'goblin', horde: true }),
+  goblin: Object.freeze({ body: SPRITE_IDS.goblin, item: null, bake: 'goblin', horde: true }),
   shield: Object.freeze({ body: SPRITE_IDS.shield, item: null, bake: 'shield' }),
   flame: Object.freeze({ body: SPRITE_IDS.fire, item: null, bake: 'flame' }),
 });
@@ -70,7 +72,7 @@ function bakeSizes(bake, battleLayout) {
 }
 
 /**
- * 兵の焼き付けの入れ物を作る。見た目（焼き付けの識別子）ごとに、大きさごとに1枚、足元を原点に今の大きさ・傾き 0・伸び縮み 1 で描いた絵を焼き付ける。
+ * 兵の焼き付けの入れ物を作る。見た目（兵の種類の表と群れの敵の絵の表。焼き付けの識別子）ごとに、大きさごとに1枚、足元を原点に今の大きさ・傾き 0・伸び縮み 1 で描いた絵を焼き付ける。
  * 盤面のシーンの init から呼び、戻り値を destroy で dispose() する（Engine.start の後に呼ぶ）。
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
  * @returns {import('./troopBakes.js').TroopBakeSet} 焼き付けの入れ物
@@ -78,8 +80,8 @@ function bakeSizes(bake, battleLayout) {
 export function createTroopBakes(battleLayout) {
   const entries = [];
   const done = new Set();
-  for (const kind of Object.keys(TROOP_LOOKS)) {
-    const look = TROOP_LOOKS[kind];
+  const looks = [...Object.values(TROOP_LOOKS), ...Object.values(HORDE_SKINS)];
+  for (const look of looks) {
     if (done.has(look.bake)) continue;
     done.add(look.bake);
     for (const size of bakeSizes(look.bake, battleLayout)) {
@@ -109,12 +111,17 @@ export function createTroopBakes(battleLayout) {
  * @param {number} alpha 濃さ（0〜1）
  * @param {number} scaleX 横の伸び縮み（1 で元の大きさ。足元が軸）
  * @param {number} scaleY 縦の伸び縮み（1 で元の大きさ。足元が軸）
+ * @param {string|null} [enemyTypeId=null] 敵の種類の識別子（群れの敵の兵の種類 enemy・enemyGuard・goblin だけが見る。null・表にない種類は既定のゴブリンの絵。ほかの種類は見ない）
  * @returns {void}
  * @throws {Error} 未知の種類のとき
  */
-export function drawTroop(ctx, kind, x, footY, size, tilt, alpha, scaleX, scaleY) {
-  const look = Object.prototype.hasOwnProperty.call(TROOP_LOOKS, kind) ? TROOP_LOOKS[kind] : undefined;
+export function drawTroop(ctx, kind, x, footY, size, tilt, alpha, scaleX, scaleY, enemyTypeId = null) {
+  let look = Object.prototype.hasOwnProperty.call(TROOP_LOOKS, kind) ? TROOP_LOOKS[kind] : undefined;
   if (look === undefined) throw new Error(`未知の兵の種類: ${kind}`);
+  if (look.horde === true) {
+    const skin = hordeSkinOf(enemyTypeId);
+    if (skin !== null) look = skin;
+  }
   const bake = findTroopBake(look.bake, size);
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -157,10 +164,11 @@ const OVER_FIGURE_KINDS = Object.freeze(new Set(['shield', 'flame']));
  * @param {number} size 兵の大きさ（直径。兵ごとの大きさが 0 のときに使う）
  * @param {'all'|'back'|'front'} [layer='all'] 描く層（'all' 全員・'back' 奥の兵だけ・'front' 手前の兵だけ）
  * @param {number} [depthY=0] 奥と手前の境目の y（城・敵の絵の足元の y。'all' では使わない）
+ * @param {string|null} [enemyTypeId=null] 敵の種類の識別子（群れの敵の兵の絵を選ぶ。null は既定のゴブリンの絵）
  * @returns {void}
  * @throws {Error} 未知の layer のとき
  */
-export function drawTroopSwarm(ctx, troops, size, layer = 'all', depthY = 0) {
+export function drawTroopSwarm(ctx, troops, size, layer = 'all', depthY = 0, enemyTypeId = null) {
   if (layer !== 'all' && layer !== 'back' && layer !== 'front') throw new Error(`未知の層: ${layer}`);
   const { count, kinds, order, visible, sortY, x, footY, tilt, alpha, size: sizes, scaleX, scaleY } = troops;
   for (let n = 0; n < count; n++) {
@@ -170,6 +178,6 @@ export function drawTroopSwarm(ctx, troops, size, layer = 'all', depthY = 0) {
       const isBack = sortY[i] < depthY && !OVER_FIGURE_KINDS.has(kinds[i]);
       if (isBack !== (layer === 'back')) continue;
     }
-    drawTroop(ctx, kinds[i], x[i], footY[i], sizes[i] > 0 ? sizes[i] : size, tilt[i], alpha[i], scaleX[i], scaleY[i]);
+    drawTroop(ctx, kinds[i], x[i], footY[i], sizes[i] > 0 ? sizes[i] : size, tilt[i], alpha[i], scaleX[i], scaleY[i], enemyTypeId);
   }
 }

@@ -9,6 +9,10 @@ import unitGiant from 'assets/sprites/unit_giant.js';
 import unitDragon from 'assets/sprites/unit_dragon.js';
 import unitSolder from 'assets/sprites/unit_solder.js';
 import unitGoblin from 'assets/sprites/unit_goblin.js';
+import unitWolf from 'assets/sprites/unit_wolf.js';
+import unitBoar from 'assets/sprites/unit_boar.js';
+import unitSkeleton from 'assets/sprites/unit_skeleton.js';
+import unitSlime from 'assets/sprites/unit_slime.js';
 import suitSword from 'assets/sprites/suit_sword.js';
 import suitShield from 'assets/sprites/suit_shield.js';
 import suitHammer from 'assets/sprites/suit_hammer.js';
@@ -52,7 +56,7 @@ import intentBreath from 'assets/sprites/intent_breath.js';
 
 /**
  * スプライトの識別子（呼ぶ側はこの定数で絵を指す）。
- * @type {Readonly<{background: string, castle: string, giant: string, dragon: string, soldier: string, goblin: string, sword: string, shield: string, hammer: string, gold: string, fire: string, hit: string, cardFrontSword: string, cardFrontShield: string, cardFrontHammer: string, cardFrontGold: string, cardBack: string}>}
+ * @type {Readonly<{background: string, castle: string, giant: string, dragon: string, soldier: string, goblin: string, skeleton: string, wolf: string, boar: string, slime: string, sword: string, shield: string, hammer: string, gold: string, fire: string, hit: string, cardFrontSword: string, cardFrontShield: string, cardFrontHammer: string, cardFrontGold: string, cardBack: string}>}
  */
 export const SPRITE_IDS = Object.freeze({
   background: 'background',
@@ -61,6 +65,10 @@ export const SPRITE_IDS = Object.freeze({
   dragon: 'dragon',
   soldier: 'soldier',
   goblin: 'goblin',
+  skeleton: 'skeleton',
+  wolf: 'wolf',
+  boar: 'boar',
+  slime: 'slime',
   sword: 'sword',
   shield: 'shield',
   hammer: 'hammer',
@@ -95,7 +103,7 @@ const CARD_ART_RANGE = Object.freeze({ minX: -50, maxX: 50, minY: -70, maxY: 70 
 
 /**
  * 識別子 → 絵と絵の範囲の凍結した表。
- * 兵（soldier）とゴブリン（goblin）の範囲（x ±99・y ±98）はスプライトの bounds（x ±106・y ±105。太さ 16 の線を含む）と違う。
+ * 兵（soldier）・ゴブリン（goblin）・骸骨（skeleton）の範囲（x ±99・y ±98）はスプライトの bounds（x ±106・y ±105。太さ 16 の線を含む）と違う。
  * 表は兵の描く大きさ（drawSpriteCentered の size）の基準で、bounds に合わせると約 7% 小さく描かれるため、見た目を変えないよう今の値を残す。
  * 描く位置・大きさには bounds を使わない。焼き付ける範囲を求めるときだけ、表の範囲と bounds を合わせて使う（troopFigureBakeBounds）。
  * スプライトを描き直して差し替えるときに、表を新しい bounds に合わせ直し、layout.js の TROOP_SIZE も一緒に見直す。
@@ -108,6 +116,10 @@ const SPRITE_TABLE = Object.freeze({
   [SPRITE_IDS.dragon]: Object.freeze({ sprite: unitDragon, minX: -150, maxX: 168, minY: -196, maxY: 200 }),
   [SPRITE_IDS.soldier]: Object.freeze({ sprite: unitSolder, minX: -99, maxX: 99, minY: -98, maxY: 98 }),
   [SPRITE_IDS.goblin]: Object.freeze({ sprite: unitGoblin, minX: -99, maxX: 99, minY: -98, maxY: 98 }),
+  [SPRITE_IDS.skeleton]: Object.freeze({ sprite: unitSkeleton, minX: -99, maxX: 99, minY: -98, maxY: 98 }),
+  [SPRITE_IDS.wolf]: Object.freeze({ sprite: unitWolf, minX: -155, maxX: 150, minY: -105, maxY: 108 }),
+  [SPRITE_IDS.boar]: Object.freeze({ sprite: unitBoar, minX: -172, maxX: 168, minY: -122, maxY: 128 }),
+  [SPRITE_IDS.slime]: Object.freeze({ sprite: unitSlime, minX: -156, maxX: 145, minY: -120, maxY: 120 }),
   [SPRITE_IDS.sword]: Object.freeze({ sprite: suitSword, minX: -39.5, maxX: 40.5, minY: -100.5, maxY: 99.5 }),
   [SPRITE_IDS.shield]: Object.freeze({ sprite: suitShield, minX: -80.5, maxX: 80.5, minY: -100.5, maxY: 100.5 }),
   [SPRITE_IDS.hammer]: Object.freeze({ sprite: suitHammer, minX: -60.5, maxX: 60.5, minY: -90.5, maxY: 90.5 }),

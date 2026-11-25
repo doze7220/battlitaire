@@ -6,8 +6,8 @@
 import { BATTLE_ANIM } from './battleAnimConfig.js';
 
 /**
- * 兵の種類。自軍はゲージの識別子（attack・defense・heal）、敵の側は enemy・enemyGuard、goblin＝ゴブリンの軍勢の HP の群れ、
- * shield＝巨人・ドラゴンのシールド、flame＝ブレスの炎、figure＝巨人・ドラゴンの絵（倒れる動きだけに使い、名簿には入れない）。
+ * 兵の種類。自軍はゲージの識別子（attack・defense・heal）、敵の側は enemy・enemyGuard、goblin＝群れの敵の HP の群れ、
+ * shield＝絵の敵のシールド、flame＝ブレスの炎、figure＝絵の敵の絵（倒れる動きだけに使い、名簿には入れない）。
  * @typedef {'attack'|'defense'|'heal'|'enemy'|'enemyGuard'|'goblin'|'shield'|'flame'|'figure'} TroopKind
  */
 

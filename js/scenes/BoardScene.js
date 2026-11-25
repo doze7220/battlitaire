@@ -73,7 +73,7 @@ export class BoardScene extends Scene {
     this.battleShow = null;
     /** @type {ReleaseShow|null} 放つ演出（玉・段取りの間の兵。init で作る） */
     this.releaseShow = null;
-    /** @type {EnemyIdle|null} 段取りの間の敵の待機の動き（ゴブリンの群れ・巨人・ドラゴンの伸び縮み。init で作る） */
+    /** @type {EnemyIdle|null} 段取りの間の敵の待機の動き（群れの敵・絵の敵の伸び縮み。init で作る） */
     this.enemyIdle = null;
     /** @type {import('../view/bannerLayout.js').BannerLayout|null} 合図の配置（init で作る） */
     this.bannerLayout = null;
