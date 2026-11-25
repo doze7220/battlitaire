@@ -5,6 +5,7 @@
 
 import { drawTroop } from './troopView.js';
 import { drawSpriteFit } from './spriteView.js';
+import { bodyScale, scaledShieldArea } from './figureScale.js';
 
 /** 群れの兵の種類（troopView.js の種類）。 */
 const HORDE_KIND = 'goblin';
@@ -12,6 +13,8 @@ const HORDE_KIND = 'goblin';
 const SHIELD_KIND = 'shield';
 /** 群れで描く敵の種類の識別子。 */
 const HORDE_ENEMIES = new Set(['goblins']);
+/** 姿勢なし（傾きなし・伸び縮みなし）。体の縮みだけを重ねるときの基準。 */
+const NO_POSE = Object.freeze({ tilt: 0, scaleX: 1, scaleY: 1 });
 
 /**
  * ゴブリンの軍勢の兵の群れ（HP の数）を、足元の y の小さい（奥の）順（同じなら番号の小さい順）に描く。
@@ -34,20 +37,21 @@ function drawHorde(ctx, battleLayout, count, idle) {
 }
 
 /**
- * 絵の足元（矩形の下端の中央）を軸に、傾け・伸ばす変換を ctx に重ねる（傾き 0・伸び 1・1 なら何もしない）。
+ * 絵の足元（矩形の下端の中央）を軸に、傾け・伸ばし・体の大きさの倍率をかける変換を ctx に重ねる（傾き 0・伸び 1・1・倍率 1 なら何もしない）。
  * 呼ぶ側が ctx.save()／restore() で囲む。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').Rect} rect 絵の矩形
  * @param {{ tilt: number, scaleX: number, scaleY: number }} pose 姿勢（傾き・横と縦の伸び縮み）
+ * @param {number} scale 体の大きさの倍率（横も縦もかける。1 なら体の大きさは変えない）
  * @returns {void}
  */
-function applyFootPose(ctx, rect, pose) {
-  if (pose.tilt === 0 && pose.scaleX === 1 && pose.scaleY === 1) return;
+function applyFootPose(ctx, rect, pose, scale) {
+  if (pose.tilt === 0 && pose.scaleX === 1 && pose.scaleY === 1 && scale === 1) return;
   const footX = rect.x + rect.w / 2;
   const footY = rect.y + rect.h;
   ctx.translate(footX, footY);
   ctx.rotate(pose.tilt);
-  ctx.scale(pose.scaleX, pose.scaleY);
+  ctx.scale(pose.scaleX * scale, pose.scaleY * scale);
   ctx.translate(-footX, -footY);
 }
 
@@ -69,7 +73,7 @@ function drawShieldMark(ctx, rect) {
  * 引数は読むだけで書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
- * @param {{ typeId: string, hp: number, intent: import('../rules/combatants.js').EnemyIntent|null }} enemy 描く敵（種類の識別子・HP・予告。群れの数は HP、シールドマークの数は予告の `defense`。群れにはシールドマークを描かない）
+ * @param {{ typeId: string, hp: number, maxHp: number, intent: import('../rules/combatants.js').EnemyIntent|null }} enemy 描く敵（種類の識別子・HP・最大 HP・予告。群れの数は HP、シールドマークの数は予告の `defense`、絵の体の大きさ（縮み）は HP と最大 HP と表の `minScale`。群れにはシールドマークを描かない）
  * @param {{ visible: boolean, dy: number }|null} [figure] 倒れる絵の見た目（EnemyFigureLook）。null か省くと段取りの絵
  * @param {{ tilt: number, scaleX: number, scaleY: number }|null} [pose] ための姿勢（ChargePoseLook。攻防の演出中の絵を足元を軸に傾け・伸ばす）。null か省くと姿勢なし
  * @param {{ count: number, scaleX: Float64Array, scaleY: Float64Array, figure: { tilt: number, scaleX: number, scaleY: number } }|null} [idle] 段取りの間の待機の伸び縮み（EnemyIdleLook。絵は足元を軸に、群れは1体ずつ。null か省くと伸び縮みなし。シールドマークは伸び縮みしない）
@@ -78,6 +82,7 @@ function drawShieldMark(ctx, rect) {
  */
 export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = null, idle = null, entrance = null) {
   const hasFigure = Object.prototype.hasOwnProperty.call(battleLayout.enemyFigures, enemy.typeId);
+  const scale = hasFigure ? bodyScale(battleLayout.enemyFigures[enemy.typeId].minScale, enemy.hp, enemy.maxHp) : 1;
   ctx.save();
   if (figure !== null) {
     if (hasFigure && figure.visible) {
@@ -87,7 +92,7 @@ export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = 
       ctx.rect(area.x, area.y, area.w, area.h);
       ctx.clip();
       ctx.translate(0, figure.dy);
-      if (pose !== null) applyFootPose(ctx, fig.rect, pose);
+      applyFootPose(ctx, fig.rect, pose === null ? NO_POSE : pose, scale);
       drawSpriteFit(ctx, fig.sprite, fig.rect);
     }
     ctx.restore();
@@ -101,11 +106,12 @@ export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = 
   if (hasFigure) {
     const fig = battleLayout.enemyFigures[enemy.typeId];
     ctx.save();
-    if (idle !== null) applyFootPose(ctx, fig.rect, idle.figure);
+    applyFootPose(ctx, fig.rect, idle === null ? NO_POSE : idle.figure, scale);
     drawSpriteFit(ctx, fig.sprite, fig.rect);
     ctx.restore();
     if (fig.shieldArea !== null && enemy.intent !== null && enemy.intent.defense > 0) {
-      for (const rect of battleLayout.shieldRects(enemy.intent.defense, fig.shieldArea)) drawShieldMark(ctx, rect);
+      const shieldArea = scale === 1 ? fig.shieldArea : scaledShieldArea(fig, scale);
+      for (const rect of battleLayout.shieldRects(enemy.intent.defense, shieldArea)) drawShieldMark(ctx, rect);
     }
   } else if (HORDE_ENEMIES.has(enemy.typeId)) {
     drawHorde(ctx, battleLayout, enemy.hp, idle);

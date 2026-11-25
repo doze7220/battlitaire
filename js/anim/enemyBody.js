@@ -7,13 +7,16 @@ import { BATTLE_ANIM } from './battleAnimConfig.js';
 import { enemyBodyStyle } from './enemyShows.js';
 import { createTroopUnit, sampleTroop, setTroopEnd } from './troopMotion.js';
 import { chargePairs, chargeTo, placeTroops, popTroops } from './troopRoster.js';
+import { bodyScale, scaledShieldArea, scaledX } from '../view/figureScale.js';
 
 /**
  * 敵の体の記録。
  * @typedef {Object} EnemyBody
  * @property {'horde'|'figure'} style 体の見せ方
- * @property {number|null} hitX 絵に当たる位置の x（群れは null）
- * @property {number|null} shieldHitX シールドに当たる位置の x（群れはシールドがないので null）
+ * @property {number|null} hitX 絵に当たる位置の x（攻防の前の HP の倍率をかけた位置。群れは null）
+ * @property {number|null} shieldHitX シールドに当たる位置の x（攻防の前の HP の倍率をかけた位置。群れはシールドがないので null）
+ * @property {import('../view/enemyFigures.js').EnemyFigure|null} figure 絵の配置（体に当たる位置を HP の倍率で求めるのに読む。群れは null）
+ * @property {number} maxHp 敵の最大 HP（倍率を求めるのに使う。群れは 0）
  * @property {import('./troopMotion.js').TroopUnit|null} fall 倒れる動きだけに使う1体（群れは null。名簿には入れない）
  * @property {number} fallOutY 絵が消える足元の y（群れは 0）
  */
@@ -27,10 +30,10 @@ import { chargePairs, chargeTo, placeTroops, popTroops } from './troopRoster.js'
 
 /**
  * 体の見せ方ごとの準備。群れ・絵を名簿へ置き、体の記録の一部とシールドの並べ先を返す（群れはシールドを置かないので null）。
- * @type {Readonly<Record<string, function(import('./troopRoster.js').TroopRoster, import('../view/layout.js').BattleLayout, string, number): {body: EnemyBody, shieldArea: import('../view/layout.js').Rect|null}>>}
+ * @type {Readonly<Record<string, function(import('./troopRoster.js').TroopRoster, import('../view/layout.js').BattleLayout, string, number, number): {body: EnemyBody, shieldArea: import('../view/layout.js').Rect|null}>>}
  */
 const BODY_SETUPS = Object.freeze({
-  horde: (roster, battleLayout, typeId, hp) => {
+  horde: (roster, battleLayout, typeId, hp, maxHp) => {
     const slots = battleLayout.hordeSlots(hp);
     const points = [];
     for (let i = slots.length - 1; i >= 0; i--) {
@@ -42,27 +45,33 @@ const BODY_SETUPS = Object.freeze({
         style: 'horde',
         hitX: null,
         shieldHitX: null,
+        figure: null,
+        maxHp: 0,
         fall: null,
         fallOutY: 0,
       },
       shieldArea: null,
     };
   },
-  figure: (roster, battleLayout, typeId) => {
+  figure: (roster, battleLayout, typeId, hp, maxHp) => {
     const figures = battleLayout.enemyFigures;
     if (!Object.prototype.hasOwnProperty.call(figures, typeId)) {
       throw new Error(`enemyBody: 絵を持たない敵 ${typeId}`);
     }
     const figure = figures[typeId];
+    const scale = bodyScale(figure.minScale, hp, maxHp);
+    const hitX = scaledX(figure, figure.hitX, scale);
     return {
       body: {
         style: 'figure',
-        hitX: figure.hitX,
-        shieldHitX: figure.hitX,
+        hitX,
+        shieldHitX: hitX,
+        figure,
+        maxHp,
         fall: createTroopUnit('figure', 0, figure.rect.x + figure.rect.w / 2, figure.rect.y + figure.rect.h, 0, 0),
         fallOutY: battleLayout.area.y + battleLayout.area.h + figure.rect.h,
       },
-      shieldArea: figure.shieldArea,
+      shieldArea: scaledShieldArea(figure, scale),
     };
   },
 });
@@ -70,11 +79,20 @@ const BODY_SETUPS = Object.freeze({
 /**
  * 体の見せ方ごとの、攻撃の兵が敵に当たる動き（着く時刻の昇順を返す）。
  * 敵に当たる間隔（`hitStaggerMs`・上限 `hitStaggerMaxMs`）で1体ずつずらす。
- * @type {Readonly<Record<string, function(EnemyBody, import('./troopRoster.js').TroopRoster, number, number): number[]>>}
+ * 絵は、k 体目の兵が「その前の表示 HP（shownHp − k）」の倍率の位置へ着く。
+ * @type {Readonly<Record<string, function(EnemyBody, import('./troopRoster.js').TroopRoster, number, number, number): number[]>>}
  */
 const BODY_HITS = Object.freeze({
   horde: (body, roster, count, t) => chargePairs(roster, 'attack', 'goblin', count, t, BATTLE_ANIM.hitMoveMs, 'hit'),
-  figure: (body, roster, count, t) => chargeTo(roster, 'attack', count, body.hitX, t, BATTLE_ANIM.hitMoveMs, 'hit'),
+  figure: (body, roster, count, t, shownHp) => chargeTo(
+    roster,
+    'attack',
+    count,
+    (k) => scaledX(body.figure, body.figure.hitX, bodyScale(body.figure.minScale, shownHp - k, body.maxHp)),
+    t,
+    BATTLE_ANIM.hitMoveMs,
+    'hit',
+  ),
 });
 
 /**
@@ -85,12 +103,13 @@ const BODY_HITS = Object.freeze({
  * @param {string} typeId 敵の種類の識別子
  * @param {number} hp 攻防の前の敵の HP（群れの数）
  * @param {number} defense 攻防の前の敵の防御の量（絵を持つ敵のシールドの数。群れはシールドを置かない）
+ * @param {number} maxHp 敵の最大 HP（絵の体の倍率を求める。シールドの並べ先は攻防の前の HP の倍率）
  * @returns {EnemyBody} 敵の体の記録
  * @throws {Error} 絵を持たない敵を絵の見せ方で作るとき
  */
-export function createEnemyBody(roster, battleLayout, typeId, hp, defense) {
+export function createEnemyBody(roster, battleLayout, typeId, hp, defense, maxHp) {
   const style = enemyBodyStyle(typeId);
-  const { body, shieldArea } = BODY_SETUPS[style](roster, battleLayout, typeId, hp);
+  const { body, shieldArea } = BODY_SETUPS[style](roster, battleLayout, typeId, hp, maxHp);
   if (shieldArea !== null && defense > 0) {
     const points = battleLayout.shieldRects(defense, shieldArea).map((r) => ({
       x: r.x + r.w / 2,
@@ -126,11 +145,12 @@ export function hitEnemyShield(body, roster, count, t) {
  * @param {import('./troopRoster.js').TroopRoster} roster 名簿
  * @param {number} count 当たる数
  * @param {number} t 段の始め（ms）
+ * @param {number} shownHp 段の始めの敵の HP の表示値（絵の当たる位置の倍率を求める。k 体目は `shownHp − k`）
  * @returns {number[]} 着く時刻（ms）の昇順
  * @throws {Error} 群れの数が足りないとき
  */
-export function hitEnemyBody(body, roster, count, t) {
-  return BODY_HITS[body.style](body, roster, count, t);
+export function hitEnemyBody(body, roster, count, t, shownHp) {
+  return BODY_HITS[body.style](body, roster, count, t, shownHp);
 }
 
 /**

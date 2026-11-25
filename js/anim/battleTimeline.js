@@ -207,7 +207,7 @@ function addCastleHit(state, step, t) {
  * @returns {number} 段の長さ（ms）
  */
 function addEnemyHit(state, step, t) {
-  const arrivals = hitEnemyBody(state.body, state.roster, step.amount, t);
+  const arrivals = hitEnemyBody(state.body, state.roster, step.amount, t, state.enemyShown);
   const d = dropEnemyHpByHits(state, step.amount, arrivals, t);
   if (state.enemyShown <= 0) defeatEnemyBody(state.body, t + d);
   return d;
@@ -406,7 +406,7 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout, wai
     spawnTroops(state.roster, kind, waiting[kind], 0, 0);
     waitingTotal += waiting[kind];
   }
-  state.body = createEnemyBody(state.roster, boardLayout.battle, before.enemyTypeId, before.enemyHp, before.enemyDefense);
+  state.body = createEnemyBody(state.roster, boardLayout.battle, before.enemyTypeId, before.enemyHp, before.enemyDefense, before.enemyMaxHp);
   /** @type {TimedStep[]} */
   const timed = [];
   let t = 0;

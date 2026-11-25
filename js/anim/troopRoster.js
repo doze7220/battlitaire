@@ -452,7 +452,7 @@ export function clashPairs(roster, kind, amount, t) {
  * @param {TroopRoster} roster 名簿
  * @param {string} kind 種類
  * @param {number} count 動かす数（Infinity で全員）
- * @param {number} targetX 行き先の x
+ * @param {number|function(number): number} targetX 行き先の x（関数なら k 体目（0 から）の行き先を返す）
  * @param {number} t 段の始め（ms）
  * @param {number} moveMs 移動の時間（ms）
  * @param {string} [pace] 遅れの決め方（`'move'`＝移動の遅れ、`'hit'`＝敵に当たる間隔。省くと `'move'`）
@@ -466,7 +466,7 @@ export function chargeTo(roster, kind, count, targetX, t, moveMs, pace = 'move')
   for (let k = 0; k < m; k++) {
     const unit = chosen[k];
     const start = Math.max(t + chargeDelay(pace, k, m), unit.freeAt);
-    addTroopLeg(unit, start, targetX, contactY(roster, unit.y), moveMs);
+    addTroopLeg(unit, start, typeof targetX === 'function' ? targetX(k) : targetX, contactY(roster, unit.y), moveMs);
     setTroopEnd(unit, troopHitEnd(kind), unit.freeAt, roster.layout.fallOutY);
     arrivals.push(unit.freeAt);
   }

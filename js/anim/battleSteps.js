@@ -11,6 +11,7 @@ import { enemyAttackShow, enemyDefenseShow, hasChargeShow, isHeavyAttack } from 
  * @typedef {Object} BattleSnapshot
  * @property {number} castleHp 攻防の前の城の HP
  * @property {number} enemyHp 攻防の前の敵の HP
+ * @property {number} enemyMaxHp 敵の最大 HP（絵の体の大きさ（縮み）を求める）
  * @property {string} enemyTypeId 攻防をする敵の種類の識別子
  * @property {number} enemyDefense そのターンの敵の防御の量（疲弊の後。攻防の前の予告の `defense` の写し。絵を持つ敵のシールドの数）
  * @property {number} attack 攻防の前の攻撃ゲージの値（攻撃の兵の数）
@@ -52,6 +53,7 @@ export function snapshotBattle(game) {
   return {
     castleHp: game.castle.hp,
     enemyHp: game.enemy.hp,
+    enemyMaxHp: game.enemy.maxHp,
     enemyTypeId: game.enemy.typeId,
     enemyDefense: game.enemy.intent === null ? 0 : game.enemy.intent.defense,
     attack: game.gauges.attack ?? 0,

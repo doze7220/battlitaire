@@ -92,6 +92,7 @@ export function drawBattleShow(ctx, battleLayout, game, result, look) {
     enemy: {
       typeId: game.enemy.typeId,
       hp: look.enemyHp,
+      maxHp: game.enemy.maxHp,
       intent: result.enemyAction,
     },
     figure: look.figure,

@@ -7,6 +7,7 @@ import { roundRectPath } from './cardView.js';
 import { intentAmountText, intentDefenseText, unknownIntentText, countdownText } from './battleText.js';
 import { intentParts } from './intentParts.js';
 import { INTENT_IDS, drawIntentIcon } from './spriteView.js';
+import { bodyScale, scaledIntentY } from './figureScale.js';
 
 /**
  * 予告の攻撃の側の種類（variant があれば variant、なければ kind）→ 予告の絵の識別子の表。
@@ -97,7 +98,7 @@ function drawOutlinedText(ctx, text, x, y, style) {
  * entrance が null でなく visible が偽なら何も描かず、dx が 0 でなければ右へずらして描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置（enemyFigures[typeId].intent・enemyIntent・intentBadge・area を読む）
- * @param {{ typeId: string, hp: number, intent: import('../rules/combatants.js').EnemyIntent|null }} enemy 表示する敵（ほかの項目は読まない）
+ * @param {{ typeId: string, hp: number, maxHp: number, intent: import('../rules/combatants.js').EnemyIntent|null }} enemy 表示する敵（札と数え下ろしの高さは HP と最大 HP と表の `minScale` の体の縮みに合わせて下げる。ほかの項目は読まない）
  * @param {number|null} countdown 攻撃までの残りフェーズ数。null なら数え下ろしを描かない
  * @param {import('../anim/enemyEntrance.js').EnemyEntranceLook|null} entrance 段取りの間の敵の入りの見た目。攻防の演出中は null
  * @returns {void}
@@ -107,9 +108,10 @@ export function drawEnemyIntent(ctx, battleLayout, enemy, countdown, entrance) {
   if (action === null || enemy.hp <= 0) return;
   if (entrance !== null && !entrance.visible) return;
 
-  const spot = Object.prototype.hasOwnProperty.call(battleLayout.enemyFigures, enemy.typeId)
-    ? battleLayout.enemyFigures[enemy.typeId].intent
-    : battleLayout.enemyIntent;
+  const hasFigure = Object.prototype.hasOwnProperty.call(battleLayout.enemyFigures, enemy.typeId);
+  const fig = hasFigure ? battleLayout.enemyFigures[enemy.typeId] : null;
+  const spot = fig !== null ? fig.intent : battleLayout.enemyIntent;
+  const spotY = fig !== null ? scaledIntentY(fig, bodyScale(fig.minScale, enemy.hp, enemy.maxHp)) : spot.y;
   const badge = battleLayout.intentBadge;
   const area = battleLayout.area;
   const parts = intentParts(action);
@@ -137,10 +139,10 @@ export function drawEnemyIntent(ctx, battleLayout, enemy, countdown, entrance) {
     w += badge.iconW + (side.amount === null ? 0 : badge.gap + side.amountW);
   }
   const left = Math.min(spot.x - w / 2, area.x + area.w - badge.edge - w);
-  const cy = spot.y + badge.h / 2;
+  const cy = spotY + badge.h / 2;
 
   ctx.save();
-  roundRectPath(ctx, left, spot.y, w, badge.h, BADGE_CORNER);
+  roundRectPath(ctx, left, spotY, w, badge.h, BADGE_CORNER);
   ctx.fillStyle = emphasized ? EMPHASIS_FILL : BADGE_FILL;
   ctx.fill();
   ctx.lineWidth = emphasized ? EMPHASIS_STROKE_WIDTH : BADGE_STROKE_WIDTH;
@@ -174,7 +176,7 @@ export function drawEnemyIntent(ctx, battleLayout, enemy, countdown, entrance) {
 
   if (countdown !== null) {
     ctx.save();
-    drawOutlinedText(ctx, countdownText(countdown), left + w / 2, spot.y + badge.countdownDy, {
+    drawOutlinedText(ctx, countdownText(countdown), left + w / 2, spotY + badge.countdownDy, {
       font: COUNTDOWN_FONT, align: 'center', color: COUNTDOWN_COLOR,
       outlineWidth: COUNTDOWN_OUTLINE_WIDTH, maxW: badge.countdownMaxW,
     });
