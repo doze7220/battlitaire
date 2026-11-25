@@ -4,7 +4,7 @@
  */
 
 import { enemyTypeIds, enemySpecOf } from './enemyTypes.js';
-import { createIntent, refreshIntent } from './enemyDefense.js';
+import { refreshIntent } from './enemyIntent.js';
 import { intentChoiceIds, planChosenIntent, chosenIntentOf } from './debugIntents.js';
 
 /**
@@ -138,13 +138,7 @@ export function chooseEnemyIntent(game, id) {
   if (!intentChoiceIdsOf(game).includes(id)) return false;
   if (currentIntentChoice(game) === id) return false;
   const { action, state } = planChosenIntent(currentBehavior(game), id, game.random);
-  game.enemy.intent = createIntent(
-    enemySpecOf(game.config, game.enemy.typeId),
-    action,
-    game.battleTurn,
-    game.config.fatigue,
-    game.random,
-  );
+  game.enemy.intent = game.intentOf(action);
   game.enemy.behaviorState = state;
   return true;
 }

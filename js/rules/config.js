@@ -1,4 +1,4 @@
-/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・防御（張る確率と量の幅）・行動の決まり（毎ターン攻撃と防御・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率））と攻撃・防御の量の幅）、敵の★とステージごとの★の決まり、力こぶの換算、疲弊（長引いた敵の防御の減り方）、4スートそろいの加算量）を1か所に集める設定ファイル。 */
+/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・防御（張る確率と量の幅）・行動の決まり（毎ターン攻撃と防御・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率））と攻撃・防御の量の幅）、敵の★とステージごとの★の決まり、ステージごとの敵の加算量（章ごと）、力こぶの換算、疲弊（長引いた敵の防御の減り方）、4スートそろいの加算量）を1か所に集める設定ファイル。 */
 
 /**
  * 行動の量の幅（予告を決めるたびに、この中から整数を1つ抽選する）。
@@ -65,7 +65,7 @@
  * @typedef {Object} EnemySpec
  * @property {string} name 敵の名前（表示用）。
  * @property {number} star 敵の★（1〜3。ステージの★と同じ敵の中から選ばれる）。
- * @property {number} maxHp 敵の最大 HP（戦い始めの HP でもある）。
+ * @property {number} maxHp 敵の元の最大 HP（ステージの加算の前）。
  * @property {Readonly<EnemyDefenseSpec>} defense 防御（ターンごとの張る確率と量の幅）。
  * @property {Readonly<EnemyBehaviorSpec>} behavior 行動の決まり。
  */
@@ -75,6 +75,21 @@
  * @typedef {Object} StageStarsSpec
  * @property {number} base どの倍数にも当たらないステージの★。
  * @property {readonly Readonly<{of: number, star: number}>[]} multiples 倍数ごとの★（上から順に判定する）。
+ */
+
+/**
+ * 章ごとの、1ステージ進むごとの加算量。
+ * @typedef {Object} ChapterGrowth
+ * @property {number} hpPercent 敵の最大 HP に足す百分率（整数。1ステージあたり）。
+ * @property {number} attack 攻撃の値に足す量（0.01 刻み。1ステージあたり）。
+ * @property {number} defense 防御の量に足す量（0.01 刻み。1ステージあたり）。
+ */
+
+/**
+ * ステージが進むごとの敵の加算の設定。
+ * @typedef {Object} StageGrowthSpec
+ * @property {number} stagesPerChapter 1章のステージ数。
+ * @property {readonly Readonly<ChapterGrowth>[]} chapters 章ごとの加算量（先頭が第1章。最後の要素をそれより先の章でも使う）。
  */
 
 /**
@@ -95,6 +110,7 @@
  * @property {number} castleMaxHp 城の最大 HP（ゲーム開始時の HP でもある）。
  * @property {Readonly<Object<string, Readonly<EnemySpec>>>} enemies 敵の種類の識別子から、敵の種類の設定への対応。
  * @property {Readonly<StageStarsSpec>} stageStars ステージの番号から★を決める設定。
+ * @property {Readonly<StageGrowthSpec>} stageGrowth ステージが進むごとの敵の HP・攻撃・防御の加算量（章ごと）。
  * @property {readonly string[]} keptGauges フェーズをまたいで値を残すゲージの識別子。
  * @property {Readonly<{gauge: string, per: number, maxBonus: number}>} muscleConversion 力こぶの換算。gauge のゲージが per ごとに行動回数 +1、最大 maxBonus。
  * @property {readonly Readonly<FatigueStage>[]} fatigue 疲弊の段（fromTurn の昇順）。
@@ -167,6 +183,15 @@ export const RULES = Object.freeze({
     multiples: Object.freeze([
       Object.freeze({ of: 10, star: 3 }),
       Object.freeze({ of: 5, star: 2 }),
+    ]),
+  }),
+  stageGrowth: Object.freeze({
+    stagesPerChapter: 5,
+    chapters: Object.freeze([
+      Object.freeze({ hpPercent: 5, attack: 0.5, defense: 0.25 }),
+      Object.freeze({ hpPercent: 7, attack: 0.75, defense: 0.25 }),
+      Object.freeze({ hpPercent: 9, attack: 1, defense: 0.5 }),
+      Object.freeze({ hpPercent: 12, attack: 1.25, defense: 0.5 }),
     ]),
   }),
   keptGauges: Object.freeze(['muscle']),

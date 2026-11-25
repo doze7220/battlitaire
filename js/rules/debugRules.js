@@ -5,6 +5,7 @@
 
 import { RULES } from './config.js';
 import { RULE_ITEMS, ruleItemById } from './debugRuleItems.js';
+import { grownMaxHp } from './stageBonus.js';
 
 /**
  * プレーンなオブジェクトと配列だけを再帰で深く写す（凍結は引き継がない）。
@@ -64,7 +65,7 @@ function isValidValue(kind, value) {
 }
 
 /**
- * すぐ効く値を、城・今の敵の状態に効かせる（今の HP は上げず、超えるときだけ下げる）。
+ * すぐ効く値を、城・今の敵の状態に効かせる（敵の最大 HP は今のステージの加算後。今の HP は上げず、超えるときだけ下げる）。
  * @param {import('./Game.js').Game} game ゲーム
  * @param {import('./debugRuleItems.js').RuleItem} item 項目
  * @returns {void}
@@ -79,8 +80,9 @@ function applyNow(game, item) {
   }
   if (item.group !== game.enemy.typeId) return;
   if (item.kind === 'enemyMaxHp') {
-    game.enemy.maxHp = value;
-    if (game.enemy.hp > value) game.enemy.hp = value;
+    const grown = grownMaxHp(value, game.stageBonus());
+    game.enemy.maxHp = grown;
+    if (game.enemy.hp > grown) game.enemy.hp = grown;
   }
 }
 

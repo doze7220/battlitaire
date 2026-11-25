@@ -19,7 +19,9 @@ import { planActionBurns, applyBurns } from './cardBurn.js';
 import { enemySpecOf } from './enemyTypes.js';
 import { enemyTypeIdOfStage } from './stageOrder.js';
 import { computeBattle } from './battle.js';
-import { createIntent, isFatigued } from './enemyDefense.js';
+import { isFatigued } from './enemyDefense.js';
+import { createIntent } from './enemyIntent.js';
+import { stageBonusOf } from './stageBonus.js';
 import { computePhaseStart } from './phase.js';
 import { createGameStats, tallyBattle } from './gameStats.js';
 
@@ -119,11 +121,11 @@ export class Game {
   }
 
   /**
-   * 指定した種類の敵（HP 満タン・決まりの状態は初期値・予告は null）に入れ替え、戦闘のターンを 1 に戻す（乱数は呼ばない。予告は呼ぶ側が `planIntent` で決める）。
+   * 指定した種類の敵（今のステージの加算後の HP 満タン・決まりの状態は初期値・予告は null）に入れ替え、戦闘のターンを 1 に戻す（乱数は呼ばない。予告は呼ぶ側が `planIntent` で決める）。
    * @param {string} typeId 敵の種類の識別子
    */
   spawnEnemy(typeId) {
-    this.enemy = createEnemy(typeId, enemySpecOf(this.config, typeId));
+    this.enemy = createEnemy(typeId, enemySpecOf(this.config, typeId), this.stageBonus());
     this.battleTurn = 1;
   }
 
@@ -139,10 +141,37 @@ export class Game {
    * いまの敵の次の行動を、行動の決まりで決めて予告と決まりの状態に入れる（乱数は決まりの抽選のあと、隙でなければ防御の抽選（張るか・量の2回）。決まりの種類ごとの使い方は `enemyBehaviors.js`、防御は `enemyDefense.js` に従う）。
    */
   planIntent() {
-    const spec = enemySpecOf(this.config, this.enemy.typeId);
-    const { action, state } = planBehaviorAction(spec.behavior, this.enemy.behaviorState, this.random);
-    this.enemy.intent = createIntent(spec, action, this.battleTurn, this.config.fatigue, this.random);
+    const { action, state } = planBehaviorAction(
+      enemySpecOf(this.config, this.enemy.typeId).behavior,
+      this.enemy.behaviorState,
+      this.random,
+    );
+    this.enemy.intent = this.intentOf(action);
     this.enemy.behaviorState = state;
+  }
+
+  /**
+   * 今のステージの加算量を返す。
+   * @returns {import('./stageBonus.js').StageBonus} 加算量（HP の百分率・攻撃・防御）
+   */
+  stageBonus() {
+    return stageBonusOf(this.config.stageGrowth, this.stageNumber);
+  }
+
+  /**
+   * 行動から、今の敵の予告（ステージの加算・防御の量・疲弊を付けたもの）を作る（隙でなければ防御の抽選で乱数を2回呼ぶ）。
+   * @param {import('./combatants.js').EnemyAction} action 行動の決まりが決めた行動
+   * @returns {import('./combatants.js').EnemyIntent} 新しい予告
+   */
+  intentOf(action) {
+    return createIntent(
+      enemySpecOf(this.config, this.enemy.typeId),
+      action,
+      this.stageBonus(),
+      this.battleTurn,
+      this.config.fatigue,
+      this.random,
+    );
   }
 
   /**
