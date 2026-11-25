@@ -13,7 +13,7 @@ import { chargePairs, chargeTo, placeTroops, popTroops } from './troopRoster.js'
  * @typedef {Object} EnemyBody
  * @property {'horde'|'figure'} style 体の見せ方
  * @property {number|null} hitX 絵に当たる位置の x（群れは null）
- * @property {number} armorHitX シールドに当たる位置の x
+ * @property {number|null} shieldHitX シールドに当たる位置の x（群れはシールドがないので null）
  * @property {import('./troopMotion.js').TroopUnit|null} fall 倒れる動きだけに使う1体（群れは null。名簿には入れない）
  * @property {number} fallOutY 絵が消える足元の y（群れは 0）
  */
@@ -26,8 +26,8 @@ import { chargePairs, chargeTo, placeTroops, popTroops } from './troopRoster.js'
  */
 
 /**
- * 体の見せ方ごとの準備。群れ・絵を名簿へ置き、体の記録の一部とシールドの並べ先を返す。
- * @type {Readonly<Record<string, function(import('./troopRoster.js').TroopRoster, import('../view/layout.js').BattleLayout, string, number): {body: EnemyBody, shieldArea: import('../view/layout.js').Rect}>>}
+ * 体の見せ方ごとの準備。群れ・絵を名簿へ置き、体の記録の一部とシールドの並べ先を返す（群れはシールドを置かないので null）。
+ * @type {Readonly<Record<string, function(import('./troopRoster.js').TroopRoster, import('../view/layout.js').BattleLayout, string, number): {body: EnemyBody, shieldArea: import('../view/layout.js').Rect|null}>>}
  */
 const BODY_SETUPS = Object.freeze({
   horde: (roster, battleLayout, typeId, hp) => {
@@ -41,11 +41,11 @@ const BODY_SETUPS = Object.freeze({
       body: {
         style: 'horde',
         hitX: null,
-        armorHitX: battleLayout.enemy.x - roster.layout.contactGap,
+        shieldHitX: null,
         fall: null,
         fallOutY: 0,
       },
-      shieldArea: battleLayout.enemy,
+      shieldArea: null,
     };
   },
   figure: (roster, battleLayout, typeId) => {
@@ -58,7 +58,7 @@ const BODY_SETUPS = Object.freeze({
       body: {
         style: 'figure',
         hitX: figure.hitX,
-        armorHitX: figure.hitX,
+        shieldHitX: figure.hitX,
         fall: createTroopUnit('figure', 0, figure.rect.x + figure.rect.w / 2, figure.rect.y + figure.rect.h, 0, 0),
         fallOutY: battleLayout.area.y + battleLayout.area.h + figure.rect.h,
       },
@@ -84,15 +84,15 @@ const BODY_HITS = Object.freeze({
  * @param {import('../view/layout.js').BattleLayout} battleLayout 最上段の配置
  * @param {string} typeId 敵の種類の識別子
  * @param {number} hp 攻防の前の敵の HP（群れの数）
- * @param {number} armor 攻防の前の常時防御力（シールドの数）
+ * @param {number} defense 攻防の前の敵の防御の量（絵を持つ敵のシールドの数。群れはシールドを置かない）
  * @returns {EnemyBody} 敵の体の記録
  * @throws {Error} 絵を持たない敵を絵の見せ方で作るとき
  */
-export function createEnemyBody(roster, battleLayout, typeId, hp, armor) {
+export function createEnemyBody(roster, battleLayout, typeId, hp, defense) {
   const style = enemyBodyStyle(typeId);
   const { body, shieldArea } = BODY_SETUPS[style](roster, battleLayout, typeId, hp);
-  if (armor > 0) {
-    const points = battleLayout.shieldRects(armor, shieldArea).map((r) => ({
+  if (shieldArea !== null && defense > 0) {
+    const points = battleLayout.shieldRects(defense, shieldArea).map((r) => ({
       x: r.x + r.w / 2,
       y: r.y + r.h,
       size: r.w,
@@ -113,8 +113,8 @@ export function createEnemyBody(roster, battleLayout, typeId, hp, armor) {
  * @returns {number[]} 着く時刻（ms）の昇順
  * @throws {Error} シールドが足りないとき
  */
-export function hitEnemyArmor(body, roster, count, t) {
-  const arrivals = chargeTo(roster, 'attack', count, body.armorHitX, t, BATTLE_ANIM.hitMoveMs, 'hit');
+export function hitEnemyShield(body, roster, count, t) {
+  const arrivals = chargeTo(roster, 'attack', count, body.shieldHitX, t, BATTLE_ANIM.hitMoveMs, 'hit');
   popTroops(roster, 'shield', arrivals);
   return arrivals;
 }

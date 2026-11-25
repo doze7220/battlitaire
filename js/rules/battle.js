@@ -8,23 +8,22 @@
  * @property {number} attack 攻撃ゲージの値
  * @property {number} defense 防御ゲージの値
  * @property {number} heal 回復ゲージの値
- * @property {{ kind: 'attack'|'defend'|'windup', amount: number }} enemyAction 敵の行動（予告の写し）
+ * @property {{ kind: 'attack'|'windup', amount: number, defense: number }} enemyAction 敵の行動（予告の写し。amount は攻撃の量、defense はそのターンの防御の量（疲弊の後））
  * @property {number} castleHp 攻防の前の城の HP
  * @property {number} castleMaxHp 城の最大 HP
  * @property {number} enemyHp 攻防の前の敵の HP
  * @property {number} enemyMaxHp 敵の最大 HP（敵の回復の頭打ちに使う）
  * @property {number} enemyHeal 攻撃の直後の敵の回復の候補の量（抽選に外れた・対象外なら 0。最大 HP での頭打ちは計算側で行う）
- * @property {number} enemyArmor 敵の常時防御力（毎フェーズ、自軍の攻撃を減らす壁）
  * @property {boolean} lastEnemy いまの敵が最後の敵か（最後の敵を倒すと勝ち、途中の敵なら回復へ進む）
  * @property {import('./cardBurn.js').BurnedCard[]} [burns] 行動で燃やす札の並び（省くと空。城が落ちたときは燃えない）
  */
 
 /**
  * 攻防で起きた出来事。量は実際に変わった値。
- * `block`・`castleDamage`・`cardBurn`・`enemyHeal`・`enemyBlock`・`enemyArmorBlock`・`enemyDamage`・`heal` は量が0のとき並びに入らない（敵の行動は必ず入る）。
+ * `block`・`castleDamage`・`cardBurn`・`enemyHeal`・`enemyDefend`・`enemyBlock`・`enemyDamage`・`heal` は量が0のとき並びに入らない（敵の行動 `enemyAttack`／`enemyWindup` は必ず1つ入る）。
  * `enemyWindup`（敵の振りかぶり）は量 0 で必ず入る。`enemyDefeat` は途中の敵を倒したとき（量 0）だけ入る。
  * @typedef {Object} BattleEvent
- * @property {'enemyAttack'|'enemyDefend'|'enemyWindup'|'block'|'castleDamage'|'cardBurn'|'enemyHeal'|'enemyBlock'|'enemyArmorBlock'|'enemyDamage'|'enemyDefeat'|'heal'|'lose'|'win'} type 出来事の種類
+ * @property {'enemyAttack'|'enemyDefend'|'enemyWindup'|'block'|'castleDamage'|'cardBurn'|'enemyHeal'|'enemyBlock'|'enemyDamage'|'enemyDefeat'|'heal'|'lose'|'win'} type 出来事の種類
  * @property {number} amount 量（`enemyWindup`・`lose`・`win`・`enemyDefeat` は 0。`cardBurn` は燃えた枚数）
  * @property {import('./cardBurn.js').BurnedCard[]} [burns] 燃えた札の並び（`cardBurn` のときだけ）
  */
@@ -42,37 +41,32 @@
 
 /**
  * 攻防を計算する。引数は書き換えない。余った防御は消える。
- * 敵の防御の余り・常時防御力の余りも消える。未知の敵の行動の種類は Error を投げる。
- * 順序: 敵の行動 → 相殺 → 城の被害（0なら負け）→ 札が燃える → 敵の回復（最大 HP で頭打ち）→ 敵の防御での相殺 → 常時防御力での相殺 → 敵への攻撃
+ * 敵の防御の余りも消える。未知の敵の行動の種類は Error を投げる。
+ * 順序: 敵の行動（攻撃か振りかぶり）→ 敵の防御（量があれば）→ 相殺 → 城の被害（0なら負け）→ 札が燃える → 敵の回復（最大 HP で頭打ち）→ 敵の防御での相殺 → 敵への攻撃
  * （0になったとき、最後の敵なら勝ちで終わり、途中の敵なら撃破の出来事を入れて続ける）→ 回復。
  * @param {BattleInput} input 攻防の入力
  * @returns {BattleCalc} 計算結果
  */
 export function computeBattle(input) {
-  const { attack, defense, heal, enemyAction, castleMaxHp, enemyMaxHp, enemyHeal, enemyArmor, lastEnemy } = input;
+  const { attack, defense, heal, enemyAction, castleMaxHp, enemyMaxHp, enemyHeal, lastEnemy } = input;
   const burns = input.burns ?? [];
   let castleHp = input.castleHp;
   let enemyHp = input.enemyHp;
 
+  const enemyDefense = enemyAction.defense;
   let enemyAttack;
-  let enemyDefense;
   /** @type {BattleEvent[]} */
   const events = [];
   if (enemyAction.kind === 'attack') {
     enemyAttack = enemyAction.amount;
-    enemyDefense = 0;
     events.push({ type: 'enemyAttack', amount: enemyAttack });
-  } else if (enemyAction.kind === 'defend') {
-    enemyAttack = 0;
-    enemyDefense = enemyAction.amount;
-    events.push({ type: 'enemyDefend', amount: enemyDefense });
   } else if (enemyAction.kind === 'windup') {
     enemyAttack = 0;
-    enemyDefense = 0;
     events.push({ type: 'enemyWindup', amount: 0 });
   } else {
     throw new Error(`未知の敵の行動の種類: ${enemyAction.kind}`);
   }
+  if (enemyDefense > 0) events.push({ type: 'enemyDefend', amount: enemyDefense });
 
   const blocked = Math.min(defense, enemyAttack);
   if (blocked > 0) events.push({ type: 'block', amount: blocked });
@@ -96,10 +90,7 @@ export function computeBattle(input) {
   const enemyBlocked = Math.min(attack, enemyDefense);
   if (enemyBlocked > 0) events.push({ type: 'enemyBlock', amount: enemyBlocked });
 
-  const armorBlocked = Math.min(attack - enemyBlocked, enemyArmor);
-  if (armorBlocked > 0) events.push({ type: 'enemyArmorBlock', amount: armorBlocked });
-
-  const dealt = Math.min(attack - enemyBlocked - armorBlocked, enemyHp);
+  const dealt = Math.min(attack - enemyBlocked, enemyHp);
   enemyHp -= dealt;
   if (dealt > 0) events.push({ type: 'enemyDamage', amount: dealt });
 

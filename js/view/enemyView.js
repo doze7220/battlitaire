@@ -63,13 +63,13 @@ function drawShieldMark(ctx, rect) {
 }
 
 /**
- * 敵の絵を描く。段取りの間（figure が null）は絵または兵の群れと常時防御力のシールドマークを描き、
+ * 敵の絵を描く。段取りの間（figure が null）は絵または兵の群れを描き、絵を持つ敵にはそのターンの防御の量のシールドマークも描き、
  * 攻防の演出中は絵だけを倒れる動きのずれで段の中に切り抜いて描く（群れ・シールドは名簿の1体として別に描かれる）。
  * 段取りの間は entrance を受け、見えないなら何も描かず、横のずれがあれば絵・群れ・シールドマークをまとめてずらす。
  * 引数は読むだけで書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
- * @param {{ typeId: string, armor: number, hp: number }} enemy 描く敵（種類の識別子・常時防御力・HP。群れの数は HP）
+ * @param {{ typeId: string, hp: number, intent: import('../rules/combatants.js').EnemyIntent|null }} enemy 描く敵（種類の識別子・HP・予告。群れの数は HP、シールドマークの数は予告の `defense`。群れにはシールドマークを描かない）
  * @param {{ visible: boolean, dy: number }|null} [figure] 倒れる絵の見た目（EnemyFigureLook）。null か省くと段取りの絵
  * @param {{ tilt: number, scaleX: number, scaleY: number }|null} [pose] ための姿勢（ChargePoseLook。攻防の演出中の絵を足元を軸に傾け・伸ばす）。null か省くと姿勢なし
  * @param {{ count: number, scaleX: Float64Array, scaleY: Float64Array, figure: { tilt: number, scaleX: number, scaleY: number } }|null} [idle] 段取りの間の待機の伸び縮み（EnemyIdleLook。絵は足元を軸に、群れは1体ずつ。null か省くと伸び縮みなし。シールドマークは伸び縮みしない）
@@ -98,19 +98,17 @@ export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = 
     return;
   }
   if (entrance !== null && entrance.dx !== 0) ctx.translate(entrance.dx, 0);
-  let shieldBody = battleLayout.enemy;
   if (hasFigure) {
     const fig = battleLayout.enemyFigures[enemy.typeId];
     ctx.save();
     if (idle !== null) applyFootPose(ctx, fig.rect, idle.figure);
     drawSpriteFit(ctx, fig.sprite, fig.rect);
     ctx.restore();
-    shieldBody = fig.shieldArea;
+    if (enemy.intent !== null && enemy.intent.defense > 0) {
+      for (const rect of battleLayout.shieldRects(enemy.intent.defense, fig.shieldArea)) drawShieldMark(ctx, rect);
+    }
   } else if (HORDE_ENEMIES.has(enemy.typeId)) {
     drawHorde(ctx, battleLayout, enemy.hp, idle);
-  }
-  if (enemy.armor > 0) {
-    for (const rect of battleLayout.shieldRects(enemy.armor, shieldBody)) drawShieldMark(ctx, rect);
   }
   ctx.restore();
 }

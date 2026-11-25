@@ -21,7 +21,7 @@ import {
 } from './troopRoster.js';
 import { createTroopCounter } from './troopCounter.js';
 import { enterEnemyTroops, strikeCastle, strikeTroops } from './enemyAttacks.js';
-import { createEnemyBody, defeatEnemyBody, enemyBodyEnd, hitEnemyArmor, hitEnemyBody } from './enemyBody.js';
+import { createEnemyBody, defeatEnemyBody, enemyBodyEnd, hitEnemyBody, hitEnemyShield } from './enemyBody.js';
 import { createHitMarkList, hitMarksEnd } from './hitMarks.js';
 import { createImpactLog, recordStepImpacts, watchStep } from './impactLog.js';
 import { battleFxEnd } from './battleFx.js';
@@ -232,16 +232,16 @@ function addMarch(state, step, t) {
 }
 
 /**
- * 攻撃の兵が敵の当たる位置まで進んで量だけ跳ねて落ち、同じ数のシールドが剥がれて落ちる段（常時防御力）。HP は変わらない。
+ * 攻撃の兵が敵の当たる位置まで進んで量だけ跳ねて落ち、同じ数のシールドが剥がれて落ちる段（絵を持つ敵の防御）。HP は変わらない。
  * きっかけは兵が当たる位置に着いた時刻ごと。
  * @param {BuildState} state 組み立て中の状態
  * @param {import('./battleSteps.js').BattleStep} step 段
  * @param {number} t 開始時刻（ms）
  * @returns {number} 段の長さ（ms）
  */
-function addArmorBlock(state, step, t) {
+function addShieldBlock(state, step, t) {
   const T = BATTLE_ANIM;
-  const arrivals = hitEnemyArmor(state.body, state.roster, step.amount, t);
+  const arrivals = hitEnemyShield(state.body, state.roster, step.amount, t);
   const first = arrivals.length > 0 ? arrivals[0] : t + T.hitMoveMs;
   const last = arrivals.length > 0 ? arrivals[arrivals.length - 1] : first;
   if (arrivals.length > 0) {
@@ -362,7 +362,7 @@ const STEP_BUILDERS = {
   strikeCastle: addStrikeCastle,
   march: addMarch,
   enemyBlock: (state, step, t) => addClash(state, 'attack', step.amount, t),
-  armorBlock: addArmorBlock,
+  shieldBlock: addShieldBlock,
   enemyHit: addEnemyHit,
   heal: addHeal,
   enemyHeal: addEnemyHeal,
@@ -406,7 +406,7 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout, wai
     spawnTroops(state.roster, kind, waiting[kind], 0, 0);
     waitingTotal += waiting[kind];
   }
-  state.body = createEnemyBody(state.roster, boardLayout.battle, before.enemyTypeId, before.enemyHp, before.enemyArmor);
+  state.body = createEnemyBody(state.roster, boardLayout.battle, before.enemyTypeId, before.enemyHp, before.enemyDefense);
   /** @type {TimedStep[]} */
   const timed = [];
   let t = 0;

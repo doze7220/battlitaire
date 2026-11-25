@@ -123,7 +123,7 @@ import { campSlot } from './campSlots.js';
  * @property {Rect} area 段全体
  * @property {number} groundY 城・敵の絵の足元の y（地面の下端。兵を奥と手前に分けて描く境目）
  * @property {Rect} castle 城の絵の矩形
- * @property {Rect} enemy ゴブリンの群れの矩形（群れの兵の体が入る範囲。絵を持たない敵のシールドマークの既定の並べ先・兵の当たる位置の基準でもある）
+ * @property {Rect} enemy ゴブリンの群れの矩形（群れの兵の体が入る範囲）。いまは layout.js の中で敵の回復の文字の位置（`enemyHealText`）の基準にだけ使い、layout.js の外から読む箇所はない
  * @property {Object<string, EnemyFigure>} enemyFigures 敵の種類の識別子 → 敵の絵の配置（凍結。絵を持たない敵は含まれない）
  * @property {TopGaugeLayout} topGauges 画面の最上部のゲージ（城と敵の HP・フェーズ・金貨）の配置
  * @property {{ x: number, y: number }} enemyHealText 絵を持たない敵の回復の量の文字の中心（群れの矩形の上寄り）
@@ -132,7 +132,7 @@ import { campSlot } from './campSlots.js';
  * @property {TroopLayout} troops 兵の配置
  * @property {{ box: Rect, iconSize: number, items: Array<{ iconX: number, iconY: number, textX: number, textY: number }> }} troopCounter 人数の表示の配置（枠・アイコンの大きさ・攻撃・防御・修理の順の各項目のアイコン中心と文字の左端・中心 y）
  * @property {{ x: number, titleY: number, hintY: number, maxW: number }} defeat 敵を倒したときの案内の位置（段の中央の x、「〜を倒した！」・「タップで次へ」の y、文字の最大の幅）
- * @property {function(number, Rect=): Rect[]} shieldRects シールドマーク count 個の矩形（body の矩形の中の格子。body を省くと群れの矩形。最後の行は中央にそろえる）
+ * @property {function(number, Rect): Rect[]} shieldRects シールドマーク count 個の矩形（body の矩形の中の格子。最後の行は中央にそろえる）
  * @property {function(number): Array<{ x: number, footY: number, size: number }>} hordeSlots ゴブリンの兵 count 体の並び（番号の順。x は中心、footY は足元の y、size は兵の大きさ。群れの足元の範囲の中の R2 列）
  */
 
@@ -669,11 +669,11 @@ function createBattleLayout(width, coinBlockCount) {
   /**
    * シールドマーク count 個の矩形を求める。body の矩形の中に SHIELD_COLS 個ずつの格子で並べ、
    * 格子全体を body の矩形の中心にそろえる（最後の行が埋まらないときはその行を中央にそろえる）。
-   * @param {number} count シールドマークの数（常時防御力）
-   * @param {Rect} [body] 並べる先の矩形（省くと群れの矩形）
+   * @param {number} count シールドマークの数（敵の防御の量）
+   * @param {Rect} body 並べる先の矩形（絵を持つ敵の `shieldArea`）
    * @returns {Rect[]} 各マークの矩形（左上の行から順。count が 0 以下なら空）
    */
-  function shieldRects(count, body = enemy) {
+  function shieldRects(count, body) {
     if (count <= 0) return [];
     const rows = Math.ceil(count / SHIELD_COLS);
     const cell = Math.min(body.w / SHIELD_COLS, body.h / rows);

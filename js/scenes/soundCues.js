@@ -26,7 +26,7 @@ export const PLANNING_SE = Object.freeze({
 export const BATTLE_CUE_SE = Object.freeze({
   block: 'block',
   enemyBlock: 'block',
-  armorBlock: 'block',
+  shieldBlock: 'block',
   castleHit: 'castleHit',
   enemyHit: 'enemyHit',
   heal: 'heal',

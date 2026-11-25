@@ -76,7 +76,7 @@ function drawEnemyHealPop(ctx, battleLayout, typeId, pop) {
  * 演出中の最上段を描く。引数は読むだけで書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
- * @param {import('../rules/Game.js').Game} game ルール層のゲーム（フェーズ・城と敵の最大 HP・攻防をした敵の種類・常時防御力・金貨の値と力こぶの換算の設定を読む）
+ * @param {import('../rules/Game.js').Game} game ルール層のゲーム（フェーズ・城と敵の最大 HP・攻防をした敵の種類・金貨の値と力こぶの換算の設定を読む）
  * @param {import('../rules/Game.js').BattleResult} result 攻防の結果（敵の行動・敵を倒したときの案内を読む）
  * @param {import('../anim/battleDirector.js').BattleLook} look 演出の見た目の値
  * @returns {void}
@@ -92,7 +92,6 @@ export function drawBattleShow(ctx, battleLayout, game, result, look) {
     enemy: {
       typeId: game.enemy.typeId,
       hp: look.enemyHp,
-      armor: game.enemy.armor,
       intent: result.enemyAction,
     },
     figure: look.figure,

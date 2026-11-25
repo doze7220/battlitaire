@@ -174,7 +174,7 @@ function recordRepair(c) {
 const IMPACT_RULES = Object.freeze({
   block: recordAllHit,
   enemyBlock: recordAllHit,
-  armorBlock: recordAllHit,
+  shieldBlock: recordAllHit,
   strikeBlock: recordAllHit,
   castleHit: recordCastleHit,
   enemyHit: recordEnemyHit,

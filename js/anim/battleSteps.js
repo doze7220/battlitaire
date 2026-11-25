@@ -4,7 +4,7 @@
  * ルールの判定や計算はせず、描画も状態の変更も行わない。
  */
 
-import { enemyAttackShow, hasChargeShow, isHeavyAttack } from './enemyShows.js';
+import { enemyAttackShow, enemyDefenseShow, hasChargeShow, isHeavyAttack } from './enemyShows.js';
 
 /**
  * 攻防の前の値の写し。
@@ -12,7 +12,7 @@ import { enemyAttackShow, hasChargeShow, isHeavyAttack } from './enemyShows.js';
  * @property {number} castleHp 攻防の前の城の HP
  * @property {number} enemyHp 攻防の前の敵の HP
  * @property {string} enemyTypeId 攻防をする敵の種類の識別子
- * @property {number} enemyArmor 攻防の前の常時防御力
+ * @property {number} enemyDefense そのターンの敵の防御の量（疲弊の後。攻防の前の予告の `defense` の写し。絵を持つ敵のシールドの数）
  * @property {number} attack 攻防の前の攻撃ゲージの値（攻撃の兵の数）
  * @property {number} defense 攻防の前の防御ゲージの値（防御の兵の数）
  * @property {number} heal 攻防の前の修理ゲージの値（修理の兵の数）
@@ -22,7 +22,7 @@ import { enemyAttackShow, hasChargeShow, isHeavyAttack } from './enemyShows.js';
 /**
  * 演出の1段。
  * @typedef {Object} BattleStep
- * @property {'form'|'enemyMarch'|'block'|'castleHit'|'strikeBlock'|'strikeCastle'|'march'|'enemyBlock'|'armorBlock'|'enemyHit'|'heal'|'enemyHeal'|'burn'|'charge'} type 段の種類
+ * @property {'form'|'enemyMarch'|'block'|'castleHit'|'strikeBlock'|'strikeCastle'|'march'|'enemyBlock'|'shieldBlock'|'enemyHit'|'heal'|'enemyHeal'|'burn'|'charge'} type 段の種類
  * @property {number} amount 量（`form`・`charge` は 0、`burn` は燃える枚数）
  * @property {boolean} [heavy] 敵の攻撃の段（`enemyMarch`・`block`・`castleHit`・`strikeBlock`・`strikeCastle`）のみ: 大きな一撃なら true（そうでなければ付けない）
  * @property {Array<{columnIndex: number, cardIndex: number, card: *}>} [burns] `burn` のみ: 燃える札の並び（燃える順）
@@ -30,16 +30,14 @@ import { enemyAttackShow, hasChargeShow, isHeavyAttack } from './enemyShows.js';
  * @property {number} [pairs] `enemyMarch` のみ: 防御の兵と相打ちになる組の数（`block` の量。なければ 0）。`march` のみ: 敵の守りと相打ちになる組の数（`enemyBlock` の量。なければ 0）
  * @property {'enemy'|'flame'} [kind] `enemyMarch`・`block`・`castleHit` のみ: 敵の側の兵の種類
  * @property {'offscreen'|'mouth'} [from] `enemyMarch` のみ: 敵の側の兵の出る場所
- * @property {boolean} [parallel] `burn` のみ: true なら次の段と同時に始める
+ * @property {boolean} [parallel] `burn`・`form` のみ: true なら次の段と同時に始める
  */
 
 /** 「自軍の突撃」を、その直前に差し込む出来事の種類。 */
-const MARCH_BEFORE = new Set(['enemyBlock', 'enemyArmorBlock', 'enemyDamage', 'heal', 'win']);
+const MARCH_BEFORE = new Set(['enemyBlock', 'enemyDamage', 'heal', 'win']);
 
 /** 出来事の種類から、量をそのまま持つ段の種類への対応。 */
 const EVENT_TO_STEP = {
-  enemyBlock: 'enemyBlock',
-  enemyArmorBlock: 'armorBlock',
   enemyDamage: 'enemyHit',
   heal: 'heal',
   enemyHeal: 'enemyHeal',
@@ -55,7 +53,7 @@ export function snapshotBattle(game) {
     castleHp: game.castle.hp,
     enemyHp: game.enemy.hp,
     enemyTypeId: game.enemy.typeId,
-    enemyArmor: game.enemy.armor,
+    enemyDefense: game.enemy.intent === null ? 0 : game.enemy.intent.defense,
     attack: game.gauges.attack ?? 0,
     defense: game.gauges.defense ?? 0,
     heal: game.gauges.heal ?? 0,
@@ -76,6 +74,7 @@ export function buildBattleSteps(result, before) {
   const events = result.events;
   const action = result.enemyAction;
   const show = enemyAttackShow(before.enemyTypeId, action.variant);
+  const defenseShow = enemyDefenseShow(before.enemyTypeId);
   const heavy = action.kind === 'attack' && isHeavyAttack(before.enemyTypeId, action.variant);
   const heavyMark = heavy ? { heavy: true } : {};
 
@@ -84,14 +83,14 @@ export function buildBattleSteps(result, before) {
   }
   const enemyAttack = events.find((e) => e.type === 'enemyAttack');
   const enemyDefend = events.find((e) => e.type === 'enemyDefend');
-  const enemyGuards = enemyDefend ? enemyDefend.amount : 0;
-  if (enemyGuards > 0) {
-    steps.push({ type: 'form', amount: 0, enemyGuards });
+  if (defenseShow.unit !== null && enemyDefend) {
+    const formStep = { type: 'form', amount: 0, enemyGuards: enemyDefend.amount };
+    steps.push(enemyAttack && enemyAttack.amount > 0 ? { ...formStep, parallel: true } : formStep);
   }
   const blockEvent = events.find((e) => e.type === 'block');
   const enemyBlockEvent = events.find((e) => e.type === 'enemyBlock');
   const blockPairs = blockEvent ? blockEvent.amount : 0;
-  const enemyBlockPairs = enemyBlockEvent ? enemyBlockEvent.amount : 0;
+  const enemyBlockPairs = defenseShow.unit !== null && enemyBlockEvent ? enemyBlockEvent.amount : 0;
   const burnEvent = events.find((e) => e.type === 'cardBurn' && e.amount > 0);
   let burnPlaced = false;
   if (enemyAttack && enemyAttack.amount > 0) {
@@ -129,6 +128,10 @@ export function buildBattleSteps(result, before) {
           ? { type, amount: event.amount, kind: show.unit, ...heavyMark }
           : { type, amount: event.amount, ...heavyMark },
       );
+      continue;
+    }
+    if (event.type === 'enemyBlock') {
+      if (event.amount > 0) steps.push({ type: defenseShow.blockStep, amount: event.amount });
       continue;
     }
     const stepType = EVENT_TO_STEP[event.type];

@@ -46,14 +46,14 @@ const TROOP_LOOKS = Object.freeze({
 const SHIELD_BAKE_MAX_COUNT = 20;
 
 /**
- * 焼き付ける大きさの並びを求める。シールド以外は配置の兵の大きさ1つ、シールドは並べ先ごとの数 1〜SHIELD_BAKE_MAX_COUNT の1マスの大きさ（重ねない）。
+ * 焼き付ける大きさの並びを求める。シールド以外は配置の兵の大きさ1つ、シールドは絵を持つ敵のシールドの並べ先ごとの数 1〜SHIELD_BAKE_MAX_COUNT の1マスの大きさ（重ねない）。
  * @param {string} bake 焼き付けの識別子
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
  * @returns {number[]} 大きさの並び
  */
 function bakeSizes(bake, battleLayout) {
   if (bake !== 'shield') return [battleLayout.troops.size];
-  const bodies = [battleLayout.enemy];
+  const bodies = [];
   for (const typeId of Object.keys(battleLayout.enemyFigures)) bodies.push(battleLayout.enemyFigures[typeId].shieldArea);
   const sizes = [];
   for (const body of bodies) {
