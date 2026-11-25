@@ -67,13 +67,51 @@ export function inhaleAction() {
 }
 
 /**
- * 毎ターン攻撃の決まり（ゴブリン）の攻撃の行動を作る。量の抽選で `random()` を1回呼ぶ。
+ * ふつうの攻撃の行動を作る（毎ターン攻撃の決まり・溜めて大攻撃・攻撃か防御の決まりで共通）。量の抽選で `random()` を1回呼ぶ。
  * @param {{ attackRange: { min: number, max: number } }} behavior 行動の決まりの設定
  * @param {() => number} random 0以上1未満を返す乱数の関数
  * @returns {import('./combatants.js').EnemyAction} 新しい行動
  */
 export function steadyAttackAction(behavior, random) {
   return { kind: 'attack', amount: rollAmount(behavior.attackRange, random) };
+}
+
+/**
+ * 溜める（振りかぶりの一種）の行動を作る（乱数は呼ばない）。
+ * @returns {import('./combatants.js').EnemyAction} 新しい行動
+ */
+export function chargeAction() {
+  return { kind: 'windup', amount: 0, variant: 'charge' };
+}
+
+/**
+ * 大攻撃の行動を作る。量の抽選で `random()` を1回呼ぶ。
+ * @param {{ heavyRange: { min: number, max: number } }} behavior 行動の決まりの設定
+ * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @returns {import('./combatants.js').EnemyAction} 新しい行動
+ */
+export function heavyAction(behavior, random) {
+  return { kind: 'attack', amount: rollAmount(behavior.heavyRange, random), variant: 'heavy' };
+}
+
+/**
+ * 防御だけの行動を作る。防御の量（加算の前）の抽選で `random()` を1回呼ぶ。
+ * @param {{ guardRange: { min: number, max: number } }} behavior 行動の決まりの設定
+ * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @returns {import('./combatants.js').EnemyAction} 新しい行動
+ */
+export function guardAction(behavior, random) {
+  return { kind: 'guard', amount: 0, guard: rollAmount(behavior.guardRange, random) };
+}
+
+/**
+ * 大防御（防御だけの行動の一種）を作る。防御の量（加算の前）の抽選で `random()` を1回呼ぶ。
+ * @param {{ bigGuardRange: { min: number, max: number } }} behavior 行動の決まりの設定
+ * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @returns {import('./combatants.js').EnemyAction} 新しい行動
+ */
+export function bigGuardAction(behavior, random) {
+  return { kind: 'guard', amount: 0, guard: rollAmount(behavior.bigGuardRange, random), variant: 'bigGuard' };
 }
 
 /**
@@ -140,6 +178,59 @@ const BEHAVIORS = Object.freeze({
     countdown: () => null,
     isOpening: (action) => action.variant === 'inhale',
   }),
+  buildup: Object.freeze({
+    initialState: () => ({ turnsToHeavy: null, chargeTurns: 0 }),
+    isState: (state) =>
+      isPlainObject(state) &&
+      (state.turnsToHeavy === null || (Number.isInteger(state.turnsToHeavy) && state.turnsToHeavy >= 0)) &&
+      Number.isInteger(state.chargeTurns) &&
+      state.chargeTurns >= 0,
+    planNext: (behavior, state, random) => {
+      const idle = { turnsToHeavy: null, chargeTurns: 0 };
+      if (state.turnsToHeavy !== null && state.turnsToHeavy >= 2) {
+        return {
+          action: chargeAction(),
+          state: { turnsToHeavy: state.turnsToHeavy - 1, chargeTurns: state.chargeTurns },
+        };
+      }
+      if (state.turnsToHeavy === 1) {
+        return {
+          action: heavyAction(behavior, random),
+          state: { turnsToHeavy: 0, chargeTurns: state.chargeTurns },
+        };
+      }
+      if (state.turnsToHeavy === 0) {
+        return { action: steadyAttackAction(behavior, random), state: idle };
+      }
+      if (random() < behavior.chargeChance) {
+        return {
+          action: chargeAction(),
+          state: { turnsToHeavy: behavior.chargeTurns, chargeTurns: behavior.chargeTurns },
+        };
+      }
+      return { action: steadyAttackAction(behavior, random), state: idle };
+    },
+    countdown: (behavior, state) =>
+      state.chargeTurns >= 2 && state.turnsToHeavy !== null && state.turnsToHeavy >= 1 ? state.turnsToHeavy : null,
+    isOpening: () => true,
+  }),
+  either: Object.freeze({
+    initialState: () => ({}),
+    isState: (state) => isPlainObject(state),
+    planNext: (behavior, state, random) => {
+      let action;
+      if (random() < behavior.attackChance) {
+        action = steadyAttackAction(behavior, random);
+      } else if (random() < behavior.bigGuardChance) {
+        action = bigGuardAction(behavior, random);
+      } else {
+        action = guardAction(behavior, random);
+      }
+      return { action, state };
+    },
+    countdown: () => null,
+    isOpening: (action) => action.kind === 'attack',
+  }),
 });
 
 /**
@@ -166,7 +257,8 @@ export function createBehaviorState(behavior) {
 
 /**
  * 値が、その決まりの状態の形か（保存したデータの確かめ用。乱数は呼ばない）。
- * 決まりごと（steady: プレーンなオブジェクト。cycle: `countdown` が 0 以上の整数。inhale: `lastVariant` が 'claw'・'inhale'・'breath'）。
+ * 決まりごと（steady・either: プレーンなオブジェクト。cycle: `countdown` が 0 以上の整数。inhale: `lastVariant` が 'claw'・'inhale'・'breath'。
+ * buildup: `turnsToHeavy` が null か 0 以上の整数、`chargeTurns` が 0 以上の整数）。
  * @param {{ type: string }} behavior 行動の決まりの設定
  * @param {unknown} state 調べる値
  * @returns {boolean} 形が合えば true
@@ -178,7 +270,9 @@ export function isBehaviorState(behavior, state) {
 
 /**
  * 次の行動を決める。引数の状態は書き換えず、新しい状態を返す。
- * 乱数の使い方は決まりごと（steady: 攻撃の量。cycle: 攻撃のフェーズだけ量。inhale: ブレス・爪は量、それ以外は吸い込むの抽選→外れなら爪の量）。
+ * 乱数の使い方は決まりごと（steady: 攻撃の量。cycle: 攻撃のフェーズだけ量。inhale: ブレス・爪は量、それ以外は吸い込むの抽選→外れなら爪の量。
+ * buildup: 溜めていないターンは溜める抽選1回（外れれば量1回が続く）・溜めの続きは0回・大攻撃は量1回・大攻撃の次は量1回。
+ * either: 攻撃の抽選1回→当たれば量1回、外れれば大防御の抽選1回→量1回）。
  * @param {{ type: string }} behavior 行動の決まりの設定
  * @param {object} state いまの決まりの状態
  * @param {() => number} random 0以上1未満を返す乱数の関数
@@ -193,7 +287,7 @@ export function planBehaviorAction(behavior, state, random) {
  * いまのフェーズの攻撃までの残りフェーズ数を答える（0 は攻撃するフェーズ）。
  * @param {{ type: string }} behavior 行動の決まりの設定
  * @param {object} state いまの決まりの状態
- * @returns {number|null} 残りフェーズ数。数え下ろしを持たない決まりは null
+ * @returns {number|null} 残りフェーズ数。数え下ろしを持たない決まりは null（`buildup` も、溜めていないターン・大攻撃のターン・溜めが1ターンの敵では null）
  * @throws {Error} 未知の種類のとき
  */
 export function behaviorCountdown(behavior, state) {

@@ -140,7 +140,7 @@ export class Game {
   }
 
   /**
-   * いまの敵の次の行動を、行動の決まりで決めて予告と決まりの状態に入れる（乱数は決まりの抽選のあと、隙でなければ防御の抽選（張るか・量の2回）。決まりの種類ごとの使い方は `enemyBehaviors.js`、防御は `enemyDefense.js` に従う）。
+   * いまの敵の次の行動を、行動の決まりで決めて予告と決まりの状態に入れる（乱数は決まりの抽選のあと、行動が防御の量を持たず、敵が防御の設定を持ち、隙でないときだけ防御の抽選（張るか・量の2回）。決まりの種類ごとの使い方は `enemyBehaviors.js`、防御は `enemyDefense.js` に従う）。
    */
   planIntent() {
     const { action, state } = planBehaviorAction(
@@ -161,7 +161,7 @@ export class Game {
   }
 
   /**
-   * 行動から、今の敵の予告（ステージの加算・防御の量・疲弊を付けたもの）を作る（隙でなければ防御の抽選で乱数を2回呼ぶ）。
+   * 行動から、今の敵の予告（ステージの加算・防御の量・疲弊を付けたもの）を作る（行動が防御の量を持たず、敵が防御の設定を持ち、隙でないときだけ、防御の抽選で乱数を2回呼ぶ）。
    * @param {import('./combatants.js').EnemyAction} action 行動の決まりが決めた行動
    * @returns {import('./combatants.js').EnemyIntent} 新しい予告
    */

@@ -1,4 +1,4 @@
-/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・防御（張る確率と量の幅）・行動の決まり（毎ターン攻撃と防御・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率））と攻撃・防御の量の幅）、敵の★とステージごとの★の決まり、ステージごとの敵の加算量（章ごと）、力こぶの換算、疲弊（長引いた敵の防御の減り方）、4スートそろいの加算量）を1か所に集める設定ファイル。 */
+/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・防御（張る確率と量の幅）・行動の決まり（毎ターン攻撃と防御・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率）・溜めてからの大攻撃・攻撃か防御のどちらか）と攻撃・防御の量の幅）、敵の★とステージごとの★の決まり、ステージごとの敵の加算量（章ごと）、力こぶの換算、疲弊（長引いた敵の防御の減り方）、4スートそろいの加算量）を1か所に集める設定ファイル。 */
 
 /**
  * 行動の量の幅（予告を決めるたびに、この中から整数を1つ抽選する）。
@@ -51,12 +51,19 @@
 /**
  * 敵の行動の決まりの設定。
  * @typedef {Object} EnemyBehaviorSpec
- * @property {'steady'|'cycle'|'inhale'} type 行動の決まりの種類（'steady'＝攻撃と防御を毎ターン両方行う、'cycle'＝周期の攻撃、'inhale'＝吸い込んでからブレス）。
+ * @property {'steady'|'cycle'|'inhale'|'buildup'|'either'} type 行動の決まりの種類（'steady'＝毎ターン攻撃、'cycle'＝周期の攻撃、'inhale'＝吸い込んでからブレス、'buildup'＝溜めて大攻撃、'either'＝攻撃か防御のどちらか）。
  * @property {Readonly<ClawSpec>} [claw] 爪の攻撃（'inhale' のみ）。
  * @property {Readonly<BreathSpec>} [breath] ブレスの攻撃と燃やす札（'inhale' のみ）。
  * @property {number} [inhaleChance] 直前の予告が吸い込む・ブレスでないとき、フェーズごとに吸い込むを予告する確率（0〜1。'inhale' のみ）。
  * @property {number} [cycleLength] 1周期のフェーズ数。最後のフェーズで攻撃、ほかは振りかぶり（'cycle' のみ。1以上の整数）。
- * @property {Readonly<AmountRangeSpec>} [attackRange] 周期の最後のフェーズの攻撃の量の幅（'cycle' のみ）、または毎ターンの攻撃の量の幅（'steady' のみ）。
+ * @property {Readonly<AmountRangeSpec>} [attackRange] 周期の最後のフェーズの攻撃の量の幅（'cycle'）、または毎ターンの・ふつうの攻撃の量の幅（'steady'・'buildup'・'either'）。
+ * @property {Readonly<AmountRangeSpec>} [heavyRange] 大攻撃の量の幅（'buildup' のみ）。
+ * @property {number} [chargeChance] 溜めていないターンに溜めるを予告する確率（0〜1。'buildup' のみ）。
+ * @property {number} [chargeTurns] 溜めのターン数（1以上の整数。溜めてから大攻撃までのターン数。'buildup' のみ）。
+ * @property {number} [attackChance] 攻撃を予告する確率（0〜1。外れたら防御だけ。'either' のみ）。
+ * @property {Readonly<AmountRangeSpec>} [guardRange] 防御だけの行動の防御の量の幅（加算の前。'either' のみ）。
+ * @property {number} [bigGuardChance] 防御だけの行動のうち、大防御にする確率（0〜1。'either' のみ）。
+ * @property {Readonly<AmountRangeSpec>} [bigGuardRange] 大防御の防御の量の幅（加算の前。'either' のみ）。
  * @property {Readonly<AttackHealSpec>} [attackHeal] 攻撃の直後の回復（任意。書かなければ回復しない）。
  */
 
@@ -66,7 +73,7 @@
  * @property {string} name 敵の名前（表示用）。
  * @property {number} star 敵の★（1〜3。ステージの★と同じ敵の中から選ばれる）。
  * @property {number} maxHp 敵の元の最大 HP（ステージの加算の前）。
- * @property {Readonly<EnemyDefenseSpec>} defense 防御（ターンごとの張る確率と量の幅）。
+ * @property {Readonly<EnemyDefenseSpec>} [defense] 防御（ターンごとの張る確率と量の幅）。行動と別に防御を抽選する敵だけが持つ。
  * @property {Readonly<EnemyBehaviorSpec>} behavior 行動の決まり。
  */
 

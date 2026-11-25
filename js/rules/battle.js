@@ -8,7 +8,7 @@
  * @property {number} attack 攻撃ゲージの値
  * @property {number} defense 防御ゲージの値
  * @property {number} heal 回復ゲージの値
- * @property {{ kind: 'attack'|'windup', amount: number, defense: number }} enemyAction 敵の行動（予告の写し。amount は攻撃の量、defense はそのターンの防御の量（疲弊の後））
+ * @property {{ kind: 'attack'|'windup'|'guard', amount: number, defense: number }} enemyAction 敵の行動（予告の写し。amount は攻撃の量（振りかぶり・防御だけは 0）、defense はそのターンの防御の量（疲弊の後））
  * @property {number} castleHp 攻防の前の城の HP
  * @property {number} castleMaxHp 城の最大 HP
  * @property {number} enemyHp 攻防の前の敵の HP
@@ -19,11 +19,11 @@
 
 /**
  * 攻防で起きた出来事。量は実際に変わった値。
- * `block`・`castleDamage`・`cardBurn`・`enemyHeal`・`enemyDefend`・`enemyBlock`・`enemyDamage`・`heal` は量が0のとき並びに入らない（敵の行動 `enemyAttack`／`enemyWindup` は必ず1つ入る）。
- * `enemyWindup`（敵の振りかぶり）は量 0 で必ず入る。`enemyDefeat` は敵の HP が 0 になったとき（量 0）に入る。
+ * `block`・`castleDamage`・`cardBurn`・`enemyHeal`・`enemyDefend`・`enemyBlock`・`enemyDamage`・`heal` は量が0のとき並びに入らない（敵の行動 `enemyAttack`／`enemyWindup`／`enemyGuard` は必ず1つ入る）。
+ * `enemyWindup`（敵の振りかぶり）・`enemyGuard`（敵の防御だけの行動）は量 0 で必ず入る（防御の量は続く `enemyDefend`）。`enemyDefeat` は敵の HP が 0 になったとき（量 0）に入る。
  * @typedef {Object} BattleEvent
- * @property {'enemyAttack'|'enemyDefend'|'enemyWindup'|'block'|'castleDamage'|'cardBurn'|'enemyHeal'|'enemyBlock'|'enemyDamage'|'enemyDefeat'|'heal'|'lose'} type 出来事の種類
- * @property {number} amount 量（`enemyWindup`・`lose`・`enemyDefeat` は 0。`cardBurn` は燃えた枚数）
+ * @property {'enemyAttack'|'enemyDefend'|'enemyWindup'|'enemyGuard'|'block'|'castleDamage'|'cardBurn'|'enemyHeal'|'enemyBlock'|'enemyDamage'|'enemyDefeat'|'heal'|'lose'} type 出来事の種類
+ * @property {number} amount 量（`enemyWindup`・`enemyGuard`・`lose`・`enemyDefeat` は 0。`cardBurn` は燃えた枚数）
  * @property {import('./cardBurn.js').BurnedCard[]} [burns] 燃えた札の並び（`cardBurn` のときだけ）
  */
 
@@ -41,7 +41,7 @@
 /**
  * 攻防を計算する。引数は書き換えない。余った防御は消える。
  * 敵の防御の余りも消える。未知の敵の行動の種類は Error を投げる。
- * 順序: 敵の行動（攻撃か振りかぶり）→ 敵の防御（量があれば）→ 相殺 → 城の被害（0なら負け）→ 札が燃える → 敵の回復（最大 HP で頭打ち）→ 敵の防御での相殺 → 敵への攻撃
+ * 順序: 敵の行動（攻撃か振りかぶりか防御だけ）→ 敵の防御（量があれば）→ 相殺 → 城の被害（0なら負け）→ 札が燃える → 敵の回復（最大 HP で頭打ち）→ 敵の防御での相殺 → 敵への攻撃
  * （0になったら撃破の出来事を入れて続ける）→ 回復。
  * @param {BattleInput} input 攻防の入力
  * @returns {BattleCalc} 計算結果
@@ -62,6 +62,9 @@ export function computeBattle(input) {
   } else if (enemyAction.kind === 'windup') {
     enemyAttack = 0;
     events.push({ type: 'enemyWindup', amount: 0 });
+  } else if (enemyAction.kind === 'guard') {
+    enemyAttack = 0;
+    events.push({ type: 'enemyGuard', amount: 0 });
   } else {
     throw new Error(`未知の敵の行動の種類: ${enemyAction.kind}`);
   }

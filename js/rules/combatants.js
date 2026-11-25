@@ -8,17 +8,18 @@ import { grownMaxHp } from './stageBonus.js';
 /**
  * 敵の行動（予告にも使う）。
  * @typedef {Object} EnemyAction
- * @property {'attack'|'windup'} kind 行動の種類（攻撃・振りかぶり（行動しない。量は 0））
- * @property {number} amount 行動の量（攻撃なら攻撃の値、振りかぶりなら 0。防御の量・ステージの加算は含まない＝加算の前）。行動の決まりが設定の幅から抽選した値
- * @property {'claw'|'breath'|'inhale'} [variant] 行動の中の種類（任意。攻撃の爪・ブレス、振りかぶりの吸い込む。表示の違いだけで、城へのダメージ・行動の扱いは種類で変わらない）
+ * @property {'attack'|'windup'|'guard'} kind 行動の種類（攻撃・振りかぶり（行動しない。量は 0）・防御だけ（攻撃しない。量は 0。防御の量は `guard`））
+ * @property {number} amount 行動の量（攻撃なら攻撃の値、振りかぶり・防御だけなら 0。防御の量・ステージの加算は含まない＝加算の前）。行動の決まりが設定の幅から抽選した値
+ * @property {number} [guard] 防御だけの行動が持つ、加算の前の防御の量（任意。予告にするとき `createIntent` が防御に変えて取り除くので、予告には残らない）
+ * @property {'claw'|'breath'|'inhale'|'charge'|'heavy'|'bigGuard'} [variant] 行動の中の種類（任意。攻撃の爪・ブレス・大攻撃、振りかぶりの吸い込む・溜める、防御だけの大防御。表示の違いだけで、城へのダメージ・行動の扱いは種類で変わらない）
  * @property {{ min: number, max: number }} [burn] 行動に付く列の札を燃やす効果の枚数の範囲（任意）
  * @property {boolean} [sureHeal] デバッグで「攻撃して回復」を指定した予告だけが持つ（任意）。攻撃の直後の回復が必ず当たる
  */
 
 /**
  * 敵の予告（行動にステージの加算と防御の量を足したもの）。
- * amount は攻撃の値にステージの加算を足した後の量（振りかぶり・吸い込むは 0）、
- * baseDefense は抽選した防御の量にステージの加算を足した後の量（疲弊の前。張らない・隙のターンは 0）、
+ * amount は攻撃の値にステージの加算を足した後の量（振りかぶり・吸い込む・防御だけは 0）、
+ * baseDefense は抽選した（防御だけの行動では行動が持つ）防御の量にステージの加算を足した後の量（疲弊の前。張らない・隙のターンは 0）、
  * defense は疲弊を掛けた後の防御の量（予告・シールド・攻防が読むのはこれだけ）。
  * @typedef {EnemyAction & { baseDefense: number, defense: number }} EnemyIntent
  */
@@ -38,7 +39,7 @@ import { grownMaxHp } from './stageBonus.js';
  * @property {number} hp 現在の HP
  * @property {number} maxHp 最大 HP
  * @property {EnemyIntent|null} intent 次の行動の予告（未決定なら null）
- * @property {object} behaviorState 行動の決まりの状態（steady では {}、cycle では { countdown }、inhale では { lastVariant }）
+ * @property {object} behaviorState 行動の決まりの状態（steady・either では {}、cycle では { countdown }、inhale では { lastVariant }、buildup では { turnsToHeavy, chargeTurns }）
  */
 
 /**

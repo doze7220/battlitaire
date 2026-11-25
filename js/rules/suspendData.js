@@ -15,7 +15,7 @@ import { createGameStats } from './gameStats.js';
  * 中断データの版番号（形が変わったら上げる。版番号はここ1か所）。
  * @type {number}
  */
-export const SUSPEND_VERSION = 1;
+export const SUSPEND_VERSION = 2;
 
 /**
  * 中断データ（ターンの始まりの状態。`null`・真偽値・文字列・数・配列・プレーンなオブジェクトだけでできている）。
@@ -85,13 +85,19 @@ function isCardList(value) {
 }
 
 /**
+ * 知っている予告の種類（凍結の並び）。
+ * @type {ReadonlyArray<string>}
+ */
+const INTENT_KINDS = Object.freeze(['attack', 'windup', 'guard']);
+
+/**
  * 予告の形が正しいか。
  * @param {unknown} value 調べる値
- * @returns {boolean} `kind` が 'attack'・'windup'、`amount`・`baseDefense`・`defense` が 0 以上の整数、`variant` は無いか文字列、`burn` は無いか 0 ≤ min ≤ max の整数なら true
+ * @returns {boolean} `kind` が 'attack'・'windup'・'guard'、`amount`・`baseDefense`・`defense` が 0 以上の整数、`variant` は無いか文字列、`burn` は無いか 0 ≤ min ≤ max の整数なら true
  */
 function isIntentShape(value) {
   if (!isPlain(value)) return false;
-  if (value.kind !== 'attack' && value.kind !== 'windup') return false;
+  if (!INTENT_KINDS.includes(value.kind)) return false;
   if (!isIntFrom(value.amount, 0) || !isIntFrom(value.baseDefense, 0) || !isIntFrom(value.defense, 0)) return false;
   if (value.variant !== undefined && typeof value.variant !== 'string') return false;
   if (value.burn !== undefined) {

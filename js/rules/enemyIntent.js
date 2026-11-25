@@ -8,9 +8,11 @@ import { rollDefense, fatiguedDefense } from './enemyDefense.js';
 
 /**
  * 行動にステージの加算と防御の量を付けて予告を作る。
- * 攻撃は量に攻撃の加算を足す（振りかぶり・吸い込むは 0 のまま）。隙の行動は乱数を呼ばず防御 0、
+ * 攻撃は量に攻撃の加算を足す（振りかぶり・吸い込む・防御だけは 0 のまま）。
+ * 行動が防御の量 `guard` を持つときは、乱数を呼ばず `guard` に防御の加算を足した量（予告には `guard` を残さない）。
+ * 持たないときは、隙の行動は乱数を呼ばず防御 0、敵の設定に `defense` がなければ乱数を呼ばず防御 0、
  * それ以外は `rollDefense`（必ず2回）で、張れば量に防御の加算を足し、張らなければ 0。これが baseDefense（加算後・疲弊の前）。
- * @param {{ behavior: { type: string }, defense: { chance: number, range: { min: number, max: number } } }} spec 敵の種類の設定
+ * @param {{ behavior: { type: string }, defense?: { chance: number, range: { min: number, max: number } } }} spec 敵の種類の設定
  * @param {import('./combatants.js').EnemyAction} action 行動の決まりが決めた行動（量は加算の前）
  * @param {import('./stageBonus.js').StageBonus} bonus ステージの加算量
  * @param {number} battleTurn 戦闘のターン数（1 から）
@@ -19,13 +21,16 @@ import { rollDefense, fatiguedDefense } from './enemyDefense.js';
  * @returns {import('./combatants.js').EnemyIntent} 新しい予告
  */
 export function createIntent(spec, action, bonus, battleTurn, fatigue, random) {
+  const { guard, ...rest } = action;
   let baseDefense = 0;
-  if (!isOpeningAction(spec.behavior, action)) {
+  if (guard !== undefined) {
+    baseDefense = guard + bonus.defense;
+  } else if (!isOpeningAction(spec.behavior, action) && spec.defense !== undefined) {
     const rolled = rollDefense(spec.defense, random);
     baseDefense = rolled === null ? 0 : rolled + bonus.defense;
   }
   return {
-    ...action,
+    ...rest,
     amount: action.kind === 'attack' ? action.amount + bonus.attack : action.amount,
     baseDefense,
     defense: fatiguedDefense(baseDefense, battleTurn, fatigue),
