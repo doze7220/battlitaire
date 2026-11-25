@@ -1,24 +1,27 @@
 /**
- * 責務: 敵の頭の上の予告の札（予告の絵・量の数字・ブレスの目立たせ）と、その下の数え下ろしの文字の描画。
+ * 責務: 敵の頭の上の予告の札（攻撃の側・防御の側の絵と量の数字・ブレスの目立たせ。右端からはみ出さない）と、その下の数え下ろしの文字の描画。
  * 予告の種類 → 絵の表を持つ。状態は変えず、ルール層・anim は実行時に import しない。
  */
 
 import { roundRectPath } from './cardView.js';
-import { intentAmountText, unknownIntentText, countdownText } from './battleText.js';
+import { intentAmountText, intentDefenseText, unknownIntentText, countdownText } from './battleText.js';
+import { intentParts } from './intentParts.js';
 import { INTENT_IDS, drawIntentIcon } from './spriteView.js';
 
 /**
- * 予告の種類（variant があれば variant、なければ kind）→ 予告の絵の識別子の表。
+ * 予告の攻撃の側の種類（variant があれば variant、なければ kind）→ 予告の絵の識別子の表。
  * @type {Readonly<Record<string, string>>}
  */
 const INTENT_ICONS = Object.freeze({
   attack: INTENT_IDS.attack,
-  defend: INTENT_IDS.defend,
   windup: INTENT_IDS.windup,
   claw: INTENT_IDS.claw,
   inhale: INTENT_IDS.inhale,
   breath: INTENT_IDS.breath,
 });
+
+/** 予告の札の防御の側の絵の識別子。 */
+const DEFENSE_ICON = INTENT_IDS.defend;
 
 /**
  * 札を目立たせる行動の中の種類（variant）の集合。
@@ -91,8 +94,8 @@ function drawOutlinedText(ctx, text, x, y, style) {
  * enemy.intent が null、または enemy.hp が 0 以下なら何も描かない（数え下ろしも）。
  * entrance が null でなく visible が偽なら何も描かず、dx が 0 でなければ右へずらして描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
- * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置（enemyFigures[typeId].intent・enemyIntent・intentBadge を読む）
- * @param {{ typeId: string, hp: number, intent: import('../rules/combatants.js').EnemyAction|null }} enemy 表示する敵（armor などほかの項目は読まない）
+ * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置（enemyFigures[typeId].intent・enemyIntent・intentBadge・area を読む）
+ * @param {{ typeId: string, hp: number, intent: import('../rules/combatants.js').EnemyIntent|null }} enemy 表示する敵（ほかの項目は読まない）
  * @param {number|null} countdown 攻撃までの残りフェーズ数。null なら数え下ろしを描かない
  * @param {import('../anim/enemyEntrance.js').EnemyEntranceLook|null} entrance 段取りの間の敵の入りの見た目。攻防の演出中は null
  * @returns {void}
@@ -106,20 +109,32 @@ export function drawEnemyIntent(ctx, battleLayout, enemy, countdown, entrance) {
     ? battleLayout.enemyFigures[enemy.typeId].intent
     : battleLayout.enemyIntent;
   const badge = battleLayout.intentBadge;
+  const area = battleLayout.area;
+  const parts = intentParts(action);
   const iconKey = typeof action.variant === 'string' ? action.variant : action.kind;
   const hasIcon = Object.prototype.hasOwnProperty.call(INTENT_ICONS, iconKey);
   const emphasized = typeof action.variant === 'string' && EMPHASIZED_VARIANTS.has(action.variant);
-  const amount = intentAmountText(action);
   const amountColor = emphasized ? EMPHASIS_AMOUNT_COLOR : AMOUNT_COLOR;
+
+  /** 札に並べる側（左から攻撃の側、防御の側）。iconId が null なら「？」を出す。 */
+  const sides = [];
+  if (parts.attack) {
+    sides.push({ iconId: hasIcon ? INTENT_ICONS[iconKey] : null, amount: intentAmountText(action) });
+  }
+  if (parts.defense) {
+    sides.push({ iconId: DEFENSE_ICON, amount: intentDefenseText(action) });
+  }
 
   ctx.save();
   if (entrance !== null && entrance.dx !== 0) ctx.translate(entrance.dx, 0);
 
   ctx.font = AMOUNT_FONT;
-  const amountW = amount === null ? 0 : ctx.measureText(amount).width;
-  const w = badge.padX * 2 + badge.iconW + (amount === null ? 0 : badge.gap + amountW);
-  const left = spot.x - w / 2;
-  const iconCx = left + badge.padX + badge.iconW / 2;
+  let w = badge.padX * 2 + badge.sideGap * Math.max(0, sides.length - 1);
+  for (const side of sides) {
+    side.amountW = side.amount === null ? 0 : ctx.measureText(side.amount).width;
+    w += badge.iconW + (side.amount === null ? 0 : badge.gap + side.amountW);
+  }
+  const left = Math.min(spot.x - w / 2, area.x + area.w - badge.edge - w);
   const cy = spot.y + badge.h / 2;
 
   ctx.save();
@@ -131,27 +146,33 @@ export function drawEnemyIntent(ctx, battleLayout, enemy, countdown, entrance) {
   ctx.stroke();
   ctx.restore();
 
-  if (hasIcon) {
-    drawIntentIcon(ctx, INTENT_ICONS[iconKey], iconCx, cy);
-  } else {
-    ctx.save();
-    drawOutlinedText(ctx, unknownIntentText(), iconCx, cy, {
-      font: AMOUNT_FONT, align: 'center', color: amountColor, outlineWidth: AMOUNT_OUTLINE_WIDTH,
-    });
-    ctx.restore();
-  }
-
-  if (amount !== null) {
-    ctx.save();
-    drawOutlinedText(ctx, amount, left + badge.padX + badge.iconW + badge.gap, cy, {
-      font: AMOUNT_FONT, align: 'left', color: amountColor, outlineWidth: AMOUNT_OUTLINE_WIDTH,
-    });
-    ctx.restore();
+  let cursor = left + badge.padX;
+  for (const side of sides) {
+    const iconCx = cursor + badge.iconW / 2;
+    if (side.iconId !== null) {
+      drawIntentIcon(ctx, side.iconId, iconCx, cy);
+    } else {
+      ctx.save();
+      drawOutlinedText(ctx, unknownIntentText(), iconCx, cy, {
+        font: AMOUNT_FONT, align: 'center', color: amountColor, outlineWidth: AMOUNT_OUTLINE_WIDTH,
+      });
+      ctx.restore();
+    }
+    cursor += badge.iconW;
+    if (side.amount !== null) {
+      ctx.save();
+      drawOutlinedText(ctx, side.amount, cursor + badge.gap, cy, {
+        font: AMOUNT_FONT, align: 'left', color: amountColor, outlineWidth: AMOUNT_OUTLINE_WIDTH,
+      });
+      ctx.restore();
+      cursor += badge.gap + side.amountW;
+    }
+    cursor += badge.sideGap;
   }
 
   if (countdown !== null) {
     ctx.save();
-    drawOutlinedText(ctx, countdownText(countdown), spot.x, spot.y + badge.countdownDy, {
+    drawOutlinedText(ctx, countdownText(countdown), left + w / 2, spot.y + badge.countdownDy, {
       font: COUNTDOWN_FONT, align: 'center', color: COUNTDOWN_COLOR,
       outlineWidth: COUNTDOWN_OUTLINE_WIDTH, maxW: badge.countdownMaxW,
     });

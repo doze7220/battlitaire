@@ -37,7 +37,7 @@ const COUNTDOWN_FONT = 'bold 30px sans-serif';
  * @property {number} phase フェーズの番号（1 から）
  * @property {number} enemyIndex 敵の番号（0 から。ステージの番号は +1）
  * @property {string} enemyTypeId 敵の種類の識別子
- * @property {import('../rules/combatants.js').EnemyAction|null} intent 敵の予告（なければ null）
+ * @property {import('../rules/combatants.js').EnemyIntent|null} intent 敵の予告（なければ null）
  * @property {number|null} countdown 攻撃までの残りフェーズ数（数え下ろしがなければ null）
  */
 

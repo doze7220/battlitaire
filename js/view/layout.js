@@ -112,6 +112,8 @@ import { campSlot } from './campSlots.js';
  * @property {number} padX 板の左右の余白
  * @property {number} iconW 予告の絵の幅
  * @property {number} gap 絵と量の数字の間
+ * @property {number} sideGap 攻撃の側と防御の側の間
+ * @property {number} edge 札と画面の右端（段の右端）の間
  * @property {number} countdownDy 札の上端から数え下ろしの文字の中心 y までの距離
  * @property {number} countdownMaxW 数え下ろしの文字の最大の幅
  */
@@ -327,6 +329,10 @@ const INTENT_PAD_X = 6;
 const INTENT_PAD_Y = 2;
 /** 予告の札の絵と量の数字の間。試遊で決め直す。 */
 const INTENT_GAP_X = 4;
+/** 予告の札の攻撃の側と防御の側の間。試遊で決め直す。 */
+const INTENT_SIDE_GAP_X = 10;
+/** 予告の札と画面の右端の間（札がはみ出さないための余白）。試遊で決め直す。 */
+const INTENT_EDGE_X = 8;
 /** 札の板の下端と数え下ろしの文字の行の上端の間。試遊で決め直す。 */
 const INTENT_COUNTDOWN_GAP_Y = 2;
 /**
@@ -592,6 +598,8 @@ function createBattleLayout(width, coinBlockCount) {
     padX: INTENT_PAD_X,
     iconW: INTENT_CELL.w,
     gap: INTENT_GAP_X,
+    sideGap: INTENT_SIDE_GAP_X,
+    edge: INTENT_EDGE_X,
     countdownDy: intentBadgeH + INTENT_COUNTDOWN_GAP_Y + INTENT_COUNTDOWN_LINE_H / 2,
     countdownMaxW: INTENT_COUNTDOWN_MAX_W,
   };

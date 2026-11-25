@@ -1,7 +1,12 @@
 /**
- * 責務: 敵の行動（爪・吸い込む・ブレスの種類を含む）・予告の量の数字・表にない予告の印・決着・結果の集計の見出し・タップでタイトルへの案内・敵を倒したときの案内・数え下ろし・回復の量・当たりのダメージの数字・放った区切りの式を、画面に出す文字に直す。
+ * 責務: 敵の行動（爪・吸い込む・ブレスの種類と防御を含む）・予告の量の数字・表にない予告の印・決着・結果の集計の見出し・タップでタイトルへの案内・敵を倒したときの案内・数え下ろし・回復の量・当たりのダメージの数字・放った区切りの式を、画面に出す文字に直す。
  * 計算はせず、量をそのまま文字にする。ルール層は実行時に import しない。
  */
+
+import { intentParts } from './intentParts.js';
+
+/** 予告の攻撃の側と防御の側をつなぐ文字 */
+const SIDE_SEPARATOR = ' ／ ';
 
 /**
  * 決着 → 表示文字の対応表。
@@ -111,11 +116,24 @@ export function defeatHintText() {
 }
 
 /**
- * 敵の行動を「攻撃 10」のような文字にする。
- * @param {import('../rules/combatants.js').EnemyAction} action 敵の行動
- * @returns {string} 表示名と量の文字。variant が表にあればその表示名（「爪 10」「吸い込む」「ブレス 25」）。種類が未知なら表示名は「？」
+ * 敵の予告を「攻撃 3 ／ 防御 2」のような文字にする。出す側は intentParts で決め、片方だけならその文字だけ。
+ * @param {import('../rules/combatants.js').EnemyIntent} action 敵の予告
+ * @returns {string} 攻撃の側（表示名と量。variant が表にあればその表示名。「爪 10」「吸い込む」「ブレス 25」「振りかぶり」。種類が未知なら「？」）と防御の側（「防御 量」）を ` ／ ` でつないだ文字
  */
 export function enemyActionText(action) {
+  const parts = intentParts(action);
+  const texts = [];
+  if (parts.attack) texts.push(attackSideText(action));
+  if (parts.defense) texts.push(`${ACTION_LABELS.defend} ${intentDefenseText(action)}`);
+  return texts.join(SIDE_SEPARATOR);
+}
+
+/**
+ * 敵の予告の攻撃の側を「攻撃 10」のような文字にする。
+ * @param {import('../rules/combatants.js').EnemyAction} action 敵の行動
+ * @returns {string} 表示名と量の文字（variant が表にあればその表示名）。種類が未知なら表示名は「？」
+ */
+function attackSideText(action) {
   const hasVariant = typeof action.variant === 'string' && Object.prototype.hasOwnProperty.call(VARIANT_LABELS, action.variant);
   const name = hasVariant
     ? VARIANT_LABELS[action.variant]
@@ -134,6 +152,15 @@ export function enemyActionText(action) {
 export function intentAmountText(action) {
   if (AMOUNTLESS_KINDS.has(action.kind)) return null;
   return String(action.amount);
+}
+
+/**
+ * 敵の予告の防御の量を、予告の札に出す数字の文字にする。
+ * @param {import('../rules/combatants.js').EnemyIntent} action 敵の予告
+ * @returns {string} 防御の量をそのまま文字にしたもの
+ */
+export function intentDefenseText(action) {
+  return String(action.defense);
 }
 
 /**
