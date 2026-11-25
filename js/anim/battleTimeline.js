@@ -68,14 +68,14 @@ import { battleFxEnd } from './battleFx.js';
  */
 
 /**
- * 敵の守りが画面の外から陣地へ跳ねて現れる段。
+ * 敵の守りが画面の外（攻撃のゴブリンの後ろ）から守りの陣地へ跳ねて現れる段。
  * @param {BuildState} state 組み立て中の状態
  * @param {import('./battleSteps.js').BattleStep} step 段
  * @param {number} t 開始時刻（ms）
  * @returns {number} 段の長さ（ms）
  */
 function addForm(state, step, t) {
-  return enterEnemyTroops(state.roster, state.boardLayout.battle, state.typeId, 'enemyGuard', 'offscreen', step.enemyGuards ?? 0, t) - t;
+  return enterEnemyTroops(state.roster, state.boardLayout.battle, state.typeId, 'enemyGuard', 'offscreenBack', step.enemyGuards ?? 0, t) - t;
 }
 
 /**

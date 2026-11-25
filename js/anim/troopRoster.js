@@ -18,7 +18,7 @@ import { addTroopLeg, createTroopUnit, setTroopEnd, troopHitEnd } from './troopM
  */
 
 /**
- * 種類 → 陣地（`layout.camps` の項目名）の表。敵兵と敵の守りは同じ陣地を共用する。
+ * 種類 → 陣地（`layout.camps` の項目名）の表。敵の側の種類もそれぞれ別の陣地を持つ。
  * @type {Readonly<Record<string, string>>}
  */
 const CAMP_OF = Object.freeze({
@@ -26,8 +26,8 @@ const CAMP_OF = Object.freeze({
   defense: 'defense',
   heal: 'heal',
   enemy: 'enemy',
-  enemyGuard: 'enemy',
-  flame: 'enemy',
+  enemyGuard: 'enemyGuard',
+  flame: 'flame',
 });
 
 /**

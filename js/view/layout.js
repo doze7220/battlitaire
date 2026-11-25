@@ -70,7 +70,7 @@ import { campSlot } from './campSlots.js';
  * 戦闘の段での兵の配置。陣地は兵の足元の中心が入る矩形で、兵1体の大きさ・当たる位置・落ちて消える y を持つ。
  * @typedef {Object} TroopLayout
  * @property {number} size 兵の大きさ（直径）
- * @property {{ attack: Rect, defense: Rect, heal: Rect, enemy: Rect }} camps 役割ごとの陣地（敵兵・敵の守りは enemy を共用）
+ * @property {{ attack: Rect, defense: Rect, heal: Rect, enemy: Rect, enemyGuard: Rect, flame: Rect }} camps 役割ごとの陣地（enemy＝攻撃のゴブリン、enemyGuard＝守りのゴブリン、flame＝ブレスの炎）
  * @property {number} blockStepX 相打ちの相手が前へ踏み出す距離
  * @property {number} contactGap 相打ちでぶつかる2体の間隔
  * @property {number} attackAdvanceX 相打ちの相手のいない攻撃の兵が進む距離
@@ -338,12 +338,17 @@ const INTENT_COUNTDOWN_LINE_H = 20;
 const INTENT_COUNTDOWN_MAX_W = 200;
 /** 兵の大きさ（直径）。試遊で決め直す1か所 */
 const TROOP_SIZE = 24;
-/** 役割ごとの陣地の x と幅（段の左端からの絶対値。兵の足元の中心が入る範囲。試遊で動かす）。enemy は敵兵・敵の守りが共用する */
+/**
+ * 役割ごとの陣地の x と幅（段の左端からの絶対値。兵の足元の中心が入る範囲。試遊で動かす）。
+ * enemy は攻撃のゴブリン、enemyGuard は守りのゴブリン（並んだとき重ならないよう、間を兵の大きさ以上空ける）、flame はブレスの炎。
+ */
 const TROOP_CAMPS_X = Object.freeze({
   heal: Object.freeze({ x: 20, w: 80 }),
   attack: Object.freeze({ x: 100, w: 90 }),
   defense: Object.freeze({ x: 300, w: 100 }),
-  enemy: Object.freeze({ x: 470, w: 80 }),
+  enemy: Object.freeze({ x: 455, w: 45 }),
+  enemyGuard: Object.freeze({ x: 525, w: 35 }),
+  flame: Object.freeze({ x: 470, w: 80 }),
 });
 /** 兵の足元の範囲（陣地と攻防の演出で兵が動く範囲）の、groundY から上への高さ（上端は背景の地面の上端（約 y 125）より約 20px 下。試遊で決め直す） */
 const FIELD_H = 190;
@@ -638,6 +643,8 @@ function createBattleLayout(width, coinBlockCount) {
       defense: campRect(TROOP_CAMPS_X.defense),
       heal: campRect(TROOP_CAMPS_X.heal),
       enemy: campRect(TROOP_CAMPS_X.enemy),
+      enemyGuard: campRect(TROOP_CAMPS_X.enemyGuard),
+      flame: campRect(TROOP_CAMPS_X.flame),
     },
     blockStepX: BLOCK_STEP_X,
     contactGap: CONTACT_GAP,

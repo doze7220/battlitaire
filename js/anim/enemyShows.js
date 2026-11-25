@@ -1,5 +1,5 @@
 /**
- * 敵の種類ごとの攻防の見せ方の表（体の見せ方・行動の中の種類ごとの攻撃の見せ方）と、攻撃の見せ方ごとの段の作り方の表を持ち、引くだけ。
+ * 敵の種類ごとの攻防の見せ方の表（体の見せ方・行動の中の種類ごとの攻撃の見せ方・防御の見せ方）と、攻撃の見せ方ごとの段の作り方の表を持ち、引くだけ。
  * 大きな一撃・ための動きの表も持つ。敵の種類の識別子と行動の中の種類はルール層の値を読む。描画も状態の変更もしない。
  */
 
@@ -20,6 +20,22 @@ export const ATTACK_SHOWS = Object.freeze({
   march: Object.freeze({ unit: 'enemy', from: 'offscreen', blockStep: 'block', castleStep: 'castleHit' }),
   flames: Object.freeze({ unit: 'flame', from: 'mouth', blockStep: 'block', castleStep: 'castleHit' }),
   strike: Object.freeze({ unit: null, from: null, blockStep: 'strikeBlock', castleStep: 'strikeCastle' }),
+});
+
+/**
+ * 防御の見せ方ごとの段の作り方。
+ * @typedef {Object} DefenseShow
+ * @property {'enemyGuard'|null} unit 出す敵の側の守りの兵の種類（シールドは null）
+ * @property {'enemyBlock'|'shieldBlock'} blockStep 敵の防御が攻撃を受け止める段の種類
+ */
+
+/**
+ * 防御の見せ方の表（体の見せ方 → 防御の見せ方）。
+ * @type {Readonly<Record<'horde'|'figure', Readonly<DefenseShow>>>}
+ */
+export const DEFENSE_SHOWS = Object.freeze({
+  horde: Object.freeze({ unit: 'enemyGuard', blockStep: 'enemyBlock' }),
+  figure: Object.freeze({ unit: null, blockStep: 'shieldBlock' }),
 });
 
 /**
@@ -69,6 +85,15 @@ function showOf(typeId, name) {
  */
 export function enemyBodyStyle(typeId) {
   return showOf(typeId, 'enemyBodyStyle').body;
+}
+
+/**
+ * 敵の防御の見せ方（体の見せ方で決まる守りの兵・受け止める段）を返す。
+ * @param {string} typeId 敵の種類の識別子
+ * @returns {Readonly<DefenseShow>}
+ */
+export function enemyDefenseShow(typeId) {
+  return DEFENSE_SHOWS[showOf(typeId, 'enemyDefenseShow').body];
 }
 
 /**

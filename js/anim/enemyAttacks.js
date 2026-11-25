@@ -14,6 +14,11 @@ import { enterTroops, popTroops, staggerDelay } from './troopRoster.js';
  */
 const ENTRANCES = Object.freeze({
   offscreen: (roster) => ({ x: roster.layout.offscreenX, y: null }),
+  // 守りのゴブリンは、攻撃のゴブリンの後ろから同じくらいの間隔（家の x の差）で走ってくるので、走る間も重ならない
+  offscreenBack: (roster) => ({
+    x: roster.layout.offscreenX + (roster.layout.camps.enemyGuard.x - roster.layout.camps.enemy.x),
+    y: null,
+  }),
   mouth: (roster, battleLayout, typeId) => {
     const figures = battleLayout.enemyFigures;
     const figure = Object.prototype.hasOwnProperty.call(figures, typeId) ? figures[typeId] : null;
@@ -30,7 +35,7 @@ const ENTRANCES = Object.freeze({
  * @param {import('../view/layout.js').BattleLayout} battleLayout 最上段の配置（口の位置を読む）
  * @param {string} typeId 敵の種類の識別子
  * @param {string} kind 兵の種類（enemy・enemyGuard・flame）
- * @param {string} from 出る場所（offscreen・mouth）
+ * @param {string} from 出る場所（offscreen・offscreenBack・mouth）
  * @param {number} count 人数
  * @param {number} t 出始める時刻（ms）
  * @returns {number} 全員が家に着く時刻（ms。count が 0 以下なら t）
