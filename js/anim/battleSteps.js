@@ -4,6 +4,7 @@
  * ルールの判定や計算はせず、描画も状態の変更も行わない。
  */
 
+import { insertDashSteps } from './dashSteps.js';
 import { enemyAttackShow, enemyDefenseShow, hasChargeShow, isHeavyAttack } from './enemyShows.js';
 
 /**
@@ -23,7 +24,7 @@ import { enemyAttackShow, enemyDefenseShow, hasChargeShow, isHeavyAttack } from 
 /**
  * 演出の1段。
  * @typedef {Object} BattleStep
- * @property {'form'|'enemyMarch'|'block'|'castleHit'|'strikeBlock'|'strikeCastle'|'march'|'enemyBlock'|'shieldBlock'|'enemyHit'|'heal'|'enemyHeal'|'burn'|'charge'} type 段の種類
+ * @property {'form'|'enemyMarch'|'block'|'castleHit'|'strikeBlock'|'strikeCastle'|'march'|'enemyBlock'|'shieldBlock'|'enemyHit'|'heal'|'enemyHeal'|'burn'|'charge'|'dash'|'dashBack'} type 段の種類
  * @property {number} amount 量（`form`・`charge` は 0、`burn` は燃える枚数）
  * @property {boolean} [heavy] 敵の攻撃の段（`enemyMarch`・`block`・`castleHit`・`strikeBlock`・`strikeCastle`）のみ: 大きな一撃なら true（そうでなければ付けない）
  * @property {Array<{columnIndex: number, cardIndex: number, card: *}>} [burns] `burn` のみ: 燃える札の並び（燃える順）
@@ -31,6 +32,8 @@ import { enemyAttackShow, enemyDefenseShow, hasChargeShow, isHeavyAttack } from 
  * @property {number} [pairs] `enemyMarch` のみ: 防御の兵と相打ちになる組の数（`block` の量。なければ 0）。`march` のみ: 敵の守りと相打ちになる組の数（`enemyBlock` の量。なければ 0）
  * @property {'enemy'|'flame'} [kind] `enemyMarch`・`block`・`castleHit` のみ: 敵の側の兵の種類
  * @property {'offscreen'|'mouth'} [from] `enemyMarch` のみ: 敵の側の兵の出る場所
+ * @property {'defense'|'castle'} [to] `dash` のみ: 絵が駆け寄る行き先（防御の兵の前・城の前）
+ * @property {string} [style] `dash`・`dashBack` のみ: 駆け寄りの見せ方の名前（`DASH_STYLES` の項目名）
  * @property {boolean} [parallel] `burn`・`form` のみ: true なら次の段と同時に始める
  */
 
@@ -65,7 +68,7 @@ export function snapshotBattle(game) {
 
 /**
  * 攻防の出来事の並びから、演出の段の並びを組み立てる。
- * `lose` に来たらそこで読むのをやめる。量が 0 の段は作らない。
+ * `lose` に来たらそこで読むのをやめる。量が 0 の段は作らない。攻撃の見せ方が駆け寄りを持つときは、最後に駆け寄り・戻りの段を差し込む。
  * @param {import('../rules/Game.js').BattleResult} result 攻防の結果
  * @param {BattleSnapshot} before 攻防の前の値
  * @returns {BattleStep[]} 段の並び
@@ -143,5 +146,5 @@ export function buildBattleSteps(result, before) {
   if (!marchDone && !stoppedByLose) {
     steps.push({ type: 'march', amount: before.attack, pairs: enemyBlockPairs });
   }
-  return steps;
+  return show.dash !== null ? insertDashSteps(steps, show.dash, stoppedByLose) : steps;
 }

@@ -1,5 +1,5 @@
 /**
- * 責務: 戦闘の段の敵の絵（巨人・ドラゴン。攻防中は倒れる動きのずれ・姿勢で段の中に切り抜く）と、段取りの間の絵・群れ（待機の伸び縮み）・シールドマークを描く。
+ * 責務: 戦闘の段の敵の絵（どの絵の敵も。攻防中は倒れる動き・駆け寄りのずれ・姿勢で段の中に切り抜く）と、段取りの間の絵・群れ（待機の伸び縮み）・シールドマークを描く。
  * 段取りの間は入りのずれ（見えるか・横のずれ）を受けて描く。状態は変えず、ルール層・anim は実行時に import しない。
  */
 
@@ -74,7 +74,7 @@ function drawShieldMark(ctx, rect) {
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
  * @param {{ typeId: string, hp: number, maxHp: number, intent: import('../rules/combatants.js').EnemyIntent|null }} enemy 描く敵（種類の識別子・HP・最大 HP・予告。群れの数は HP、シールドマークの数は予告の `defense`、絵の体の大きさ（縮み）は HP と最大 HP と表の `minScale`。群れにはシールドマークを描かない）
- * @param {{ visible: boolean, dy: number }|null} [figure] 倒れる絵の見た目（EnemyFigureLook）。null か省くと段取りの絵
+ * @param {{ visible: boolean, dy: number, dx: number }|null} [figure] 敵の絵の見た目（EnemyFigureLook。倒れる動き・駆け寄りのずれ）。null か省くと段取りの絵
  * @param {{ tilt: number, scaleX: number, scaleY: number }|null} [pose] ための姿勢（ChargePoseLook。攻防の演出中の絵を足元を軸に傾け・伸ばす）。null か省くと姿勢なし
  * @param {{ count: number, scaleX: Float64Array, scaleY: Float64Array, figure: { tilt: number, scaleX: number, scaleY: number } }|null} [idle] 段取りの間の待機の伸び縮み（EnemyIdleLook。絵は足元を軸に、群れは1体ずつ。null か省くと伸び縮みなし。シールドマークは伸び縮みしない）
  * @param {import('../anim/enemyEntrance.js').EnemyEntranceLook|null} [entrance] 段取りの間の敵の入りの見た目（visible が偽なら描かない、dx は右へのずれ px。攻防の演出中は使わない。null か省くと常に見えてずれなし）
@@ -91,7 +91,7 @@ export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = 
       ctx.beginPath();
       ctx.rect(area.x, area.y, area.w, area.h);
       ctx.clip();
-      ctx.translate(0, figure.dy);
+      ctx.translate(figure.dx, figure.dy);
       applyFootPose(ctx, fig.rect, pose === null ? NO_POSE : pose, scale);
       drawSpriteFit(ctx, fig.sprite, fig.rect);
     }

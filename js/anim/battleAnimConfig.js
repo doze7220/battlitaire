@@ -154,3 +154,26 @@ export const BATTLE_ANIM = Object.freeze({
   fireFlashMs: 220,
   fireFlashAlpha: 0.6,
 });
+
+/**
+ * 絵の敵の駆け寄りの見せ方1つぶん。時間の単位はミリ秒。
+ * @typedef {Object} DashStyle
+ * @property {number} goMs 最初の行き（絵が元の位置から行き先まで動く）の時間（ms）
+ * @property {number} backMs 戻り（絵が元の位置へ戻る）の時間（ms）
+ * @property {number} advanceMs 2本目の行き（防御の兵の前から城の前まで詰める）の時間（ms）
+ * @property {number} hops 最初の行きの跳ねの回数（0 なら跳ねない）
+ * @property {number} backHops 戻りの跳ねの回数
+ * @property {number} advanceHops 2本目の行きの跳ねの回数
+ * @property {number} hopHeight 跳ねの高さ（px）
+ * @property {number} power 行きの進み具合の累乗（1 で等速。大きいほど終わりに加速する。戻りは easeInOutQuad）
+ */
+
+/**
+ * 駆け寄りの見せ方の表（見せ方の名前 → 値。凍結）。`BATTLE_ANIM` とは別の表。
+ * @type {Readonly<Record<'swift'|'straight'|'bounce', Readonly<DashStyle>>>}
+ */
+export const DASH_STYLES = Object.freeze({
+  swift: Object.freeze({ goMs: 280, backMs: 420, advanceMs: 160, hops: 2, backHops: 2, advanceHops: 1, hopHeight: 14, power: 1.6 }),
+  straight: Object.freeze({ goMs: 450, backMs: 650, advanceMs: 220, hops: 0, backHops: 0, advanceHops: 0, hopHeight: 0, power: 2.4 }),
+  bounce: Object.freeze({ goMs: 750, backMs: 750, advanceMs: 300, hops: 3, backHops: 3, advanceHops: 1, hopHeight: 45, power: 1 }),
+});

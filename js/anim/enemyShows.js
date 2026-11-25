@@ -10,6 +10,7 @@
  * @property {'offscreen'|'mouth'|null} from 兵の出る場所（打撃は null）
  * @property {'block'|'strikeBlock'} blockStep 相殺の段の種類
  * @property {'castleHit'|'strikeCastle'} castleStep 城の被害の段の種類
+ * @property {string|null} dash 絵の駆け寄りの見せ方の名前（`DASH_STYLES` の項目名。駆け寄らないものは null）
  */
 
 /**
@@ -17,9 +18,12 @@
  * @type {Readonly<Record<string, Readonly<AttackShow>>>}
  */
 export const ATTACK_SHOWS = Object.freeze({
-  march: Object.freeze({ unit: 'enemy', from: 'offscreen', blockStep: 'block', castleStep: 'castleHit' }),
-  flames: Object.freeze({ unit: 'flame', from: 'mouth', blockStep: 'block', castleStep: 'castleHit' }),
-  strike: Object.freeze({ unit: null, from: null, blockStep: 'strikeBlock', castleStep: 'strikeCastle' }),
+  march: Object.freeze({ unit: 'enemy', from: 'offscreen', blockStep: 'block', castleStep: 'castleHit', dash: null }),
+  flames: Object.freeze({ unit: 'flame', from: 'mouth', blockStep: 'block', castleStep: 'castleHit', dash: null }),
+  strike: Object.freeze({ unit: null, from: null, blockStep: 'strikeBlock', castleStep: 'strikeCastle', dash: null }),
+  dashSwift: Object.freeze({ unit: null, from: null, blockStep: 'strikeBlock', castleStep: 'strikeCastle', dash: 'swift' }),
+  dashStraight: Object.freeze({ unit: null, from: null, blockStep: 'strikeBlock', castleStep: 'strikeCastle', dash: 'straight' }),
+  dashBounce: Object.freeze({ unit: null, from: null, blockStep: 'strikeBlock', castleStep: 'strikeCastle', dash: 'bounce' }),
 });
 
 /**

@@ -21,6 +21,7 @@ import {
 } from './troopRoster.js';
 import { createTroopCounter } from './troopCounter.js';
 import { enterEnemyTroops, strikeCastle, strikeTroops } from './enemyAttacks.js';
+import { dashBack, dashForward } from './figureDash.js';
 import { createEnemyBody, defeatEnemyBody, enemyBodyEnd, hitEnemyBody, hitEnemyShield } from './enemyBody.js';
 import { createHitMarkList, hitMarksEnd } from './hitMarks.js';
 import { createImpactLog, recordStepImpacts, watchStep } from './impactLog.js';
@@ -350,6 +351,34 @@ function addCharge(state, step, t) {
 }
 
 /**
+ * 絵が駆け寄る段。行き先（防御の兵の前・城の前）に絵の左の縁が着く。きっかけの時刻はない。
+ * @param {BuildState} state 組み立て中の状態
+ * @param {import('./battleSteps.js').BattleStep} step 段
+ * @param {number} t 開始時刻（ms）
+ * @returns {number} 段の長さ（ms）
+ * @throws {Error} 駆け寄れない体（群れ）のとき
+ */
+function addDash(state, step, t) {
+  const body = state.body;
+  if (body.dash === null) throw new Error(`buildBattleTimeline: 駆け寄れない敵の体です（${state.typeId}）`);
+  return dashForward(body.dash, state.roster, body.contactX, step.to ?? 'castle', step.style ?? '', t);
+}
+
+/**
+ * 絵が元の位置へ戻る段。きっかけの時刻はない。
+ * @param {BuildState} state 組み立て中の状態
+ * @param {import('./battleSteps.js').BattleStep} step 段
+ * @param {number} t 開始時刻（ms）
+ * @returns {number} 段の長さ（ms）
+ * @throws {Error} 駆け寄れない体（群れ）のとき
+ */
+function addDashBack(state, step, t) {
+  const body = state.body;
+  if (body.dash === null) throw new Error(`buildBattleTimeline: 駆け寄れない敵の体です（${state.typeId}）`);
+  return dashBack(body.dash, step.style ?? '', t);
+}
+
+/**
  * 段の種類ごとの組み立て。段の開始時刻を受け取り、段の長さを返す（きっかけの時刻は `state.cueTimes` に足す）。
  * @type {Object<string, (state: BuildState, step: import('./battleSteps.js').BattleStep, t: number) => number>}
  */
@@ -368,6 +397,8 @@ const STEP_BUILDERS = {
   enemyHeal: addEnemyHeal,
   burn: addBurn,
   charge: addCharge,
+  dash: addDash,
+  dashBack: addDashBack,
 };
 
 /**

@@ -69,7 +69,7 @@ export class BattleDirector {
     /** @type {HitMarkSwarm} ヒットマークの見た目の入れ物 */
     this.marks = new HitMarkSwarm(timeline.hitMarks);
     /** @type {import('./enemyBody.js').EnemyFigureLook} 倒れる絵の見た目の入れ物 */
-    this.figure = { visible: false, dy: 0 };
+    this.figure = { visible: false, dy: 0, dx: 0 };
     /** @type {import('./troopMotion.js').TroopSample} 倒れる絵を求める作業用の入れ物 */
     this.figureScratch = { visible: false, x: 0, footY: 0, sortY: 0, tilt: 0, alpha: 1, idle: false };
     /** @type {BattleFx} 攻防のエフェクトの見た目の入れ物 */

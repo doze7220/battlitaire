@@ -562,3 +562,14 @@ export function rosterEndTimes(roster, kind) {
   }
   return times.sort((a, b) => a - b);
 }
+
+/**
+ * まだ終わっていない kind の兵のうち、一番前の兵の x（いまいる位置）を返す。
+ * @param {TroopRoster} roster 名簿
+ * @param {string} kind 種類
+ * @returns {number|null} 一番前の兵の x（終わっていない兵がいなければ null）
+ */
+export function frontTroopX(roster, kind) {
+  const list = activeOf(roster, kind);
+  return list.length > 0 ? list[0].x : null;
+}

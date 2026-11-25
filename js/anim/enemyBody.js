@@ -5,6 +5,7 @@
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
 import { enemyBodyStyle } from './enemyShows.js';
+import { createFigureDash, sampleFigureDash } from './figureDash.js';
 import { createTroopUnit, sampleTroop, setTroopEnd } from './troopMotion.js';
 import { chargePairs, chargeTo, placeTroops, popTroops } from './troopRoster.js';
 import { bodyScale, scaledShieldArea, scaledX } from '../view/figureScale.js';
@@ -17,6 +18,8 @@ import { bodyScale, scaledShieldArea, scaledX } from '../view/figureScale.js';
  * @property {number|null} shieldHitX シールドに当たる位置の x（攻防の前の HP の倍率をかけた位置。群れはシールドがないので null）
  * @property {import('../view/enemyFigures.js').EnemyFigure|null} figure 絵の配置（体に当たる位置を HP の倍率で求めるのに読む。群れは null）
  * @property {number} maxHp 敵の最大 HP（倍率を求めるのに使う。群れは 0）
+ * @property {import('./figureDash.js').FigureDash|null} dash 絵の駆け寄りの記録（絵だけ。群れは null）
+ * @property {number|null} contactX 絵の左の縁の x（攻防の前の HP の倍率をかけた位置。駆け寄りの行き先から横のずれを求める。群れは null）
  * @property {import('./troopMotion.js').TroopUnit|null} fall 倒れる動きだけに使う1体（群れは null。名簿には入れない）
  * @property {number} fallOutY 絵が消える足元の y（群れは 0）
  */
@@ -25,8 +28,15 @@ import { bodyScale, scaledShieldArea, scaledX } from '../view/figureScale.js';
  * 倒れる絵の見た目（描画が読む）。
  * @typedef {Object} EnemyFigureLook
  * @property {boolean} visible 描くか
- * @property {number} dy 足元の y のずれ
+ * @property {number} dy 足元の y のずれ（倒れる動きと駆け寄りの跳ねの持ち上がりを合わせたもの）
+ * @property {number} dx 足元の x のずれ（駆け寄り・戻り）
  */
+
+/**
+ * 駆け寄りの見た目を求める作業用の入れ物（毎フレームオブジェクトを作らないため。書いてすぐ読むだけで、持ち越さない）。
+ * @type {import('./figureDash.js').FigureDashLook}
+ */
+const DASH_SCRATCH = { dx: 0, lift: 0 };
 
 /**
  * 体の見せ方ごとの準備。群れ・絵を名簿へ置き、体の記録の一部とシールドの並べ先を返す（群れはシールドを置かないので null）。
@@ -47,6 +57,8 @@ const BODY_SETUPS = Object.freeze({
         shieldHitX: null,
         figure: null,
         maxHp: 0,
+        dash: null,
+        contactX: null,
         fall: null,
         fallOutY: 0,
       },
@@ -68,6 +80,8 @@ const BODY_SETUPS = Object.freeze({
         shieldHitX: hitX,
         figure,
         maxHp,
+        dash: createFigureDash(),
+        contactX: hitX,
         fall: createTroopUnit('figure', 0, figure.rect.x + figure.rect.w / 2, figure.rect.y + figure.rect.h, 0, 0),
         fallOutY: battleLayout.area.y + battleLayout.area.h + figure.rect.h,
       },
@@ -185,7 +199,7 @@ export function enemyFigureFalling(body, clock) {
 }
 
 /**
- * 時計からの絵の見た目を `out` に書き込む（オブジェクトを作らない）。
+ * 時計からの絵の見た目を `out` に書き込む（オブジェクトを作らない）。倒れる動きの `dy` に駆け寄りの跳ねの持ち上がりと横のずれ `dx` を合わせる。
  * @param {EnemyBody} body 敵の体
  * @param {number} clock 時計の値（ms）
  * @param {EnemyFigureLook} out 書き込み先
@@ -196,9 +210,17 @@ export function sampleEnemyFigure(body, clock, out, scratch) {
   if (body.fall === null) {
     out.visible = false;
     out.dy = 0;
+    out.dx = 0;
     return;
   }
   sampleTroop(body.fall, clock, scratch);
+  if (body.dash !== null) {
+    sampleFigureDash(body.dash, clock, DASH_SCRATCH);
+  } else {
+    DASH_SCRATCH.dx = 0;
+    DASH_SCRATCH.lift = 0;
+  }
   out.visible = scratch.visible;
-  out.dy = scratch.visible ? scratch.footY - body.fall.homeY : 0;
+  out.dy = scratch.visible ? scratch.footY - body.fall.homeY - DASH_SCRATCH.lift : 0;
+  out.dx = scratch.visible ? DASH_SCRATCH.dx : 0;
 }
