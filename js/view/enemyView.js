@@ -104,7 +104,7 @@ export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = 
     if (idle !== null) applyFootPose(ctx, fig.rect, idle.figure);
     drawSpriteFit(ctx, fig.sprite, fig.rect);
     ctx.restore();
-    if (enemy.intent !== null && enemy.intent.defense > 0) {
+    if (fig.shieldArea !== null && enemy.intent !== null && enemy.intent.defense > 0) {
       for (const rect of battleLayout.shieldRects(enemy.intent.defense, fig.shieldArea)) drawShieldMark(ctx, rect);
     }
   } else if (HORDE_ENEMIES.has(enemy.typeId)) {

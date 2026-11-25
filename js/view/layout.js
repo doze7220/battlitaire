@@ -1,10 +1,11 @@
 /**
  * 責務: 盤面の画面配置（戦闘の段の兵の陣地・敵の頭の上の予告の札・敵ごとの当たる位置・炎の出る位置・画面の外の x・城の打撃の範囲・人数の表示・城と敵の絵の矩形・ゴブリンの群れの並び・敵を倒したときの案内・最上部のゲージ・行動のゲージの帯とラベルを含む）を一手に持ち、座標から「何に当たるか」を求める。
- * タイトル画面・遊び方の画面・結果の表示（決着）の配置と当たりも持つ。ルール層は import せず、数の情報は引数で受け取る。状態は変えない。絵の縦横比は spriteView.js から得る。
+ * タイトル画面・遊び方の画面・結果の表示（決着）の配置と当たりも持つ。ルール層は import せず、数の情報は引数で受け取る。状態は変えない。絵の縦横比は spriteView.js から得る。絵の敵の配置の組み立ては enemyFigures.js に任せる。
  */
 
 import { INTENT_CELL, SPRITE_IDS, spriteFitRect } from './spriteView.js';
 import { campSlot } from './campSlots.js';
+import { createEnemyFigures } from './enemyFigures.js';
 
 /**
  * 矩形。
@@ -89,25 +90,6 @@ import { campSlot } from './campSlots.js';
  */
 
 /**
- * 敵の絵（巨人・ドラゴン）1体の配置。
- * @typedef {Object} EnemyFigure
- * @property {string} sprite スプライトの識別子（SPRITE_IDS の値）
- * @property {Rect} rect 絵の矩形（足元が地面）
- * @property {Rect} shieldArea シールドマークを並べる矩形
- * @property {number} hitX 攻撃の兵が当たって止まる足元の x（`rect.x + rect.w × hit`）
- * @property {{ x: number, y: number }|null} mouth 炎が出る口の位置（口のない敵は null）
- * @property {{ x: number, y: number }} healText 敵の回復の量の文字の中心
- * @property {IntentSpot} intent 予告の札の上端の基準（中央。右端からはみ出すときは左へ寄る。札の下端は人数の表示の枠の下端にそろう）
- */
-
-/**
- * 予告の札の置き場所（札の上端の基準）。札が段の右端からはみ出すときは、`intentView.js` が左へ寄せる。
- * @typedef {Object} IntentSpot
- * @property {number} x 札の中心の基準の x（札が右端に収まるときの中心。収まらないと左へ寄る）
- * @property {number} y 札の上端の y
- */
-
-/**
  * 予告の札の大きさと、その下の数え下ろしの文字の配置。
  * @typedef {Object} IntentBadgeLayout
  * @property {number} h 札（板）の高さ
@@ -128,10 +110,10 @@ import { campSlot } from './campSlots.js';
  * @property {number} groundY 城・敵の絵の足元の y（地面の下端。兵を奥と手前に分けて描く境目）
  * @property {Rect} castle 城の絵の矩形
  * @property {Rect} enemy ゴブリンの群れの矩形（群れの兵の体が入る範囲）。いまは layout.js の中で敵の回復の文字の位置（`enemyHealText`）の基準にだけ使い、layout.js の外から読む箇所はない
- * @property {Object<string, EnemyFigure>} enemyFigures 敵の種類の識別子 → 敵の絵の配置（凍結。絵を持たない敵は含まれない）
+ * @property {Object<string, import('./enemyFigures.js').EnemyFigure>} enemyFigures 敵の種類の識別子 → 敵の絵の配置（凍結。絵を持たない敵は含まれない）
  * @property {TopGaugeLayout} topGauges 画面の最上部のゲージ（城と敵の HP・敵の名前とレベル・戦闘ごとの TURN の番号・金貨）の配置
  * @property {{ x: number, y: number }} enemyHealText 絵を持たない敵の回復の量の文字の中心（群れの矩形の上寄り）
- * @property {IntentSpot} enemyIntent 絵を持たない敵（ゴブリンの群れ）の予告の札の上端の基準（中央。右端からはみ出すときは左へ寄る。札の下端は人数の表示の枠の下端にそろう）
+ * @property {import('./enemyFigures.js').IntentSpot} enemyIntent 絵を持たない敵（ゴブリンの群れ）の予告の札の上端の基準（中央。右端からはみ出すときは左へ寄る。札の下端は人数の表示の枠の下端にそろう）
  * @property {IntentBadgeLayout} intentBadge 予告の札の大きさと数え下ろしの文字の配置
  * @property {TroopLayout} troops 兵の配置
  * @property {{ box: Rect, iconSize: number, items: Array<{ iconX: number, iconY: number, textX: number, textY: number }> }} troopCounter 人数の表示の配置（枠・アイコンの大きさ・攻撃・防御・修理の順の各項目のアイコン中心と文字の左端・中心 y）
@@ -302,30 +284,6 @@ const CASTLE_CX = 240;
 const CASTLE_H = 190;
 /** 敵の中心の x（巨人・ドラゴンの絵の中心） */
 const ENEMY_CX = 620;
-/**
- * 敵の種類の識別子ごとの絵の設定。height は絵の高さ、shield はシールドマークを並べる矩形（絵の矩形に対する割合。
- * cx・cy は中心、w・h は幅・高さ）、hit は攻撃の兵が当たって止まる x の絵の矩形の幅に対する割合（左端から。試遊で決め直す）、
- * mouth は炎が出る位置の絵の矩形に対する割合 {x, y}（口のない敵は null。試遊で決め直す）、
- * intent は予告の札の中心の x の絵の矩形に対する割合 {x}（試遊で決め直す。札の上端の y は、札の下端を人数の表示の枠の下端にそろえて決める）。
- */
-const ENEMY_FIGURES = Object.freeze({
-  giant: Object.freeze({
-    sprite: SPRITE_IDS.giant,
-    height: 200,
-    shield: Object.freeze({ cx: 0.41, cy: 0.39, w: 0.7, h: 0.3 }),
-    hit: 0.15,
-    mouth: null,
-    intent: Object.freeze({ x: 0.32 }),
-  }),
-  dragon: Object.freeze({
-    sprite: SPRITE_IDS.dragon,
-    height: 200,
-    shield: Object.freeze({ cx: 0.47, cy: 0.49, w: 0.6, h: 0.3 }),
-    hit: 0.15,
-    mouth: Object.freeze({ x: 0.03, y: 0.3 }),
-    intent: Object.freeze({ x: 0.25 }),
-  }),
-});
 /** 城の打撃のヒットマークを出す範囲の、城の絵の矩形に対する割合（x・y は左上、w・h は幅・高さ。試遊で決め直す） */
 const CASTLE_HIT_AREA = Object.freeze({ x: 0.15, y: 0.3, w: 0.7, h: 0.5 });
 /** 敵の回復の量の文字の中心 y の、絵（群れの矩形）の上端からの距離の、高さに対する割合 */
@@ -575,8 +533,7 @@ function createTopGaugeLayout(width, coinBlockCount) {
 /**
  * 最上段（戦闘）の配置を作る。地面の下端（groundY）は段の下端から GROUND_OFFSET 上、城・敵の絵はその上に足元をそろえて立つ。
  * 兵の足元の範囲は groundY から FIELD_H 上まで。
- * 城の絵は CASTLE_CX、巨人・ドラゴンの絵の中心は ENEMY_CX、ゴブリンの群れは HORDE_AREA_X の範囲。巨人・ドラゴンの絵は ENEMY_FIGURES の表で大きさと
- * シールドマークの並べ先を決める。
+ * 城の絵は CASTLE_CX、巨人・ドラゴンの絵の中心は ENEMY_CX、ゴブリンの群れは HORDE_AREA_X の範囲。巨人・ドラゴンの絵の配置は enemyFigures.js の表で決める。
  * @param {number} width 画面の幅
  * @param {number} coinBlockCount 金貨のゲージのブロックの数
  * @returns {BattleLayout} 戦闘の段の配置
@@ -622,33 +579,14 @@ function createBattleLayout(width, coinBlockCount) {
   };
   /** 予告の札の上端の y（札の下端を人数の表示の枠の下端にそろえる。どの敵でも同じ高さ） */
   const intentTop = counterBox.y + counterBox.h - intentBadge.h;
-  /** @type {Object<string, EnemyFigure>} */
-  const enemyFigures = {};
-  for (const [typeId, def] of Object.entries(ENEMY_FIGURES)) {
-    const rect = spriteFitRect(
-      def.sprite,
-      ENEMY_CX,
-      groundY,
-      Math.min(def.height, groundY - (BATTLE_TOP_PAD + BOX_H)),
-    );
-    const sw = rect.w * def.shield.w;
-    const sh = rect.h * def.shield.h;
-    enemyFigures[typeId] = Object.freeze({
-      sprite: def.sprite,
-      rect,
-      shieldArea: {
-        x: rect.x + rect.w * def.shield.cx - sw / 2,
-        y: rect.y + rect.h * def.shield.cy - sh / 2,
-        w: sw,
-        h: sh,
-      },
-      healText: { x: rect.x + rect.w / 2, y: rect.y + rect.h * ENEMY_HEAL_TEXT_RATIO },
-      intent: { x: rect.x + rect.w * def.intent.x, y: intentTop },
-      hitX: rect.x + rect.w * def.hit,
-      mouth: def.mouth === null ? null : { x: rect.x + rect.w * def.mouth.x, y: rect.y + rect.h * def.mouth.y },
-    });
-  }
-  Object.freeze(enemyFigures);
+  const enemyFigures = createEnemyFigures({
+    groundY,
+    centerX: ENEMY_CX,
+    maxHeight: groundY - (BATTLE_TOP_PAD + BOX_H),
+    intentTop,
+    badgeH: intentBadge.h,
+    healTextRatio: ENEMY_HEAL_TEXT_RATIO,
+  });
   const enemyHealText = { x: enemy.x + enemy.w / 2, y: enemy.y + enemy.h * ENEMY_HEAL_TEXT_RATIO };
   const enemyIntent = { x: HORDE_AREA_X.x + HORDE_AREA_X.w - HORDE_INTENT_DX, y: intentTop };
 
