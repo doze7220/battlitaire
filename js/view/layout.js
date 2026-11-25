@@ -450,7 +450,7 @@ const HOWTO_BUTTON_PAD_X = 12;
 /** 結果の板の幅 */
 const RESULT_PANEL_W = 600;
 /** 結果の板の高さ */
-const RESULT_PANEL_H = 620;
+const RESULT_PANEL_H = 696;
 /** 板の上端から「負け」の文字の中心までの距離 */
 const RESULT_OUTCOME_DY = 110;
 /** 結果の板の左右の余白 */
@@ -462,7 +462,7 @@ const RESULT_ROW_TOP_DY = 230;
 /** 結果の行どうしの間隔（中心から中心） */
 const RESULT_ROW_GAP = 76;
 /** 板の上端から「タップでタイトルへ」の中心までの距離 */
-const RESULT_HINT_DY = 540;
+const RESULT_HINT_DY = 616;
 
 /**
  * 点が矩形の中にあるか（右端・下端は含まない）。

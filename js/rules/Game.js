@@ -129,7 +129,7 @@ export class Game {
 
   /**
    * 結果の集計の写しを返す（書き換えてもゲームの状態に影響しない）。
-   * @returns {import('./gameStats.js').GameStats} かかったフェーズ数・敵に与えた総ダメージ・城が受けた総ダメージ・回復の合計
+   * @returns {import('./gameStats.js').GameStats} 倒した敵の数・かかったフェーズ数・敵に与えた総ダメージ・城が受けた総ダメージ・回復の合計
    */
   gameStats() {
     return { ...this.stats };
