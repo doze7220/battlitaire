@@ -1,5 +1,5 @@
 /**
- * 責務: 敵の行動の決まり（種類ごとの状態の初期値・次の行動の決め方・数え下ろし・隙かの問い合わせ）の表と呼び分け、
+ * 責務: 敵の行動の決まり（種類ごとの状態の初期値・状態の形の確かめ・次の行動の決め方・数え下ろし・隙かの問い合わせ）の表と呼び分け、
  * 行動を作る小さな関数、行動の量の幅からの抽選、攻撃の直後の回復の抽選。渡された乱数だけを使う純粋な関数（ルール層）。
  */
 
@@ -77,9 +77,19 @@ export function steadyAttackAction(behavior, random) {
 }
 
 /**
- * 行動の決まりの種類ごとの、状態の初期値・次の行動の決め方・数え下ろしの問い合わせ・隙かの問い合わせ（isOpening）の表。
+ * 値がプレーンなオブジェクト（`null`・配列・関数でない）か。
+ * @param {unknown} value 調べる値
+ * @returns {boolean} プレーンなオブジェクトなら true
+ */
+function isPlainObject(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * 行動の決まりの種類ごとの、状態の初期値・状態の形の確かめ（isState）・次の行動の決め方・数え下ろしの問い合わせ・隙かの問い合わせ（isOpening）の表。
  * @type {Readonly<Object<string, {
  *   initialState: (behavior: any) => object,
+ *   isState: (state: unknown) => boolean,
  *   planNext: (behavior: any, state: object, random: () => number) => { action: import('./combatants.js').EnemyAction, state: object },
  *   countdown: (behavior: any, state: object) => number|null,
  *   isOpening: (action: import('./combatants.js').EnemyAction) => boolean
@@ -88,6 +98,7 @@ export function steadyAttackAction(behavior, random) {
 const BEHAVIORS = Object.freeze({
   steady: Object.freeze({
     initialState: () => ({}),
+    isState: (state) => isPlainObject(state),
     planNext: (behavior, state, random) => ({
       action: steadyAttackAction(behavior, random),
       state,
@@ -97,6 +108,7 @@ const BEHAVIORS = Object.freeze({
   }),
   cycle: Object.freeze({
     initialState: () => ({ countdown: null }),
+    isState: (state) => isPlainObject(state) && Number.isInteger(state.countdown) && state.countdown >= 0,
     planNext: (behavior, state, random) => {
       const countdown =
         state.countdown === null || state.countdown <= 0 ? behavior.cycleLength - 1 : state.countdown - 1;
@@ -111,6 +123,7 @@ const BEHAVIORS = Object.freeze({
   }),
   inhale: Object.freeze({
     initialState: () => ({ lastVariant: null }),
+    isState: (state) => isPlainObject(state) && ['claw', 'inhale', 'breath'].includes(state.lastVariant),
     planNext: (behavior, state, random) => {
       let action;
       if (state.lastVariant === 'inhale') {
@@ -132,7 +145,7 @@ const BEHAVIORS = Object.freeze({
 /**
  * 種類に対応する決まりの実装を引く。
  * @param {{ type: string }} behavior 行動の決まりの設定
- * @returns {{ initialState: Function, planNext: Function, countdown: Function, isOpening: Function }} 決まりの実装
+ * @returns {{ initialState: Function, isState: Function, planNext: Function, countdown: Function, isOpening: Function }} 決まりの実装
  * @throws {Error} 未知の種類のとき
  */
 function lookupBehavior(behavior) {
@@ -149,6 +162,18 @@ function lookupBehavior(behavior) {
  */
 export function createBehaviorState(behavior) {
   return lookupBehavior(behavior).initialState(behavior);
+}
+
+/**
+ * 値が、その決まりの状態の形か（保存したデータの確かめ用。乱数は呼ばない）。
+ * 決まりごと（steady: プレーンなオブジェクト。cycle: `countdown` が 0 以上の整数。inhale: `lastVariant` が 'claw'・'inhale'・'breath'）。
+ * @param {{ type: string }} behavior 行動の決まりの設定
+ * @param {unknown} state 調べる値
+ * @returns {boolean} 形が合えば true
+ * @throws {Error} 未知の種類のとき
+ */
+export function isBehaviorState(behavior, state) {
+  return lookupBehavior(behavior).isState(state);
 }
 
 /**

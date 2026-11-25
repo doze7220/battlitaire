@@ -1,0 +1,323 @@
+/**
+ * 責務: 中断データ（ターンの始まりのゲームの状態）の形（版番号・項目の表）、ゲームからデータへの変換、データの確かめ、データからゲームへの復元。
+ * 純粋な計算だけ（保存先・画面・エンジンには触れない。ルール層）。
+ */
+
+import { RULES } from './config.js';
+import { Game } from './Game.js';
+import { createRng, isRngState } from './rng.js';
+import { createDecks } from './piles.js';
+import { enemyTypeIds, enemySpecOf } from './enemyTypes.js';
+import { isBehaviorState } from './enemyBehaviors.js';
+import { createGameStats } from './gameStats.js';
+
+/**
+ * 中断データの版番号（形が変わったら上げる。版番号はここ1か所）。
+ * @type {number}
+ */
+export const SUSPEND_VERSION = 1;
+
+/**
+ * 中断データ（ターンの始まりの状態。`null`・真偽値・文字列・数・配列・プレーンなオブジェクトだけでできている）。
+ * 保存しないもの: `stage`（いつも 'planning'）・`outcome`（いつも null）・`config`・画面の状態。
+ * @typedef {Object} SuspendData
+ * @property {number} version 版番号（`SUSPEND_VERSION`）
+ * @property {number[]} rng 乱数の状態（4つの整数）
+ * @property {number} seed 敵の並びの種
+ * @property {number} stageNumber ステージの番号
+ * @property {number} phase 通しのフェーズ（ターン）
+ * @property {number} battleTurn 戦闘のターン
+ * @property {number} actionsMax そのターンの行動の回数
+ * @property {number} actionsLeft 残りの行動の回数
+ * @property {{ suit: string, cards: import('./card.js').Card[] }[]} decks 山札（並びの順）
+ * @property {import('./card.js').Card[]} discard 捨て札
+ * @property {import('./card.js').Card[][]} columns 列
+ * @property {(import('./card.js').Card|null)[]} hand 手札（`null` は空き枠）
+ * @property {Object<string, number>} gauges ゲージの識別子 → 値
+ * @property {{ hp: number, maxHp: number }} castle 城
+ * @property {{ typeId: string, hp: number, maxHp: number, intent: import('./combatants.js').EnemyIntent, behaviorState: object }} enemy 敵（名前は設定から引くので持たない）
+ * @property {import('./gameStats.js').GameStats} stats 結果の集計
+ */
+
+/**
+ * 項目の1行。
+ * @typedef {Object} SuspendField
+ * @property {(game: Game) => unknown} save ゲームからこの項目の値を取り出す（共有しない写し）
+ * @property {(value: unknown, config: Readonly<import('./config.js').Rules>) => boolean} check 値の形が正しいか（例外を投げない）
+ * @property {(game: Game, value: unknown) => void} load 値（写して使う）をゲームに上書きする
+ */
+
+/**
+ * 値がプレーンなオブジェクトか。
+ * @param {unknown} value 調べる値
+ * @returns {boolean} `null`・配列でないオブジェクトなら true
+ */
+function isPlain(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * 値が `min` 以上の整数か。
+ * @param {unknown} value 調べる値
+ * @param {number} min 下限
+ * @returns {boolean} 整数で `min` 以上なら true
+ */
+function isIntFrom(value, min) {
+  return Number.isInteger(value) && /** @type {number} */ (value) >= min;
+}
+
+/**
+ * 値がカード（`id`・`suit`・`rank`）の形か。
+ * @param {unknown} value 調べる値
+ * @returns {boolean} 形が合えば true
+ */
+function isCardShape(value) {
+  return isPlain(value) && Number.isInteger(value.id) && typeof value.suit === 'string' && Number.isInteger(value.rank);
+}
+
+/**
+ * 値がカードの配列か。
+ * @param {unknown} value 調べる値
+ * @returns {boolean} 全部がカードの形の配列なら true
+ */
+function isCardList(value) {
+  return Array.isArray(value) && value.every(isCardShape);
+}
+
+/**
+ * 予告の形が正しいか。
+ * @param {unknown} value 調べる値
+ * @returns {boolean} `kind` が 'attack'・'windup'、`amount`・`baseDefense`・`defense` が 0 以上の整数、`variant` は無いか文字列、`burn` は無いか 0 ≤ min ≤ max の整数なら true
+ */
+function isIntentShape(value) {
+  if (!isPlain(value)) return false;
+  if (value.kind !== 'attack' && value.kind !== 'windup') return false;
+  if (!isIntFrom(value.amount, 0) || !isIntFrom(value.baseDefense, 0) || !isIntFrom(value.defense, 0)) return false;
+  if (value.variant !== undefined && typeof value.variant !== 'string') return false;
+  if (value.burn !== undefined) {
+    const burn = value.burn;
+    if (!isPlain(burn) || !isIntFrom(burn.min, 0) || !Number.isInteger(burn.max) || burn.max < burn.min) return false;
+  }
+  return true;
+}
+
+/**
+ * 項目の表（保存・確かめ・戻しを1行にまとめる。状態が増えたらここへ1行足し、`SUSPEND_VERSION` を上げる）。
+ * @type {Readonly<Object<string, Readonly<SuspendField>>>}
+ */
+const FIELDS = Object.freeze({
+  rng: Object.freeze({
+    save: (game) => game.rng.state(),
+    check: (value) => isRngState(value),
+    load: (game, value) => game.rng.setState(/** @type {number[]} */ (value)),
+  }),
+  seed: Object.freeze({
+    save: (game) => game.seed,
+    check: (value) => Number.isInteger(value),
+    load: (game, value) => {
+      game.seed = /** @type {number} */ (value);
+    },
+  }),
+  stageNumber: Object.freeze({
+    save: (game) => game.stageNumber,
+    check: (value) => isIntFrom(value, 1),
+    load: (game, value) => {
+      game.stageNumber = /** @type {number} */ (value);
+    },
+  }),
+  phase: Object.freeze({
+    save: (game) => game.phase,
+    check: (value) => isIntFrom(value, 1),
+    load: (game, value) => {
+      game.phase = /** @type {number} */ (value);
+    },
+  }),
+  battleTurn: Object.freeze({
+    save: (game) => game.battleTurn,
+    check: (value) => isIntFrom(value, 1),
+    load: (game, value) => {
+      game.battleTurn = /** @type {number} */ (value);
+    },
+  }),
+  actionsMax: Object.freeze({
+    save: (game) => game.actionsMax,
+    check: (value) => isIntFrom(value, 0),
+    load: (game, value) => {
+      game.actionsMax = /** @type {number} */ (value);
+    },
+  }),
+  actionsLeft: Object.freeze({
+    save: (game) => game.actionsLeft,
+    check: (value) => isIntFrom(value, 0),
+    load: (game, value) => {
+      game.actionsLeft = /** @type {number} */ (value);
+    },
+  }),
+  decks: Object.freeze({
+    save: (game) => structuredClone(game.decks.map((deck) => ({ suit: deck.suit, cards: deck.cards }))),
+    check: (value, config) =>
+      Array.isArray(value) &&
+      value.length === config.suits.length &&
+      value.every(
+        (deck, i) =>
+          isPlain(deck) && deck.suit === config.suits[i] && isCardList(deck.cards) && deck.cards.every((card) => card.suit === deck.suit),
+      ),
+    load: (game, value) => {
+      game.decks = structuredClone(/** @type {any} */ (value));
+    },
+  }),
+  discard: Object.freeze({
+    save: (game) => structuredClone(game.discard),
+    check: (value) => isCardList(value),
+    load: (game, value) => {
+      game.discard = structuredClone(/** @type {any} */ (value));
+    },
+  }),
+  columns: Object.freeze({
+    save: (game) => structuredClone(game.columns),
+    check: (value, config) => Array.isArray(value) && value.length === config.columnCount && value.every(isCardList),
+    load: (game, value) => {
+      game.columns = structuredClone(/** @type {any} */ (value));
+    },
+  }),
+  hand: Object.freeze({
+    save: (game) => structuredClone(game.hand),
+    check: (value, config) =>
+      Array.isArray(value) && value.length === config.handSize && value.every((slot) => slot === null || isCardShape(slot)),
+    load: (game, value) => {
+      game.hand = structuredClone(/** @type {any} */ (value));
+    },
+  }),
+  gauges: Object.freeze({
+    save: (game) => ({ ...game.gauges }),
+    check: (value, config) =>
+      isPlain(value) &&
+      Object.keys(value).length === config.gauges.length &&
+      config.gauges.every((gauge) => Object.prototype.hasOwnProperty.call(value, gauge) && isIntFrom(value[gauge], 0)),
+    load: (game, value) => {
+      game.gauges = { ...(/** @type {any} */ (value)) };
+    },
+  }),
+  castle: Object.freeze({
+    save: (game) => ({ hp: game.castle.hp, maxHp: game.castle.maxHp }),
+    check: (value) => isPlain(value) && isIntFrom(value.hp, 1) && Number.isInteger(value.maxHp) && value.hp <= value.maxHp,
+    load: (game, value) => {
+      game.castle = { ...(/** @type {any} */ (value)) };
+    },
+  }),
+  enemy: Object.freeze({
+    save: (game) =>
+      structuredClone({
+        typeId: game.enemy.typeId,
+        hp: game.enemy.hp,
+        maxHp: game.enemy.maxHp,
+        intent: game.enemy.intent,
+        behaviorState: game.enemy.behaviorState,
+      }),
+    check: (value, config) =>
+      isPlain(value) &&
+      typeof value.typeId === 'string' &&
+      enemyTypeIds(config).includes(value.typeId) &&
+      isIntFrom(value.hp, 1) &&
+      Number.isInteger(value.maxHp) &&
+      value.hp <= value.maxHp &&
+      isIntentShape(value.intent) &&
+      isBehaviorState(enemySpecOf(config, value.typeId).behavior, value.behaviorState),
+    load: (game, value) => {
+      const v = structuredClone(/** @type {any} */ (value));
+      game.enemy = {
+        typeId: v.typeId,
+        name: enemySpecOf(game.config, v.typeId).name,
+        hp: v.hp,
+        maxHp: v.maxHp,
+        intent: v.intent,
+        behaviorState: v.behaviorState,
+      };
+    },
+  }),
+  stats: Object.freeze({
+    save: (game) => ({ ...game.stats }),
+    check: (value) => isPlain(value) && Object.keys(createGameStats()).every((name) => isIntFrom(value[name], 0)),
+    load: (game, value) => {
+      game.stats = { ...(/** @type {any} */ (value)) };
+    },
+  }),
+});
+
+/**
+ * 全部の札（山札・捨て札・列・手札）が、今の設定で作る札とちょうど一致するか（欠け・重なり・知らない札を見つける）。
+ * 札の id の決め方は書き写さず、`createDecks` で作った札と比べる。
+ * @param {SuspendData} data 項目ごとの形の確かめを通ったデータ
+ * @param {Readonly<import('./config.js').Rules>} config ルールの設定
+ * @returns {boolean} 枚数・id・スート・数字がちょうど一致すれば true
+ */
+function hasAllCards(data, config) {
+  const reference = createDecks(config, () => 0).flatMap((deck) => deck.cards);
+  const byId = new Map(reference.map((card) => [card.id, card]));
+  const all = [
+    ...data.decks.flatMap((deck) => deck.cards),
+    ...data.discard,
+    ...data.columns.flat(),
+    ...data.hand.filter((card) => card !== null),
+  ];
+  if (all.length !== reference.length) return false;
+  const seen = new Set();
+  for (const card of all) {
+    const expected = byId.get(card.id);
+    if (expected === undefined || seen.has(card.id)) return false;
+    if (expected.suit !== card.suit || expected.rank !== card.rank) return false;
+    seen.add(card.id);
+  }
+  return true;
+}
+
+/**
+ * ゲームから中断データを作る（ターンの始まり、抽選が決まった後・操作の前に呼ぶ。`game` は変えない。結果は `game` と参照を共有しない）。
+ * @param {Game} game ターンの始まりのゲーム
+ * @returns {SuspendData} 中断データ
+ */
+export function toSuspendData(game) {
+  /** @type {Record<string, unknown>} */
+  const data = { version: SUSPEND_VERSION };
+  for (const [name, field] of Object.entries(FIELDS)) data[name] = field.save(game);
+  return /** @type {SuspendData} */ (data);
+}
+
+/**
+ * 保存されていた値を確かめ、今の設定と合えば中断データとして返す（どんな値でも例外を投げない）。
+ * 版番号・各項目の形・`actionsLeft <= actionsMax`・全部の札の組が今の設定と合うかを見る。敵の数値などは設定と比べない。
+ * @param {unknown} raw 保存されていた値（`null`・配列・数・文字列・入れ子の欠けを含む）
+ * @param {Readonly<import('./config.js').Rules>} [config] ルールの設定（既定は `RULES`）
+ * @returns {SuspendData|null} 合えば `raw` の写し（参照を共有しない）。合わなければ `null`
+ */
+export function readSuspendData(raw, config = RULES) {
+  try {
+    if (!isPlain(raw) || /** @type {any} */ (raw).version !== SUSPEND_VERSION) return null;
+    const source = /** @type {Record<string, unknown>} */ (raw);
+    for (const [name, field] of Object.entries(FIELDS)) {
+      if (!field.check(source[name], config)) return null;
+    }
+    const data = /** @type {SuspendData} */ (structuredClone(source));
+    if (data.actionsLeft > data.actionsMax) return null;
+    if (!hasAllCards(data, config)) return null;
+    /** @type {Record<string, unknown>} */
+    const result = { version: SUSPEND_VERSION };
+    for (const name of Object.keys(FIELDS)) result[name] = /** @type {any} */ (data)[name];
+    return /** @type {SuspendData} */ (result);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 中断データからゲームを作る（`readSuspendData` を通ったデータだけを渡す）。
+ * 新しいゲームを作った時の抽選の結果は捨て、全項目を上書きする（乱数の状態も保存したものに戻る）。
+ * @param {SuspendData} data `readSuspendData` が返したデータ（書き換えない。参照を共有しない）
+ * @param {Readonly<import('./config.js').Rules>} [config] ルールの設定（既定は `RULES`）
+ * @returns {Game} ターンの始まりのゲーム
+ */
+export function restoreGame(data, config = RULES) {
+  const game = new Game({ rng: createRng(data.rng), seed: data.seed, config });
+  for (const [name, field] of Object.entries(FIELDS)) field.load(game, /** @type {any} */ (data)[name]);
+  return game;
+}
