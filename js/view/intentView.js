@@ -1,5 +1,5 @@
 /**
- * 責務: 敵の頭の上の予告の札（攻撃の側・防御の側の絵と量の数字・ブレスの目立たせ。右端からはみ出さない）と、その下の数え下ろしの文字の描画。
+ * 責務: 敵の頭の上の予告の札（攻撃の側・防御の側の絵と量の数字・ブレスと大攻撃の目立たせ。右端からはみ出さない）と、その下の数え下ろしの文字の描画。
  * 予告の種類 → 絵の表を持つ。状態は変えず、ルール層・anim は実行時に import しない。
  */
 
@@ -18,6 +18,8 @@ const INTENT_ICONS = Object.freeze({
   claw: INTENT_IDS.claw,
   inhale: INTENT_IDS.inhale,
   breath: INTENT_IDS.breath,
+  charge: INTENT_IDS.windup,
+  heavy: INTENT_IDS.attack,
 });
 
 /** 予告の札の防御の側の絵の識別子。 */
@@ -27,7 +29,7 @@ const DEFENSE_ICON = INTENT_IDS.defend;
  * 札を目立たせる行動の中の種類（variant）の集合。
  * @type {Set<string>}
  */
-const EMPHASIZED_VARIANTS = new Set(['breath']);
+const EMPHASIZED_VARIANTS = new Set(['breath', 'heavy']);
 
 /** 札の角の半径。 */
 const BADGE_CORNER = 10;
@@ -37,11 +39,11 @@ const BADGE_FILL = 'rgba(20, 24, 36, 0.75)';
 const BADGE_STROKE = 'rgba(255, 255, 255, 0.7)';
 /** ふつうの札の縁の太さ。 */
 const BADGE_STROKE_WIDTH = 2;
-/** 目立たせる札（ブレス）の塗りの色。 */
+/** 目立たせる札（ブレス・大攻撃）の塗りの色。 */
 const EMPHASIS_FILL = 'rgba(170, 20, 20, 0.92)';
-/** 目立たせる札（ブレス）の縁の色。 */
+/** 目立たせる札（ブレス・大攻撃）の縁の色。 */
 const EMPHASIS_STROKE = '#ffe45c';
-/** 目立たせる札（ブレス）の縁の太さ。 */
+/** 目立たせる札（ブレス・大攻撃）の縁の太さ。 */
 const EMPHASIS_STROKE_WIDTH = 3;
 /** 量の数字の芯の色（ふつう）。 */
 const AMOUNT_COLOR = '#ffffff';
