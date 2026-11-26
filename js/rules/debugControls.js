@@ -1,11 +1,12 @@
 /**
- * 責務: DEBUG タブから呼ばれる、ゲームの状態を書き換えるデバッグ用の操作（兵のゲージ・ステージを移る・敵の切り替え・次の行動の指定・戦闘のターンの番号・城と敵の HP・強化の取る（上限で止まる）・すべて外す・3択を出す）と問い合わせ。
+ * 責務: DEBUG タブから呼ばれる、ゲームの状態を書き換えるデバッグ用の操作（兵のゲージ・ステージを移る・敵の切り替え・次の行動の指定・戦闘のターンの番号・城と敵の HP（親子の敵は親と子の HP も）・親と子の HP を 0 にする・強化の取る（上限で止まる）・すべて外す・3択を出す）と問い合わせ。
  * 段取り中だけ効き、行動の回数は使わない（ルール層）。
  */
 
 import { enemyTypeIds, enemySpecOf } from './enemyTypes.js';
 import { refreshIntent } from './enemyIntent.js';
 import { intentChoiceIds, planChosenIntent, chosenIntentOf } from './debugIntents.js';
+import { ENEMY_SITUATIONS, enemySituationOf, partsWithTotal, zeroPart } from './enemyParts.js';
 import { clearEliteOf } from './elites.js';
 import { upgradeIds, takeUpgrade, clearUpgrades, fixedUpgradeValue, isUpgradeCapped, takenUpgradeList } from './upgrades.js';
 
@@ -116,23 +117,26 @@ function currentBehavior(game) {
 }
 
 /**
- * 今の敵に指定できる次の行動の識別子の並び。
+ * 今の敵に指定できる次の行動の識別子の並び（親と子を持つ敵は今の局面でできる行動だけ）。
  * @param {import('./Game.js').Game} game ゲーム
  * @returns {string[]} 識別子の並び
  */
 export function intentChoiceIdsOf(game) {
-  return intentChoiceIds(currentBehavior(game));
+  return intentChoiceIds(currentBehavior(game), enemySituationOf(game.enemy.parts));
 }
 
 /**
- * 敵の次の行動の選択肢の最大の数（全部の敵の中で最も多いもの）。
+ * 敵の次の行動の選択肢の最大の数（全部の敵の、全部の局面の中で最も多いもの）。
  * @param {import('./config.js').Rules} config ルールの設定
  * @returns {number} 選択肢の数の最大
  */
 export function intentChoiceSlotCount(config) {
   let max = 0;
   for (const typeId of enemyTypeIds(config)) {
-    max = Math.max(max, intentChoiceIds(enemySpecOf(config, typeId).behavior).length);
+    const { behavior } = enemySpecOf(config, typeId);
+    for (const situation of [null, ...ENEMY_SITUATIONS]) {
+      max = Math.max(max, intentChoiceIds(behavior, situation).length);
+    }
   }
   return max;
 }
@@ -190,13 +194,59 @@ export function setCastleHp(game, hp) {
 }
 
 /**
- * 敵の HP を指定した値にする（0 にはしない）。
+ * 敵の HP を指定した値にする（0 にはしない）。親と子を持つ敵は、親と子の HP を `partsWithTotal` で決める
+ * （満タンは親子とも最大。「1 にする」は親が生きていれば親 1・子 0、親が 0 なら子 1）。予告は変えない。
  * @param {import('./Game.js').Game} game ゲーム
  * @param {number} hp 新しい HP（1 以上・最大 HP 以下の整数）
  * @returns {boolean} 書き換えたら true
  */
 export function setEnemyHp(game, hp) {
-  return setHp(game, game.enemy, hp);
+  const { enemy } = game;
+  const brood = enemySpecOf(game.config, enemy.typeId).brood;
+  const parts = enemy.parts;
+  if (!brood || !parts) return setHp(game, enemy, hp);
+  if (!setHp(game, enemy, hp)) return false;
+  enemy.parts = partsWithTotal(brood, enemy.maxHp, parts, hp);
+  return true;
+}
+
+/**
+ * 親か子の HP を 0 にする共通の処理（段取り中で、親と子を持ち、その部分が 0 より大きいときだけ）。
+ * もう片方が 0 のときは 1 を残す（倒したことにしない）。`hp` は合計にする。予告は変えない。
+ * @param {import('./Game.js').Game} game ゲーム
+ * @param {'parent'|'child'} part 0 にする側
+ * @returns {boolean} 書き換えたら true（条件外・変わらないときは false）
+ */
+function zeroEnemyPart(game, part) {
+  if (!isPlanning(game)) return false;
+  const { enemy } = game;
+  if (!enemy.parts || !(enemy.parts[part] > 0)) return false;
+  const next = zeroPart(enemy.parts, part);
+  if (next.parent === enemy.parts.parent && next.child === enemy.parts.child) return false;
+  enemy.parts = next;
+  enemy.hp = next.parent + next.child;
+  return true;
+}
+
+/**
+ * 子の HP を 0 にする（親が 0 なら 1 を残す）。予告は変えない（次のターンの予告から怒る）。
+ * @param {import('./Game.js').Game} game ゲーム
+ * @returns {boolean} 書き換えたら true
+ */
+export function zeroEnemyChild(game) {
+  return zeroEnemyPart(game, 'child');
+}
+
+/**
+ * 親の HP を 0 にする（子が 0 なら 1 を残す）。今の予告が今の局面で指定できない行動になったときは、
+ * ふつうに予告を決め直す（乱数はゲームの乱数）。
+ * @param {import('./Game.js').Game} game ゲーム
+ * @returns {boolean} 書き換えたら true
+ */
+export function zeroEnemyParent(game) {
+  if (!zeroEnemyPart(game, 'parent')) return false;
+  if (!intentChoiceIdsOf(game).includes(currentIntentChoice(game))) game.planIntent();
+  return true;
 }
 
 /**

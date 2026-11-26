@@ -100,3 +100,59 @@ export function splitPartDamage(battleParts, dealt) {
   }
   return { damages, after };
 }
+
+/**
+ * 最大 HP を変えたとき、親と子の HP を新しい最大に合わせる。親と子をそれぞれ新しい最大で頭打ちにし（上げない）、
+ * 合計が 0 になるときは親に 1 を残す。入力は書き換えない。
+ * @param {{ childPercent: number }} brood 親と子を持つ敵の設定
+ * @param {number} maxHp 新しい最大 HP（ステージの加算の後。親子の合計）
+ * @param {EnemyParts} parts 今の親と子の HP
+ * @returns {EnemyParts} 合わせた後の親と子の HP
+ */
+export function fitPartsToMax(brood, maxHp, parts) {
+  const max = partMaxHps(brood, maxHp);
+  const parent = Math.min(parts.parent, max.parent);
+  const child = Math.min(parts.child, max.child);
+  if (parent + child === 0) return { parent: 1, child: 0 };
+  return { parent, child };
+}
+
+/**
+ * 親子の合計の HP を指定したとき、親と子の HP を決める。満タン（合計が最大以上）は親子とも最大。
+ * それ以外は、生きている部分（HP が 0 より大きい）を親 → 子の順にそれぞれの最大まで満たし、
+ * 足りなければ倒れている部分へ親 → 子の順に回す。入力は書き換えない。
+ * @param {{ childPercent: number }} brood 親と子を持つ敵の設定
+ * @param {number} maxHp 最大 HP（親子の合計）
+ * @param {EnemyParts} parts 今の親と子の HP
+ * @param {number} hp 指定する合計の HP（0 以上の整数）
+ * @returns {EnemyParts} 親と子の HP（合計は hp。hp が最大を超えるときは最大）
+ */
+export function partsWithTotal(brood, maxHp, parts, hp) {
+  const max = partMaxHps(brood, maxHp);
+  if (hp >= maxHp) return { parent: max.parent, child: max.child };
+  /** @type {Array<'parent'|'child'>} */
+  const order = ['parent', 'child'];
+  const alive = order.filter((part) => parts[part] > 0);
+  const dead = order.filter((part) => !(parts[part] > 0));
+  const result = { parent: 0, child: 0 };
+  let rest = hp;
+  for (const part of [...alive, ...dead]) {
+    const amount = Math.min(rest, max[part]);
+    result[part] = amount;
+    rest -= amount;
+  }
+  return result;
+}
+
+/**
+ * 親か子の HP を 0 にする。もう片方が 0 のときは、倒したことにならないよう 0 にせず 1 を残す。入力は書き換えない。
+ * @param {EnemyParts} parts 今の親と子の HP
+ * @param {'parent'|'child'} part 0 にする側
+ * @returns {EnemyParts} 新しい親と子の HP
+ */
+export function zeroPart(parts, part) {
+  const other = part === 'parent' ? 'child' : 'parent';
+  const result = { parent: parts.parent, child: parts.child };
+  result[part] = parts[other] > 0 ? 0 : 1;
+  return result;
+}

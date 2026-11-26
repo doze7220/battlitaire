@@ -309,7 +309,7 @@ boar: Object.freeze({
         *   2章「要件1」の並び（`enemyTypes.js`）のとおりに書く。関数に JSDoc。
         *   確かめ: (1) ★1の並び: 10 年分の日付の種 × ステージ 1〜500 で、変更前・`RULES` の変更後・スクラッチの写しの設定（猪の親子）の3つの敵の種類が同じ。(2) `RULES` のままで、各★の `enemyMotionsOfStar` の組と組の中の並びが変更前と同じ。写しの設定の★1が「`steady`・`buildup`・`either`」の3組で、`buildup` が狼・猪の親子の順。(3) 代用の `oz` のローダーで `js/main.js` から辿るモジュールがすべて読み込める。
         *   共通の作業。
-*   [ ] タスク5: DEBUG のルール層 — 指定できる行動・敵の HP の付け方・ルールの値の項目（UI はまだ）
+*   [x] タスク5: DEBUG のルール層 — 指定できる行動・敵の HP の付け方・ルールの値の項目（UI はまだ）
     *   **対象ファイル** :
         *   `./js/rules/enemyParts.js` : 更新（`fitPartsToMax`・`partsWithTotal`・`zeroPart`）
         *   `./js/rules/debugIntents.js` : 更新（`brood` の行・局面の引数）
@@ -463,7 +463,17 @@ boar: Object.freeze({
 
 ### タスク5: DEBUG のルール層 — 指定できる行動・敵の HP の付け方・ルールの値の項目（UI はまだ）
 *   **作業内容** :
-    *   （未記入）
+    *   `js/rules/enemyParts.js`: `fitPartsToMax(brood, maxHp, parts)`（親と子をそれぞれ新しい最大で頭打ち・合計が 0 になるときは `{ parent: 1, child: 0 }`）・`partsWithTotal(brood, maxHp, parts, hp)`（満タン＝`hp ≥ maxHp` は親子とも最大、それ以外は生きている部分を親 → 子の順、足りなければ倒れている部分を親 → 子の順に、それぞれの最大まで満たす）・`zeroPart(parts, part)`（指定側を 0 に。もう片方が 0 なら 1 を残す）を足した（どれも入力は書き換えない。JSDoc 付き。先頭の責務は変更なし）。
+    *   `js/rules/debugIntents.js`: `INTENT_TABLE.brood`（`ids(behavior, situation)`: together = `youngAttack`・`protect`、enraged = `rush`・`rage`・`bigRush`、young = `youngAttack`、null = 空。`plan`: `steadyAttackAction`・`protectAction`・`rushAction`・`rageAction`・`bigRushAction`、状態 `{ lastVariant: action.variant ?? null }`。`chosen`: guard → `protect`、中の種類が rush/rage/bigRush ならそれ、ほかは `youngAttack`）。`intentChoiceIds(behavior, situation = null)` と、表の `ids` の型に局面を足した（ほかの決まりは局面を読まない）。
+    *   `js/rules/debugControls.js`: `intentChoiceIdsOf` が `enemySituationOf(game.enemy.parts)` を渡す。`intentChoiceSlotCount` が敵ごとに `[null, ...ENEMY_SITUATIONS]` の各局面の数の最大を取る。`setEnemyHp` は、設定が `brood` を持ち `enemy.parts` がある敵は `partsWithTotal` で親と子を決める（`setHp` の条件はそのまま。予告は変えない）。`zeroEnemyChild`・`zeroEnemyParent` を足した（共通の非公開関数 `zeroEnemyPart`。段取り中・`parts` あり・その部分 > 0 のときだけ。`zeroPart` で求め、変わらないときは false、`hp` は合計）。`zeroEnemyParent` は、今の予告の `currentIntentChoice` が今の局面の `intentChoiceIdsOf` に含まれないときだけ `game.planIntent()` で決め直す。先頭の責務を更新（2行のまま）。
+    *   `js/rules/debugRules.js`: `applyNow` の `enemyMaxHp` で、`config.enemies[group].brood` と `enemy.parts` があるときは `fitPartsToMax` で親と子を合わせ `hp` を合計にする（なければ今のまま）。
+    *   `js/rules/debugRuleItems.js`: `BEHAVIOR_ITEMS.brood`（`${typeId}.attack`（名前 `youngAttackMin`/`Max`）・`protectChance`・`protect`（`protectMin`/`Max`・種類 `defense`）・`rush`（`rushMin`/`Max`）・`rageChance`・`bigRush`（`bigRushMin`/`Max`）。時期はどれも `nextIntent`）。最大 HP の項目は設定が `brood` を持つ敵だけ名前を `maxHpTotal` にした。
+    *   確かめ（一時スクリプト・変更前 `git archive c4d8924 js` の展開・猪の行を要件1の猪の親子の行に替えた `js/` の写し・代用の `oz` はスクラッチに置き、終わって消した）。変更した5ファイルの構文チェック OK。
+        *   (1) `fitPartsToMax`・`partsWithTotal`・`zeroPart` を単体で呼んだ（満タン・1・親が 0・子が 0・奇数の最大・合計が 0 になるとき親に 1・もう片方が 0 なら 1 を残す・入力を書き換えない。最大 HP 1・2・3・44・45・167・536 のすべての HP × 3通りの親と子で `parent + child === hp` かつ各最大以下）。すべて要件のとおり。
+        *   (2) `RULES` のまま、変更前と作業ツリーで: `RULE_ITEMS` は 65 個で、識別子・組・種類・名前・時期・組の相手・側・刻み・`RULES` の値がすべて一致。`ruleGroups` 一致。8種の `intentChoiceIds`（局面の引数なし・null・together・enraged・young のどれを渡しても変更前と同じ）・`planChosenIntent`（各識別子 × 20 通りの乱数で、結果と乱数の呼び出しの値の並びが一致）・`chosenIntentOf` 一致。`intentChoiceSlotCount` は 3（変更前と同じ）。デバッグのゲーム 60 個（種ごとに違う）で、敵の切り替え・`setEnemyHp`（1〜80・満タン）・`setRuleValue`（全項目・最大 HP の項目）・`resetRuleValues`・`chooseEnemyIntent`・`moveStage` をランダムに 120 手ずつ（計 7200 手）、変更前と同時に行い、毎手の戻り値・敵の状態（`parts` を除く）・戦闘のターンの番号・ステージの番号・乱数の状態・`currentIntentChoice` が一致（敵の `parts` は常に null）。
+        *   (3) 写しの設定（猪の親子）で: `RULE_ITEMS` は 69 個（猪の親子の 11 個: `boar.maxHp`（名前 `maxHpTotal`・`now`・刻み 1）・`boar.attack.min/max`（`youngAttackMin/Max`）・`boar.protectChance`・`boar.protect.min/max`・`boar.rush.min/max`・`boar.rageChance`・`boar.bigRush.min/max`。種類・時期 `nextIntent`・組・刻み・初期値（44・1/2・0.3・4/8・4/6・0.3・13/16）が要件のとおり）、猪以外の項目は変更前と一致。`intentChoiceSlotCount` 3。局面ごとの選択肢（together 2つ・enraged 3つ・young 1つ・null と引数なしは空）、各局面の各行動を `chooseEnemyIntent` で指定すると予告（種類・量の幅・`defense`・`variant`）と決まりの状態（`lastVariant`）と `currentIntentChoice` が要件のとおり、局面でできない行動は選べず状態も変わらない。`chosenIntentOf`（null・guard・attack・rage）OK。「1 にする」（両方生きている・親が 0・子が 0 でそれぞれ親 1・子 0／子 1／親 1・子 0）・「満タンにする」（親子とも最大。親が 0 からも）・途中の HP（30 → 親 22・子 8、親が 0 からは子 22・親 8）・0・最大超え・小数の拒否、予告は変わらない。「子を 0 にする」（親 22・子 0・予告と乱数はそのまま。親が 0 なら子 1 を残す・1 のままなら false）、「親を 0 にする」（子 22 の親 0・子が 0 なら親 1 を残す・倒したことにならない）、親を 0 にして今の予告が守る → 決め直して子の攻撃（乱数を呼ぶ）、子の攻撃の予告なら決め直さない（乱数・予告が変わらない）、段取り中でないときと親子でない敵（ゴブリン）では何も起きない。最大 HP のスライダー（ステージ 1・30 で 20・21・1・2・3・44・100・45・10・200・44・7 と上げ下げ）で、毎回 `hp === parent + child`・各部分が新しい最大以下・上げない・HP 0 にならない。親 0・子 22 の敵で最大 1 にすると親 1・子 0。他の項目（確率の範囲・組の最小最大の連動・時期・刻み）OK。確率 1・防御 8 にすると次の予告が守る・`defense` 8。「元に戻す」で猪の設定が全部戻り、最大 HP・親と子の合計が保たれる。
+        *   ランダムなゲーム 40 個（DEBUG 操作（HP・子/親を 0・最大 HP・行動の指定・猪への切り替え）をまぜて、剣・盾を積んで `resolveBattle` → 3択 or 次のフェーズ、1439 回の攻防、Error 0）。毎回 `hp === parent + child`、倒したときは親も子も 0。通った局面の回数: together 272・enraged 155・young 48。
+        *   (4) 代用の `oz`（受け流す最小の代わり）と、`oz`・`assets/` だけ解く `module.register` のローダー、`document`・`location`・`screen` の代わりで、作業ツリーと写しの両方で `js/main.js` の import が成功し、`js/` 配下の 168 ファイルすべても個別に読み込めた（失敗 0）。
 
 ### タスク6: 中断データ（版 7・親と子の HP）
 *   **作業内容** :
@@ -518,3 +528,7 @@ boar: Object.freeze({
 * （計画時・持ち越し）タスク7で体の見せ方に `'brood'` が増えるが、`js/anim/impactLog.js` の `recordStepImpacts` の JSDoc（引数 `bodyStyle` の説明「敵の体の見せ方（'horde'・'figure'）」）は古いままになる。このファイルは本 REQ の変更対象ではないのでコードは変えない（引数は今は使わない＝動きは変わらない）。次に `impactLog.js` を触る REQ で `'brood'` を足す。
 * （タスク3）`computeBattle` の `enemyParts` の入力は、`battlePartsOf` が返す `{ hp, order }` の形をそのまま渡す（`order` は予告の `kind` ごとに `Game.resolveBattle` が求める）。`enemyDamage.parts` は親子の敵だけに付くので、演出（タスク7）は `parts` の有無で親子かを決めず、体の見せ方（`body: 'brood'`）で決めること。
 * （タスク3）攻防の後の局面は `Game.resolveBattle` が `enemy.parts` を更新した時点で変わるが、予告はターンの始まり（`planIntent`）でだけ読むので、攻防の結果の画面を見ている間の予告（`enemy.intent`）は前の局面のまま。タスク10以降で画面が `enemy.intent` と `enemy.parts` を同時に読むときは、結果の画面では `parts` が新しい局面、予告が古い局面になる点に注意（試遊で確かめる）。
+* （タスク5）`zeroEnemyChild`・`zeroEnemyParent` は、押しても何も変わらないとき（その部分が 0、または 1 を残す場合で今の値が同じ）は false を返し何もしない（要件4に戻り値の決まりがないため、ほかの操作の「書き換えたら true」に合わせた）。タスク13のボタンは戻り値を使わない想定。
+* （タスク5）`zeroEnemyParent` の決め直しは「今の予告が今の局面でできない行動」ならいつも行う（親を 0 にして子だけになるときに限らない）。例: 子を先に 0 にした怒りの局面（子の攻撃・守るの予告のまま）で親を 0 にしようとして親 1 に落ちるときも、今の局面の `rush`/`rage`/`bigRush` でないので決め直す（乱数を呼ぶ）。
+* （タスク5）`fitPartsToMax` は親と子をそれぞれの新しい最大で頭打ちにするので、合計が新しい最大より小さくても、片方が新しい最大を超えるときはその分下がる（例: 親 22・子 5 を最大 20 に → 親 10・子 5、HP 15）。要件4の「親と子をそれぞれ新しい最大で頭打ち」のとおり。
+* （タスク5）DEBUG の文字（`debugText.js`）が入る（タスク13）までは、猪の親子の行動・項目名は識別子のまま出る。`RULES` の猪はタスク12まで `brood` を持たないので、DEBUG タブの今の見え方は変わらない。

@@ -5,6 +5,7 @@
 
 import { RULES } from './config.js';
 import { RULE_ITEMS, ruleItemById } from './debugRuleItems.js';
+import { fitPartsToMax } from './enemyParts.js';
 import { castleMaxHpBonus } from './upgrades.js';
 import { grownMaxHp } from './stageBonus.js';
 import { unitPointsOf } from './unitPoints.js';
@@ -68,7 +69,7 @@ function isValidValue(kind, value) {
 }
 
 /**
- * すぐ効く値を、城・今の敵の状態に効かせる（城の最大 HP は強化で増えた分を足す。敵の最大 HP は今のステージの加算後。今の HP は上げず、超えるときだけ下げる）。
+ * すぐ効く値を、城・今の敵の状態に効かせる（城の最大 HP は強化で増えた分を足す。敵の最大 HP は今のステージの加算後。今の HP は上げず、超えるときだけ下げる。親と子を持つ敵は、親と子の HP を新しい最大に合わせ、HP は合計にする）。
  * @param {import('./Game.js').Game} game ゲーム
  * @param {import('./debugRuleItems.js').RuleItem} item 項目
  * @returns {void}
@@ -86,6 +87,12 @@ function applyNow(game, item) {
   if (item.kind === 'enemyMaxHp') {
     const grown = grownMaxHp(value, game.stageBonus(), unitPointsOf(game.config.enemies[item.group]));
     game.enemy.maxHp = grown;
+    const brood = game.config.enemies[item.group].brood;
+    if (brood && game.enemy.parts) {
+      game.enemy.parts = fitPartsToMax(brood, grown, game.enemy.parts);
+      game.enemy.hp = game.enemy.parts.parent + game.enemy.parts.child;
+      return;
+    }
     if (game.enemy.hp > grown) game.enemy.hp = grown;
   }
 }

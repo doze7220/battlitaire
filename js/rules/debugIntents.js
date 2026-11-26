@@ -14,15 +14,19 @@ import {
   heavyAction,
   guardAction,
   bigGuardAction,
+  protectAction,
+  rushAction,
+  rageAction,
+  bigRushAction,
 } from './enemyBehaviors.js';
 
 /**
  * 決まりの種類ごとの、指定できる行動の表。
- * - `ids`: 指定できる行動の識別子の並び（毎回新しい配列）
+ * - `ids`: 指定できる行動の識別子の並び（毎回新しい配列。局面を読むのは `brood` だけ）
  * - `plan`: 識別子から `{ action, state }` を作る（表にない識別子は Error）
  * - `chosen`: 今の予告に当たる識別子（当たるものがなければ null）
  * @type {Readonly<Object<string, {
- *   ids: (behavior: any) => string[],
+ *   ids: (behavior: any, situation: string|null) => string[],
  *   plan: (behavior: any, id: string, random: () => number, unit: number) => { action: import('./combatants.js').EnemyAction, state: object },
  *   chosen: (behavior: any, intent: import('./combatants.js').EnemyAction) => string|null
  * }>>}
@@ -108,6 +112,30 @@ const INTENT_TABLE = Object.freeze({
       return intent.variant === 'bigGuard' ? 'bigGuard' : 'guard';
     },
   }),
+  // 親と子（猪の親子）。局面ごとにできる行動が違う（子がいる間・怒り・子だけ）。局面が null（親子でない・両方 0）なら空
+  brood: Object.freeze({
+    ids: (behavior, situation) => {
+      if (situation === 'together') return ['youngAttack', 'protect'];
+      if (situation === 'enraged') return ['rush', 'rage', 'bigRush'];
+      if (situation === 'young') return ['youngAttack'];
+      return [];
+    },
+    plan: (behavior, id, random, unit) => {
+      let action;
+      if (id === 'youngAttack') action = steadyAttackAction(behavior, random, unit);
+      else if (id === 'protect') action = protectAction(behavior, random, unit);
+      else if (id === 'rush') action = rushAction(behavior, random, unit);
+      else if (id === 'rage') action = rageAction();
+      else if (id === 'bigRush') action = bigRushAction(behavior, random, unit);
+      else throw new Error(`unknown intent id: ${id}`);
+      return { action, state: { lastVariant: action.variant ?? null } };
+    },
+    chosen: (behavior, intent) => {
+      if (intent.kind === 'guard') return 'protect';
+      if (intent.variant === 'rush' || intent.variant === 'rage' || intent.variant === 'bigRush') return intent.variant;
+      return 'youngAttack';
+    },
+  }),
 });
 
 /**
@@ -125,11 +153,12 @@ function lookupIntent(behavior) {
 /**
  * 指定できる次の行動の識別子の並びを返す。
  * @param {{ type: string }} behavior 行動の決まりの設定
+ * @param {'together'|'enraged'|'young'|null} [situation] 親と子を持つ敵の今の局面（既定 null。`brood` 以外の決まりは読まない）
  * @returns {string[]} 識別子の並び（毎回新しい配列）
  * @throws {Error} 未知の種類のとき
  */
-export function intentChoiceIds(behavior) {
-  return lookupIntent(behavior).ids(behavior);
+export function intentChoiceIds(behavior, situation = null) {
+  return lookupIntent(behavior).ids(behavior, situation);
 }
 
 /**

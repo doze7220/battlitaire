@@ -105,6 +105,18 @@ const BEHAVIOR_ITEMS = Object.freeze({
       (c) => c.enemies[typeId].behavior.chargeTurns,
       (c, v) => { c.enemies[typeId].behavior.chargeTurns = v; }),
   ],
+  brood: (typeId, behavior, unit) => [
+    ...rangeItems(`${typeId}.attack`, typeId, 'youngAttack', 'amount', (c) => c.enemies[typeId].behavior.attackRange, unit),
+    item(`${typeId}.protectChance`, typeId, 'chance', 'protectChance', 'nextIntent', null, null,
+      (c) => c.enemies[typeId].behavior.protectChance,
+      (c, v) => { c.enemies[typeId].behavior.protectChance = v; }),
+    ...rangeItems(`${typeId}.protect`, typeId, 'protect', 'defense', (c) => c.enemies[typeId].behavior.protectRange, unit),
+    ...rangeItems(`${typeId}.rush`, typeId, 'rush', 'amount', (c) => c.enemies[typeId].behavior.rushRange, unit),
+    item(`${typeId}.rageChance`, typeId, 'chance', 'rageChance', 'nextIntent', null, null,
+      (c) => c.enemies[typeId].behavior.rageChance,
+      (c, v) => { c.enemies[typeId].behavior.rageChance = v; }),
+    ...rangeItems(`${typeId}.bigRush`, typeId, 'bigRush', 'amount', (c) => c.enemies[typeId].behavior.bigRushRange, unit),
+  ],
   either: (typeId, behavior, unit) => [
     item(`${typeId}.attackChance`, typeId, 'chance', 'attackChance', 'nextIntent', null, null,
       (c) => c.enemies[typeId].behavior.attackChance,
@@ -152,7 +164,7 @@ function buildItems(rules) {
     const build = BEHAVIOR_ITEMS[behavior.type];
     if (!build) throw new Error(`unknown enemy behavior type: ${behavior.type}`);
     items.push(
-      item(`${typeId}.maxHp`, typeId, 'enemyMaxHp', 'maxHp', 'now', null, null,
+      item(`${typeId}.maxHp`, typeId, 'enemyMaxHp', rules.enemies[typeId].brood ? 'maxHpTotal' : 'maxHp', 'now', null, null,
         (c) => c.enemies[typeId].maxHp, (c, v) => { c.enemies[typeId].maxHp = v; }, unit),
       ...build(typeId, behavior, unit),
       ...defenseItems(typeId, rules.enemies[typeId], unit),
