@@ -1,5 +1,5 @@
 /**
- * 責務: 敵の行動（爪・吸い込む・ブレス・溜める・大攻撃の種類と防御を含む）・予告の量の数字・表にない予告の印・決着・結果の集計の見出し・タップでタイトルへの案内・敵を倒したときの案内・敵の名前とレベル・数え下ろし・回復の量・当たりのダメージの数字・放った区切りの式・4スートそろいの文字を、画面に出す文字に直す。
+ * 責務: 敵の行動（爪・吸い込む・ブレス・溜める・大攻撃の種類と防御を含む）・予告の量の数字・表にない予告の印・決着・敵を倒したときの案内・敵の名前とレベル・数え下ろし・回復の量・当たりのダメージの数字・放った区切りの式・4スートそろいの文字を、画面に出す文字に直す。
  * 計算はせず、量をそのまま文字にする。ルール層は実行時に import しない。
  */
 
@@ -44,25 +44,6 @@ const VARIANT_LABELS = Object.freeze({
  */
 const AMOUNTLESS_KINDS = new Set(['windup']);
 
-/**
- * 結果の集計の項目 → 見出し文字の対応表。
- * @type {Readonly<Record<string, string>>}
- */
-const RESULT_STAT_LABELS = Object.freeze({
-  enemiesDefeated: '倒した敵の数',
-  phases: 'かかったターン数',
-  score: 'スコア',
-});
-
-/**
- * 結果の集計の項目を表示する順の並び。
- * @type {ReadonlyArray<string>}
- */
-const RESULT_STAT_ORDER = Object.freeze(['enemiesDefeated', 'phases', 'score']);
-
-/** 結果の表示を閉じる案内の文字 */
-const RESULT_HINT_TEXT = 'タップでタイトルへ';
-
 /** 敵を倒したときの、タップで次へ進む案内の文字 */
 const DEFEAT_HINT_TEXT = 'タップで次へ';
 
@@ -79,23 +60,6 @@ const UNKNOWN_ACTION_LABEL = '？';
  */
 export function outcomeText(outcome) {
   return Object.prototype.hasOwnProperty.call(OUTCOME_LABELS, outcome) ? OUTCOME_LABELS[outcome] : '';
-}
-
-/**
- * 結果の記録を、見出しと数字の文字の3行（倒した敵の数・かかったターン数・スコア）にする。
- * @param {import('../rules/gameStats.js').GameStats} stats 結果の記録
- * @returns {Array<{ label: string, value: string }>} 表示順の行。value は数字をそのまま文字にしたもの
- */
-export function resultStatLines(stats) {
-  return RESULT_STAT_ORDER.map((key) => ({ label: RESULT_STAT_LABELS[key], value: String(stats[key]) }));
-}
-
-/**
- * 結果の表示を閉じる案内の文字にする。
- * @returns {string} 「タップでタイトルへ」
- */
-export function resultHintText() {
-  return RESULT_HINT_TEXT;
 }
 
 /**

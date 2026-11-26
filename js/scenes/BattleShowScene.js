@@ -1,6 +1,6 @@
 /**
- * 責務: 攻防の演出のシーン。結果を anim に渡して時間を進め、決着後・敵を倒した後のタップだけを受けること（演出の途中のタップでは何もしない）。
- * 終わったら（敵が生きていれば）次のフェーズへ進めて（ターンの始まりを中断データに保存して）戻る／敵を倒したときは内訳が出そろった後のタップで3択を始めて（3択の段階を保存して）3択の画面を積む／決着ならタイトルへ切り替え、負けの結果が出たとき中断データを消してベストを記録し（bestStore.js）、見た目の値を view に渡して描き、背面の盤面のシーンへ札が燃える段の盤面の見た目を答えること。
+ * 責務: 攻防の演出のシーン。結果を anim に渡して時間を進め、敵を倒した後のタップだけを受けること（演出の途中のタップでは何もしない）。
+ * 終わったら（敵が生きていれば）次のフェーズへ進めて（ターンの始まりを中断データに保存して）戻る／敵を倒したときは内訳が出そろった後のタップで3択を始めて（3択の段階を保存して）3択の画面を積む／負けの結果が出たとき中断データを消してベストを記録し（bestStore.js）結果の画面を積み、見た目の値を view に渡して描き、背面の盤面のシーンへ札が燃える段の盤面の見た目を答えること。
  * 攻防のきっかけ・決着と敵の撃破の表示で効果音を鳴らし（soundCues.js）、HP が 0 になった瞬間に BGM を止めること（bgmCues.js）。設定の演出の速さで時間を進めること。
  */
 import { Engine, Scene } from 'oz';
@@ -15,29 +15,28 @@ import { BattleDirector } from '../anim/battleDirector.js';
 import { DefeatTally } from '../anim/defeatTally.js';
 import { drawBattleShow } from '../view/battleShowView.js';
 import { defeatScoreLines } from '../view/scoreText.js';
-import { drawResult } from '../view/resultView.js';
 import { drawActionGaugeLabel } from '../view/actionGaugeView.js';
 
 /**
  * @typedef {Object} BattleShowOptions BattleShowScene に渡すオプション
  * @property {string} layer 描くレイヤー名
- * @property {import('../rules/Game.js').Game} game ルール層のゲーム（次のフェーズの操作と決着の問い合わせに使う）
+ * @property {import('../rules/Game.js').Game} game ルール層のゲーム（次のフェーズの操作・3択の段階への移行・集計とゲームの種の読み取りなどに使う）
  * @property {import('../view/layout.js').Layout} layout 画面の配置（BoardScene と同じもの）
  * @property {import('../anim/battleSteps.js').BattleSnapshot} before 攻防の前の値の写し
  * @property {import('../rules/Game.js').BattleResult} result game.resolveBattle() の戻り値
- * @property {() => Scene} createTitle タイトルの画面のシーンを作る関数
+ * @property {(bests: {today: {score: number, isNew: boolean}, best: {score: number, isNew: boolean}}|null) => Scene} createResult 結果の画面のシーンを作る関数（負けの結果が出たとき、記録したベスト（デバッグは null）を渡して積む）
  * @property {() => Scene} createUpgradeChoice 3択の画面のシーンを作る関数（敵を倒した後のタップで積む）
  * @property {{attack: number, defense: number, heal: number}} waiting 段取りの間に陣地で待っていた兵の数（時間割へ引き継ぐ）
  * @property {{attack: number, defense: number, heal: number}} [waitingAuto] 待っていた兵のうち自動兵士の印のある数（時間割へ引き継ぐ。見た目だけ。省略は 0・0・0）
  * @property {{attack: Array<{index: number, points: number}>, defense: Array<{index: number, points: number}>, heal: Array<{index: number, points: number}>}} [waitingElites] 待っていた精鋭（番号と1体のポイント。時間割へ引き継ぐ。省略は空の並び3つ）
  */
 
-/** 攻防の出来事を最上段の兵の動きで見せ、終わったら次のフェーズ／タイトルへ進むシーン（盤面のシーンの上に積む） */
+/** 攻防の出来事を最上段の兵の動きで見せ、終わったら次のフェーズへ進む／3択・結果の画面を積むシーン（盤面のシーンの上に積む） */
 export class BattleShowScene extends Scene {
   /**
    * @param {BattleShowOptions} options オプション
    */
-  constructor({ layer, game, layout, before, result, createTitle, createUpgradeChoice, waiting, waitingAuto = { attack: 0, defense: 0, heal: 0 }, waitingElites = { attack: [], defense: [], heal: [] } }) {
+  constructor({ layer, game, layout, before, result, createResult, createUpgradeChoice, waiting, waitingAuto = { attack: 0, defense: 0, heal: 0 }, waitingElites = { attack: [], defense: [], heal: [] } }) {
     super();
     /** @type {string} 描くレイヤー名 */
     this.layer = layer;
@@ -49,8 +48,8 @@ export class BattleShowScene extends Scene {
     this.before = before;
     /** @type {import('../rules/Game.js').BattleResult} 攻防の結果 */
     this.result = result;
-    /** @type {() => Scene} タイトルの画面のシーンを作る関数 */
-    this.createTitle = createTitle;
+    /** @type {(bests: {today: {score: number, isNew: boolean}, best: {score: number, isNew: boolean}}|null) => Scene} 結果の画面のシーンを作る関数 */
+    this.createResult = createResult;
     /** @type {() => Scene} 3択の画面のシーンを作る関数 */
     this.createUpgradeChoice = createUpgradeChoice;
     /** @type {{attack: number, defense: number, heal: number}} 段取りの間に待っていた兵の数 */
@@ -130,7 +129,7 @@ export class BattleShowScene extends Scene {
   }
 
   /**
-   * 演出の時計に dt に倍率（speedRate）を掛けた時間を足し（ヒットストップ・音のきっかけ・BGM を止める時刻を含む演出の全体が同じ割合で速くなる。攻防の結果は変わらない）、演出が終わった後だけ敵を倒したときの内訳の動きを同じ時間で進め、その間に起きた攻防のきっかけの効果音を鳴らし、HP が 0 になったら BGM を止め、演出が終わったとき（決着・敵を倒したとき、1回だけ）に負けの音（敵を倒したときは敵を倒した音）を鳴らし、負けの結果が出ていれば中断データを消してベストを記録する（bestStore.js。デバッグでは記録しない）。決着も敵の撃破もしていなければ間の後に次のフェーズへ進めて戻る。
+   * 演出の時計に dt に倍率（speedRate）を掛けた時間を足し（ヒットストップ・音のきっかけ・BGM を止める時刻を含む演出の全体が同じ割合で速くなる。攻防の結果は変わらない）、演出が終わった後だけ敵を倒したときの内訳の動きを同じ時間で進め、その間に起きた攻防のきっかけの効果音を鳴らし、HP が 0 になったら BGM を止め、演出が終わったとき（決着・敵を倒したとき、1回だけ）に負けの音（敵を倒したときは敵を倒した音）を鳴らし、負けの結果が出ていれば中断データを消してベストを記録し（bestStore.js。デバッグでは記録しない）、結果の画面を積む。決着も敵の撃破もしていなければ間の後に次のフェーズへ進めて戻る。
    * @param {number} dt 1ティックの長さ（ミリ秒）
    * @returns {void}
    */
@@ -147,6 +146,7 @@ export class BattleShowScene extends Scene {
       if (this.result.outcome !== null) {
         clearSuspend();
         this.bests = recordBestScores(this.game.seed, this.game.gameStats().score);
+        Engine.pushScene(this.createResult(this.bests));
       }
     }
     if (this.result.outcome === null && this.result.defeat === null && this.director.isReadyToLeave() && this.game.canStartNextPhase()) {
@@ -155,22 +155,20 @@ export class BattleShowScene extends Scene {
   }
 
   /**
-   * 押したとき（'down'）だけ反応する。終わっていれば決着のときタイトルへ、敵を倒したときは内訳が出そろった後だけ3択の画面へ（goToUpgradeChoice）、終わっていなければ・内訳が出そろう前は何もしない（早送り・スキップはない）。
+   * 押したとき（'down'）だけ反応する。終わっていて敵を倒したときは内訳が出そろった後だけ3択の画面へ（goToUpgradeChoice）、終わっていなければ・内訳が出そろう前は何もしない（早送り・スキップはない）。
    * @param {{ type: string, x: number, y: number }} pointer ポインタ入力
    * @returns {void}
    */
   onPointer(pointer) {
     if (pointer.type !== 'down') return;
     if (!this.director.isFinished()) return;
-    if (this.game.isOver()) {
-      Engine.changeScene(this.createTitle());
-    } else if (this.result.defeat !== null && this.tally.isComplete() && this.game.canBeginUpgradeChoice()) {
+    if (this.result.defeat !== null && this.tally.isComplete() && this.game.canBeginUpgradeChoice()) {
       this.goToUpgradeChoice();
     }
   }
 
   /**
-   * 演出中の最上段を描き、行動のゲージのラベル（揺らさない。戦闘の段より手前、結果の表示より奥。右の強化の表示の値 `game.actionUpgradeStatus()` も渡す）を重ね、決着したときは最後に画面全体へ結果の表示を重ねる（状態は変えない）。
+   * 演出中の最上段を描き、行動のゲージのラベル（揺らさない。戦闘の段より手前。右の強化の表示の値 `game.actionUpgradeStatus()` も渡す）を重ねる（状態は変えない。結果の画面は別のシーンとして上に積まれる）。
    * @param {CanvasRenderingContext2D} ctx 描画先
    * @param {string} layer レイヤー名
    * @returns {void}
@@ -180,8 +178,5 @@ export class BattleShowScene extends Scene {
     const look = this.director.view();
     drawBattleShow(ctx, this.layout.battle, this.game, this.result, look, this.tally === null ? null : this.tally.look());
     drawActionGaugeLabel(ctx, this.layout.actionGauge, this.game.actionUpgradeStatus());
-    if (look.finished && this.result.outcome !== null) {
-      drawResult(ctx, this.layout.result, this.result.outcome, this.game.gameStats());
-    }
   }
 }

@@ -1,6 +1,6 @@
 /**
  * 責務: 盤面の画面配置（戦闘の段の兵の陣地・敵の頭の上の予告の札・敵ごとの当たる位置・炎の出る位置・画面の外の x・城の打撃の範囲・人数の表示・城と敵の絵の矩形・群れの敵の群れの並び（種類ごとの大きさと範囲は hordePlaces.js の表）・敵を倒したときの案内（配置は defeatLayout.js に任せる）・最上部のゲージ・行動のゲージの帯とラベルを含む）を一手に持ち、座標から「何に当たるか」を求める。
- * タイトル画面・遊び方の画面・結果の表示（決着）の配置と当たりも持つ。ルール層は import せず、数の情報は引数で受け取る。状態は変えない。絵の縦横比は spriteView.js から得る。絵の敵の配置の組み立ては enemyFigures.js に任せる。
+ * タイトル画面・遊び方の画面の配置と当たりも持つ。ルール層は import せず、数の情報は引数で受け取る。状態は変えない。絵の縦横比は spriteView.js から得る。絵の敵の配置の組み立ては enemyFigures.js に任せる。
  */
 
 import { INTENT_CELL, SPRITE_IDS, spriteFitRect } from './spriteView.js';
@@ -130,22 +130,6 @@ import { createDefeatLayout } from './defeatLayout.js';
  */
 
 /**
- * 決着の表示（結果）の配置。
- * @typedef {Object} ResultLayout
- * @property {Rect} curtain 暗幕（画面全体）
- * @property {Rect} panel 結果の板（画面の中央）
- * @property {number} x 板の中央の x
- * @property {number} outcomeY 「負け」の文字の中心 y
- * @property {number} labelX 見出しの左端 x（左寄せ）
- * @property {number} valueX 数字の右端 x（右寄せ）
- * @property {number} labelMaxW 見出しの最大の幅
- * @property {number} valueMaxW 数字の最大の幅
- * @property {function(number): number} rowY i 行目の数字の行の中心 y
- * @property {number} hintY 案内の中心 y
- * @property {number} maxW 大きな文字と案内の最大の幅
- */
-
-/**
  * タイトル画面の配置。
  * @typedef {Object} TitleLayout
  * @property {{ width: number, height: number }} screen 画面の大きさ（背景を塗る範囲）
@@ -191,7 +175,6 @@ import { createDefeatLayout } from './defeatLayout.js';
  * @property {ActionGaugeLayout} actionGauge 行動のゲージの帯とブロックと帯の上のラベル
  * @property {BattleLayout} battle 最上段（戦闘）
  * @property {function(number, number): Rect[]} columnCardRects 列の番号と枚数から、下から順の各カードの矩形（長い列の詰めを含む）
- * @property {ResultLayout} result 決着の表示（結果）の配置
  * @property {function(number, number, number[]=, number=): (Hit|null)} hitTest 座標（と列ごとのカードの枚数・手札の枠の数）から当たったものを返す
  * @property {function(number, number): boolean} turnHitTest 座標が最上部の「TURN」の区画の押せる範囲（`topGauges.turnHit`。右端・下端は含まない）に入るか（`hitTest` には混ぜない）
  */
@@ -421,23 +404,6 @@ const HOWTO_BOTTOM_PAD = 40;
 const HOWTO_BUTTON_GAP_X = 16;
 /** 遊び方の画面のボタンの文字の左右の余白 */
 const HOWTO_BUTTON_PAD_X = 12;
-
-/** 結果の板の幅 */
-const RESULT_PANEL_W = 600;
-/** 結果の板の高さ */
-const RESULT_PANEL_H = 696;
-/** 板の上端から「負け」の文字の中心までの距離 */
-const RESULT_OUTCOME_DY = 110;
-/** 結果の板の左右の余白 */
-const RESULT_PAD_X = 40;
-/** 結果の数字の欄の幅（右寄せ） */
-const RESULT_VALUE_W = 140;
-/** 板の上端から結果の最初の行の中心までの距離 */
-const RESULT_ROW_TOP_DY = 230;
-/** 結果の行どうしの間隔（中心から中心） */
-const RESULT_ROW_GAP = 76;
-/** 板の上端から「タップでタイトルへ」の中心までの距離 */
-const RESULT_HINT_DY = 616;
 
 /**
  * 点が矩形の中にあるか（右端・下端は含まない）。
@@ -861,8 +827,6 @@ export function createLayout({ screen, deckCount, columnCount, actionBlockCount,
     return null;
   }
 
-  const result = createResultLayout(screen);
-
   /**
    * 座標が最上部の「TURN」の区画の押せる範囲に入るかを返す（盤面の操作の `hitTest` とは別）。
    * @param {number} x x 座標
@@ -873,36 +837,7 @@ export function createLayout({ screen, deckCount, columnCount, actionBlockCount,
     return inRect(battle.topGauges.turnHit, x, y);
   }
 
-  return { screen, sections, card: { w: cardW, h: cardH }, decks, discard, columns, hand, releaseButtons, actionGauge, battle, result, columnCardRects, hitTest, turnHitTest };
-}
-
-/**
- * 決着の表示（結果）の配置を作る。
- * @param {{ width: number, height: number }} screen 画面の大きさ
- * @returns {ResultLayout} 結果の表示の配置
- */
-function createResultLayout(screen) {
-  const W = screen.width;
-  const H = screen.height;
-  const panel = {
-    x: (W - RESULT_PANEL_W) / 2,
-    y: (H - RESULT_PANEL_H) / 2,
-    w: RESULT_PANEL_W,
-    h: RESULT_PANEL_H,
-  };
-  return {
-    curtain: { x: 0, y: 0, w: W, h: H },
-    panel,
-    x: panel.x + panel.w / 2,
-    outcomeY: panel.y + RESULT_OUTCOME_DY,
-    labelX: panel.x + RESULT_PAD_X,
-    valueX: panel.x + panel.w - RESULT_PAD_X,
-    labelMaxW: panel.w - RESULT_PAD_X * 2 - RESULT_VALUE_W,
-    valueMaxW: RESULT_VALUE_W,
-    rowY: (i) => panel.y + RESULT_ROW_TOP_DY + RESULT_ROW_GAP * i,
-    hintY: panel.y + RESULT_HINT_DY,
-    maxW: panel.w - RESULT_PAD_X * 2,
-  };
+  return { screen, sections, card: { w: cardW, h: cardH }, decks, discard, columns, hand, releaseButtons, actionGauge, battle, columnCardRects, hitTest, turnHitTest };
 }
 
 /**

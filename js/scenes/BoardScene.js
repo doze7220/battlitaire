@@ -33,7 +33,7 @@ import { bodyCount } from '../view/bodyPoints.js';
  * @property {import('../rules/rng.js').Rng} [rng] 乱数（状態を取り出し・戻せる。ルール層へ渡す。新しいゲームのときだけ渡される。中断データから戻すときは undefined）
  * @property {number} [seed] 敵の並びを決める種（整数。始めた日付から作られる。ゲームへ渡す。新しいゲームのときだけ渡される。中断データから戻すときは undefined）
  * @property {import('../rules/suspendData.js').SuspendData|null} [suspend] 中断データ（省略は null＝新しいゲーム。あれば rng・seed はその中のものを使い、渡した値は使わない）
- * @property {() => Scene} createTitle タイトルの画面のシーンを作る関数（攻防の演出のシーンへ渡す）
+ * @property {(target: { game: import('../rules/Game.js').Game, battleLayout: import('../view/layout.js').BattleLayout, bests: {today: {score: number, isNew: boolean}, best: {score: number, isNew: boolean}}|null }) => Scene} createResult 結果の画面のシーンを作る関数（攻防の演出のシーンへ、ベストだけを受け取る形にして渡す）
  * @property {(target: import('./boardDebug.js').BoardMenuTarget) => Scene} createMenu メニューの窓のシーンを作る関数（TURN の区画を押したとき、盤面の部品 { game, releaseShow, flow } を渡して積む。使うかは関数の側が決める）
  * @property {import('../rules/config.js').Rules} [rules] ゲームに渡すルールの値（省略は config.js の RULES。デバッグ（`Engine.debug` が真）のゲームでは RULES と同じ形の写しが渡される）
  */
@@ -43,7 +43,7 @@ export class BoardScene extends Scene {
   /**
    * @param {BoardOptions} options オプション
    */
-  constructor({ screen, layer, rng, seed, suspend = null, createTitle, createMenu, rules }) {
+  constructor({ screen, layer, rng, seed, suspend = null, createResult, createMenu, rules }) {
     super();
     /** @type {import('../rules/suspendData.js').SuspendData|null} 戻す中断データ（なければ null＝新しいゲーム） */
     this.suspend = suspend;
@@ -53,8 +53,8 @@ export class BoardScene extends Scene {
     this.rules = rules;
     /** @type {(target: import('./boardDebug.js').BoardMenuTarget) => Scene} メニューの窓のシーンを作る関数（TURN の区画で、盤面の部品を渡して積む） */
     this.createMenu = createMenu;
-    /** @type {() => Scene} タイトルの画面のシーンを作る関数 */
-    this.createTitle = createTitle;
+    /** @type {(target: { game: Game, battleLayout: import('../view/layout.js').BattleLayout, bests: {today: {score: number, isNew: boolean}, best: {score: number, isNew: boolean}}|null }) => Scene} 結果の画面のシーンを作る関数 */
+    this.createResult = createResult;
     /** @type {{ width: number, height: number }} 解像度 */
     this.screen = screen;
     /** @type {string} 描くレイヤー名 */
@@ -180,7 +180,7 @@ export class BoardScene extends Scene {
       layout: this.layout,
       before: battleBefore,
       result: this.lastResult,
-      createTitle: this.createTitle,
+      createResult: (bests) => this.createResult({ game, battleLayout: this.layout.battle, bests }),
       createUpgradeChoice: () => this.createUpgradeChoice(),
       waiting,
       waitingAuto,
