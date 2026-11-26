@@ -25,6 +25,7 @@ import { createBannerLayout } from '../view/bannerLayout.js';
 import { drawBanner } from '../view/bannerView.js';
 import { createTroopBakes } from '../view/troopView.js';
 import { bodyCount } from '../view/bodyPoints.js';
+import { hordeHpOf } from '../view/bodyHp.js';
 
 /**
  * @typedef {Object} BoardOptions BoardScene に渡すオプション
@@ -144,7 +145,7 @@ export class BoardScene extends Scene {
     }
     this.animator.update(dt);
     this.releaseShow.update(dt);
-    this.enemyIdle.update(dt, this.game.enemy.typeId, bodyCount(this.game.enemy.hp, this.game.enemyUnitPoints()));
+    this.enemyIdle.update(dt, this.game.enemy.typeId, bodyCount(hordeHpOf(this.game.enemy), this.game.enemyUnitPoints()));
     for (const ordinal of this.releaseShow.chainCuesInLastUpdate()) playChainSe(ordinal);
     const boardIdle = !this.animator.isBusy() && !this.releaseShow.isBusy();
     const flowEvent = this.flow.update(dt, this.game, boardIdle);

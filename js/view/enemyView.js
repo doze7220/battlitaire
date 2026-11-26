@@ -8,6 +8,7 @@ import { splitPoints, isWoundedBody } from './bodyPoints.js';
 import { isHordeEnemy } from './hordeSkins.js';
 import { drawSpriteFit } from './spriteView.js';
 import { bodyScale, scaledShieldArea } from './figureScale.js';
+import { hordeHpOf, figureHpOf } from './bodyHp.js';
 
 /** 群れの兵の種類（troopView.js の種類）。 */
 const HORDE_KIND = 'goblin';
@@ -72,13 +73,13 @@ function drawShieldMark(ctx, rect) {
 }
 
 /**
- * 敵の絵を描く。段取りの間（figure が null）は絵または兵の群れを描き、絵を持つ敵にはそのターンの防御の量のシールドマークも描き、
+ * 敵の絵を描く。段取りの間（figure が null）は兵の群れ（群れの絵を持つ敵）と絵（絵を持ち、絵の体の HP が 0 より大きい敵。群れが奥・絵が手前）を描き、絵を持つ敵にはそのターンの防御の量のシールドマークも描き、
  * 攻防の演出中は絵だけを倒れる動きのずれで段の中に切り抜いて描く（群れ・シールドは名簿の1体として別に描かれる）。
  * 段取りの間は entrance を受け、見えないなら何も描かず、横のずれがあれば絵・群れ・シールドマークをまとめてずらす。
  * 引数は読むだけで書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
- * @param {{ typeId: string, hp: number, maxHp: number, intent: import('../rules/combatants.js').EnemyIntent|null }} enemy 描く敵（種類の識別子・HP・最大 HP・予告。群れの体の数は HP と1体のポイント、シールドマークの数は予告の `defense`、絵の体の大きさ（縮み）は HP と最大 HP と表の `minScale`。群れにはシールドマークを描かない）
+ * @param {{ typeId: string, hp: number, maxHp: number, parts?: { parent: number, child: number }|null, intent: import('../rules/combatants.js').EnemyIntent|null }} enemy 描く敵（種類の識別子・HP・最大 HP・親と子の HP（親子の敵だけ。なければ null か省く）・予告。群れの体の数は群れの体の HP（bodyHp.js の hordeHpOf）と1体のポイント、絵は絵の体の HP（figureHpOf）が 0 より大きいときだけ、シールドマークの数は予告の `defense`、絵の体の大きさ（縮み）は HP と最大 HP と表の `minScale`。群れだけの敵にはシールドマークを描かない）
  * @param {{ visible: boolean, dy: number, dx: number }|null} [figure] 敵の絵の見た目（EnemyFigureLook。倒れる動き・駆け寄りのずれ）。null か省くと段取りの絵
  * @param {{ tilt: number, scaleX: number, scaleY: number }|null} [pose] ための姿勢（ChargePoseLook。攻防の演出中の絵を足元を軸に傾け・伸ばす）。null か省くと姿勢なし
  * @param {{ count: number, scaleX: Float64Array, scaleY: Float64Array, figure: { tilt: number, scaleX: number, scaleY: number } }|null} [idle] 段取りの間の待機の伸び縮み（EnemyIdleLook。絵は足元を軸に、群れは1体ずつ。null か省くと伸び縮みなし。シールドマークは伸び縮みしない）
@@ -109,7 +110,10 @@ export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = 
     return;
   }
   if (entrance !== null && entrance.dx !== 0) ctx.translate(entrance.dx, 0);
-  if (hasFigure) {
+  if (isHordeEnemy(enemy.typeId)) {
+    drawHorde(ctx, battleLayout, enemy.typeId, hordeHpOf(enemy), unitPoints, idle);
+  }
+  if (hasFigure && figureHpOf(enemy) > 0) {
     const fig = battleLayout.enemyFigures[enemy.typeId];
     ctx.save();
     applyFootPose(ctx, fig.rect, idle === null ? NO_POSE : idle.figure, scale);
@@ -119,8 +123,6 @@ export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = 
       const shieldArea = scale === 1 ? fig.shieldArea : scaledShieldArea(fig, scale);
       for (const rect of battleLayout.shieldRects(enemy.intent.defense, shieldArea)) drawShieldMark(ctx, rect);
     }
-  } else if (isHordeEnemy(enemy.typeId)) {
-    drawHorde(ctx, battleLayout, enemy.typeId, enemy.hp, unitPoints, idle);
   }
   ctx.restore();
 }
