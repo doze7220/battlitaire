@@ -1,5 +1,5 @@
 /**
- * 責務: 結果の画面の配置（暗幕・板・見える範囲・ボタン）、中身の部品の並べ方（縦の位置と高さ）、押したところの当たりを求める。
+ * 責務: 結果の画面の配置（暗幕・板・見える範囲・位置の表示の帯・ボタン）、中身の部品の並べ方（縦の位置と高さ）、押したところの当たりを求める。
  * 何も import せず、状態は変えない。
  */
 
@@ -11,6 +11,10 @@ const PANEL_H_RATIO = 0.8;
 const SIDE_PAD = 32;
 /** 中身の右端の、位置の表示の帯のために空ける幅（見える範囲は中身の幅にこの分を足した幅）。 */
 const BAR_GAP = 12;
+/** 位置の表示の帯の幅（見える範囲の右端の内側）。 */
+const BAR_W = 8;
+/** 位置の表示のつまみの最短の長さ。 */
+const THUMB_MIN_H = 44;
 /** ボタンの高さ。 */
 const BUTTON_H = 96;
 /** 板の下端からボタンの下端までの間。 */
@@ -83,6 +87,7 @@ export const LOST_HORDE = Object.freeze({
  * @property {{ x: number, w: number }} content 中身を置く横の範囲（`x`・`w`）
  * @property {{ retry: Rect, title: Rect }} buttons 「もう一度」「タイトルへ」のボタン
  * @property {number} buttonTextMaxW ボタンの文字の最大幅
+ * @property {Rect} scrollBar 位置の表示の帯（見える範囲の右端の内側。つまみが動く範囲）
  */
 
 /**
@@ -120,14 +125,32 @@ export function createResultLayout(screen) {
   const title = { x: retry.x + buttonW + BUTTON_GAP, y: buttonY, w: buttonW, h: BUTTON_H };
   const contentW = PANEL_W - SIDE_PAD * 2;
   const viewportY = panel.y + VIEWPORT_TOP_PAD;
+  const viewport = { x: panel.x + SIDE_PAD, y: viewportY, w: contentW + BAR_GAP, h: buttonY - VIEWPORT_BOTTOM_GAP - viewportY };
   return {
     curtain: { x: 0, y: 0, w: screen.width, h: screen.height },
     panel,
-    viewport: { x: panel.x + SIDE_PAD, y: viewportY, w: contentW + BAR_GAP, h: buttonY - VIEWPORT_BOTTOM_GAP - viewportY },
+    viewport,
     content: { x: panel.x + SIDE_PAD, w: contentW },
     buttons: { retry, title },
     buttonTextMaxW: buttonW - BUTTON_TEXT_PAD * 2,
+    scrollBar: { x: viewport.x + viewport.w - BAR_W, y: viewport.y, w: BAR_W, h: viewport.h },
   };
+}
+
+/**
+ * 位置の表示のつまみの矩形を求める。中身が見える範囲に収まるときは null（表示しない）。
+ * @param {ResultLayout} layout 配置
+ * @param {number} height 中身の高さ
+ * @param {number} offset スクロールの量（0 は一番上）
+ * @returns {Rect|null} つまみ（帯の中に収まる）、表示しないとき null
+ */
+export function scrollThumb(layout, height, offset) {
+  const bar = layout.scrollBar;
+  const max = height - layout.viewport.h;
+  if (max <= 0) return null;
+  const h = Math.min(bar.h, Math.max(THUMB_MIN_H, (bar.h * layout.viewport.h) / height));
+  const ratio = Math.min(1, Math.max(0, offset / max));
+  return { x: bar.x, y: bar.y + (bar.h - h) * ratio, w: bar.w, h };
 }
 
 /**

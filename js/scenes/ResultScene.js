@@ -1,12 +1,13 @@
 /**
  * 責務: 結果の画面のシーン。ゲームを1回だけ読んで中身を作り、「もう一度」「タイトルへ」の2つのボタン（押して同じボタンの上で離したとき）で次の画面へ切り替えること。
- * 描くのは resultView.js。板の外・中身を押しても何も起きない。
+ * 中身は指で縦にずらせる（DragScroll）。描くのは resultView.js。板の外・中身を押してもボタンは働かない。
  */
 import { Engine, Scene } from 'oz';
 import { playStartSe } from './soundCues.js';
 import { takenUpgradeList } from '../rules/upgrades.js';
 import { resultModel } from '../view/resultText.js';
 import { createResultLayout, placeResultPieces, resultHitTest } from '../view/resultLayout.js';
+import { DragScroll } from './dragScroll.js';
 import { drawResultScreen } from '../view/resultView.js';
 
 /**
@@ -47,6 +48,8 @@ export class ResultScene extends Scene {
     this.placed = null;
     /** @type {'retry'|'title'|null} このシーンで押したボタン */
     this.pressed = null;
+    /** @type {DragScroll|null} 中身のスクロールの状態（init で作る） */
+    this.scroll = null;
   }
 
   /**
@@ -67,11 +70,12 @@ export class ResultScene extends Scene {
     this.layout = createResultLayout(this.screen);
     this.placed = placeResultPieces(model, this.layout);
     this.pressed = null;
+    this.scroll = new DragScroll(Math.max(0, this.placed.height - this.layout.viewport.h));
   }
 
   /**
-   * 押したとき（'down'）はボタンなら記録する。離したとき（'up'）は、押したボタンと同じボタンの上のときだけ働く
-   * （「もう一度」はスタートの音を鳴らして新しい盤面へ、「タイトルへ」はタイトルへ切り替える）。板の外・中身を押しても何も起きない。
+   * 押したとき（'down'）はボタンなら記録し、見える範囲ならスクロールを始める。動かしたとき（'move'）はスクロール中だけ位置を動かす。離したとき（'up'）は、押したボタンと同じボタンの上のときだけ働く
+   * （「もう一度」はスタートの音を鳴らして新しい盤面へ、「タイトルへ」はタイトルへ切り替える）。板の外を押しても何も起きない。中身を押して動かすとスクロールする（ボタンは働かない）。
    * @param {{ type: string, x: number, y: number }} pointer ポインタ入力
    * @returns {void}
    */
@@ -79,8 +83,12 @@ export class ResultScene extends Scene {
     if (pointer.type === 'down') {
       const hit = resultHitTest(this.layout, pointer.x, pointer.y);
       this.pressed = hit === 'retry' || hit === 'title' ? hit : null;
+      if (hit === 'content') this.scroll.begin(pointer.y);
+    } else if (pointer.type === 'move') {
+      this.scroll.move(pointer.y);
     } else if (pointer.type === 'up') {
       const hit = resultHitTest(this.layout, pointer.x, pointer.y);
+      this.scroll.end();
       const button = hit !== null && hit === this.pressed ? hit : null;
       this.pressed = null;
       if (button === 'retry') {
@@ -100,6 +108,6 @@ export class ResultScene extends Scene {
    */
   draw(ctx, layer) {
     if (layer !== this.layer) return;
-    drawResultScreen(ctx, this.layout, this.battleLayout, this.placed, 0, this.pressed);
+    drawResultScreen(ctx, this.layout, this.battleLayout, this.placed, this.scroll.offset, this.pressed);
   }
 }

@@ -1,11 +1,11 @@
 /**
- * 責務: 結果の画面（暗幕・板・見える範囲で切り抜いた中身・ボタン）を描く。
+ * 責務: 結果の画面（暗幕・板・見える範囲で切り抜いた中身・位置の表示・ボタン）を描く。
  * 状態は変えず、ルール層は実行時に import しない。
  */
 
 import { roundRectPath } from './cardView.js';
 import { drawEnemyPortrait } from './enemyPortrait.js';
-import { PORTRAIT_HORDE, LOST_HORDE } from './resultLayout.js';
+import { PORTRAIT_HORDE, LOST_HORDE, scrollThumb } from './resultLayout.js';
 import { RESULT_TEXT } from './resultText.js';
 
 /** 画面全体の暗幕の色。 */
@@ -69,6 +69,8 @@ const ROW_VALUE_PAD = 12;
 const LOST_TEXT_FONT = 'bold 30px sans-serif';
 /** 1行の文字のフォント。 */
 const LINE_FONT = '26px sans-serif';
+/** 位置の表示のつまみの色。 */
+const THUMB_FILL = 'rgba(159, 180, 216, 0.7)';
 /** ボタンの塗りの色。 */
 const BUTTON_FILL = '#2f3d57';
 /** 押している間のボタンの塗りの色（明るい）。 */
@@ -239,12 +241,12 @@ function drawResultButton(ctx, rect, text, pressed, textMaxW) {
 }
 
 /**
- * 結果の画面（暗幕・板・見える範囲で切り抜いた中身・ボタン2つ）を描く。状態は変えない。
+ * 結果の画面（暗幕・板・見える範囲で切り抜いた中身・位置の表示（帯とつまみ）・ボタン2つ）を描く。状態は変えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./resultLayout.js').ResultLayout} layout 結果の画面の配置
  * @param {import('./layout.js').BattleLayout} battleLayout 盤面の攻防の配置（敵の絵に使う）
  * @param {{ pieces: import('./resultLayout.js').ResultPiece[], height: number }} placed 並べた中身
- * @param {number} scrollY 中身のスクロールの量（0 は一番上）
+ * @param {number} scrollY 中身のスクロールの量（0 は一番上）。中身が見える範囲より高いときだけ位置の表示も描く
  * @param {'retry'|'title'|null} pressed 押している間のボタン（なければ null）
  * @returns {void}
  */
@@ -273,6 +275,13 @@ export function drawResultScreen(ctx, layout, battleLayout, placed, scrollY, pre
     ctx.restore();
   }
   ctx.restore();
+
+  const thumb = scrollThumb(layout, placed.height, scrollY);
+  if (thumb !== null) {
+    roundRectPath(ctx, thumb.x, thumb.y, thumb.w, thumb.h, thumb.w / 2);
+    ctx.fillStyle = THUMB_FILL;
+    ctx.fill();
+  }
 
   for (const name of ['retry', 'title']) {
     drawResultButton(ctx, layout.buttons[name], RESULT_TEXT.buttons[name], pressed === name, layout.buttonTextMaxW);
