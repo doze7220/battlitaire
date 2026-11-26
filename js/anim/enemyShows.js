@@ -59,6 +59,14 @@ export const ENEMY_SHOWS = Object.freeze({
     dents: false,
     pace: 'normal',
   }),
+  ogres: Object.freeze({
+    body: 'horde',
+    attacks: Object.freeze({ default: 'march' }),
+    heavy: Object.freeze([]),
+    charge: Object.freeze([]),
+    dents: false,
+    pace: 'slow',
+  }),
   wolf: Object.freeze({
     body: 'figure',
     attacks: Object.freeze({ default: 'dashSwift' }),

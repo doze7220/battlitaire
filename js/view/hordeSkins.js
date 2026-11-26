@@ -19,6 +19,7 @@ import { SPRITE_IDS } from './spriteView.js';
  */
 export const HORDE_SKINS = Object.freeze({
   goblins: Object.freeze({ body: SPRITE_IDS.goblin, item: null, bake: 'goblin' }),
+  ogres: Object.freeze({ body: SPRITE_IDS.ogre, item: null, bake: 'ogre' }),
   skeletons: Object.freeze({ body: SPRITE_IDS.skeleton, item: null, bake: 'skeleton' }),
 });
 
