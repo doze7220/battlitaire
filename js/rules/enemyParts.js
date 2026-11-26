@@ -156,3 +156,29 @@ export function zeroPart(parts, part) {
   result[part] = parts[other] > 0 ? 0 : 1;
   return result;
 }
+
+/**
+ * 中断データの敵の親と子の HP の形が正しいか。親子の敵（設定が `brood` を持つ）は、`parent`・`child` だけを持つ
+ * プレーンなオブジェクトで、どちらも 0 以上の整数、合計が `hp` と同じ。親子でない敵は `null` だけ。例外を投げない。
+ * @param {{ brood?: unknown }} spec 敵の種類の設定
+ * @param {unknown} parts 保存されていた親と子の HP
+ * @param {unknown} hp 保存されていた敵の HP（親子の合計）
+ * @returns {boolean} 形が合えば true
+ */
+export function isEnemyPartsShape(spec, parts, hp) {
+  try {
+    if (!spec.brood) return parts === null;
+    if (typeof parts !== 'object' || parts === null || Array.isArray(parts)) return false;
+    const proto = Object.getPrototypeOf(parts);
+    if (proto !== Object.prototype && proto !== null) return false;
+    const keys = Object.keys(parts);
+    if (keys.length !== 2 || !keys.includes('parent') || !keys.includes('child')) return false;
+    const { parent, child } = /** @type {{ parent: unknown, child: unknown }} */ (parts);
+    if (!Number.isInteger(parent) || !Number.isInteger(child)) return false;
+    const p = /** @type {number} */ (parent);
+    const c = /** @type {number} */ (child);
+    return p >= 0 && c >= 0 && p + c === hp;
+  } catch {
+    return false;
+  }
+}

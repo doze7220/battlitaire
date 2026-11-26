@@ -9,6 +9,7 @@ import { createRng, isRngState } from './rng.js';
 import { createDecks } from './piles.js';
 import { enemyTypeIds, enemySpecOf } from './enemyTypes.js';
 import { isBehaviorState } from './enemyBehaviors.js';
+import { isEnemyPartsShape } from './enemyParts.js';
 import { isGameStats } from './gameStats.js';
 import { isBattleRecord } from './battleRecord.js';
 import { isUpgradeState } from './upgrades.js';
@@ -21,9 +22,10 @@ import { handSizeOf } from './upgradeBoosts.js';
  * 4: 強化のカード・特別の枠（この戦闘の間の足し分 `battleActionBonus`・強化から決まる手札の枠の数）を足したとき 3 から上げた。
  * 5: 精鋭の状態 `elites` を足したとき 4 から上げた。
  * 6: スコア（結果の記録の形の変更）と戦闘の記録 `battleRecord` を足したとき 5 から上げた。
+ * 7: 敵の親と子の HP `parts` を足したとき 6 から上げた。
  * @type {number}
  */
-export const SUSPEND_VERSION = 6;
+export const SUSPEND_VERSION = 7;
 
 /**
  * 中断データ（ターンの始まり、または3択の段階の状態。`null`・真偽値・文字列・数・配列・プレーンなオブジェクトだけでできている）。
@@ -45,7 +47,7 @@ export const SUSPEND_VERSION = 6;
  * @property {number} battleActionBonus この戦闘の間、毎ターン足す行動の数（3択の段階では 0）
  * @property {Object<string, number>} gauges ゲージの識別子 → 値
  * @property {{ hp: number, maxHp: number }} castle 城
- * @property {{ typeId: string, hp: number, maxHp: number, intent: import('./combatants.js').EnemyIntent, behaviorState: object }} enemy 敵（名前は設定から引くので持たない）
+ * @property {{ typeId: string, hp: number, maxHp: number, parts: import('./enemyParts.js').EnemyParts|null, intent: import('./combatants.js').EnemyIntent, behaviorState: object }} enemy 敵（名前は設定から引くので持たない。`parts` は親子の敵だけ値を持ち、合計が `hp`）
  * @property {import('./gameStats.js').GameStats} stats 結果の記録（倒した数・総ターン数・スコア・項目ごとの合計と回数・倒した敵の並び・最大の一撃・一番長いコンボ）
  * @property {import('./battleRecord.js').BattleRecord} battleRecord 今の敵との戦闘の記録（使ったターン数・城が被害を受けたか・一番長い区切りの枚数。3択の段階では倒した敵の記録）
  * @property {import('./upgrades.js').UpgradeState} upgrades 取った強化
@@ -244,6 +246,7 @@ const FIELDS = Object.freeze({
         typeId: game.enemy.typeId,
         hp: game.enemy.hp,
         maxHp: game.enemy.maxHp,
+        parts: game.enemy.parts,
         intent: game.enemy.intent,
         behaviorState: game.enemy.behaviorState,
       }),
@@ -254,6 +257,7 @@ const FIELDS = Object.freeze({
       isIntFrom(value.hp, 0) &&
       Number.isInteger(value.maxHp) &&
       value.hp <= value.maxHp &&
+      isEnemyPartsShape(enemySpecOf(config, value.typeId), value.parts, value.hp) &&
       isIntentShape(value.intent) &&
       isBehaviorState(enemySpecOf(config, value.typeId).behavior, value.behaviorState),
     load: (game, value) => {
@@ -263,6 +267,7 @@ const FIELDS = Object.freeze({
         name: enemySpecOf(game.config, v.typeId).name,
         hp: v.hp,
         maxHp: v.maxHp,
+        parts: v.parts,
         intent: v.intent,
         behaviorState: v.behaviorState,
       };
