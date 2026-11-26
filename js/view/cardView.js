@@ -1,6 +1,6 @@
 /**
  * 責務: カード1枚の表・裏・めくれ（横幅を縮めた表裏）・空き枠・強調の枠・色の重ねなど、カード単位の見た目を描く。
- * 表の枠と裏はスプライト（spriteView.js）で描く。状態は変えず、ルール層は実行時に import しない。
+ * 表の枠と裏はスプライト（spriteView.js）で描き、強化の量「+◯」は数字の右下に文字で描く。状態は変えず、ルール層は実行時に import しない。
  */
 
 import { suitLook } from './suitStyle.js';
@@ -12,6 +12,13 @@ const RANK_FONT = 'bold 24px sans-serif';
 const SUIT_ART_RATIO = 0.5;
 const RANK_OFFSET_X = 8;
 const RANK_OFFSET_Y = 6;
+/** 札の +◯（強化の量）の文字。数字の右に空ける幅・数字の上端からの下げ幅・文字・色・縁取り */
+const BONUS_GAP_X = 2;
+const BONUS_OFFSET_Y = 12;
+const BONUS_FONT = 'bold 16px sans-serif';
+const BONUS_COLOR = '#ff8a1f';
+const BONUS_OUTLINE_COLOR = 'rgba(20, 20, 20, 0.9)';
+const BONUS_OUTLINE_WIDTH = 3;
 const EMPTY_STROKE = '#8a9a8a';
 const EMPTY_LINE_WIDTH = 2;
 const EMPTY_DASH = [6, 5];
@@ -48,9 +55,10 @@ export function roundRectPath(ctx, x, y, w, h, r) {
  * @param {number} w 幅
  * @param {number} h 高さ
  * @param {import('../rules/card.js').Card} card 描くカード
+ * @param {number} [bonus] 強化の量（札の +◯）。1 以上なら数字の右下にオレンジの「+◯」を重ねる。0 なら何も足さない
  * @returns {void}
  */
-export function drawCardFace(ctx, x, y, w, h, card) {
+export function drawCardFace(ctx, x, y, w, h, card, bonus = 0) {
   const look = suitLook(card.suit);
   drawSpriteStretched(ctx, look.frame, x, y, w, h);
 
@@ -59,7 +67,21 @@ export function drawCardFace(ctx, x, y, w, h, card) {
   ctx.textBaseline = 'top';
   ctx.fillStyle = look.color;
   ctx.font = RANK_FONT;
-  ctx.fillText(String(card.rank), x + RANK_OFFSET_X, y + RANK_OFFSET_Y);
+  const rankText = String(card.rank);
+  ctx.fillText(rankText, x + RANK_OFFSET_X, y + RANK_OFFSET_Y);
+
+  if (bonus >= 1) {
+    const rankWidth = ctx.measureText(rankText).width;
+    const bonusX = x + RANK_OFFSET_X + rankWidth + BONUS_GAP_X;
+    const bonusY = y + RANK_OFFSET_Y + BONUS_OFFSET_Y;
+    ctx.font = BONUS_FONT;
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = BONUS_OUTLINE_WIDTH;
+    ctx.strokeStyle = BONUS_OUTLINE_COLOR;
+    ctx.strokeText(`+${bonus}`, bonusX, bonusY);
+    ctx.fillStyle = BONUS_COLOR;
+    ctx.fillText(`+${bonus}`, bonusX, bonusY);
+  }
 
   ctx.restore();
 
@@ -91,14 +113,15 @@ export function drawCardBack(ctx, x, y, w, h) {
  * @param {import('../rules/card.js').Card} card 表を描くときのカード
  * @param {number} scaleX 横幅の比率（0〜1）
  * @param {boolean} faceUp true なら表、false なら裏
+ * @param {number} [bonus] 表のときに drawCardFace へ渡す札の +◯（既定 0）
  * @returns {void}
  */
-export function drawCardFlip(ctx, x, y, w, h, card, scaleX, faceUp) {
+export function drawCardFlip(ctx, x, y, w, h, card, scaleX, faceUp, bonus = 0) {
   if (scaleX <= 0) return;
   ctx.save();
   ctx.translate(x + w / 2, y + h / 2);
   ctx.scale(scaleX, 1);
-  if (faceUp) drawCardFace(ctx, -w / 2, -h / 2, w, h, card);
+  if (faceUp) drawCardFace(ctx, -w / 2, -h / 2, w, h, card, bonus);
   else drawCardBack(ctx, -w / 2, -h / 2, w, h);
   ctx.restore();
 }

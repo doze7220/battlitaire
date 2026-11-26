@@ -65,7 +65,7 @@ function topGaugeValues(game, release) {
 }
 
 /**
- * 盤面全体を描く（背景 → 戦闘の段（奥の兵・城・敵・手前の兵・予告の順） → 人数の表示（3択の間は描かない） → 最上部のゲージ → 行動のゲージの帯 → 行動のゲージのラベル → 山札・捨て札 → 列と放つボタン → 燃える札の明滅 → 玉に変わる前の札 → 手札 → 動いているカード（燃えて飛ぶ札を含む） → 玉と式の順）。game は読むだけで、何も書き換えない。
+ * 盤面全体を描く（背景 → 戦闘の段（奥の兵・城・敵・手前の兵・予告の順） → 人数の表示（3択の間は描かない） → 最上部のゲージ → 行動のゲージの帯 → 行動のゲージのラベル → 山札・捨て札 → 列と放つボタン → 燃える札の明滅 → 玉に変わる前の札 → 手札 → 動いているカード（燃えて飛ぶ札を含む） → 玉と式の順）。札には game.cardBonus の値（札の +◯）を渡して描く。game は読むだけで、何も書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').Layout} layout 画面の配置
  * @param {import('../rules/Game.js').Game} game ゲームの状態（読み取り専用）
@@ -90,11 +90,14 @@ export function drawBoard(ctx, layout, game, ui, anim, release, burn = null, idl
   drawActionGauge(ctx, layout.actionGauge, game.actionsLeft);
   drawActionGaugeLabel(ctx, layout.actionGauge);
 
+  const bonusOf = (card) => game.cardBonus(card);
+
   for (let d = 0; d < layout.decks.length; d++) {
     drawDeck(ctx, layout.decks[d], game.visibleCards(d), game.hiddenCount(d), {
       selected: ui.selectedDeck === d,
       discardMode: ui.discardMode && ui.selectedDeck === d,
       flip: anim.deckFlips.get(d) ?? null,
+      bonusOf,
     });
   }
   drawDiscard(ctx, layout.discard, game.discard.length, anim.discardPending + (burn === null ? 0 : burn.discardPending));
@@ -103,7 +106,7 @@ export function drawBoard(ctx, layout, game, ui, anim, release, burn = null, idl
     const runFrom = ui.selectedRun !== null && ui.selectedRun.column === c ? ui.selectedRun.from : null;
     const cards = burn === null ? game.columns[c] : burn.columns[c];
     drawColumn(ctx, layout.columns[c], cards, ui.placeableColumns.includes(c), runFrom, anim.hiddenCardIds,
-      burn === null ? (anim.columnYs.get(c) ?? null) : null);
+      burn === null ? (anim.columnYs.get(c) ?? null) : null, bonusOf);
     drawReleaseButton(ctx, layout.releaseButtons[c], ui.releasable[c]);
   }
   if (burn !== null && burn.flash !== null) {
@@ -111,16 +114,16 @@ export function drawBoard(ctx, layout, game, ui, anim, release, burn = null, idl
     drawCardTint(ctx, r.x, r.y, r.w, r.h, BURN_FLASH_COLOR, burn.flash.alpha);
     drawSpriteCentered(ctx, SPRITE_IDS.fire, r.x + r.w / 2, r.y + r.h / 2, burn.flash.fireSize);
   }
-  drawReleaseCards(ctx, release.cards);
+  drawReleaseCards(ctx, release.cards, bonusOf);
   drawHand(ctx, layout.hand, game.hand, { selectedSlot: ui.selectedHandSlot, holdSlots: ui.holdSlots,
-    hiddenIds: anim.hiddenCardIds });
+    hiddenIds: anim.hiddenCardIds, bonusOf });
 
   for (const f of anim.flying) {
-    drawCardFace(ctx, f.x, f.y, f.w, f.h, f.card);
+    drawCardFace(ctx, f.x, f.y, f.w, f.h, f.card, bonusOf(f.card));
   }
   if (burn !== null) {
     for (const f of burn.flying) {
-      drawCardFace(ctx, f.x, f.y, f.w, f.h, f.card);
+      drawCardFace(ctx, f.x, f.y, f.w, f.h, f.card, bonusOf(f.card));
     }
   }
   drawReleaseOrbs(ctx, release);

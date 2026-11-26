@@ -18,6 +18,7 @@ const HOLDABLE_COLOR = '#7be07b';
  * @property {number|null} selectedSlot 選択中の手札の枠の番号（なければ null）
  * @property {number[]} holdSlots 山札のカードを入れられる枠の番号
  * @property {Set<number>} [hiddenIds] 描かないカードの ID（動いている最中のカード。そのカードの枠は空き枠として描く。未指定なら隠さない）
+ * @property {(card: import('../rules/card.js').Card) => number} [bonusOf] 札 → 札の +◯（未指定なら 0 を返す）
  */
 
 /**
@@ -45,7 +46,7 @@ export function drawHand(ctx, handLayout, hand, state) {
       drawEmptySlot(ctx, x, y, w, h, EMPTY_LABEL);
       if (state.holdSlots.includes(s)) drawHighlight(ctx, x, y, w, h, HOLDABLE_COLOR);
     } else {
-      drawCardFace(ctx, x, y, w, h, card);
+      drawCardFace(ctx, x, y, w, h, card, state.bonusOf ? state.bonusOf(card) : 0);
       if (state.selectedSlot === s) drawHighlight(ctx, x, y, w, h, SELECT_COLOR);
     }
   }

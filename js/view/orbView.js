@@ -33,11 +33,12 @@ const ALL_SUITS_COLOR = '#ffe680';
  * 玉に変わる前の札を元の矩形のまま表で描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {{card: *, x: number, y: number, w: number, h: number}[]} cards 描く札（OrbCardLook の配列）
+ * @param {(card: import('../rules/card.js').Card) => number} [bonusOf] 札 → 札の +◯（既定は 0 を返す）
  * @returns {void}
  */
-export function drawReleaseCards(ctx, cards) {
+export function drawReleaseCards(ctx, cards, bonusOf = () => 0) {
   for (const c of cards) {
-    drawCardFace(ctx, c.x, c.y, c.w, c.h, c.card);
+    drawCardFace(ctx, c.x, c.y, c.w, c.h, c.card, bonusOf(c.card));
   }
 }
 

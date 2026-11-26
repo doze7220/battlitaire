@@ -36,9 +36,10 @@ const ARROW_HEAD_H = 26;
  * @param {number|null} runFrom 選んだ束の一番下の番号（選んでいなければ null）
  * @param {Set<number>} [hiddenIds] 描かないカードの ID（動いている最中のカード。位置は隠したカードも数えた全体の枚数で求め、全部隠れていれば空き枠を描く）
  * @param {number[]|null} [cardYs] 詰め直し中の各カードの上端 y（下から順）。配列で長さが cards.length と同じならこれを使い、そうでなければ columnCardYs で求める
+ * @param {(card: import('../rules/card.js').Card) => number} [bonusOf] 札 → 札の +◯（既定は 0 を返す）
  * @returns {void}
  */
-export function drawColumn(ctx, columnLayout, cards, highlighted, runFrom, hiddenIds = new Set(), cardYs = null) {
+export function drawColumn(ctx, columnLayout, cards, highlighted, runFrom, hiddenIds = new Set(), cardYs = null, bonusOf = () => 0) {
   const { x, y, cardW, cardH } = columnLayout;
   if (cards.length === 0 || cards.every((c) => hiddenIds.has(c.id))) {
     drawEmptySlot(ctx, x, y, cardW, cardH, EMPTY_LABEL);
@@ -50,7 +51,7 @@ export function drawColumn(ctx, columnLayout, cards, highlighted, runFrom, hidde
     : columnCardYs(columnLayout, cards.length);
   for (let i = 0; i < cards.length; i++) {
     if (hiddenIds.has(cards[i].id)) continue;
-    drawCardFace(ctx, x, ys[i], cardW, cardH, cards[i]);
+    drawCardFace(ctx, x, ys[i], cardW, cardH, cards[i], bonusOf(cards[i]));
   }
   if (runFrom !== null && runFrom >= 0 && runFrom < cards.length) {
     const top = ys[runFrom];

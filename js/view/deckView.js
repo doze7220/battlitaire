@@ -30,6 +30,7 @@ const BAND_COLOR = '#ffffff';
  * @property {boolean} selected 選択中か
  * @property {boolean} discardMode 「捨てる」の帯を出すか
  * @property {{ scaleX: number, faceUp: boolean }|null} [flip] めくれ中の見た目（null か未指定なら普通の表）
+ * @property {(card: import('../rules/card.js').Card) => number} [bonusOf] 札 → 札の +◯（未指定なら 0 を返す）
  */
 
 /**
@@ -41,13 +42,14 @@ const BAND_COLOR = '#ffffff';
  * @param {DeckViewState} state 表示用の状態
  * @returns {void}
  */
-export function drawDeck(ctx, rect, visibleCards, hiddenCount, { selected, discardMode, flip }) {
+export function drawDeck(ctx, rect, visibleCards, hiddenCount, { selected, discardMode, flip, bonusOf = () => 0 }) {
   const { x, y, w, h } = rect;
   if (visibleCards.length === 0) {
     drawEmptySlot(ctx, x, y, w, h, EMPTY_LABEL);
   } else {
-    if (flip) drawCardFlip(ctx, x, y, w, h, visibleCards[0], flip.scaleX, flip.faceUp);
-    else drawCardFace(ctx, x, y, w, h, visibleCards[0]);
+    const bonus = bonusOf(visibleCards[0]);
+    if (flip) drawCardFlip(ctx, x, y, w, h, visibleCards[0], flip.scaleX, flip.faceUp, bonus);
+    else drawCardFace(ctx, x, y, w, h, visibleCards[0], bonus);
     ctx.save();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
