@@ -1,6 +1,6 @@
 /**
- * 責務: 前から並んだ2つの体の列のポイントを、量だけ消し合う組（当たる順）にする。
- * 何も import しない純粋関数。両方とも全部 1 ポイントなら今の1対1の組と同じになる。
+ * 責務: 前から並んだ2つの体の列のポイントを、量だけ消し合う組（当たる順）にすることと、
+ * 1つの列の前から量だけポイントを使う割り振りを求める。何も import しない純粋関数。全部 1 ポイントなら1対1・前から量の数と同じ。
  */
 
 /**
@@ -49,4 +49,28 @@ export function matchPoints(aPoints, bPoints, amount) {
     left -= x;
   }
   return pairs;
+}
+
+/**
+ * 前から並んだ1つの列のポイントを、前から量だけ使う割り振りにする。
+ * 前から `min(体の残り, 量の残り)` を使い、量に着いたら止める（最後の1体は一部だけのことがある）。全部 1 ポイントなら前から量の数の体を全部使う。
+ * @param {number[]} points 体ごとのポイント（前から。0 以下の体は飛ばす）
+ * @param {number} amount 使う量（0 以上。`Infinity` なら全員の全部）
+ * @returns {Array<{index: number, points: number}>} 使う体の番号（前から 0）とその体の使うポイント（前から順）
+ * @throws {Error} amount が有限で、合計が amount に足りないとき
+ */
+export function spendFromFront(points, amount) {
+  const spent = [];
+  let left = amount;
+  for (let i = 0; i < points.length && left > 0; i++) {
+    if (points[i] <= 0) continue;
+    const x = Math.min(points[i], left);
+    spent.push({ index: i, points: x });
+    left -= x;
+  }
+  if (left > 0 && Number.isFinite(amount)) {
+    const sum = points.reduce((s, p) => s + Math.max(0, p), 0);
+    throw new Error(`spendFromFront: ポイントが足りません（合計 ${sum}・量 ${amount}）`);
+  }
+  return spent;
 }

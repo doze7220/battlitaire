@@ -1,6 +1,6 @@
 /**
  * 兵1体ずつの名簿を作り（自動兵士・精鋭の印を付けることを含む）、段ごとに兵へ脚と終わり方を割り当てる
- * （出す・置く・行進・当たる・相打ち・落とす・城へ入る・右へ帰す・家へ跳ばす・段取りの間の名簿から消す）。
+ * （出す・置く・行進・当たる・相打ち・前からポイントを使って落とす・城へ入る・右へ帰す・家へ跳ばす・段取りの間の名簿から消す）。
  * 前から遅らせる式と、兵ごとのずれ（troopJitter.js）の足し方はここだけに置く。乱数は使わない。
  */
 
@@ -8,7 +8,7 @@ import { BATTLE_ANIM } from './battleAnimConfig.js';
 import { campSlot } from '../view/campSlots.js';
 import { durationScale, startJitter } from './troopJitter.js';
 import { addTroopLeg, createTroopUnit, setTroopEnd, spendTroopPoints, troopHitEnd } from './troopMotion.js';
-import { matchPoints } from './pointMatch.js';
+import { matchPoints, spendFromFront } from './pointMatch.js';
 
 /**
  * 行進で決めた、まだ相打ちになっていない組。
@@ -418,6 +418,29 @@ export function popTroops(roster, kind, times) {
 }
 
 /**
+ * まだ終わっていない kind の兵を前から、amount ポイントぶん使う（`spendFromFront`）。
+ * 選んだ兵の数 n の時刻 `timesOf(n)` の k 番目（と兵の `freeAt` の遅い方）に、その兵の使う分だけポイントを減らす
+ * （0 になれば跳ねて落ち、残れば傷ついた姿で残る）。動かさない。1体1ポイントなら `popTroops` と同じ。
+ * @param {TroopRoster} roster 名簿
+ * @param {string} kind 種類
+ * @param {number} amount 使うポイントの量
+ * @param {function(number): number[]} timesOf 選んだ兵の数 n → 使う時刻（ms）の並び（n 個。前から順）
+ * @returns {Array<{unit: import('./troopMotion.js').TroopUnit, time: number, points: number}>} 使った兵・その時刻・使ったポイント（前から）
+ * @throws {Error} ポイントが足りないとき
+ */
+export function spendFront(roster, kind, amount, timesOf) {
+  const active = activeOf(roster, kind);
+  const picks = spendFromFront(active.map((u) => u.points), Math.max(0, amount));
+  const times = timesOf(picks.length);
+  return picks.map((pick, k) => {
+    const unit = active[pick.index];
+    const time = Math.max(times[k], unit.freeAt);
+    spendTroopPoints(unit, pick.points, time, fallOutOf(roster, unit));
+    return { unit, time, points: pick.points };
+  });
+}
+
+/**
  * kind の前から並んだ兵が、partnerKind の前から並んだ兵と count ポイントぶんだけ消し合う（`matchPoints` の組を当たる順に）。
  * k 組目で、進む側の兵が相手の手前へ進んで着いた時刻に落ち、相手はその組のポイントだけ減る（0 になれば落ち、残れば傷つく）。
  * 1体1ポイントなら count 組の1対1で、2体とも着いた時刻に終わる。
@@ -618,7 +641,7 @@ export function chargeTo(roster, kind, count, targetX, t, moveMs, pace = 'move')
  * @param {string} kind 種類
  * @param {number} t 段の始め（ms）
  * @param {number} moveMs 移動の基準の時間（ms。兵ごとにずれる）
- * @returns {number[]} 着く時刻の昇順の配列（1体も動かさなければ空）
+ * @returns {Array<{time: number, points: number}>} 着く時刻（ms）とその兵の残りのポイント（時刻の昇順。1体も動かさなければ空）
  */
 export function enterCastle(roster, kind, t, moveMs) {
   const { moveStaggerMs, moveStaggerMaxMs, moveJitterMs, speedSpread } = BATTLE_ANIM;
@@ -631,9 +654,9 @@ export function enterCastle(roster, kind, t, moveMs) {
     const start = Math.max(t + delays[k], unit.freeAt);
     addTroopLeg(unit, start, roster.layout.castleEntryX, contactY(roster, unit.y), legMs(unit.kind, unit.index, moveMs, speedSpread));
     setTroopEnd(unit, 'vanish', unit.freeAt, roster.layout.fallOutY);
-    arrivals.push(unit.freeAt);
+    arrivals.push({ time: unit.freeAt, points: unit.points });
   }
-  return arrivals.sort((a, b) => a - b);
+  return arrivals.sort((a, b) => a.time - b.time);
 }
 
 /**
@@ -718,12 +741,19 @@ export function rosterPointDrops(roster, kind) {
 }
 
 /**
- * まだ終わっていない kind の兵のうち、一番前の兵の x（いまいる位置）を返す。
+ * まだ終わっていない kind の兵のうち、家の x が一番前の兵（自軍は家の x の最大、敵の側は最小。同じなら番号の小さい方）の、いまいる x を返す。
+ * 精鋭は前からの並びで後ろへ回るので、並びの先頭ではなく家の位置で決める。
  * @param {TroopRoster} roster 名簿
  * @param {string} kind 種類
  * @returns {number|null} 一番前の兵の x（終わっていない兵がいなければ null）
  */
 export function frontTroopX(roster, kind) {
-  const list = activeOf(roster, kind);
-  return list.length > 0 ? list[0].x : null;
+  const sign = OWN_KINDS.includes(kind) ? -1 : 1;
+  let front = null;
+  for (const unit of activeOf(roster, kind)) {
+    if (front === null || sign * (unit.homeX - front.homeX) < 0 || (unit.homeX === front.homeX && unit.index < front.index)) {
+      front = unit;
+    }
+  }
+  return front === null ? null : front.x;
 }

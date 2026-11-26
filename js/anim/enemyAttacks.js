@@ -8,7 +8,7 @@ import { campSlot } from '../view/campSlots.js';
 import { isWoundedBody, splitPoints } from '../view/bodyPoints.js';
 import { addHitMark } from './hitMarks.js';
 import { enemyPace } from './enemyShows.js';
-import { enterTroops, popTroops, staggerDelay } from './troopRoster.js';
+import { enterTroops, spendFront, staggerDelay } from './troopRoster.js';
 
 /**
  * 出る場所の名前 → 出る位置（x と足元の y。y が null なら兵ごとの家の y）を求める関数の表。
@@ -69,22 +69,23 @@ export function strikeTimes(count, t) {
 }
 
 /**
- * 前からの kind の兵を count 体、打撃の時刻に跳ねて落とし、その兵の体の中心にヒットマークを記録する。
+ * 前からの kind の兵のポイントを amount だけ打撃の時刻に使い（精鋭は1回の打撃でそのポイントの分だけ止め、一部なら傷ついて残る）、
+ * 打たれた兵の体の中心にヒットマークを記録する。1体1ポイントなら前から amount 体が跳ねて落ちる。
  * @param {import('./troopRoster.js').TroopRoster} roster 名簿
  * @param {import('./hitMarks.js').HitMarkList} marks ヒットマークの記録（足す）
  * @param {string} kind 打たれる兵の種類
- * @param {number} count 打たれる数
+ * @param {number} amount 打たれるポイントの量
  * @param {number} t 段の始め（ms）
- * @returns {number[]} 打たれた時刻（ms）。k 番目の兵が打たれる時刻で、必ず昇順とは限らない
- *   （兵の終わりは max(打撃の時刻, 兵の freeAt)。打撃の段では防御の兵が家で止まっているので実際は昇順になる）
- * @throws {Error} 兵が足りないとき
+ * @returns {number[]} 打たれた時刻（ms）。打たれた兵ごとで、必ず昇順とは限らない
+ *   （兵の時刻は max(打撃の時刻, 兵の freeAt)。打撃の段では防御の兵が家で止まっているので実際は昇順になる）
+ * @throws {Error} ポイントが足りないとき
  */
-export function strikeTroops(roster, marks, kind, count, t) {
-  const units = popTroops(roster, kind, strikeTimes(count, t));
+export function strikeTroops(roster, marks, kind, amount, t) {
+  const spent = spendFront(roster, kind, amount, (n) => strikeTimes(n, t));
   const hit = [];
-  for (const unit of units) {
-    addHitMark(marks, unit.end.x, unit.end.y - roster.layout.size / 2, unit.end.time);
-    hit.push(unit.end.time);
+  for (const { unit, time } of spent) {
+    addHitMark(marks, unit.x, unit.y - roster.layout.size / 2, time);
+    hit.push(time);
   }
   return hit;
 }

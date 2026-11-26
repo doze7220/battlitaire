@@ -262,7 +262,7 @@ function addShieldBlock(state, step, t) {
 }
 
 /**
- * 修理の兵が城へ入って消え、城の HP の表示が増える段。HP は1体目が着いた時刻から、量番目の兵が着いた時刻までかけて増える。
+ * 修理の兵が城へ入って消え、城の HP の表示が増える段。HP は1体目が着いた時刻から、入る兵の残りのポイントの累積が量に着いた時刻までかけて増える。
  * きっかけは最初の兵が城に入った時刻。
  * @param {BuildState} state 組み立て中の状態
  * @param {import('./battleSteps.js').BattleStep} step 段
@@ -272,10 +272,15 @@ function addShieldBlock(state, step, t) {
 function addHeal(state, step, t) {
   const T = BATTLE_ANIM;
   const arrivals = enterCastle(state.roster, 'heal', t, T.healMoveMs);
-  const first = arrivals.length > 0 ? arrivals[0] : t + T.healMoveMs;
-  const last = arrivals.length > 0 ? arrivals[arrivals.length - 1] : first;
-  const amountIndex = Math.min(step.amount, arrivals.length) - 1;
-  const amountAt = amountIndex >= 0 ? arrivals[amountIndex] : first;
+  const first = arrivals.length > 0 ? arrivals[0].time : t + T.healMoveMs;
+  const last = arrivals.length > 0 ? arrivals[arrivals.length - 1].time : first;
+  let amountAt = first;
+  let sum = 0;
+  for (const arrival of arrivals) {
+    amountAt = arrival.time;
+    sum += arrival.points;
+    if (sum >= step.amount) break;
+  }
   const hpDuration = Math.max(T.hpMs, amountAt - first);
   const to = state.castleShown + step.amount;
   state.castleChanges.push(createHpChange({ from: state.castleShown, to, start: first, duration: hpDuration }));
@@ -309,7 +314,7 @@ function addEnemyHeal(state, step, t) {
 }
 
 /**
- * 飛ぶもののない打撃で、前からの防御の兵が1体ずつ跳ねて落ち、その兵にヒットマークが出る段。きっかけは最初の打撃の時刻。
+ * 飛ぶもののない打撃で、前からの防御の兵のポイントが打撃の量だけ使われ（精鋭は一部だけなら傷ついて残る）、打たれた兵にヒットマークが出る段。きっかけは最初の打撃の時刻。
  * @param {BuildState} state 組み立て中の状態
  * @param {import('./battleSteps.js').BattleStep} step 段
  * @param {number} t 開始時刻（ms）
