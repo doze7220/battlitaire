@@ -1,5 +1,5 @@
 /**
- * 責務: タイトル画面のシーン。「はじめる」・Enter・Space（中断データがあるときは「再開」・Enter・Space）で盤面へ、「遊び方」で遊び方の画面へ進み、「設定」でメニューの窓を積む
+ * 責務: タイトル画面のシーン。「再開」（中断データがあるときだけ。下に再開の場所の文字）・「はじめる」・Enter・Space で盤面へ、「遊び方」で遊び方の画面へ進み、「設定」でメニューの窓を積む
  * （ボタンはこのシーンで押して離したとき）。描くのは titleView.js。「DEBUG MODE」のレイヤーも描く（debugModeLayer.js）。
  * タイトルの曲を流し、盤面へ進むときは曲を止めてスタートの音を鳴らす（音は bgmCues.js・soundCues.js 経由）。中断データは init で1回だけ読む（suspendStore.js）。
  */
@@ -127,7 +127,13 @@ export class TitleScene extends Scene {
     drawDebugModeLayer(ctx, layer);
     if (layer !== this.layer) return;
     const resumePlace =
-      this.suspend === null ? null : { stageNumber: this.suspend.stageNumber, battleTurn: this.suspend.battleTurn };
+      this.suspend === null
+        ? null
+        : {
+            stageNumber: this.suspend.stageNumber,
+            battleTurn: this.suspend.battleTurn,
+            choosing: this.suspend.stage === 'choosing',
+          };
     drawTitle(ctx, this.layout, resumePlace);
   }
 }

@@ -45,7 +45,7 @@ const HOWTO_TEXT_COLOR = '#bfe8cf';
  * タイトル画面（背景・ゲーム名・中断データがあるときの「再開」ボタン・「はじめる」ボタン・縁だけの「遊び方」「設定」ボタン）を描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').TitleLayout} titleLayout タイトル画面の配置
- * @param {{ stageNumber: number, battleTurn: number }|null} resumePlace 「再開」の下に出す場所（中断データがないときは null。配置の resumeButton があるときだけ描く）
+ * @param {{ stageNumber: number, battleTurn: number, choosing: boolean }|null} resumePlace 「再開」の下に出す場所（中断データがないときは null。配置の resumeButton があるときだけ描く）
  * @returns {void}
  */
 export function drawTitle(ctx, titleLayout, resumePlace) {
@@ -74,7 +74,7 @@ export function drawTitle(ctx, titleLayout, resumePlace) {
     ctx.fillText(TITLE_TEXT.resume, r.x + r.w / 2, titleLayout.resumeTextY, titleLayout.startTextMaxW);
     ctx.font = RESUME_PLACE_FONT;
     ctx.fillText(
-      resumePlaceText(resumePlace.stageNumber, resumePlace.battleTurn),
+      resumePlaceText(resumePlace.stageNumber, resumePlace.battleTurn, resumePlace.choosing),
       r.x + r.w / 2,
       titleLayout.resumePlaceY,
       titleLayout.startTextMaxW,

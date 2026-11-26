@@ -1,5 +1,5 @@
 /**
- * 責務: 中断データ（ターンの始まりのゲームの状態）の形（版番号・項目の表）、ゲームからデータへの変換、データの確かめ、データからゲームへの復元。
+ * 責務: 中断データ（ターンの始まり、または3択の段階（候補が決まった後）のゲームの状態）の形（版番号・項目の表）、ゲームからデータへの変換、データの確かめ、データからゲームへの復元。
  * 純粋な計算だけ（保存先・画面・エンジンには触れない。ルール層）。
  */
 
@@ -10,21 +10,24 @@ import { createDecks } from './piles.js';
 import { enemyTypeIds, enemySpecOf } from './enemyTypes.js';
 import { isBehaviorState } from './enemyBehaviors.js';
 import { createGameStats } from './gameStats.js';
+import { isUpgradeState } from './upgrades.js';
+import { isUpgradeOffer } from './upgradeOffer.js';
 
 /**
  * 中断データの版番号（形が変わったら上げる。版番号はここ1か所）。
  * @type {number}
  */
-export const SUSPEND_VERSION = 2;
+export const SUSPEND_VERSION = 3;
 
 /**
- * 中断データ（ターンの始まりの状態。`null`・真偽値・文字列・数・配列・プレーンなオブジェクトだけでできている）。
- * 保存しないもの: `stage`（いつも 'planning'）・`outcome`（いつも null）・`config`・画面の状態。
+ * 中断データ（ターンの始まり、または3択の段階の状態。`null`・真偽値・文字列・数・配列・プレーンなオブジェクトだけでできている）。
+ * 保存しないもの: `outcome`（いつも null）・`config`・画面の状態。
  * @typedef {Object} SuspendData
  * @property {number} version 版番号（`SUSPEND_VERSION`）
  * @property {number[]} rng 乱数の状態（4つの整数）
  * @property {number} seed 敵の並びの種
  * @property {number} stageNumber ステージの番号
+ * @property {'planning'|'choosing'} stage 段階（'planning' はターンの始まり、'choosing' は3択を選んでいる）
  * @property {number} phase 通しのフェーズ（ターン）
  * @property {number} battleTurn 戦闘のターン
  * @property {number} actionsMax そのターンの行動の回数
@@ -37,6 +40,8 @@ export const SUSPEND_VERSION = 2;
  * @property {{ hp: number, maxHp: number }} castle 城
  * @property {{ typeId: string, hp: number, maxHp: number, intent: import('./combatants.js').EnemyIntent, behaviorState: object }} enemy 敵（名前は設定から引くので持たない）
  * @property {import('./gameStats.js').GameStats} stats 結果の集計
+ * @property {import('./upgrades.js').UpgradeState} upgrades 取った強化
+ * @property {import('./upgradeOffer.js').UpgradeOffer|null} upgradeOffer 3択の候補（3択の段階のときだけ。それ以外は null）
  */
 
 /**
@@ -129,6 +134,13 @@ const FIELDS = Object.freeze({
     check: (value) => isIntFrom(value, 1),
     load: (game, value) => {
       game.stageNumber = /** @type {number} */ (value);
+    },
+  }),
+  stage: Object.freeze({
+    save: (game) => game.stage,
+    check: (value) => value === 'planning' || value === 'choosing',
+    load: (game, value) => {
+      game.stage = /** @type {'planning'|'choosing'} */ (value);
     },
   }),
   phase: Object.freeze({
@@ -224,7 +236,7 @@ const FIELDS = Object.freeze({
       isPlain(value) &&
       typeof value.typeId === 'string' &&
       enemyTypeIds(config).includes(value.typeId) &&
-      isIntFrom(value.hp, 1) &&
+      isIntFrom(value.hp, 0) &&
       Number.isInteger(value.maxHp) &&
       value.hp <= value.maxHp &&
       isIntentShape(value.intent) &&
@@ -248,7 +260,32 @@ const FIELDS = Object.freeze({
       game.stats = { ...(/** @type {any} */ (value)) };
     },
   }),
+  upgrades: Object.freeze({
+    save: (game) => structuredClone(game.upgrades),
+    check: (value, config) => isUpgradeState(value, config),
+    load: (game, value) => {
+      game.upgrades = structuredClone(/** @type {any} */ (value));
+    },
+  }),
+  upgradeOffer: Object.freeze({
+    save: (game) => structuredClone(game.upgradeOffer),
+    check: (value, config) => value === null || isUpgradeOffer(value, config),
+    load: (game, value) => {
+      game.upgradeOffer = structuredClone(/** @type {any} */ (value));
+    },
+  }),
 });
+
+/**
+ * 項目をまたぐ段階の整合を確かめる（'planning' は敵が生きていて候補なし、'choosing' は敵が倒れていて候補があり行き先が 'stage'）。
+ * 3択の段階でない敵の HP 0 のデータ・DEBUG の候補（行き先 'planning'）はここで捨てる。
+ * @param {SuspendData} data 項目ごとの形の確かめを通ったデータ
+ * @returns {boolean} 整合していれば true
+ */
+function isStageConsistent(data) {
+  if (data.stage === 'planning') return data.enemy.hp >= 1 && data.upgradeOffer === null;
+  return data.enemy.hp === 0 && data.upgradeOffer !== null && data.upgradeOffer.next === 'stage';
+}
 
 /**
  * 全部の札（山札・捨て札・列・手札）が、今の設定で作る札とちょうど一致するか（欠け・重なり・知らない札を見つける）。
@@ -278,8 +315,8 @@ function hasAllCards(data, config) {
 }
 
 /**
- * ゲームから中断データを作る（ターンの始まり、抽選が決まった後・操作の前に呼ぶ。`game` は変えない。結果は `game` と参照を共有しない）。
- * @param {Game} game ターンの始まりのゲーム
+ * ゲームから中断データを作る（ターンの始まり、または3択の段階（候補が決まった後）で、操作の前に呼ぶ。`game` は変えない。結果は `game` と参照を共有しない）。
+ * @param {Game} game ターンの始まり、または3択の段階（候補が決まった後）のゲーム
  * @returns {SuspendData} 中断データ
  */
 export function toSuspendData(game) {
@@ -291,7 +328,7 @@ export function toSuspendData(game) {
 
 /**
  * 保存されていた値を確かめ、今の設定と合えば中断データとして返す（どんな値でも例外を投げない）。
- * 版番号・各項目の形・`actionsLeft <= actionsMax`・全部の札の組が今の設定と合うかを見る。敵の数値などは設定と比べない。
+ * 版番号・各項目の形・`actionsLeft <= actionsMax`・段階の整合・全部の札の組が今の設定と合うかを見る。敵の数値などは設定と比べない。
  * @param {unknown} raw 保存されていた値（`null`・配列・数・文字列・入れ子の欠けを含む）
  * @param {Readonly<import('./config.js').Rules>} [config] ルールの設定（既定は `RULES`）
  * @returns {SuspendData|null} 合えば `raw` の写し（参照を共有しない）。合わなければ `null`
@@ -305,6 +342,7 @@ export function readSuspendData(raw, config = RULES) {
     }
     const data = /** @type {SuspendData} */ (structuredClone(source));
     if (data.actionsLeft > data.actionsMax) return null;
+    if (!isStageConsistent(data)) return null;
     if (!hasAllCards(data, config)) return null;
     /** @type {Record<string, unknown>} */
     const result = { version: SUSPEND_VERSION };
@@ -320,7 +358,7 @@ export function readSuspendData(raw, config = RULES) {
  * 新しいゲームを作った時の抽選の結果は捨て、全項目を上書きする（乱数の状態も保存したものに戻る）。
  * @param {SuspendData} data `readSuspendData` が返したデータ（書き換えない。参照を共有しない）
  * @param {Readonly<import('./config.js').Rules>} [config] ルールの設定（既定は `RULES`）
- * @returns {Game} ターンの始まりのゲーム
+ * @returns {Game} ターンの始まり、または3択の段階のゲーム
  */
 export function restoreGame(data, config = RULES) {
   const game = new Game({ rng: createRng(data.rng), seed: data.seed, config });
