@@ -48,7 +48,7 @@ const DASH_SCRATCH = { dx: 0, lift: 0 };
 const BODY_SETUPS = Object.freeze({
   horde: (roster, battleLayout, typeId, hp, maxHp, unit) => {
     const parts = splitPoints(hp, unit);
-    const slots = battleLayout.hordeSlots(parts.length);
+    const slots = battleLayout.hordeSlots(typeId, parts.length);
     const points = [];
     for (let i = slots.length - 1, k = 0; i >= 0; i--, k++) {
       points.push({

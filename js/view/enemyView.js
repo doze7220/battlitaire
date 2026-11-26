@@ -16,7 +16,7 @@ const SHIELD_KIND = 'shield';
 const NO_POSE = Object.freeze({ tilt: 0, scaleX: 1, scaleY: 1 });
 
 /**
- * 群れの敵（ゴブリン・骸骨の軍勢）の兵の群れ（HP の数）を、足元の y の小さい（奥の）順（同じなら番号の小さい順）に描く。
+ * 群れの敵の兵の群れ（HP の数）を、足元の y の小さい（奥の）順（同じなら番号の小さい順）に描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
  * @param {string} typeId 敵の種類の識別子（群れの兵の絵を選ぶ）
@@ -25,7 +25,7 @@ const NO_POSE = Object.freeze({ tilt: 0, scaleX: 1, scaleY: 1 });
  * @returns {void}
  */
 function drawHorde(ctx, battleLayout, typeId, count, idle) {
-  const slots = battleLayout.hordeSlots(count);
+  const slots = battleLayout.hordeSlots(typeId, count);
   const order = [];
   for (let i = 0; i < slots.length; i++) order.push(i);
   order.sort((a, b) => slots[a].footY - slots[b].footY || a - b);

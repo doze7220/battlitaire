@@ -63,7 +63,7 @@ export class BattleShowScene extends Scene {
    */
   init() {
     this.speedRate = battleSpeedRate();
-    const troopLayout = this.layout.battle.troops;
+    const troopLayout = this.layout.battle.troopsFor(this.before.enemyTypeId);
     const steps = buildBattleSteps(this.result, this.before);
     this.director = new BattleDirector({
       timeline: buildBattleTimeline(steps, this.before, troopLayout, this.layout, this.waiting),

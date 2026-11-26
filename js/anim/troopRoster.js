@@ -179,6 +179,18 @@ function activeOf(roster, kind) {
 }
 
 /**
+ * 兵が落ちて消える y。描く大きさ（兵の `size`。0 なら配置の兵の大きさ）が配置の兵の大きさより大きければ、その差だけ下へ延ばす
+ * （大きな体が段の下端で見えたまま消えないように）。自軍の兵・標準の敵は配置の `fallOutY` のまま。
+ * @param {TroopRoster} roster 名簿
+ * @param {import('./troopMotion.js').TroopUnit} unit 落ちる兵
+ * @returns {number} 落ちて消える y
+ */
+function fallOutOf(roster, unit) {
+  const drawn = unit.size > 0 ? unit.size : roster.layout.size;
+  return roster.layout.fallOutY + Math.max(0, drawn - roster.layout.size);
+}
+
+/**
  * 名簿を作る（兵はまだいない）。
  * @param {import('../view/layout.js').TroopLayout} troopLayout 兵の配置
  * @returns {TroopRoster} 空の名簿
@@ -207,6 +219,7 @@ export function spawnTroops(roster, kind, count, t, appearMs) {
     const index = first + i;
     const home = campSlot(camp, index);
     const unit = createTroopUnit(kind, index, home.x, home.y, t, appearMs);
+    unit.size = roster.layout.kindSizes[kind] ?? 0;
     roster.units.push(unit);
     list.push(unit);
   }
@@ -285,6 +298,7 @@ function jumpTroops(name, roster, kind, count, bodies, fromX, fromY, t, moveMs, 
     const start = t + delays[i];
     const ms = legMs(kind, index, moveMs, spread);
     const unit = createTroopUnit(kind, index, home.x, home.y, start, 0);
+    unit.size = roster.layout.kindSizes[kind] ?? 0;
     unit.x = fromX;
     unit.y = fromY === null ? home.y : fromY;
     if (bodies !== null) {
@@ -359,7 +373,7 @@ export function popTroops(roster, kind, times) {
   const chosen = active.slice(0, times.length);
   for (let k = 0; k < chosen.length; k++) {
     const unit = chosen[k];
-    setTroopEnd(unit, troopHitEnd(kind), Math.max(times[k], unit.freeAt), roster.layout.fallOutY);
+    setTroopEnd(unit, troopHitEnd(kind), Math.max(times[k], unit.freeAt), fallOutOf(roster, unit));
   }
   return chosen;
 }
@@ -401,8 +415,8 @@ export function chargePairs(roster, kind, partnerKind, count, t, moveMs, pace = 
     const side = partner.x >= unit.x ? 1 : -1;
     const start = Math.max(t + chargeDelay(pace, k, m), unit.freeAt);
     addTroopLeg(unit, start, partner.x - side * roster.layout.contactGap, partner.y, moveMs);
-    setTroopEnd(unit, troopHitEnd(kind), unit.freeAt, roster.layout.fallOutY);
-    spendTroopPoints(partner, pair.points, Math.max(unit.freeAt, partner.freeAt), roster.layout.fallOutY);
+    setTroopEnd(unit, troopHitEnd(kind), unit.freeAt, fallOutOf(roster, unit));
+    spendTroopPoints(partner, pair.points, Math.max(unit.freeAt, partner.freeAt), fallOutOf(roster, partner));
     arrivals.push(unit.freeAt);
   }
   return arrivals.sort((a, b) => a - b);
@@ -493,8 +507,8 @@ export function clashPairs(roster, kind, amount, t) {
   for (let k = 0; k < m; k++) {
     const { unit, partner, points } = chosen[k];
     const time = t + fallDelay(k, m);
-    spendTroopPoints(unit, points, Math.max(time, unit.freeAt), roster.layout.fallOutY);
-    spendTroopPoints(partner, points, Math.max(time, partner.freeAt), roster.layout.fallOutY);
+    spendTroopPoints(unit, points, Math.max(time, unit.freeAt), fallOutOf(roster, unit));
+    spendTroopPoints(partner, points, Math.max(time, partner.freeAt), fallOutOf(roster, partner));
   }
   const done = new Set(chosen);
   roster.contacts = roster.contacts.filter((c) => !done.has(c));
@@ -522,7 +536,7 @@ export function chargeTo(roster, kind, count, targetX, t, moveMs, pace = 'move')
     const unit = chosen[k];
     const start = Math.max(t + chargeDelay(pace, k, m), unit.freeAt);
     addTroopLeg(unit, start, typeof targetX === 'function' ? targetX(k) : targetX, contactY(roster, unit.y), moveMs);
-    setTroopEnd(unit, troopHitEnd(kind), unit.freeAt, roster.layout.fallOutY);
+    setTroopEnd(unit, troopHitEnd(kind), unit.freeAt, fallOutOf(roster, unit));
     arrivals.push(unit.freeAt);
   }
   return arrivals.sort((a, b) => a - b);

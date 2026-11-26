@@ -1,11 +1,12 @@
 /**
- * 責務: 盤面の画面配置（戦闘の段の兵の陣地・敵の頭の上の予告の札・敵ごとの当たる位置・炎の出る位置・画面の外の x・城の打撃の範囲・人数の表示・城と敵の絵の矩形・ゴブリンの群れの並び・敵を倒したときの案内・最上部のゲージ・行動のゲージの帯とラベルを含む）を一手に持ち、座標から「何に当たるか」を求める。
+ * 責務: 盤面の画面配置（戦闘の段の兵の陣地・敵の頭の上の予告の札・敵ごとの当たる位置・炎の出る位置・画面の外の x・城の打撃の範囲・人数の表示・城と敵の絵の矩形・群れの敵の群れの並び（種類ごとの大きさと範囲は hordePlaces.js の表）・敵を倒したときの案内・最上部のゲージ・行動のゲージの帯とラベルを含む）を一手に持ち、座標から「何に当たるか」を求める。
  * タイトル画面・遊び方の画面・結果の表示（決着）の配置と当たりも持つ。ルール層は import せず、数の情報は引数で受け取る。状態は変えない。絵の縦横比は spriteView.js から得る。絵の敵の配置の組み立ては enemyFigures.js に任せる。
  */
 
 import { INTENT_CELL, SPRITE_IDS, spriteFitRect } from './spriteView.js';
 import { campSlot } from './campSlots.js';
 import { createEnemyFigures } from './enemyFigures.js';
+import { createHordePlaces } from './hordePlaces.js';
 
 /**
  * 矩形。
@@ -73,9 +74,9 @@ import { createEnemyFigures } from './enemyFigures.js';
  * 戦闘の段での兵の配置。陣地は兵の足元の中心が入る矩形で、兵1体の大きさ・当たる位置・落ちて消える y を持つ。
  * @typedef {Object} TroopLayout
  * @property {number} size 兵の大きさ（直径）
- * @property {{ attack: Rect, defense: Rect, heal: Rect, enemy: Rect, enemyGuard: Rect, flame: Rect }} camps 役割ごとの陣地（enemy＝攻撃のゴブリン、enemyGuard＝守りのゴブリン、flame＝ブレスの炎）
+ * @property {{ attack: Rect, defense: Rect, heal: Rect, enemy: Rect, enemyGuard: Rect, flame: Rect }} camps 役割ごとの陣地（enemy＝群れの敵の攻撃の兵、enemyGuard＝群れの敵の守りの兵、flame＝ブレスの炎）
  * @property {number} blockStepX 相打ちの相手が前へ踏み出す距離
- * @property {number} contactGap 相打ちでぶつかる2体の間隔
+ * @property {number} contactGap 相打ちでぶつかる2体の間隔（大きな体の敵は、体の大きさの差の半分だけ広げる）
  * @property {number} attackAdvanceX 相打ちの相手のいない攻撃の兵が進む距離
  * @property {number} enemyAdvanceX 相打ちにならない敵兵が左へ進む距離
  * @property {number} fieldTop 兵の足元の範囲（陣地と攻防の演出で兵が動く範囲）の上端の y
@@ -83,10 +84,11 @@ import { createEnemyFigures } from './enemyFigures.js';
  * @property {number} contactTop 兵が城・敵に当たる・城に入るときの足元の y の上端（陣地での高さの割合のまま、この範囲へ縮めて当てる）
  * @property {number} contactBottom 兵が城・敵に当たる・城に入るときの足元の y の下端（陣地での高さの割合のまま、この範囲へ縮めて当てる）
  * @property {number} castleHitX 城に当たる位置の x（城の右端の少し内側）
- * @property {number} offscreenX 敵の側の兵が現れる・帰る画面の外の x（段の右端 + 兵の大きさ）
+ * @property {number} offscreenX 敵の側の兵が現れる・帰る画面の外の x（段の右端 + 兵の大きさ。大きな体の敵は、その大きさ）
  * @property {Rect} castleHitArea 城の打撃のヒットマークを出す範囲（城の絵の矩形の内側）
  * @property {number} castleEntryX 修理の兵・帰る兵が城に入って消える位置の x（城の中心）
- * @property {number} fallOutY 落ちる兵の足元がこれより下に来たら消える y
+ * @property {number} fallOutY 落ちる兵の足元がこれより下に来たら消える y（描く大きさが `size` より大きい兵は、その差だけ下へ延ばす）
+ * @property {Object<string, number>} kindSizes 兵の種類 → 描く大きさ（直径。表にない種類・標準は空で、配置の兵の大きさのまま）
  */
 
 /**
@@ -109,17 +111,19 @@ import { createEnemyFigures } from './enemyFigures.js';
  * @property {Rect} area 段全体
  * @property {number} groundY 城・敵の絵の足元の y（地面の下端。兵を奥と手前に分けて描く境目）
  * @property {Rect} castle 城の絵の矩形
- * @property {Rect} enemy ゴブリンの群れの矩形（群れの兵の体が入る範囲）。いまは layout.js の中で敵の回復の文字の位置（`enemyHealText`）の基準にだけ使い、layout.js の外から読む箇所はない
+ * @property {Rect} enemy 標準の群れの敵（ゴブリン・骸骨）の群れの矩形（群れの兵の体が入る範囲）。いまは layout.js の中で敵の回復の文字の位置（`enemyHealText`）の基準にだけ使い、layout.js の外から読む箇所はない
  * @property {Object<string, import('./enemyFigures.js').EnemyFigure>} enemyFigures 敵の種類の識別子 → 敵の絵の配置（凍結。絵を持たない敵は含まれない）
  * @property {TopGaugeLayout} topGauges 画面の最上部のゲージ（城と敵の HP・敵の名前とレベル・戦闘ごとの TURN の番号・金貨）の配置
  * @property {{ x: number, y: number }} enemyHealText 絵を持たない敵の回復の量の文字の中心（群れの矩形の上寄り）
- * @property {import('./enemyFigures.js').IntentSpot} enemyIntent 絵を持たない敵（ゴブリンの群れ）の予告の札の上端の基準（中央。右端からはみ出すときは左へ寄る。札の下端は人数の表示の枠の下端にそろう）
+ * @property {import('./enemyFigures.js').IntentSpot} enemyIntent 絵を持たない敵（群れの敵）の予告の札の上端の基準（中央。右端からはみ出すときは左へ寄る。札の下端は人数の表示の枠の下端にそろう）
  * @property {IntentBadgeLayout} intentBadge 予告の札の大きさと数え下ろしの文字の配置
  * @property {TroopLayout} troops 兵の配置
  * @property {{ box: Rect, iconSize: number, items: Array<{ iconX: number, iconY: number, textX: number, textY: number }> }} troopCounter 人数の表示の配置（枠・アイコンの大きさ・攻撃・防御・修理の順の各項目のアイコン中心と文字の左端・中心 y）
  * @property {{ x: number, titleY: number, hintY: number, maxW: number }} defeat 敵を倒したときの案内の位置（段の中央の x、「〜を倒した！」・「タップで次へ」の y、文字の最大の幅）
  * @property {function(number, Rect): Rect[]} shieldRects シールドマーク count 個の矩形（body の矩形の中の格子。最後の行は中央にそろえる）
- * @property {function(number): Array<{ x: number, footY: number, size: number }>} hordeSlots ゴブリンの兵 count 体の並び（番号の順。x は中心、footY は足元の y、size は兵の大きさ。群れの足元の範囲の中の R2 列）
+ * @property {Object<string, import('./hordePlaces.js').HordePlace>} hordePlaces 群れの敵の種類の識別子 → 体の大きさと並ぶ場所（凍結。焼き付けの大きさに troopView.js が読む）
+ * @property {function(string, number): Array<{ x: number, footY: number, size: number }>} hordeSlots 群れの敵（識別子）の兵 count 体の並び（番号の順。x は中心、footY は足元の y、size はその敵の体の大きさ。その敵の群れの足元の範囲の中の R2 列。表にない識別子は Error）
+ * @property {function(string): TroopLayout} troopsFor その敵（識別子）との攻防で使う兵の配置（群れの配置を持たない敵・標準の敵は `troops` そのもの）
  */
 
 /**
@@ -288,7 +292,7 @@ const ENEMY_CX = 620;
 const CASTLE_HIT_AREA = Object.freeze({ x: 0.15, y: 0.3, w: 0.7, h: 0.5 });
 /** 敵の回復の量の文字の中心 y の、絵（群れの矩形）の上端からの距離の、高さに対する割合 */
 const ENEMY_HEAL_TEXT_RATIO = 0.15;
-/** ゴブリンの予告の札の中心の、群れの矩形の右端（足元の範囲の右端）から左への距離。試遊で決め直す。 */
+/** 群れの敵の予告の札の中心の、群れの矩形の右端（足元の範囲の右端）から左への距離。試遊で決め直す。 */
 const HORDE_INTENT_DX = 40;
 /** 予告の札（板）の左右の余白。試遊で決め直す。 */
 const INTENT_PAD_X = 6;
@@ -313,7 +317,8 @@ const INTENT_COUNTDOWN_MAX_W = 200;
 const TROOP_SIZE = 24;
 /**
  * 役割ごとの陣地の x と幅（段の左端からの絶対値。兵の足元の中心が入る範囲。試遊で動かす）。
- * enemy は攻撃のゴブリン、enemyGuard は守りのゴブリン（並んだとき重ならないよう、間を兵の大きさ以上空ける）、flame はブレスの炎。
+ * enemy は群れの敵の攻撃の兵、enemyGuard は群れの敵の守りの兵（並んだとき重ならないよう、間を兵の大きさ以上空ける）、flame はブレスの炎。
+ * ここは標準（ゴブリン・骸骨）の値で、大きさの違う群れの敵（オーガ）は hordePlaces.js の表の陣地を使う。
  */
 const TROOP_CAMPS_X = Object.freeze({
   heal: Object.freeze({ x: 20, w: 80 }),
@@ -357,7 +362,7 @@ const DEFEAT_HINT_RATIO = 0.7;
 const SHIELD_COLS = 5;
 /** シールドマークの大きさの、格子の1マスに対する割合 */
 const SHIELD_FILL = 0.8;
-/** ゴブリンの群れの足元の中心が入る範囲の x と幅（段の左端からの絶対値。縦は兵の足元の範囲いっぱい。試遊で決め直す） */
+/** 群れの敵（標準の大きさ）の群れの足元の中心が入る範囲の x と幅（段の左端からの絶対値。縦は兵の足元の範囲いっぱい。試遊で決め直す） */
 const HORDE_AREA_X = Object.freeze({ x: 580, w: 110 });
 
 /** タイトル画面のゲーム名の中心 y の、画面の高さに対する割合 */
@@ -533,7 +538,7 @@ function createTopGaugeLayout(width, coinBlockCount) {
 /**
  * 最上段（戦闘）の配置を作る。地面の下端（groundY）は段の下端から GROUND_OFFSET 上、城・敵の絵はその上に足元をそろえて立つ。
  * 兵の足元の範囲は groundY から FIELD_H 上まで。
- * 城の絵は CASTLE_CX、絵の敵の絵の中心は ENEMY_CX、群れの敵（ゴブリン・骸骨）の群れは HORDE_AREA_X の範囲。絵の敵の絵の配置は enemyFigures.js の表で決める。
+ * 城の絵は CASTLE_CX、絵の敵の絵の中心は ENEMY_CX、群れの敵の群れは種類ごとの範囲（標準は HORDE_AREA_X。大きさの違う敵は hordePlaces.js の表）。絵の敵の絵の配置は enemyFigures.js の表で決める。
  * @param {number} width 画面の幅
  * @param {number} coinBlockCount 金貨のゲージのブロックの数
  * @returns {BattleLayout} 戦闘の段の配置
@@ -543,9 +548,9 @@ function createBattleLayout(width, coinBlockCount) {
   const bodyTop = BATTLE_TOP_PAD + BOX_H + BODY_GAP;
   const area = { x: 0, y: 0, w: width, h: BATTLE_H };
   const castle = spriteFitRect(SPRITE_IDS.castle, CASTLE_CX, groundY, Math.min(CASTLE_H, groundY - bodyTop));
-  /** ゴブリンの群れの足元の中心が入る範囲 */
+  /** 標準の群れの敵（ゴブリン・骸骨）の群れの足元の中心が入る範囲 */
   const hordeArea = { x: HORDE_AREA_X.x, y: groundY - FIELD_H, w: HORDE_AREA_X.w, h: FIELD_H };
-  /** ゴブリンの群れの兵の体が入る矩形 */
+  /** 標準の群れの敵（ゴブリン・骸骨）の群れの兵の体が入る矩形 */
   const enemy = {
     x: hordeArea.x - TROOP_SIZE / 2,
     y: hordeArea.y - TROOP_SIZE,
@@ -627,7 +632,32 @@ function createBattleLayout(width, coinBlockCount) {
     },
     castleEntryX: castle.x + castle.w / 2,
     fallOutY: BATTLE_H + TROOP_SIZE,
+    kindSizes: {},
   };
+
+  /** 群れの敵の標準の大きさと3つの範囲（標準の行はこのオブジェクトをそのまま持つ） */
+  const standardPlace = Object.freeze({
+    size: TROOP_SIZE,
+    area: hordeArea,
+    camps: Object.freeze({ enemy: troops.camps.enemy, enemyGuard: troops.camps.enemyGuard }),
+  });
+  const hordePlaces = createHordePlaces({ groundY, fieldH: FIELD_H, standard: standardPlace });
+  /** 敵の種類の識別子 → その敵との攻防で使う兵の配置（標準の行は `troops` そのもの。作るときに1回だけ作る） */
+  const troopsByType = {};
+  for (const typeId of Object.keys(hordePlaces)) {
+    const place = hordePlaces[typeId];
+    if (place === standardPlace) {
+      troopsByType[typeId] = troops;
+      continue;
+    }
+    troopsByType[typeId] = Object.freeze({
+      ...troops,
+      camps: Object.freeze({ ...troops.camps, enemy: place.camps.enemy, enemyGuard: place.camps.enemyGuard }),
+      kindSizes: Object.freeze({ enemy: place.size, enemyGuard: place.size }),
+      contactGap: CONTACT_GAP + (place.size - TROOP_SIZE) / 2,
+      offscreenX: area.x + area.w + Math.max(TROOP_SIZE, place.size),
+    });
+  }
 
   /**
    * シールドマーク count 個の矩形を求める。body の矩形の中に SHIELD_COLS 個ずつの格子で並べ、
@@ -654,20 +684,35 @@ function createBattleLayout(width, coinBlockCount) {
   }
 
   /**
-   * ゴブリンの兵の群れの並びを求める。i 番目の位置は i だけで決まり、数 count によらない
-   * （番号の大きい方から減らせば、残りの位置は動かない）。群れの足元の範囲の中を、
+   * 群れの敵の兵の群れの並びを求める。i 番目の位置は i だけで決まり、数 count によらない
+   * （番号の大きい方から減らせば、残りの位置は動かない）。その敵の群れの足元の範囲の中を、
    * 味方の兵と同じ R2 列（campSlot。乱数なし）でばらけさせる。
+   * @param {string} typeId 敵の種類の識別子（`HORDE_PLACES` にあるもの）
    * @param {number} count 兵の数
-   * @returns {Array<{ x: number, footY: number, size: number }>} 番号の順の各兵（x は中心、footY は足元の y、size は兵の大きさ。count が 0 以下なら空）
+   * @returns {Array<{ x: number, footY: number, size: number }>} 番号の順の各兵（x は中心、footY は足元の y、size はその敵の体の大きさ。count が 0 以下なら空）
+   * @throws {Error} 表にない識別子のとき
    */
-  function hordeSlots(count) {
+  function hordeSlots(typeId, count) {
+    if (!Object.prototype.hasOwnProperty.call(hordePlaces, typeId)) {
+      throw new Error(`hordeSlots: 群れの配置を持たない敵 ${typeId}`);
+    }
+    const place = hordePlaces[typeId];
     if (count <= 0) return [];
     const slots = [];
     for (let i = 0; i < count; i++) {
-      const p = campSlot(hordeArea, i);
-      slots.push({ x: p.x, footY: p.y, size: TROOP_SIZE });
+      const p = campSlot(place.area, i);
+      slots.push({ x: p.x, footY: p.y, size: place.size });
     }
     return slots;
+  }
+
+  /**
+   * その敵との攻防で使う兵の配置を返す（群れの配置を持たない敵と標準の敵は `troops` そのもの）。
+   * @param {string} typeId 敵の種類の識別子
+   * @returns {TroopLayout} 兵の配置
+   */
+  function troopsFor(typeId) {
+    return Object.prototype.hasOwnProperty.call(troopsByType, typeId) ? troopsByType[typeId] : troops;
   }
 
   return {
@@ -689,7 +734,9 @@ function createBattleLayout(width, coinBlockCount) {
       maxW: area.w - SIDE_MARGIN * 2,
     },
     shieldRects,
+    hordePlaces,
     hordeSlots,
+    troopsFor,
   };
 }
 
