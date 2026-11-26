@@ -63,6 +63,7 @@ const KNOCK_DIRS = Object.freeze({
  * @property {number} x 始まる位置の x
  * @property {number} y 始まる位置の足元の y
  * @property {number} dx 落ちる間の横のずれの合計（px、符号つき。'vanish'・向きのない種類は 0）
+ * @property {number} points 終わり方が決まる直前の残りのポイント（人数の表示値が、この時刻に減る量。`spendTroopPoints` で終わるときは使う前の残り）
  */
 
 /**
@@ -77,6 +78,7 @@ const KNOCK_DIRS = Object.freeze({
  * @property {number} size 描く大きさ（0 なら配置の兵の大きさ）
  * @property {boolean} glide true なら弾み・揺れなしで真っすぐ動く
  * @property {boolean} auto 自動兵士か（印だけ。動き・時刻・結果には影響せず、見た目の色だけに使う。既定 false）
+ * @property {boolean} elite 自軍の精鋭か（当たる順と見た目の色だけに使い、動き・時刻は変えない。精鋭の `points` は 2 以上。既定 false）
  * @property {TroopLeg[]} legs 移動の区間の並び（時刻の昇順）
  * @property {TroopEnd|null} end 終わり方（まだなら null）
  * @property {number} x 作るときだけ使う。最後の脚の行き先の x（いまいる位置）
@@ -84,7 +86,7 @@ const KNOCK_DIRS = Object.freeze({
  * @property {number} freeAt 作るときだけ使う。最後の脚の終わりの時刻（次の脚はこれ以降に始める）
  * @property {number} points 作るときだけ使う。残りのポイント（名簿を組み立てる間だけ減らす。既定 1）
  * @property {number|null} woundAt 傷ついた姿になる時刻（ms。null なら傷つかない。始めから傷ついた体は現れる時刻）
- * @property {Array<{time: number, x: number, y: number}>} woundHits 攻防の途中で傷ついた当たり（時刻と位置。始めから傷ついた体は空）
+ * @property {Array<{time: number, x: number, y: number, points: number}>} woundHits 攻防の途中で傷ついた当たり（時刻と位置とその当たりで使ったポイント。始めから傷ついた体は空）
  */
 
 /**
@@ -108,7 +110,7 @@ const KNOCK_DIRS = Object.freeze({
  * @param {number} homeY 家の足元の y
  * @param {number} appearAt 現れ始める時刻（ms）
  * @param {number} appearMs 現れる時間（ms。0 ならすぐ）
- * @returns {TroopUnit} 脚・終わり方・傷のない記録（points は 1、woundAt は null、woundHits は空、auto は false）
+ * @returns {TroopUnit} 脚・終わり方・傷のない記録（points は 1、woundAt は null、woundHits は空、auto・elite は false）
  */
 export function createTroopUnit(kind, index, homeX, homeY, appearAt, appearMs) {
   return {
@@ -121,6 +123,7 @@ export function createTroopUnit(kind, index, homeX, homeY, appearAt, appearMs) {
     size: 0,
     glide: GLIDE_KINDS.has(kind),
     auto: false,
+    elite: false,
     legs: [],
     end: null,
     x: homeX,
@@ -204,12 +207,12 @@ export function setTroopEnd(unit, type, time, fallOutY) {
   } else {
     throw new Error(`setTroopEnd: 未知の終わり方 ${type}`);
   }
-  unit.end = { type, time, doneAt, x: unit.x, y: unit.y, dx };
+  unit.end = { type, time, doneAt, x: unit.x, y: unit.y, dx, points: unit.points };
 }
 
 /**
  * 兵の残りのポイントを points だけ減らす。0 以下なら終わり方を決め（`setTroopEnd`）、残れば傷ついた姿になり（`woundAt` が null のときだけ time）、
- * 傷ついた当たり（time と今いる位置）を `woundHits` に足す。1体1ポイントなら必ず終わり方が決まる。
+ * 傷ついた当たり（time と今いる位置と使ったポイント）を `woundHits` に足す。終わるときの `end.points` は使う前の残り。1体1ポイントなら必ず終わり方が決まる。
  * @param {TroopUnit} unit 兵
  * @param {number} points 減らすポイント
  * @param {number} time 当たる時刻（ms。呼ぶ側が `unit.freeAt` 以降にそろえる）
@@ -218,13 +221,15 @@ export function setTroopEnd(unit, type, time, fallOutY) {
  * @throws {Error} 終わり方が決まるとき、すでに終わり方があれば（`setTroopEnd` と同じ）
  */
 export function spendTroopPoints(unit, points, time, fallOutY) {
+  const before = unit.points;
   unit.points -= points;
   if (unit.points <= 0) {
     setTroopEnd(unit, troopHitEnd(unit.kind), time, fallOutY);
+    unit.end.points = before;
     return;
   }
   if (unit.woundAt === null) unit.woundAt = time;
-  unit.woundHits.push({ time, x: unit.x, y: unit.y });
+  unit.woundHits.push({ time, x: unit.x, y: unit.y, points });
 }
 
 /**

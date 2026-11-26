@@ -1,5 +1,5 @@
 /**
- * 兵1体ずつの名簿を作り（自動兵士の印を付けることを含む）、段ごとに兵へ脚と終わり方を割り当てる
+ * 兵1体ずつの名簿を作り（自動兵士・精鋭の印を付けることを含む）、段ごとに兵へ脚と終わり方を割り当てる
  * （出す・置く・行進・当たる・相打ち・落とす・城へ入る・右へ帰す・家へ跳ばす・段取りの間の名簿から消す）。
  * 前から遅らせる式と、兵ごとのずれ（troopJitter.js）の足し方はここだけに置く。乱数は使わない。
  */
@@ -23,7 +23,7 @@ import { matchPoints } from './pointMatch.js';
  * @typedef {Object} TroopRoster
  * @property {import('../view/layout.js').TroopLayout} layout 兵の配置（陣地・当たる位置・落ちて消える y）
  * @property {import('./troopMotion.js').TroopUnit[]} units 全員（作った順）
- * @property {Object<string, import('./troopMotion.js').TroopUnit[]>} ranked 種類ごとの前からの並び（自軍は家の x の大きい順、敵の側は小さい順、同じなら番号順）
+ * @property {Object<string, import('./troopMotion.js').TroopUnit[]>} ranked 種類ごとの前からの並び（自軍は精鋭でない兵が前・精鋭が後ろで、それぞれ家の x の大きい順、敵の側は小さい順、同じなら番号順）
  * @property {TroopContact[]} contacts 行進で決めた、まだ相打ちになっていない組（作った順）
  */
 
@@ -156,14 +156,15 @@ function spreadOf(n, staggerMs, maxMs) {
 }
 
 /**
- * 種類の前からの並びを並べ替える（自軍は家の x の大きい順、敵の側は小さい順、同じなら番号順）。
+ * 種類の前からの並びを並べ替える（自軍は精鋭でない兵が前・精鋭が後ろで、それぞれ家の x の大きい順、敵の側は小さい順、同じなら番号順）。
  * @param {import('./troopMotion.js').TroopUnit[]} list 並べ替える並び（その場で並べ替える）
  * @param {string} kind 種類
  * @returns {void}
  */
 function sortRanked(list, kind) {
-  const sign = OWN_KINDS.includes(kind) ? -1 : 1;
-  list.sort((a, b) => sign * (a.homeX - b.homeX) || a.index - b.index);
+  const own = OWN_KINDS.includes(kind);
+  const sign = own ? -1 : 1;
+  list.sort((a, b) => (own ? Number(a.elite) - Number(b.elite) : 0) || sign * (a.homeX - b.homeX) || a.index - b.index);
 }
 
 /**
@@ -224,6 +225,27 @@ export function spawnTroops(roster, kind, count, t, appearMs, auto = false) {
     unit.auto = auto;
     roster.units.push(unit);
     list.push(unit);
+  }
+  sortRanked(list, kind);
+}
+
+/**
+ * 種類 kind の兵のうち、指定の番号の兵に精鋭の印と精鋭のポイントを入れ、前からの並びを並べ直す（ふつうの兵が先、精鋭が後ろ）。
+ * 動き・時刻は変えない（作った直後の、まだ脚と終わり方のない名簿に使う）。
+ * @param {TroopRoster} roster 名簿（その場で書き換える）
+ * @param {string} kind 種類
+ * @param {Array<{index: number, points: number}>} elites 精鋭の番号と1体のポイント（番号がいない兵は無視する）
+ * @returns {void}
+ */
+export function markEliteTroops(roster, kind, elites) {
+  const list = roster.ranked[kind];
+  if (!list || elites.length === 0) return;
+  const pointsOf = new Map(elites.map((e) => [e.index, e.points]));
+  for (const unit of list) {
+    if (pointsOf.has(unit.index)) {
+      unit.elite = true;
+      unit.points = pointsOf.get(unit.index);
+    }
   }
   sortRanked(list, kind);
 }
@@ -511,6 +533,9 @@ export function marchSquad(roster, spec) {
 /**
  * 相打ちの段。名簿の `contacts` のうち進む側の種類が kind の組（両方とも終わっていないもの）を前から、ポイントの合計が amount になるまで選び、
  * 前から遅らせて両方のポイントを組のぶん減らす（0 になれば跳ねて落ち、残れば傷ついた姿で残る）。選んだ組は `contacts` から除く。
+ * 最後の組は「amount − それまでの合計」だけ消し合う（消し合う合計は amount を超えない）。
+ * 進む側が自軍の兵のとき、同じ兵の組は同じ時刻に消し合い（遅れの番号は兵ごと。精鋭が複数の体と1回でぶつかる）、その兵は組の合計を1回で減らす。
+ * 進む側が敵の側のときは組ごとの時刻。1体1ポイントなら組ごとの時刻・量で、今と同じ。
  * @param {TroopRoster} roster 名簿
  * @param {string} kind 進む側の種類
  * @param {number} amount 相打ちで消し合うポイントの量（1体1ポイントなら組の数）
@@ -519,22 +544,42 @@ export function marchSquad(roster, spec) {
  */
 export function clashPairs(roster, kind, amount, t) {
   const { fallStaggerMs, fallStaggerMaxMs } = BATTLE_ANIM;
+  /** @type {Array<{contact: TroopContact, points: number}>} */
   const chosen = [];
   let sum = 0;
   for (const contact of roster.contacts) {
     if (sum >= amount) break;
     if (contact.unit.kind !== kind || contact.unit.end !== null || contact.partner.end !== null) continue;
-    chosen.push(contact);
-    sum += contact.points;
+    const points = Math.min(contact.points, amount - sum);
+    chosen.push({ contact, points });
+    sum += points;
   }
-  const m = chosen.length;
-  for (let k = 0; k < m; k++) {
-    const { unit, partner, points } = chosen[k];
-    const time = t + fallDelay(k, m);
-    spendTroopPoints(unit, points, Math.max(time, unit.freeAt), fallOutOf(roster, unit));
+  const byUnit = OWN_KINDS.includes(kind);
+  /** @type {Map<import('./troopMotion.js').TroopUnit, number>} 進む側の兵 → 組の番号（自軍のとき遅れの番号と合計に使う） */
+  const slotOf = new Map();
+  if (byUnit) {
+    for (const { contact } of chosen) {
+      if (!slotOf.has(contact.unit)) slotOf.set(contact.unit, slotOf.size);
+    }
+  }
+  const m = byUnit ? slotOf.size : chosen.length;
+  /** @type {Map<import('./troopMotion.js').TroopUnit, number>} 自軍の兵 → 消し合う合計 */
+  const unitTotals = new Map();
+  chosen.forEach(({ contact, points }, k) => {
+    const { unit, partner } = contact;
+    const time = t + fallDelay(byUnit ? slotOf.get(unit) : k, m);
+    if (byUnit) {
+      unitTotals.set(unit, (unitTotals.get(unit) ?? 0) + points);
+    } else {
+      spendTroopPoints(unit, points, Math.max(time, unit.freeAt), fallOutOf(roster, unit));
+    }
     spendTroopPoints(partner, points, Math.max(time, partner.freeAt), fallOutOf(roster, partner));
+  });
+  for (const [unit, total] of unitTotals) {
+    const time = t + fallDelay(slotOf.get(unit), m);
+    spendTroopPoints(unit, total, Math.max(time, unit.freeAt), fallOutOf(roster, unit));
   }
-  const done = new Set(chosen);
+  const done = new Set(chosen.map((c) => c.contact));
   roster.contacts = roster.contacts.filter((c) => !done.has(c));
   return spreadOf(m, fallStaggerMs, fallStaggerMaxMs);
 }
@@ -654,6 +699,22 @@ export function rosterEndTimes(roster, kind) {
     if (unit.end !== null) times.push(unit.end.time);
   }
   return times.sort((a, b) => a - b);
+}
+
+/**
+ * ある種類の兵のポイントが減る時刻と量の並び（傷ついた当たりの `woundHits` の `points` と、終わり方の `end.points`）。人数の表示値の元。
+ * @param {TroopRoster} roster 名簿
+ * @param {string} kind 種類
+ * @returns {Array<{time: number, points: number}>} 時刻（ms）の昇順
+ */
+export function rosterPointDrops(roster, kind) {
+  const list = roster.ranked[kind] || [];
+  const drops = [];
+  for (const unit of list) {
+    for (const hit of unit.woundHits) drops.push({ time: hit.time, points: hit.points });
+    if (unit.end !== null) drops.push({ time: unit.end.time, points: unit.end.points });
+  }
+  return drops.sort((a, b) => a.time - b.time);
 }
 
 /**

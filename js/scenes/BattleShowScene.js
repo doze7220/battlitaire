@@ -26,6 +26,7 @@ import { drawActionGaugeLabel } from '../view/actionGaugeView.js';
  * @property {() => Scene} createUpgradeChoice 3択の画面のシーンを作る関数（敵を倒した後のタップで積む）
  * @property {{attack: number, defense: number, heal: number}} waiting 段取りの間に陣地で待っていた兵の数（時間割へ引き継ぐ）
  * @property {{attack: number, defense: number, heal: number}} [waitingAuto] 待っていた兵のうち自動兵士の印のある数（時間割へ引き継ぐ。見た目だけ。省略は 0・0・0）
+ * @property {{attack: Array<{index: number, points: number}>, defense: Array<{index: number, points: number}>, heal: Array<{index: number, points: number}>}} [waitingElites] 待っていた精鋭（番号と1体のポイント。時間割へ引き継ぐ。省略は空の並び3つ）
  */
 
 /** 攻防の出来事を最上段の兵の動きで見せ、終わったら次のフェーズ／タイトルへ進むシーン（盤面のシーンの上に積む） */
@@ -33,7 +34,7 @@ export class BattleShowScene extends Scene {
   /**
    * @param {BattleShowOptions} options オプション
    */
-  constructor({ layer, game, layout, before, result, createTitle, createUpgradeChoice, waiting, waitingAuto = { attack: 0, defense: 0, heal: 0 } }) {
+  constructor({ layer, game, layout, before, result, createTitle, createUpgradeChoice, waiting, waitingAuto = { attack: 0, defense: 0, heal: 0 }, waitingElites = { attack: [], defense: [], heal: [] } }) {
     super();
     /** @type {string} 描くレイヤー名 */
     this.layer = layer;
@@ -53,6 +54,8 @@ export class BattleShowScene extends Scene {
     this.waiting = waiting;
     /** @type {{attack: number, defense: number, heal: number}} 待っていた兵のうち自動兵士の印のある数（見た目だけ） */
     this.waitingAuto = waitingAuto;
+    /** @type {{attack: Array<{index: number, points: number}>, defense: Array<{index: number, points: number}>, heal: Array<{index: number, points: number}>}} 待っていた精鋭（番号と1体のポイント） */
+    this.waitingElites = waitingElites;
     /** @type {BattleDirector|null} 演出全体の管理（init で作る） */
     this.director = null;
     /** @type {boolean} 決着（負け）・敵を倒したときの効果音を鳴らし済みか（音を鳴らす・中断データを消すのを1回に限るためだけに使い、演出の進み方には使わない） */
@@ -64,7 +67,7 @@ export class BattleShowScene extends Scene {
   }
 
   /**
-   * 演出の管理を作る（シーンの操作はしない）。待っていた兵の数（自動兵士の印のある数を含む）を時間割へ渡し、設定の演出の速さの倍率を1回読む（次の攻防から効く。演出の途中ではメニューを開けない）。
+   * 演出の管理を作る（シーンの操作はしない）。待っていた兵の数（自動兵士の印のある数・待っていた精鋭を含む）を時間割へ渡し、設定の演出の速さの倍率を1回読む（次の攻防から効く。演出の途中ではメニューを開けない）。
    * @returns {void}
    */
   init() {
@@ -72,7 +75,7 @@ export class BattleShowScene extends Scene {
     const troopLayout = this.layout.battle.troopsFor(this.before.enemyTypeId);
     const steps = buildBattleSteps(this.result, this.before);
     this.director = new BattleDirector({
-      timeline: buildBattleTimeline(steps, this.before, troopLayout, this.layout, this.waiting, this.waitingAuto),
+      timeline: buildBattleTimeline(steps, this.before, troopLayout, this.layout, this.waiting, this.waitingAuto, this.waitingElites),
       result: this.result,
       before: this.before,
     });

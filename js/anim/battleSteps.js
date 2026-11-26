@@ -16,9 +16,10 @@ import { enemyAttackShow, enemyDefenseShow, hasChargeShow, isHeavyAttack } from 
  * @property {string} enemyTypeId 攻防をする敵の種類の識別子
  * @property {number} enemyUnit 攻防をする敵の1体のポイント（1 以上の整数。群れ・攻撃・守りの体の割り振りに使う）
  * @property {number} enemyDefense そのターンの敵の防御の量（疲弊の後。攻防の前の予告の `defense` の写し。絵を持つ敵のシールドの数）
- * @property {number} attack 攻防の前の攻撃ゲージの値（攻撃の兵の数）
- * @property {number} defense 攻防の前の防御ゲージの値（防御の兵の数）
- * @property {number} heal 攻防の前の修理ゲージの値（修理の兵の数）
+ * @property {number} attack 攻防の前の攻撃ゲージの値（攻撃の兵のポイントの合計 = 人数 + 精鋭の上振れ）
+ * @property {number} defense 攻防の前の防御ゲージの値（防御の兵のポイントの合計 = 人数 + 精鋭の上振れ）
+ * @property {number} heal 攻防の前の修理ゲージの値（修理の兵のポイントの合計 = 人数 + 精鋭の上振れ）
+ * @property {Object<string, {count: number, extra: number}>} elites 攻防の前のゲージごとの精鋭の数と上振れ（`game.eliteBoost()` の写し）
  * @property {Array<Array<*>>} columns 攻防の前の列ごとのカードの並びの写し（[0] が一番下）
  */
 
@@ -64,6 +65,7 @@ export function snapshotBattle(game) {
     attack: game.gauges.attack ?? 0,
     defense: game.gauges.defense ?? 0,
     heal: game.gauges.heal ?? 0,
+    elites: game.eliteBoost(),
     columns: game.columns.map((col) => col.slice()),
   };
 }

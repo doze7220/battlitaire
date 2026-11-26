@@ -9,7 +9,7 @@ import { enemyPace } from './enemyShows.js';
 import { sampleHp } from './hpTrack.js';
 import { samplePopTrack } from './popTrack.js';
 import { TroopSwarm } from './troopSwarm.js';
-import { sampleTroopCounts } from './troopCounter.js';
+import { sampleTroopCounts, sampleTroopExtras } from './troopCounter.js';
 import { buildBattleCues, knockoutTime } from './battleCues.js';
 import { sampleBurnBoard } from './burnTrack.js';
 import { HitMarkSwarm } from './hitMarks.js';
@@ -28,7 +28,8 @@ import { sampleFigurePose } from './enemyIdle.js';
  * @property {import('./impactFx.js').ImpactFxLook} fx 当たりの光・数字・粒の見た目（読むだけ。毎回同じ入れ物）
  * @property {import('./stageFx.js').StageFxLook} stage 戦闘の段の揺れ・暗さ・撃つ瞬間の光（読むだけ。毎回同じ入れ物）
  * @property {import('./chargeShow.js').ChargePoseLook} pose 絵の姿勢（ための姿勢に待機の伸び縮みと、へこむ敵（スライム）のへこみを重ねたもの。読むだけ。毎回同じ入れ物）
- * @property {{attack: number, defense: number, heal: number}} troopCounts 攻撃・防御・修理の人数の表示値
+ * @property {{attack: number, defense: number, heal: number}} troopCounts 攻撃・防御・修理の人数の表示値（人数 + 上振れ）
+ * @property {{attack: number, defense: number, heal: number}} troopExtras 攻撃・防御・修理の上振れ（人数の表示値のうち精鋭の上振れの分。表示は後のタスク）
  * @property {number} castleHp 表示する城の HP
  * @property {number} enemyHp 表示する敵の HP
  * @property {{amount: number, alpha: number}|null} enemyHealPop 敵の回復の量の浮き出し（なければ null）
@@ -181,6 +182,7 @@ export class BattleDirector {
       stage: this.fx.stage,
       pose: this.pose,
       troopCounts: sampleTroopCounts(tl.troopCounter, this.clock),
+      troopExtras: sampleTroopExtras(tl.troopCounter, this.clock),
       castleHp: finished ? this.result.castleHp : sampleHp(tl.castleHpStart, tl.castleHpChanges, this.clock),
       enemyHp: finished ? this.result.enemyHp : sampleHp(tl.enemyHpStart, tl.enemyHpChanges, this.clock),
       enemyHealPop,

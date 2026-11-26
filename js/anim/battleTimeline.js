@@ -15,9 +15,11 @@ import {
   finishTroops,
   marchSquad,
   markAutoTroops,
+  markEliteTroops,
   OWN_KINDS,
   rosterEndTime,
   rosterEndTimes,
+  rosterPointDrops,
   spawnTroops,
 } from './troopRoster.js';
 import { createTroopCounter } from './troopCounter.js';
@@ -415,11 +417,13 @@ const STEP_BUILDERS = {
  * @param {import('./battleSteps.js').BattleSnapshot} before 攻防の前の値
  * @param {import('../view/layout.js').TroopLayout} troopLayout 兵の配置
  * @param {import('../view/layout.js').Layout} boardLayout 盤面の配置（燃える札の位置と、敵の体・敵の側の兵の出る位置 battle に使う）
- * @param {{attack: number, defense: number, heal: number}} waiting 段取りの間に待っていた兵の数（家の番号は 0 から数−1。`before` の値と同じでなければ Error）
+ * @param {{attack: number, defense: number, heal: number}} waiting 段取りの間に待っていた兵の数（家の番号は 0 から数−1。`before` の値 − 精鋭の上振れと同じでなければ Error）
  * @param {{attack: number, defense: number, heal: number}} [waitingAuto] 待っていた兵のうち自動兵士の数（番号 0 から数−1 に印を付ける。見た目だけの印。省くと印なし）
+ * @param {{attack: Array<{index: number, points: number}>, defense: Array<{index: number, points: number}>, heal: Array<{index: number, points: number}>}} [waitingElites] 待っていた精鋭（番号と1体のポイント。
+ *   種類ごとに `before.elites` の数・上振れ（Σ(points − 1)）と合わなければ Error。省くと空の並び3つ）
  * @returns {BattleTimeline} 時間割
  */
-export function buildBattleTimeline(steps, before, troopLayout, boardLayout, waiting, waitingAuto = { attack: 0, defense: 0, heal: 0 }) {
+export function buildBattleTimeline(steps, before, troopLayout, boardLayout, waiting, waitingAuto = { attack: 0, defense: 0, heal: 0 }, waitingElites = { attack: [], defense: [], heal: [] }) {
   /** @type {BuildState} */
   const state = {
     roster: createTroopRoster(troopLayout),
@@ -439,11 +443,20 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout, wai
   };
   let waitingTotal = 0;
   for (const kind of OWN_KINDS) {
-    if (waiting[kind] !== before[kind]) {
-      throw new Error(`buildBattleTimeline: 待っていた兵の数 ${kind}=${waiting[kind]} が攻防の前の値 ${before[kind]} と違います`);
+    const eliteState = before.elites[kind];
+    if (waiting[kind] !== before[kind] - eliteState.extra) {
+      throw new Error(`buildBattleTimeline: 待っていた兵の数 ${kind}=${waiting[kind]} が攻防の前の値 ${before[kind]} − 精鋭の上振れ ${eliteState.extra} と違います`);
+    }
+    const elites = waitingElites[kind] ?? [];
+    if (elites.length !== eliteState.count) {
+      throw new Error(`buildBattleTimeline: 待っていた精鋭の数 ${kind}=${elites.length} が攻防の前の精鋭の数 ${eliteState.count} と違います`);
+    }
+    if (elites.reduce((sum, e) => sum + e.points - 1, 0) !== eliteState.extra) {
+      throw new Error(`buildBattleTimeline: 待っていた精鋭の上振れ ${kind} が攻防の前の上振れ ${eliteState.extra} と違います`);
     }
     spawnTroops(state.roster, kind, waiting[kind], 0, 0);
     markAutoTroops(state.roster, kind, waitingAuto[kind] ?? 0);
+    markEliteTroops(state.roster, kind, elites);
     waitingTotal += waiting[kind];
   }
   state.body = createEnemyBody(state.roster, boardLayout.battle, before.enemyTypeId, before.enemyHp, before.enemyDefense, before.enemyMaxHp, before.enemyUnit);
@@ -469,9 +482,13 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout, wai
   const stepEnd = timed.length > 0 ? Math.max(t, parallelEnd) : 0;
   if (timed.length > 0 || waitingTotal > 0) finishTroops(state.roster, stepEnd);
   const troopCounter = createTroopCounter([
-    { role: 'attack', initial: before.attack, times: rosterEndTimes(state.roster, 'attack') },
-    { role: 'defense', initial: before.defense, times: rosterEndTimes(state.roster, 'defense') },
-    { role: 'heal', initial: before.heal, times: rosterEndTimes(state.roster, 'heal') },
+    ...OWN_KINDS.map((kind) => ({
+      role: kind,
+      initial: before[kind],
+      heads: waiting[kind],
+      drops: rosterPointDrops(state.roster, kind),
+      ends: rosterEndTimes(state.roster, kind),
+    })),
   ]);
   let endTime = Math.max(stepEnd, rosterEndTime(state.roster));
   for (const track of state.enemyHealPops) endTime = Math.max(endTime, popTrackEnd(track));
