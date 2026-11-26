@@ -1,6 +1,6 @@
 /**
  * 責務: 敵の行動の決まり（種類ごとの状態の初期値・状態の形の確かめ・次の行動の決め方・数え下ろし・隙かの問い合わせ）の表と呼び分け、
- * 行動を作る小さな関数、行動の量の幅からの抽選、攻撃の直後の回復の抽選。渡された乱数だけを使う純粋な関数（ルール層）。
+ * 行動を作る小さな関数、行動の量の幅からの抽選、攻撃の直後の回復の抽選、親子の敵の局面ごとの行動。渡された乱数だけを使う純粋な関数（ルール層）。
  */
 
 /**
@@ -127,6 +127,47 @@ export function bigGuardAction(behavior, random, unit = 1) {
 }
 
 /**
+ * 「子どもたちを守る」（親子の敵の防御だけの行動）を作る。防御の量（加算の前）の抽選で `random()` を1回呼ぶ。
+ * @param {{ protectRange: { min: number, max: number } }} behavior 行動の決まりの設定
+ * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @param {number} [unit] 1体のポイント（量はこの倍数。既定 1）
+ * @returns {import('./combatants.js').EnemyAction} 新しい行動
+ */
+export function protectAction(behavior, random, unit = 1) {
+  return { kind: 'guard', amount: 0, guard: rollAmount(behavior.protectRange, random, unit), variant: 'protect' };
+}
+
+/**
+ * 怒った親の突進の行動を作る。量の抽選で `random()` を1回呼ぶ。
+ * @param {{ rushRange: { min: number, max: number } }} behavior 行動の決まりの設定
+ * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @param {number} [unit] 1体のポイント（量はこの倍数。既定 1）
+ * @returns {import('./combatants.js').EnemyAction} 新しい行動
+ */
+export function rushAction(behavior, random, unit = 1) {
+  return { kind: 'attack', amount: rollAmount(behavior.rushRange, random, unit), variant: 'rush' };
+}
+
+/**
+ * 怒りを溜める（振りかぶりの一種）の行動を作る（乱数は呼ばない）。
+ * @returns {import('./combatants.js').EnemyAction} 新しい行動
+ */
+export function rageAction() {
+  return { kind: 'windup', amount: 0, variant: 'rage' };
+}
+
+/**
+ * 大突進の行動を作る。量の抽選で `random()` を1回呼ぶ。
+ * @param {{ bigRushRange: { min: number, max: number } }} behavior 行動の決まりの設定
+ * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @param {number} [unit] 1体のポイント（量はこの倍数。既定 1）
+ * @returns {import('./combatants.js').EnemyAction} 新しい行動
+ */
+export function bigRushAction(behavior, random, unit = 1) {
+  return { kind: 'attack', amount: rollAmount(behavior.bigRushRange, random, unit), variant: 'bigRush' };
+}
+
+/**
  * 値がプレーンなオブジェクト（`null`・配列・関数でない）か。
  * @param {unknown} value 調べる値
  * @returns {boolean} プレーンなオブジェクトなら true
@@ -136,11 +177,34 @@ function isPlainObject(value) {
 }
 
 /**
+ * 親子の敵（`brood`）の、局面 → 次の行動の決め方の表。表にない局面（`null` など）は呼ぶ側が Error にする。
+ * 各行は (設定, 状態, 乱数, 1体のポイント) から行動を返す。
+ * - `together`（子がいる間）: 毎ターン乱数2回。`random() < protectChance` なら守る（量1回）、外れれば子の攻撃（量1回）。
+ * - `enraged`（怒り）: 直前が `rage` なら大突進（1回）、直前が `bigRush` なら突進（1回）、それ以外は `random() < rageChance` なら怒りを溜める（抽選1回）、外れれば突進（抽選1回＋量1回）。
+ * - `young`（子だけ）: 子の攻撃（量1回）。
+ * @type {Readonly<Object<string, (behavior: any, state: { lastVariant: string|null }, random: () => number, unit: number) => import('./combatants.js').EnemyAction>>}
+ */
+const BROOD_PLANS = Object.freeze({
+  together: (behavior, state, random, unit) =>
+    random() < behavior.protectChance
+      ? protectAction(behavior, random, unit)
+      : steadyAttackAction(behavior, random, unit),
+  enraged: (behavior, state, random, unit) => {
+    if (state.lastVariant === 'rage') return bigRushAction(behavior, random, unit);
+    if (state.lastVariant === 'bigRush') return rushAction(behavior, random, unit);
+    if (random() < behavior.rageChance) return rageAction();
+    return rushAction(behavior, random, unit);
+  },
+  young: (behavior, state, random, unit) => steadyAttackAction(behavior, random, unit),
+});
+
+/**
  * 行動の決まりの種類ごとの、状態の初期値・状態の形の確かめ（isState）・次の行動の決め方・数え下ろしの問い合わせ・隙かの問い合わせ（isOpening）の表。
+ * 次の行動の決め方の最後の引数 `situation`（親子の敵の局面。親子でない敵は `null`）は `brood` だけが読む。
  * @type {Readonly<Object<string, {
  *   initialState: (behavior: any) => object,
  *   isState: (state: unknown) => boolean,
- *   planNext: (behavior: any, state: object, random: () => number, unit: number) => { action: import('./combatants.js').EnemyAction, state: object },
+ *   planNext: (behavior: any, state: object, random: () => number, unit: number, situation?: string|null) => { action: import('./combatants.js').EnemyAction, state: object },
  *   countdown: (behavior: any, state: object) => number|null,
  *   isOpening: (action: import('./combatants.js').EnemyAction) => boolean
  * }>>}
@@ -243,6 +307,19 @@ const BEHAVIORS = Object.freeze({
     countdown: () => null,
     isOpening: (action) => action.kind === 'attack',
   }),
+  brood: Object.freeze({
+    initialState: () => ({ lastVariant: null }),
+    isState: (state) =>
+      isPlainObject(state) && [null, 'protect', 'rush', 'rage', 'bigRush'].includes(state.lastVariant),
+    planNext: (behavior, state, random, unit, situation = null) => {
+      const plan = BROOD_PLANS[situation];
+      if (!plan) throw new Error(`unknown brood situation: ${situation}`);
+      const action = plan(behavior, state, random, unit);
+      return { action, state: { lastVariant: action.variant ?? null } };
+    },
+    countdown: () => null,
+    isOpening: (action) => action.kind !== 'guard',
+  }),
 });
 
 /**
@@ -270,6 +347,7 @@ export function createBehaviorState(behavior) {
 /**
  * 値が、その決まりの状態の形か（保存したデータの確かめ用。乱数は呼ばない）。
  * 決まりごと（steady・either: プレーンなオブジェクト。cycle: `countdown` が 0 以上の整数。inhale: `lastVariant` が 'claw'・'inhale'・'breath'。
+ * brood: `lastVariant` が null か 'protect'・'rush'・'rage'・'bigRush'。
  * buildup: `turnsToHeavy` が null か 0 以上の整数、`chargeTurns` が 0 以上の整数）。
  * @param {{ type: string }} behavior 行動の決まりの設定
  * @param {unknown} state 調べる値
@@ -288,12 +366,14 @@ export function isBehaviorState(behavior, state) {
  * @param {{ type: string }} behavior 行動の決まりの設定
  * @param {object} state いまの決まりの状態
  * @param {() => number} random 0以上1未満を返す乱数の関数
+ * brood: 局面ごと（together: 毎ターン2回。enraged: 溜めの抽選のターンは溜める1回・突進2回、大突進1回、大突進の次の突進1回。young: 1回）。
  * @param {number} [unit] 1体のポイント（量の抽選の刻み。既定 1。乱数を呼ぶ順・回数は変わらない）
+ * @param {'together'|'enraged'|'young'|null} [situation] 親子の敵の局面（`brood` だけが読む。ほかの決まりは無視する。既定 null）
  * @returns {{ action: import('./combatants.js').EnemyAction, state: object }} 次の行動と、次の決まりの状態
- * @throws {Error} 未知の種類のとき
+ * @throws {Error} 未知の種類のとき、`brood` で局面が表にない（null など）とき
  */
-export function planBehaviorAction(behavior, state, random, unit = 1) {
-  return lookupBehavior(behavior).planNext(behavior, state, random, unit);
+export function planBehaviorAction(behavior, state, random, unit = 1, situation = null) {
+  return lookupBehavior(behavior).planNext(behavior, state, random, unit, situation);
 }
 
 /**

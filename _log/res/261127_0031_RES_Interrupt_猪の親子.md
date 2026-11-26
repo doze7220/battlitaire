@@ -284,7 +284,7 @@ boar: Object.freeze({
         *   2章「要件1」の型・HP の分け方・敵の状態と、「要件2」の局面のとおりに書く。`enemyParts.js` は何も import しない（設定の型は JSDoc の参照だけ）。先頭の責務は「親と子を持つ敵の純粋な計算」としてこのファイル全体の責務を3行以内で書く。`parts` が `null`/`undefined` の扱いは「区切りの順」2のとおり。各関数・型・定数に JSDoc。
         *   確かめ: (1) HP の分け方を2通りで確かめる。**タスク12の猪の行（`behavior.type: 'brood'`）は使わない**（`createEnemy` は中で `createBehaviorState(spec.behavior)` を呼び、`BEHAVIORS.brood` はタスク2で足すので、`unknown enemy behavior type: brood` の Error になる）。(1a) 関数を直接: ステージ 1・2・6・11・16・30・100・500 それぞれで `grownMaxHp(44, stageBonusOf(RULES.stageGrowth, n), 1)` の値を求め、要件1の `brood`（`childPercent: 50`・`hitOrder`）を手で作って `partMaxHps(brood, maxHp)` と `createEnemyParts({ brood }, maxHp)` に渡し、子 = floor(最大 HP × 50 / 100)・親 = 最大 HP − 子・合計 = 最大 HP で、要件1の見込み（ステージ 1 = 22・22、30 = 84・83、100 = 268・268）と合う。`createEnemyParts` は `brood` のない設定で `null`。(1b) `createEnemy` を通す: スクラッチの写しの `config.js` の猪の行に要件1の `brood` だけを足す（`behavior` は今の `buildup` のまま。`maxHp` は今と同じ 44）。この写しの `RULES.enemies.boar` で、(1a) と同じステージの `createEnemy('boar', spec, stageBonusOf(…, n))` を呼び、`maxHp` が加算後、`parts` が (1a) と同じ、`hp === parts.parent + parts.child`。`enemySituationOf` の全場合（`null`・`undefined`・`together`・`enraged`・`young`・両方 0）を単体で。写しの設定では `Game` を通さない。(2) `RULES` のままで、8種の `createEnemy` の結果が `parts` を除いて変更前と同じで `parts` が `null`。変更前と並べたランダムなゲーム（強化を取るもの・敵を数体倒すもの・負けまで）で毎手の結果・状態（予告・乱数の状態・3択の候補まで）が一致（敵の新しい項目 `parts` は比べない）。(3) 代用の `oz` のローダーで `js/main.js` から辿るモジュールがすべて読み込める。
         *   共通の作業。
-*   [ ] タスク2: ルール層の親子の仕組み（2）— 行動の決まり `brood` と、予告に局面を渡すこと
+*   [x] タスク2: ルール層の親子の仕組み（2）— 行動の決まり `brood` と、予告に局面を渡すこと
     *   **対象ファイル** :
         *   `./js/rules/enemyBehaviors.js` : 更新（`brood` の行・`BROOD_PLANS`・行動を作る関数・局面の引数・先頭の責務）
         *   `./js/rules/Game.js` : 更新（`planIntent` で `enemySituationOf(this.enemy.parts)` を渡す・import・先頭の責務）
@@ -432,7 +432,13 @@ boar: Object.freeze({
 
 ### タスク2: ルール層の親子の仕組み（2）— 行動の決まり `brood` と、予告に局面を渡すこと
 *   **作業内容** :
-    *   （未記入）
+    *   `js/rules/enemyBehaviors.js`: 行動を作る関数 `protectAction`・`rushAction`・`rageAction`・`bigRushAction`（export。JSDoc に乱数の回数）、局面 → 決め方の表 `BROOD_PLANS`（together・enraged・young。各行の JSDoc に乱数の回数）、`BEHAVIORS.brood`（初期状態 `{ lastVariant: null }`・`isState`・`planNext`（局面が表にないときは Error）・`countdown` は常に null・`isOpening` は `kind !== 'guard'`）を足した。`planBehaviorAction(behavior, state, random, unit = 1, situation = null)` に局面の引数を足し、`planNext` の型にも局面を足した（ほかの決まりは読まない）。`isBehaviorState` の説明に brood を足した。先頭の責務に親子の敵の局面ごとの行動を足した（3行以内）。
+    *   `js/rules/Game.js`: `enemySituationOf` の import と、`planIntent` で `enemySituationOf(this.enemy.parts)` を渡す1行だけ足した。先頭の責務に「親子の敵は親と子の局面を予告に渡す」を足した（3行以内）。
+    *   確かめ（一時スクリプトと変更前 `git archive c4d8924 js` の展開・猪の行を要件1の親子の行に替えた `js/` の写しはスクラッチに置き、終わって消した）。変更した2ファイルの構文チェック OK。
+        *   (1) 写しの設定（猪の親子）で `planBehaviorAction` を局面ごとに 20000 回（状態をつないで）呼んだ: `together` は守る 29.8%（見込み 30%）・毎回乱数 2 回・守るの防御 4〜8・子の攻撃 1〜2。`enraged` は、溜めの抽選をしたターンのうち溜める 29.7%（見込み 30%）、怒りのターン全体では 18.6%（見込み ≈ 18.75%）。溜めの次は 3723 回すべて大突進、大突進の次は 3723 回すべて突進。乱数の回数は、溜める 1・抽選で外れた突進 2・大突進 1・大突進の次の突進 1 で、外れ 0 件。突進 4〜6・大突進 13〜16。`young` は子の攻撃（1〜2）だけで乱数 1 回。次の状態は `lastVariant = action.variant ?? null`。`isState`（null・protect・rush・rage・bigRush は true、claw・欠け・null・配列は false）・`countdown`（null）・`isOpening`（guard だけ false）。局面 `null`・`undefined`・未知の文字列で Error。
+        *   `createIntent` を通した予告（写しの `Game`。`switchEnemy(game, 'boar')` で出し、`parts` を手で書き換えて `planIntent`。DEBUG の項目のモジュールは読み込まない）: ステージ 1 は加算 0 で、`together` が攻撃 1〜2・守る（`defense` 4〜8・量 0）、`enraged` が突進 4〜6・溜める（量 0・防御 0）、`young` が攻撃 1〜2。ステージ 30（加算: 攻撃 +29・防御 +12）は、`together` の攻撃 30〜31・守る `defense` 16〜20、`enraged` の突進 33〜35、`young` の攻撃 30〜31。守る以外の防御はすべて 0。各局面で `enemySituationOf(game.enemy.parts)` が書き換えた局面と一致。
+        *   (2) `RULES` のまま、変更前と作業ツリーで、8種（今の猪を含む）の `planBehaviorAction` を、1体のポイント 1・2 × 局面の引数（なし・null・together・enraged・young）で各 2000 手、同じ乱数で並べた（計 160,000 手）: 結果（行動・状態）・`isOpeningAction`・`behaviorCountdown`・`isBehaviorState`・乱数の呼び出しの値の並び（順と回数）がすべて一致。8種の設定の中身も同じ。変更前と並べたランダムなゲーム（放つ頻度 0.7・0.9・まったく放たない × 各 30 ゲーム = 90 ゲーム、74,815 手、敵を倒した 428・3択の選択 428、全 90 ゲームが負けまで・最大ステージ 10）で、毎手の戻り値・状態全体（乱数の状態・予告・3択の候補を含む。敵の `parts` だけ除く）・例外の有無が一致。予告は attack（ふつう・爪・ブレス・大攻撃）・windup（ふつう・吸い込む・溜める）・guard（ふつう・大防御）を通った。
+        *   (3) 代用の `oz`（`Scene` などの最小の代わり。`Storage`・`Assets`・`Engine` は呼び出しを受け流す代わり）と、`oz`・`assets/` だけ解く `module.register` のローダー、`document`・`location` の代わりで、`js/main.js` の import が成功し、`js/` 配下の 168 ファイルすべても個別に読み込めた（失敗 0）。
 
 ### タスク3: ルール層の親子の仕組み（3）— 剣の当たり方の分け方と、攻防で親と子の HP を渡して受け取ること
 *   **作業内容** :

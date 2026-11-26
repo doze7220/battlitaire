@@ -1,7 +1,7 @@
 /**
  * 責務: ゲーム全体の状態（山札・捨て札・列・手札・ゲージ・行動回数・フェーズと段階・城・敵）の保持と、
  * 問い合わせ・操作（置く・捨てる・放つ・手札に入れる・手札から置く・束を移す・攻防・次のフェーズ）の提供。
- * ステージの番号・今の敵・今の戦闘の記録とスコア（結果の記録）・取った強化と3択の段階・この戦闘の間の行動の足し分・ゲージごとの精鋭の数と上振れを持ち、放つ計算とターンの始まりの行動に強化の足し分を渡す。攻防では札の燃やしを反映する。操作は「何が起きたか」を返す。
+ * ステージの番号・今の敵・今の戦闘の記録とスコア（結果の記録）・取った強化と3択の段階・この戦闘の間の行動の足し分・ゲージごとの精鋭の数と上振れを持ち（親子の敵は親と子の局面を予告に渡す）、放つ計算とターンの始まりの行動に強化の足し分を渡す。攻防では札の燃やしを反映する。操作は「何が起きたか」を返す。
  */
 
 import { RULES } from './config.js';
@@ -19,6 +19,7 @@ import {
 } from './enemyBehaviors.js';
 import { planActionBurns, applyBurns } from './cardBurn.js';
 import { enemySpecOf } from './enemyTypes.js';
+import { enemySituationOf } from './enemyParts.js';
 import { enemyTypeIdOfStage } from './stageOrder.js';
 import { computeBattle } from './battle.js';
 import { isFatigued } from './enemyDefense.js';
@@ -187,6 +188,7 @@ export class Game {
       this.enemy.behaviorState,
       this.random,
       this.enemyUnitPoints(),
+      enemySituationOf(this.enemy.parts),
     );
     this.enemy.intent = this.intentOf(action);
     this.enemy.behaviorState = state;
