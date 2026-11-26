@@ -46,6 +46,21 @@ function troopCounts(game, release) {
 }
 
 /**
+ * 段取りの間の人数の表示の上振れを作る（放つ演出の上振れの表示値を優先し、なければルール層の精鋭の上振れ）。
+ * @param {import('../rules/Game.js').Game} game ゲームの状態（読み取り専用）
+ * @param {import('../anim/releaseShow.js').ReleaseLook} release 放つ演出の見た目の値
+ * @returns {Object<string, number>} 役割（攻撃・防御・修理）ごとの上振れ
+ */
+function troopExtras(game, release) {
+  const boost = game.eliteBoost();
+  const extras = {};
+  for (const role of ROLE_ORDER) {
+    extras[role] = release.extraValues[role] ?? boost[role]?.extra ?? 0;
+  }
+  return extras;
+}
+
+/**
  * 最上部のゲージに渡す値を作る（金貨は放つ演出の表示値。玉が着くまで増えない）。
  * @param {import('../rules/Game.js').Game} game ゲームの状態（読み取り専用）
  * @param {import('../anim/releaseShow.js').ReleaseLook} release 放つ演出の見た目の値
@@ -85,7 +100,7 @@ export function drawBoard(ctx, layout, game, ui, anim, release, burn = null, idl
 
   drawBattleStage(ctx, layout.battle, { enemy: game.enemy, countdown: game.attackCountdown(), idle, entrance, troops: release.troops, unitPoints: game.enemyUnitPoints() });
 
-  if (!game.isChoosingUpgrade()) drawTroopCounter(ctx, layout.battle.troopCounter, troopCounts(game, release));
+  if (!game.isChoosingUpgrade()) drawTroopCounter(ctx, layout.battle.troopCounter, troopCounts(game, release), troopExtras(game, release));
   drawTopGauges(ctx, layout.battle.topGauges, topGaugeValues(game, release));
   drawActionGauge(ctx, layout.actionGauge, game.actionsLeft);
   drawActionGaugeLabel(ctx, layout.actionGauge, game.actionUpgradeStatus());

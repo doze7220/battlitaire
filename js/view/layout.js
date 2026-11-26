@@ -350,8 +350,8 @@ const ENEMY_ADVANCE_X = 60;
 const CASTLE_HIT_INSET = 10;
 /** 最上部のゲージの下端と人数の表示の枠の上端の間。試遊で決め直す。 */
 const TROOP_COUNTER_GAP_Y = 6;
-/** 人数の表示の枠の幅（城の絵の矩形の左端より左に収まる幅）。試遊で決め直す。 */
-const TROOP_COUNTER_W = 168;
+/** 人数の表示の枠の幅（数 3桁 + 精鋭の上振れ「+99」が項目に収まる幅。右端は x 298。TURN の見た目の区画（turnBox）とは重ならない。押せる範囲 turnHit（x 210〜330・y 0〜88）とは一部重なるが、人数の表示は押せない部品）。試遊で決め直す。 */
+const TROOP_COUNTER_W = 278;
 /** 人数の表示のアイコンの大きさ */
 const TROOP_COUNTER_ICON = 24;
 /** 人数の表示の枠の左右の余白。試遊で決め直す。 */

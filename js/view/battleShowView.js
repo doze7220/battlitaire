@@ -104,7 +104,7 @@ export function drawBattleShow(ctx, battleLayout, game, result, look) {
   drawImpactFx(ctx, look.fx);
   ctx.restore();
   drawStageOverlay(ctx, area, look.stage);
-  drawTroopCounter(ctx, battleLayout.troopCounter, look.troopCounts);
+  drawTroopCounter(ctx, battleLayout.troopCounter, look.troopCounts, look.troopExtras);
   if (look.enemyHealPop !== null) drawEnemyHealPop(ctx, battleLayout, game.enemy.typeId, look.enemyHealPop);
   const conv = game.config.muscleConversion;
   drawTopGauges(ctx, battleLayout.topGauges, {
