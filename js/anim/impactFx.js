@@ -1,5 +1,5 @@
 /**
- * 当たりの白い光・ダメージの数字（「-1」）・粒（ダメージ・修理）の見た目を、攻防の始めに1回作った型付き配列の入れ物へ時計から書く。
+ * 当たりの白い光・ダメージの数字（「-N」）・粒（ダメージ・修理）の見た目を、攻防の始めに1回作った型付き配列の入れ物へ時計から書く。
  * 粒の散り方の式はここだけ（乱数なし）。描画も状態の変更もしない。
  */
 import { BATTLE_ANIM } from './battleAnimConfig.js';
@@ -32,7 +32,7 @@ function frac(v) {
  */
 
 /**
- * 「-1」の見た目（`enemyDamage`・`castleDamage` の当たり）。
+ * 「-N」の見た目（`enemyDamage`・`castleDamage` の当たり）。
  * @typedef {Object} ImpactPopLook
  * @property {number} count 数字の数
  * @property {Uint8Array} visible 見えるか（1 または 0）
@@ -40,6 +40,7 @@ function frac(v) {
  * @property {Float64Array} y 中心の y（浮き上がった後）
  * @property {Float64Array} alpha 濃さ（0〜1）
  * @property {Uint8Array} castle 1＝城の HP が減る／0＝敵の HP が減る
+ * @property {Int32Array} amount 減る量（数字の N）
  * @property {number} size 文字の大きさ（px）
  */
 
@@ -59,7 +60,7 @@ function frac(v) {
  * 当たりのエフェクトの見た目（描画が読む。毎回同じ入れ物）。
  * @typedef {Object} ImpactFxLook
  * @property {ImpactFlashLook} flashes 白い光
- * @property {ImpactPopLook} pops 「-1」
+ * @property {ImpactPopLook} pops 「-N」
  * @property {ImpactSparkLook} sparks 粒
  */
 
@@ -126,6 +127,7 @@ export class ImpactFx {
       y: new Float64Array(pc),
       alpha: new Float64Array(pc),
       castle: Uint8Array.from(popIdx, (i) => (log.kind[i] === IMPACT_KINDS.castleDamage ? 1 : 0)),
+      amount: Int32Array.from(popIdx, (i) => log.amount[i]),
       size: BATTLE_ANIM.damagePopSize,
     };
     /** @type {Float64Array} 数字の元の x */
@@ -194,7 +196,7 @@ export class ImpactFx {
   }
 
   /**
-   * 「-1」を書く。damagePopRise だけ浮き上がり、濃さは前半 1・後半で 1 から 0 へ。
+   * 「-N」を書く。damagePopRise だけ浮き上がり、濃さは前半 1・後半で 1 から 0 へ。
    * @param {number} clock 演出の時計（ms）
    * @returns {void}
    */

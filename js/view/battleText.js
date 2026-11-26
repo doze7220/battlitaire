@@ -68,8 +68,8 @@ const RESULT_HINT_TEXT = 'タップでタイトルへ';
 /** 敵を倒したときの、タップで次へ進む案内の文字 */
 const DEFEAT_HINT_TEXT = 'タップで次へ';
 
-/** 当たり1回で減る HP の表示の文字 */
-const DAMAGE_POP_TEXT = '-1';
+/** 当たり1回で減る HP の表示の文字の頭（量が後ろに付く） */
+const DAMAGE_POP_PREFIX = '-';
 
 /** 未知の行動の種類の表示名 */
 const UNKNOWN_ACTION_LABEL = '？';
@@ -202,11 +202,12 @@ export function healAmountText(amount) {
 }
 
 /**
- * 当たり1回で減る HP の表示を「-1」の文字にする。
- * @returns {string} 「-1」
+ * 当たり1回で減る HP の表示を「-N」の文字にする。
+ * @param {number} [amount] 減る量（既定 1）
+ * @returns {string} 「-量」（既定は「-1」）
  */
-export function damagePopText() {
-  return DAMAGE_POP_TEXT;
+export function damagePopText(amount = 1) {
+  return `${DAMAGE_POP_PREFIX}${amount}`;
 }
 
 /**

@@ -58,13 +58,12 @@ function drawSparks(ctx, sparks) {
 }
 
 /**
- * 「-1」を、見えるものだけふち付きで描く。
+ * 「-N」を、見えるものだけふち付きで描く（N は数字ごとの量）。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('../anim/impactFx.js').ImpactPopLook} pops 数字の見た目
  * @returns {void}
  */
 function drawPops(ctx, pops) {
-  const text = damagePopText();
   ctx.font = `bold ${pops.size}px sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -75,6 +74,7 @@ function drawPops(ctx, pops) {
     if (pops.visible[i] === 0) continue;
     ctx.globalAlpha = pops.alpha[i];
     ctx.fillStyle = pops.castle[i] === 1 ? CASTLE_POP_COLOR : ENEMY_POP_COLOR;
+    const text = damagePopText(pops.amount[i]);
     ctx.strokeText(text, pops.x[i], pops.y[i]);
     ctx.fillText(text, pops.x[i], pops.y[i]);
   }
