@@ -32,8 +32,12 @@ export const UPGRADE_NONE_TEXT = 'まだ強化を取っていません';
  * 選択肢の文字。
  * @typedef {Object} ChoiceText
  * @property {string} title 見出しの文字
+ * @property {string} [titleAccent] 見出しの後ろに続けて金色で描く文字（なければ金色の部分なし）
  * @property {string} detail 説明の文字
  */
+
+/** 精鋭の確率の見出しを金色の部分にする、実際に増える分（%）の下限。試遊で決め直す。 */
+export const CHANCE_ACCENT_FROM = 9;
 
 /**
  * 強化の種類の文字。
@@ -85,10 +89,11 @@ function eliteChanceText(suitName) {
   const name = `${suitName}の精鋭`;
   return Object.freeze({
     name: `${name}の確率`,
-    choice: (value, preview) => ({
-      title: `${name} +${value}%`,
-      detail: `${suitName}の兵が精鋭になる確率 ${preview.before}% → ${preview.after}%`,
-    }),
+    choice: (value, preview) => {
+      const detail = `${suitName}の兵が精鋭になる確率 ${preview.before}% → ${preview.after}%`;
+      if (value >= CHANCE_ACCENT_FROM) return { title: `${name} `, titleAccent: `+${value}%`, detail };
+      return { title: `${name} +${value}%`, detail };
+    },
     taken: (row) => `${name} ${row.value}%・能力 +${row.limit}`,
   });
 }

@@ -37,6 +37,8 @@ const SMALL_FONT = '24px sans-serif';
 const TEXT_COLOR = '#f0f0f0';
 /** 枠の名前・説明の文字の色。 */
 const SUB_COLOR = '#c8ccd4';
+/** 札の見出しの後ろの金色の部分の色。 */
+const ACCENT_COLOR = '#ffd24a';
 /** 光の色（flash の濃さを掛ける）。 */
 const FLASH_COLOR = '255, 255, 255';
 /** 群れの敵の兵の大きさ（体の直径）。 */
@@ -50,7 +52,7 @@ const HORDE_DY = Object.freeze([-30, -30, 0]);
  * 3択の画面の描く内容（文字だけ。ゲームを読んで作る）。
  * @typedef {Object} UpgradeChoiceModel
  * @property {{ typeId: string, name: string, stageNumber: number }} enemy 次の敵
- * @property {Array<{ slot: string, title: string, detail: string }>} cards 候補の札（slot は枠の名前の文字）
+ * @property {Array<{ slot: string, title: string, titleAccent: string, detail: string }>} cards 候補の札（slot は枠の名前の文字、titleAccent は見出しの後ろの金色の文字で無ければ空）
  * @property {{ title: string, detail: string }} repair 修理の札
  */
 
@@ -70,7 +72,7 @@ export function upgradeChoiceModel(game) {
   const cards = game.upgradeOffer.choices.map((c) => {
     const text = upgradeTextOf(c.id).choice(c.value, game.upgradePreview(c.id, c.value));
     const slot = game.config.upgrades[c.id].slot;
-    return { slot: UPGRADE_SLOT_TEXT[slot] ?? slot, title: text.title, detail: text.detail };
+    return { slot: UPGRADE_SLOT_TEXT[slot] ?? slot, title: text.title, titleAccent: text.titleAccent ?? '', detail: text.detail };
   });
   return {
     enemy: { typeId: next.typeId, name: next.name, stageNumber: next.stageNumber },
@@ -122,7 +124,7 @@ function drawNextEnemy(ctx, layout, battleLayout, typeId) {
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {{ x: number, y: number, w: number, h: number }} rect 札の矩形
  * @param {import('./upgradeChoiceLayout.js').CardTextSpots} spots 札の中の文字の位置
- * @param {{ slot: string|null, title: string, detail: string }} card 文字
+ * @param {{ slot: string|null, title: string, titleAccent?: string, detail: string }} card 文字（titleAccent は見出しの後ろに続く金色の文字）
  * @param {{ enter: number, scale: number, flash: number, alpha: number }} item 見た目（UpgradeItemLook）
  * @param {number} slideDistance 札が入るときの右への最初のずれ
  * @returns {void}
@@ -145,7 +147,18 @@ function drawCard(ctx, rect, spots, card, item, slideDistance) {
   }
   ctx.font = TITLE_FONT;
   ctx.fillStyle = TEXT_COLOR;
-  ctx.fillText(card.title, spots.slotX, spots.titleY, rect.w - spots.slotX * 2);
+  const titleMax = rect.w - spots.slotX * 2;
+  const accent = card.titleAccent ?? '';
+  if (accent === '') {
+    ctx.fillText(card.title, spots.slotX, spots.titleY, titleMax);
+  } else {
+    const w1 = ctx.measureText(card.title).width;
+    const w2 = ctx.measureText(accent).width;
+    const k = w1 + w2 > titleMax ? titleMax / (w1 + w2) : 1;
+    ctx.fillText(card.title, spots.slotX, spots.titleY, w1 * k);
+    ctx.fillStyle = ACCENT_COLOR;
+    ctx.fillText(accent, spots.slotX + w1 * k, spots.titleY, w2 * k);
+  }
   ctx.font = DETAIL_FONT;
   ctx.fillStyle = SUB_COLOR;
   ctx.fillText(card.detail, spots.slotX, spots.detailY, rect.w - spots.slotX * 2);
