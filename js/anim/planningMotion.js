@@ -13,6 +13,7 @@ import { createDeckFlip } from './deckFlip.js';
  * @typedef {Object} BoardSnapshot
  * @property {number[]} columnLengths 列ごとのカードの枚数
  * @property {number[]} deckVisibleCounts 山札ごとの見えるカードの枚数
+ * @property {number} handSize 手札の枠の数（`game.hand.length`。手札へ・手札からの動きの枠の矩形を引く）
  */
 
 /**
@@ -32,11 +33,13 @@ export function snapshotBoard(game) {
   return {
     columnLengths: game.columns.map((col) => col.length),
     deckVisibleCounts: game.decks.map((_, d) => game.visibleCards(d).length),
+    handSize: game.hand.length,
   };
 }
 
 /**
  * 操作の結果と前後の写しから、動きを組み立てる。
+ * 手札へ入れる動きの先は操作後の手札の枠の数、手札から置く動きの元は操作前の手札の枠の数で引いた枠の矩形（2枠以上は縮めた枠）。
  * 山札のめくれは、カードが抜けてから `deckFlipDelayMs` の待ちの後に始まる（補充のめくれも同じ）。
  * 置く・手札から置く・束を移すで長い列の詰めが変わるときは、動くカードが着いた後（`cardMoveMs` の後）から
  * 列にもとからあったカードが新しい位置へ動く詰め直し（`settles`）を足す。
@@ -97,11 +100,11 @@ export function buildPlanningMotion(result, before, after, layout) {
       flipDecks.add(result.deckIndex);
       break;
     case 'hold':
-      addTween(result.card, layout.decks[result.deckIndex], layout.hand.slots[result.slotIndex], 'hand');
+      addTween(result.card, layout.decks[result.deckIndex], layout.hand.slotsFor(after.handSize)[result.slotIndex], 'hand');
       flipDecks.add(result.deckIndex);
       break;
     case 'placeFromHand':
-      addTween(result.card, layout.hand.slots[result.slotIndex], columnTop(result.columnIndex), 'column');
+      addTween(result.card, layout.hand.slotsFor(before.handSize)[result.slotIndex], columnTop(result.columnIndex), 'column');
       addSettle(result.columnIndex);
       break;
     case 'move': {

@@ -7,6 +7,7 @@ import { INTENT_CELL, SPRITE_IDS, spriteFitRect } from './spriteView.js';
 import { campSlot } from './campSlots.js';
 import { createEnemyFigures } from './enemyFigures.js';
 import { createHordePlaces } from './hordePlaces.js';
+import { handSlotRects } from './handLayout.js';
 
 /**
  * 矩形。
@@ -60,7 +61,8 @@ import { createHordePlaces } from './hordePlaces.js';
  * 手札の配置。
  * @typedef {Object} HandLayout
  * @property {{ x: number, y: number }} title 見出し「手札」の文字の中心
- * @property {Rect[]} slots 手札の枠の矩形（枠の番号順）
+ * @property {Rect} area 手札の場所（上の行の手札1枠分の矩形。1枠のときの枠の矩形）
+ * @property {function(number): Rect[]} slotsFor 手札の枠の数から、各枠の矩形（枠の番号順＝奥 → 手前。1枠は `area` の写し、2枠以上は縮めて斜めに重ねる。`handLayout.js` の `handSlotRects`）
  */
 
 /**
@@ -189,7 +191,7 @@ import { createHordePlaces } from './hordePlaces.js';
  * @property {BattleLayout} battle 最上段（戦闘）
  * @property {function(number, number): Rect[]} columnCardRects 列の番号と枚数から、下から順の各カードの矩形（長い列の詰めを含む）
  * @property {ResultLayout} result 決着の表示（結果）の配置
- * @property {function(number, number, number[]=): (Hit|null)} hitTest 座標（と列ごとのカードの枚数）から当たったものを返す
+ * @property {function(number, number, number[]=, number=): (Hit|null)} hitTest 座標（と列ごとのカードの枚数・手札の枠の数）から当たったものを返す
  * @property {function(number, number): boolean} turnHitTest 座標が最上部の「TURN」の区画の押せる範囲（`topGauges.turnHit`。右端・下端は含まない）に入るか（`hitTest` には混ぜない）
  */
 
@@ -257,6 +259,8 @@ const TOP_GAUGES_BOTTOM = TOP_GAUGE_Y + HP_GAUGE_H + COIN_GAUGE_GAP_Y + COIN_GAU
 const SIDE_MARGIN = 20;
 /** 上の行のカードの横の間隔 */
 const ROW_GAP_X = 16;
+/** 上の行（山札・捨て札・手札の場所）の手札の場所の数。手札の枠の数によらず1枠分で、2枠以上は場所の中に縮めて重ねる。 */
+const HAND_ROW_SLOTS = 1;
 /** カードの縦横比（高さ / 幅） */
 const CARD_ASPECT = 1.4;
 /** ソリティアの段の上の余白 */
@@ -748,12 +752,11 @@ function createBattleLayout(width, coinBlockCount) {
  * @param {{ width: number, height: number }} params.screen 画面の大きさ
  * @param {number} params.deckCount 山札の数
  * @param {number} params.columnCount 列の数
- * @param {number} params.handSize 手札の枠の数
  * @param {number} params.actionBlockCount 行動のゲージのブロックの数（シーンがルール層の基本の行動回数を渡す）
  * @param {number} params.coinBlockCount 金貨のゲージのブロックの数（シーンがルール層の力こぶの換算の per を渡す）
  * @returns {Layout} 配置
  */
-export function createLayout({ screen, deckCount, columnCount, handSize, actionBlockCount, coinBlockCount }) {
+export function createLayout({ screen, deckCount, columnCount, actionBlockCount, coinBlockCount }) {
   const W = screen.width;
   const H = screen.height;
   const sections = {
@@ -780,13 +783,13 @@ export function createLayout({ screen, deckCount, columnCount, handSize, actionB
     label: { x: SIDE_MARGIN, y: sections.actionBar.y - ACTION_LABEL_DY, size: ACTION_LABEL_SIZE, statusGap: ACTION_STATUS_GAP },
   };
 
-  // カードの大きさは、上の行（山札・捨て札・手札の枠）が横幅に並ぶことから決める
-  const n = deckCount + 1 + handSize;
+  // カードの大きさは、上の行（山札・捨て札・手札の場所）が横幅に並ぶことから決める（手札の枠の数によらない）
+  const n = deckCount + 1 + HAND_ROW_SLOTS;
   const cardW = Math.floor((W - SIDE_MARGIN * 2 - ROW_GAP_X * (n - 1)) / n);
   const cardH = Math.round(cardW * CARD_ASPECT);
   const rowY = sections.solitaire.y + SOLITAIRE_PAD_TOP;
   /**
-   * 上の行（山札・捨て札・手札の枠）の i 番目のカードの左端 x を返す。
+   * 上の行（山札・捨て札・手札の場所）の i 番目のカードの左端 x を返す。
    * @param {number} i 上の行での左からの番号
    * @returns {number} 左端 x
    */
@@ -796,13 +799,12 @@ export function createLayout({ screen, deckCount, columnCount, handSize, actionB
   for (let i = 0; i < deckCount; i++) decks.push({ x: rowX(i), y: rowY, w: cardW, h: cardH });
   const discard = { x: rowX(deckCount), y: rowY, w: cardW, h: cardH };
 
-  const slots = [];
-  for (let s = 0; s < handSize; s++) slots.push({ x: rowX(deckCount + 1 + s), y: rowY, w: cardW, h: cardH });
-  const handW = cardW * handSize + ROW_GAP_X * Math.max(0, handSize - 1);
+  const handArea = { x: rowX(deckCount + 1), y: rowY, w: cardW, h: cardH };
   /** @type {HandLayout} */
   const hand = {
-    title: { x: rowX(deckCount + 1) + handW / 2, y: rowY + cardH + LABEL_LINE_H / 2 },
-    slots,
+    title: { x: handArea.x + cardW / 2, y: rowY + cardH + LABEL_LINE_H / 2 },
+    area: handArea,
+    slotsFor: (count) => handSlotRects(handArea, count),
   };
 
   const columnTop = rowY + cardH + LABEL_LINE_H + ROW_GAP_Y;
@@ -834,20 +836,23 @@ export function createLayout({ screen, deckCount, columnCount, handSize, actionB
 
   /**
    * 座標から当たったものを返す（放つボタン → 山札 → 手札の枠 → 列 の順）。
+   * 手札の枠は後ろの番号（手前）から調べる（2枠以上で重なる所は手前の枠、奥の枠は手前に隠れていない所で当たる）。
    * @param {number} x x 座標
    * @param {number} y y 座標
    * @param {number[]} [columnLengths] 列ごとのカードの枚数（列のカードの当たりに使う）
+   * @param {number} [handCount] 手札の枠の数（手札の枠の当たりに使う。既定 1）
    * @returns {Hit|null} 当たったもの。なければ null
    */
-  function hitTest(x, y, columnLengths = []) {
+  function hitTest(x, y, columnLengths = [], handCount = 1) {
     for (let i = 0; i < releaseButtons.length; i++) {
       if (inRect(releaseButtons[i], x, y)) return { kind: 'release', index: i };
     }
     for (let i = 0; i < decks.length; i++) {
       if (inRect(decks[i], x, y)) return { kind: 'deck', index: i };
     }
-    for (let i = 0; i < hand.slots.length; i++) {
-      if (inRect(hand.slots[i], x, y)) return { kind: 'hand', index: i };
+    const handSlots = hand.slotsFor(handCount);
+    for (let i = handSlots.length - 1; i >= 0; i--) {
+      if (inRect(handSlots[i], x, y)) return { kind: 'hand', index: i };
     }
     for (let i = 0; i < columns.length; i++) {
       if (!inRect(columns[i], x, y)) continue;

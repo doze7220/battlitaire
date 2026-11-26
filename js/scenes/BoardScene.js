@@ -88,7 +88,7 @@ export class BoardScene extends Scene {
   /**
    * ゲームと画面の配置を作る。中断データ（this.suspend）があれば restoreGame で戻し（保存はしない）、段階の管理を作った後に resumeFrom を呼ぶ。
    * なければ新しいゲームを作り（this.rules を設定として渡す。undefined なら Game の既定の RULES）、直後に最初のターンの始まりを中断データとして保存する（saveSuspend。デバッグでは何もしない）。
-   * 最後に兵の焼き付けを作る（destroy で手放す）。
+   * 配置は手札の枠の数を渡さずに作り（枠の数は描く・当たり・動きのたびにゲームの手札の長さから引く）、最後に兵の焼き付けを作る（destroy で手放す）。
    * @returns {void}
    */
   init() {
@@ -102,7 +102,6 @@ export class BoardScene extends Scene {
       screen: this.screen,
       deckCount: this.game.decks.length,
       columnCount: this.game.columns.length,
-      handSize: this.game.hand.length,
       actionBlockCount: this.game.config.baseActions,
       coinBlockCount: this.game.config.muscleConversion.per,
     });
@@ -210,7 +209,7 @@ export class BoardScene extends Scene {
       this.selection = null;
       return;
     }
-    const hit = this.layout.hitTest(pointer.x, pointer.y, game.columns.map((col) => col.length));
+    const hit = this.layout.hitTest(pointer.x, pointer.y, game.columns.map((col) => col.length), game.hand.length);
     const before = snapshotBoard(game);
     const prevSelection = this.selection;
     const step = applyTap(game, this.selection, hit);

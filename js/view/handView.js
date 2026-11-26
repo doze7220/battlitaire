@@ -22,10 +22,10 @@ const HOLDABLE_COLOR = '#7be07b';
  */
 
 /**
- * 手札を描く。状態は変えない。
+ * 手札を描く。枠は手札の枠の数（`hand.length`）から配置の `slotsFor` で引き、奥（番号の小さい枠）から手前の順に描く（2枠以上は縮めて斜めに重なる）。状態は変えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').HandLayout} handLayout 手札の配置
- * @param {(import('../rules/card.js').Card|null)[]} hand 手札（null は空き枠）
+ * @param {(import('../rules/card.js').Card|null)[]} hand 手札（null は空き枠。長さが枠の数）
  * @param {HandViewState} state 表示用の値
  * @returns {void}
  */
@@ -38,8 +38,9 @@ export function drawHand(ctx, handLayout, hand, state) {
   ctx.fillText(TITLE_TEXT, handLayout.title.x, handLayout.title.y);
   ctx.restore();
 
-  for (let s = 0; s < handLayout.slots.length; s++) {
-    const { x, y, w, h } = handLayout.slots[s];
+  const slots = handLayout.slotsFor(hand.length);
+  for (let s = 0; s < slots.length; s++) {
+    const { x, y, w, h } = slots[s];
     const held = hand[s] ?? null;
     const card = held !== null && state.hiddenIds?.has(held.id) ? null : held;
     if (card === null) {
