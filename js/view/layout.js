@@ -34,7 +34,7 @@ import { createHordePlaces } from './hordePlaces.js';
  * @typedef {Object} ActionGaugeLayout
  * @property {Rect} band 帯（`sections.actionBar`）
  * @property {Rect[]} blocks ブロックの矩形（左から `actionBlockCount` 個。0 以下なら空）
- * @property {{x: number, y: number, size: number}} label 帯の上の「ACTION POINT」のラベル（x は左端、y は中心、size は文字の大きさ px）
+ * @property {{x: number, y: number, size: number, statusGap: number}} label 帯の上の「ACTION POINT」のラベル（x は左端、y は中心、size は文字の大きさ px、statusGap はラベルと右の強化の表示の間 px）
  */
 
 /**
@@ -205,6 +205,8 @@ const ACTION_BLOCK_GAP = 8;
 const ACTION_LABEL_DY = 4;
 /** 「ACTION POINT」のラベルの文字の大きさ（px）。試遊で決め直す。 */
 const ACTION_LABEL_SIZE = 14;
+/** 「ACTION POINT」のラベルと、その右の強化の表示（「+1(10%)」など）の間（px）。試遊で決め直す。 */
+const ACTION_STATUS_GAP = 8;
 /** 画面の上端から最上部の HP ゲージの上端までの距離。試遊で決め直す。 */
 const TOP_GAUGE_Y = 8;
 /** HP ゲージの太さ（変える1か所）。試遊で決め直す。 */
@@ -775,7 +777,7 @@ export function createLayout({ screen, deckCount, columnCount, handSize, actionB
   const actionGauge = {
     band: sections.actionBar,
     blocks,
-    label: { x: SIDE_MARGIN, y: sections.actionBar.y - ACTION_LABEL_DY, size: ACTION_LABEL_SIZE },
+    label: { x: SIDE_MARGIN, y: sections.actionBar.y - ACTION_LABEL_DY, size: ACTION_LABEL_SIZE, statusGap: ACTION_STATUS_GAP },
   };
 
   // カードの大きさは、上の行（山札・捨て札・手札の枠）が横幅に並ぶことから決める

@@ -155,7 +155,7 @@ export class BattleShowScene extends Scene {
   }
 
   /**
-   * 演出中の最上段を描き、行動のゲージのラベル（揺らさない。戦闘の段より手前、結果の表示より奥）を重ね、決着したときは最後に画面全体へ結果の表示を重ねる（状態は変えない）。
+   * 演出中の最上段を描き、行動のゲージのラベル（揺らさない。戦闘の段より手前、結果の表示より奥。右の強化の表示の値 `game.actionUpgradeStatus()` も渡す）を重ね、決着したときは最後に画面全体へ結果の表示を重ねる（状態は変えない）。
    * @param {CanvasRenderingContext2D} ctx 描画先
    * @param {string} layer レイヤー名
    * @returns {void}
@@ -164,7 +164,7 @@ export class BattleShowScene extends Scene {
     if (layer !== this.layer) return;
     const look = this.director.view();
     drawBattleShow(ctx, this.layout.battle, this.game, this.result, look);
-    drawActionGaugeLabel(ctx, this.layout.actionGauge);
+    drawActionGaugeLabel(ctx, this.layout.actionGauge, this.game.actionUpgradeStatus());
     if (look.finished && this.result.outcome !== null) {
       drawResult(ctx, this.layout.result, this.result.outcome, this.game.gameStats());
     }
