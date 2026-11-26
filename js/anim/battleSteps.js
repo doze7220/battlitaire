@@ -12,6 +12,7 @@ import { enemyAttackShow, enemyDefenseShow, hasChargeShow, isHeavyAttack } from 
  * @typedef {Object} BattleSnapshot
  * @property {number} castleHp 攻防の前の城の HP
  * @property {number} enemyHp 攻防の前の敵の HP
+ * @property {{parent: number, child: number}|null} enemyParts 攻防の前の敵の親と子の HP の写し（`game.enemy.parts`。親子でない敵は null）
  * @property {number} enemyMaxHp 敵の最大 HP（絵の体の大きさ（縮み）を求める）
  * @property {string} enemyTypeId 攻防をする敵の種類の識別子
  * @property {number} enemyUnit 攻防をする敵の1体のポイント（1 以上の整数。群れ・攻撃・守りの体の割り振りに使う）
@@ -27,6 +28,7 @@ import { enemyAttackShow, enemyDefenseShow, hasChargeShow, isHeavyAttack } from 
  * 演出の1段。
  * @typedef {Object} BattleStep
  * @property {'form'|'enemyMarch'|'block'|'castleHit'|'strikeBlock'|'strikeCastle'|'march'|'enemyBlock'|'shieldBlock'|'enemyHit'|'heal'|'enemyHeal'|'burn'|'charge'|'dash'|'dashBack'} type 段の種類
+ * @property {'parent'|'child'} [part] `enemyHit` のみ: 当たる先（出来事 `enemyDamage` に `parts` があるときだけ付く）
  * @property {number} amount 量（`form`・`charge` は 0、`burn` は燃える枚数）
  * @property {boolean} [heavy] 敵の攻撃の段（`enemyMarch`・`block`・`castleHit`・`strikeBlock`・`strikeCastle`）のみ: 大きな一撃なら true（そうでなければ付けない）
  * @property {Array<{columnIndex: number, cardIndex: number, card: *}>} [burns] `burn` のみ: 燃える札の並び（燃える順）
@@ -58,6 +60,7 @@ export function snapshotBattle(game) {
   return {
     castleHp: game.castle.hp,
     enemyHp: game.enemy.hp,
+    enemyParts: game.enemy.parts ? { parent: game.enemy.parts.parent, child: game.enemy.parts.child } : null,
     enemyMaxHp: game.enemy.maxHp,
     enemyTypeId: game.enemy.typeId,
     enemyUnit: game.enemyUnitPoints(),
@@ -140,6 +143,12 @@ export function buildBattleSteps(result, before) {
     }
     if (event.type === 'enemyBlock') {
       if (event.amount > 0) steps.push({ type: defenseShow.blockStep, amount: event.amount });
+      continue;
+    }
+    if (event.type === 'enemyDamage' && event.parts !== undefined) {
+      for (const damage of event.parts) {
+        if (damage.amount > 0) steps.push({ type: 'enemyHit', amount: damage.amount, part: damage.part });
+      }
       continue;
     }
     const stepType = EVENT_TO_STEP[event.type];

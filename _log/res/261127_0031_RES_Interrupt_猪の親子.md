@@ -329,7 +329,7 @@ boar: Object.freeze({
         *   REQ 要件2「中断データ」と2章「区切りの順」2のとおり、敵の項目に `parts` を足す（保存は写し、確かめは `isEnemyPartsShape(enemySpecOf(config, typeId), value.parts, value.hp)`、戻しは写し）。`SUSPEND_VERSION` を 7 にし、版の説明に「7: 敵の親と子の HP `parts` を足したとき 6 から上げた」を足す。
         *   確かめ: (1) `isEnemyPartsShape` を単体で、親子の敵・親子でない敵それぞれの正しい形と形違い（合計が HP と違う・親子の敵で `null`・親子でない敵で値あり・負・小数・プレーンでないオブジェクト・項目の欠け）で呼び、結果が要件のとおりで例外を投げない。(2) `RULES` のまま、ターンの始まりと3択の段階の保存・復元で続けた結果が変更前と同じ（敵の `parts` は `null`）。版 6 のデータが捨てられる。(3) スクラッチの写しの設定（猪の親子）で、3つの局面それぞれのターンの始まり（溜めの次の大突進のターンを含む）と3択の段階で保存・復元し、同じ操作で同じ結果（乱数の状態・親と子の HP・決まりの状態まで）。形違いの `parts`（要件5）が捨てられ、例外を投げない。(4) 代用の `oz` のローダーで `js/main.js` から辿るモジュールがすべて読み込める。
         *   共通の作業。
-*   [ ] タスク7: 演出の「絵と群れを両方持つ体」の仕組み（猪の見せ方はまだ今のまま）
+*   [x] タスク7: 演出の「絵と群れを両方持つ体」の仕組み（猪の見せ方はまだ今のまま）
     *   **対象ファイル** :
         *   `./js/anim/enemyShows.js` : 更新（`DEFENSE_SHOWS.brood`・型・`enemyHasHorde`。猪の行はまだ変えない）
         *   `./js/anim/enemyBody.js` : 更新（`BODY_SETUPS.brood`・`BODY_HITS.brood`・`partHp`・`createEnemyBody`・`hitEnemyBody`・`isEnemyFigureDown`・先頭の責務）
@@ -487,7 +487,20 @@ boar: Object.freeze({
 
 ### タスク7: 演出の「絵と群れを両方持つ体」の仕組み（猪の見せ方はまだ今のまま）
 *   **作業内容** :
-    *   （未記入）
+    *   `js/anim/enemyShows.js`: 体の見せ方に `'brood'` を足し（型）、`DEFENSE_SHOWS.brood = { unit: null, blockStep: 'shieldBlock' }`、体の見せ方ごとの「群れの体を持つか」の表 `HORDE_BODIES`（`horde`・`brood` は真、`figure` は偽）と問い合わせ `enemyHasHorde(typeId)` を足した。`ENEMY_SHOWS` の猪の行は今のまま。
+    *   `js/anim/enemyIdle.js`: `enemyBodyStyle(typeId) === 'horde'` を `enemyHasHorde(typeId)` に替えた（import も替えた）。
+    *   `js/anim/enemyBody.js`: `EnemyBody` に `partHp`（親子の敵だけ `{ parent, child }`、ほかは `null`。`horde`・`figure` の行に `partHp: null`）。`BODY_SETUPS` の各行に最後の引数 `parts` を渡す形にし、`BODY_SETUPS.brood` を足した（`parts.child` の数の群れを `horde` の行で作り、`parts.parent > 0` なら `figure` の行で絵の記録・シールドの並べ先を作って `style: 'brood'`・`partHp` を付ける。親が 0 なら絵の記録は群れと同じ空。`parts` がなければ Error。絵の倍率は合計の `hp`・`maxHp` で `figure` の行と同じ式）。`BODY_HITS` に `part` を渡し、`BODY_HITS.brood`（`child` は `horde` の当たり、`parent` は `figure` の当たり、それ以外は Error）。`createEnemyBody(…, unit, parts = null)`、`hitEnemyBody(…, shownHp, part = null)`（`partHp` があれば当たった量だけ `partHp[part]` を減らす）、`isEnemyFigureDown(body, shownHp)` を足した。先頭の責務の文は「群れ・絵・シールド」に直しただけ（3行以内）。
+    *   `js/anim/battleSteps.js`: `BattleSnapshot.enemyParts`（`snapshotBattle` で `game.enemy.parts` の写し。親子でない敵は `null`）、`BattleStep.part`、出来事 `enemyDamage` が `parts` を持つとき `parts` の順に量が 0 より大きいものを `{ type: 'enemyHit', amount, part }` の段にする（持たないときは今のまま）。
+    *   `js/anim/battleTimeline.js`（3か所だけ）: `createEnemyBody` に `before.enemyParts` を渡す・`addEnemyHit` で `hitEnemyBody(…, step.part ?? null)`・倒れる時刻の判定を `isEnemyFigureDown(state.body, state.enemyShown)` にした（import に `isEnemyFigureDown` を足した）。
+    *   確かめ（一時スクリプト・変更前 `git archive c4d8924 js assets` の展開・猪の行を要件のタスク12の行にした `js/` の写し・代用の `oz` はスクラッチに置き、終わって消した）。変更した5ファイルの構文チェック OK。
+        *   (1) `RULES` のまま、変更前と作業ツリーを同じ種・同じ操作で並べ、8種の敵 × 各 1,500 = 12,000 件（ステージ 1〜300・城の HP・敵の HP・戦闘のターン（疲れ）・攻撃/防御/修理のゲージと精鋭（1〜3 体・2〜5 ポイント）・自動兵士の印・待っていた精鋭・DEBUG の口 `chooseEnemyIntent` で指定した次の行動（約 6 割）、攻撃の大きいもの（9 件に 1 件）、ゲージ 0 を含む）で、段の並び・時間割の段（時刻・きっかけ）・名簿全体（脚と終わり方）・敵と城の HP の変化・ヒットマーク・当たりの記録（並びの順まで）・体の記録（`partHp` を除く）・終わりの時刻・出来事・演出の時計の約 160 点での人数の表示値・精鋭の上振れ・城と敵の HP の表示値・絵の見た目・姿勢・ヒットストップを入れた時計・きっかけ・HP が 0 になったか、がすべて一致（食い違い 0）。待機の伸び縮み（8種 × 60 回の `EnemyIdle.update`。群れの数 0〜89）も一致（食い違い 0）。検出力の確認として、変更前と猪の行を替えた写しを同じ方法で比べると、猪の 60 件すべてで食い違いが出た（猪以外の食い違いは、猪の親子の予告の乱数の呼び方が違うため `moveStage` の後の乱数の状態がずれたことによるもの）。
+        *   (2) 猪の行を要件3・要件1のタスク12の行にした写し（`config.js` の猪の親子・`ENEMY_SHOWS.boar`（`body: 'brood'`・`attacks: { default: 'march', rush: 'dashStraight', bigRush: 'dashStraight' }`・`heavy: ['bigRush']`・`charge: ['rage']`）・`ENEMY_FIGURES.boar`（高さ 100・シールド・札の `gap: null`）・`HORDE_SKINS.boar` は `SPRITE_IDS.goblin`（`bake: 'goblin'`）・`HORDE_PLACES.boar`（`area.h` は書かない）・`ENEMY_ATTACK_SE.boar` の突進・大突進）で、猪の親子の攻防 8,000 件（満タン・子を 0・親を 0・HP を 1〜最大にして作った3つの局面、予告は DEBUG の口で指定、攻撃ゲージは 0〜合計 HP の 1.4 倍＋8、精鋭を含む。城が落ちる攻防 2,015 件を含む。倒した 1,975 件・子を全滅させた 1,400 件・親が先に倒れて子が残った 373 件）を、Error なく時間割まで作って演出の時計を最後まで進めた。確かめた内容はすべて食い違い 0:
+            *   `enemyHit` の段（`part`・量）が出来事 `enemyDamage.parts` と一致。段の並びは、ふだん（子の攻撃）が `enemyMarch → block/castleHit → march → enemyHit(child) → enemyHit(parent)`、守るターンが `march → shieldBlock → enemyHit(parent) → enemyHit(child)`（`form` の段・`enemyMarch` はない）、怒りの突進・大突進が `dash → strikeBlock/strikeCastle → dashBack → march → enemyHit(parent)`、溜めが `charge → march → enemyHit(parent)`（要件3のとおり）。
+            *   体の記録 `partHp` の最後の値が攻防の後の `game.enemy.parts` と一致し、攻防の前の親・子 − 当たった量 = 攻防の後。
+            *   名簿のうり坊の最初の数 = 攻防の前の子の HP、落ちたうり坊の数 = 子に当たった量の合計（精鋭を含む）。絵が跳ねて落ちる記録は、親が 0 になった攻防（親が残るときはなし）だけにあり、その時刻 = 親の `enemyHit` の段の終わり。親が 0 のとき絵の記録（`figure`・`fall`）は空。城が落ちる攻防では絵は倒れない。
+            *   守るターンのシールド: `shieldBlock` の量 = 出来事 `enemyBlock` の量 = 落ちたシールドの数、シールドの数 = 攻防の前の予告の防御。
+            *   当たりの記録の `enemyDamage` の量の合計 = 出来事 `enemyDamage` の量。敵の HP の表示は最後に攻防の後の HP（`親 + 子`）になる。`enemyDefeat` は親と子が両方 0 のときだけ1回（結果の `defeat` も同じ）。
+        *   (3) 代用の `oz`（受け流す最小の `Engine`（シーンの積み・外し）・`Scene`・`Assets`・`Sound`・`Storage`・`CanvasCache`・`Ui`）・`assets/` だけ解く `module.register` のローダー・`document`・`location`・`screen` の代わり・`save`/`restore` を数える代用の `ctx` で、作業ツリー（`cur`）と猪の行を替えた写し（`brood`）の両方に対し、`js/` 配下の 168 ファイルすべてが個別に読み込め、`js/main.js` の import も成功した（失敗 0）。`BoardScene` の `init` → `update`（スタートの待ち → TURN → 段取り → 準備終了 → BATTLE!）→ 積んだ `BattleShowScene` の `update`/`draw` → 次のフェーズ、を各ゲームで最大 7 ターン進め（行動の使い切り・攻撃ゲージ・待っている兵の数は代用の口で作った）、すべての `draw` の前後で `save`/`restore` が釣り合った。作業ツリー 60 ゲーム（386 ターン・約 28 万回の draw）・写し 60 ゲーム（猪の親子 330 ターン。子がいる間 104・怒り 146・子だけ 80。約 25 万回の draw）・ステージ 30 の写し 12 ゲーム（64 ターン）・ステージ 100 の写し 12 ゲーム（18 ターン）で Error 0・`save`/`restore` の不釣り合い 0。敵を倒した攻防で3択の画面（`UpgradeChoiceScene`）が積まれた時点・負けの結果の画面が積まれた時点でそのゲームの確かめは終えた（3択以降は本タスクの範囲外）。
 
 ### タスク8: うり坊のスプライト — スプライトのコピーとスプライトの表
 *   **作業内容** :
@@ -540,3 +553,8 @@ boar: Object.freeze({
 * （タスク5）DEBUG の文字（`debugText.js`）が入る（タスク13）までは、猪の親子の行動・項目名は識別子のまま出る。`RULES` の猪はタスク12まで `brood` を持たないので、DEBUG タブの今の見え方は変わらない。
 * （タスク6）`isEnemyPartsShape` は余分な項目（`parent`・`child` 以外）を持つ `parts` も形違いとして捨てる（要件に明記はないが、`structuredClone` で写して使うので、保存したものと同じ形だけを通す側に寄せた）。親子の敵は `parts` の `hp` との合計だけでなく、最大 HP との比べ（各部分 ≤ 最大）は行わない（`check` は設定の数値と比べない決まり。開発資料 2章「中断データ」）。
 * （タスク6）`SUSPEND_VERSION` が 7 になったので、版 6 で保存された中断データは、次に遊ぶとき一度だけ捨てられて新しく始まる（`readSuspendData` が `null`）。開発資料の更新予定（2章「中断データ」の版 7・`parts`）はすでに書いてあるとおりで、追加はない。
+* （タスク7）`createEnemyBody` の絵の倍率は、親子の体では子の数でなく合計の `hp`・`maxHp` で求める（要件3の「今の絵の敵と同じ式」。猪の `minScale` は 1 なので 1 のまま。`minScale` が 1 未満の親子の敵を足すときは、親の HP の割合で縮めるかを決め直す）。
+* （タスク7）`BODY_SETUPS.brood` は `horde` の行と `figure` の行を呼び出して合成する（体の記録の項目を足すときは3つの行を同時に見る）。親が 0 のときの `shieldArea` は `null` で、親のいない守るターンはシールドを置かない（親を 0 にした後の予告の決め直しはタスク5で済み。ルール層が親 0 の守るを出さない前提）。親が 0 のとき `partHp.parent` への当たり（`part: 'parent'`）が来ると絵の記録がないので Error になる（ルール層の `parts` の量が 0 でない親への当たりは親が 0 で出ない）。
+* （タスク7）猪の親子の攻防の演出は、見せる表の猪の行（タスク12）が入るまでは作業ツリーでは起きない（猪の `parts` が `null` で、`ENEMY_SHOWS.boar` も `figure` のまま）。確かめはスクラッチの写しでだけ行った。写しの `HORDE_SKINS.boar` は `SPRITE_IDS.goblin` で代用し、`area.h` は効かないので、群れと親の絵の重なり・うり坊の見え方は未確認（タスク9・12で数値と試遊で見る）。
+* （タスク7）`BODY_SETUPS.brood` の群れは `hordeSlots(typeId, 数)` を使うので、`HORDE_PLACES.boar` の行がないと Error になる（タスク12で見せる表をそろえるまで、作業ツリーでは呼ばれない）。
+

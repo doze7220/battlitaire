@@ -1,5 +1,5 @@
 /**
- * 敵の体（群れ・シールドを名簿へ置く、攻撃の兵が当たる（精鋭は自分のポイントを1回で使う）・シールドが剥がれる、倒れたとき絵が跳ねて落ちる記録）と、
+ * 敵の体（群れ・絵・シールドを名簿へ置く、攻撃の兵が当たる（精鋭は自分のポイントを1回で使う）・シールドが剥がれる、倒れたとき絵が跳ねて落ちる記録）と、
  * 時計からの絵の見た目を求める。体の見せ方ごとの違いはこのファイルの表で分ける。描画も状態の変更もしない。
  */
 
@@ -14,7 +14,7 @@ import { isWoundedBody, splitPoints } from '../view/bodyPoints.js';
 /**
  * 敵の体の記録。
  * @typedef {Object} EnemyBody
- * @property {'horde'|'figure'} style 体の見せ方
+ * @property {'horde'|'figure'|'brood'} style 体の見せ方（`brood`＝群れと絵の両方）
  * @property {number|null} hitX 絵に当たる位置の x（攻防の前の HP の倍率をかけた位置。群れは null）
  * @property {number|null} shieldHitX シールドに当たる位置の x（攻防の前の HP の倍率をかけた位置。群れはシールドがないので null）
  * @property {import('../view/enemyFigures.js').EnemyFigure|null} figure 絵の配置（体に当たる位置を HP の倍率で求めるのに読む。群れは null）
@@ -24,6 +24,7 @@ import { isWoundedBody, splitPoints } from '../view/bodyPoints.js';
  * @property {number[]|null} dents 体に当たった兵の着いた時刻（ms。昇順。当たるとへこむ敵だけ。へこまない敵・群れは null）
  * @property {import('./troopMotion.js').TroopUnit|null} fall 倒れる動きだけに使う1体（群れは null。名簿には入れない）
  * @property {number} fallOutY 絵が消える足元の y（群れは 0）
+ * @property {{parent: number, child: number}|null} partHp 親と子の残りの HP（親子の敵だけ。攻防の前の写しで、当たりのたびに減らす。ほかの敵は null）
  */
 
 /**
@@ -43,7 +44,8 @@ const DASH_SCRATCH = { dx: 0, lift: 0 };
 /**
  * 体の見せ方ごとの準備。群れ・絵を名簿へ置き、体の記録の一部とシールドの並べ先を返す（群れはシールドを置かないので null）。
  * 群れは `splitPoints(hp, unit)` の数の体を、並びの番号の大きい方（前）から置き、前から順に体のポイントと傷ついた姿を入れる。
- * @type {Readonly<Record<string, function(import('./troopRoster.js').TroopRoster, import('../view/layout.js').BattleLayout, string, number, number, number): {body: EnemyBody, shieldArea: import('../view/layout.js').Rect|null}>>}
+ * 親子の体（`brood`）は子の HP の数の群れを置き、親の HP が 0 より大きければ絵の記録も作る（親が 0 なら群れと同じ空）。最後の引数 `parts` は親子の体だけが読む。
+ * @type {Readonly<Record<string, function(import('./troopRoster.js').TroopRoster, import('../view/layout.js').BattleLayout, string, number, number, number, ({parent: number, child: number}|null)=): {body: EnemyBody, shieldArea: import('../view/layout.js').Rect|null}>>}
  */
 const BODY_SETUPS = Object.freeze({
   horde: (roster, battleLayout, typeId, hp, maxHp, unit) => {
@@ -72,6 +74,7 @@ const BODY_SETUPS = Object.freeze({
         dents: null,
         fall: null,
         fallOutY: 0,
+        partHp: null,
       },
       shieldArea: null,
     };
@@ -96,9 +99,22 @@ const BODY_SETUPS = Object.freeze({
         dents: enemyDents(typeId) ? [] : null,
         fall: createTroopUnit('figure', 0, figure.rect.x + figure.rect.w / 2, figure.rect.y + figure.rect.h, 0, 0),
         fallOutY: battleLayout.area.y + battleLayout.area.h + figure.rect.h,
+        partHp: null,
       },
       shieldArea: scaledShieldArea(figure, scale),
     };
+  },
+  brood: (roster, battleLayout, typeId, hp, maxHp, unit, parts) => {
+    if (parts === null || parts === undefined) {
+      throw new Error(`enemyBody: 親と子の HP のない親子の敵 ${typeId}`);
+    }
+    const young = BODY_SETUPS.horde(roster, battleLayout, typeId, parts.child, maxHp, unit);
+    const partHp = { parent: parts.parent, child: parts.child };
+    if (parts.parent <= 0) {
+      return { body: { ...young.body, style: 'brood', partHp }, shieldArea: null };
+    }
+    const parent = BODY_SETUPS.figure(roster, battleLayout, typeId, hp, maxHp, unit, parts);
+    return { body: { ...parent.body, style: 'brood', partHp }, shieldArea: parent.shieldArea };
   },
 });
 
@@ -106,7 +122,8 @@ const BODY_SETUPS = Object.freeze({
  * 体の見せ方ごとの、攻撃の兵が敵に当たる動き（当たりを着く時刻の昇順で返す）。
  * 敵に当たる間隔（`hitStaggerMs`・上限 `hitStaggerMaxMs`）で1体ずつずらす。
  * 絵は、兵が「その前の表示 HP（shownHp − 前の兵までに使ったポイント）」の倍率の位置へ着く。
- * @type {Readonly<Record<string, function(EnemyBody, import('./troopRoster.js').TroopRoster, number, number, number): import('./troopRoster.js').TroopHit[]>>}
+ * 親子の体（`brood`）は当たる先 `part` で分け、`child` は群れの当たり、`parent` は絵の当たり。
+ * @type {Readonly<Record<string, function(EnemyBody, import('./troopRoster.js').TroopRoster, number, number, number, ('parent'|'child'|null)=): import('./troopRoster.js').TroopHit[]>>}
  */
 const BODY_HITS = Object.freeze({
   horde: (body, roster, count, t) => chargePairs(roster, 'attack', 'goblin', count, t, BATTLE_ANIM.hitMoveMs, 'hit'),
@@ -119,6 +136,11 @@ const BODY_HITS = Object.freeze({
     BATTLE_ANIM.hitMoveMs,
     'hit',
   ),
+  brood: (body, roster, count, t, shownHp, part) => {
+    if (part === 'child') return BODY_HITS.horde(body, roster, count, t, shownHp);
+    if (part === 'parent') return BODY_HITS.figure(body, roster, count, t, shownHp);
+    throw new Error(`enemyBody: 親子の体の当たる先が不正です ${part}`);
+  },
 });
 
 /**
@@ -131,12 +153,13 @@ const BODY_HITS = Object.freeze({
  * @param {number} defense 攻防の前の敵の防御の量（絵を持つ敵のシールドの数。群れはシールドを置かない）
  * @param {number} maxHp 敵の最大 HP（絵の体の倍率を求める。シールドの並べ先は攻防の前の HP の倍率）
  * @param {number} unit 1体のポイント（1 以上の整数。群れの体の数と傷ついた体を決める。1 なら HP の数の体）
+ * @param {{parent: number, child: number}|null} [parts] 攻防の前の親と子の HP（親子の体だけが読む。親子でない敵は null）
  * @returns {EnemyBody} 敵の体の記録
- * @throws {Error} 絵を持たない敵を絵の見せ方で作るとき
+ * @throws {Error} 絵を持たない敵を絵の見せ方で作るとき、親子の体に親と子の HP がないとき
  */
-export function createEnemyBody(roster, battleLayout, typeId, hp, defense, maxHp, unit) {
+export function createEnemyBody(roster, battleLayout, typeId, hp, defense, maxHp, unit, parts = null) {
   const style = enemyBodyStyle(typeId);
-  const { body, shieldArea } = BODY_SETUPS[style](roster, battleLayout, typeId, hp, maxHp, unit);
+  const { body, shieldArea } = BODY_SETUPS[style](roster, battleLayout, typeId, hp, maxHp, unit, parts);
   if (shieldArea !== null && defense > 0) {
     const points = battleLayout.shieldRects(defense, shieldArea).map((r) => ({
       x: r.x + r.w / 2,
@@ -180,16 +203,28 @@ export function hitEnemyShield(body, roster, count, t) {
  * @param {number} count 当たるポイントの量
  * @param {number} t 段の始め（ms）
  * @param {number} shownHp 段の始めの敵の HP の表示値（絵の当たる位置の倍率を求める。兵は `shownHp − 前の兵までに使ったポイント`）
+ * @param {'parent'|'child'|null} [part] 当たる先（親子の体だけが読み、当たった量だけ `body.partHp` の残りを減らす）
  * @returns {import('./troopRoster.js').TroopHit[]} 当たり（着く時刻の昇順）
- * @throws {Error} ポイントが足りないとき
+ * @throws {Error} ポイントが足りないとき、親子の体の当たる先が不正なとき
  */
-export function hitEnemyBody(body, roster, count, t, shownHp) {
-  const hits = BODY_HITS[body.style](body, roster, count, t, shownHp);
+export function hitEnemyBody(body, roster, count, t, shownHp, part = null) {
+  const hits = BODY_HITS[body.style](body, roster, count, t, shownHp, part);
+  if (body.partHp !== null) body.partHp[part] -= count;
   for (const hit of hits) {
     roster.strikes.push({ time: hit.time, points: hit.points, bodies: hit.bodies });
     if (body.dents !== null) body.dents.push(hit.time);
   }
   return hits;
+}
+
+/**
+ * 絵が倒れる（跳ねて落ちる）時点かを返す。親子の体は親の残りの HP が 0 以下のとき、ほかは敵の HP の表示値が 0 以下のとき。
+ * @param {EnemyBody} body 敵の体
+ * @param {number} shownHp 敵の HP の今の表示値（合計）
+ * @returns {boolean} 倒れる時点なら true
+ */
+export function isEnemyFigureDown(body, shownHp) {
+  return body.partHp !== null ? body.partHp.parent <= 0 : shownHp <= 0;
 }
 
 /**

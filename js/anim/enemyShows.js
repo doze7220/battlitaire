@@ -37,18 +37,29 @@ export const ATTACK_SHOWS = Object.freeze({
 
 /**
  * 防御の見せ方の表（体の見せ方 → 防御の見せ方）。
- * @type {Readonly<Record<'horde'|'figure', Readonly<DefenseShow>>>}
+ * @type {Readonly<Record<'horde'|'figure'|'brood', Readonly<DefenseShow>>>}
  */
 export const DEFENSE_SHOWS = Object.freeze({
   horde: Object.freeze({ unit: 'enemyGuard', blockStep: 'enemyBlock' }),
   figure: Object.freeze({ unit: null, blockStep: 'shieldBlock' }),
+  brood: Object.freeze({ unit: null, blockStep: 'shieldBlock' }),
+});
+
+/**
+ * 体の見せ方ごとの「群れの体を持つか」の表（`horde`・`brood` は真、`figure` は偽）。
+ * @type {Readonly<Record<'horde'|'figure'|'brood', boolean>>}
+ */
+export const HORDE_BODIES = Object.freeze({
+  horde: true,
+  figure: false,
+  brood: true,
 });
 
 /**
  * 敵の種類の識別子ごとの見せ方の表。`dents` は体に当たるとへこむか（スライムだけ真）。`pace` は動きの速さと止めの長さの名前（`ENEMY_PACES` の項目名）。`attacks` は行動の中の種類（`variant`）→ 攻撃の見せ方の名前（`default` は既定）。
  * `heavy` は大きな一撃とみなす攻撃の中の種類の並び、`charge` はための動きを見せる振りかぶりの中の種類の並び
  * （中の種類のない行動は `default`）。
- * @type {Readonly<Record<string, Readonly<{body: 'horde'|'figure', attacks: Readonly<Record<string, string>>, heavy: readonly string[], charge: readonly string[], dents: boolean, pace: 'normal'|'slow'}>>>}
+ * @type {Readonly<Record<string, Readonly<{body: 'horde'|'figure'|'brood', attacks: Readonly<Record<string, string>>, heavy: readonly string[], charge: readonly string[], dents: boolean, pace: 'normal'|'slow'}>>>}
  */
 export const ENEMY_SHOWS = Object.freeze({
   goblins: Object.freeze({
@@ -121,7 +132,7 @@ export const ENEMY_SHOWS = Object.freeze({
  * 敵の種類の見せ方の項目を引く。
  * @param {string} typeId 敵の種類の識別子
  * @param {string} name 呼び出し元の関数名（Error の文の頭）
- * @returns {Readonly<{body: 'horde'|'figure', attacks: Readonly<Record<string, string>>, heavy: readonly string[], charge: readonly string[], dents: boolean, pace: 'normal'|'slow'}>}
+ * @returns {Readonly<{body: 'horde'|'figure'|'brood', attacks: Readonly<Record<string, string>>, heavy: readonly string[], charge: readonly string[], dents: boolean, pace: 'normal'|'slow'}>}
  */
 function showOf(typeId, name) {
   if (!Object.prototype.hasOwnProperty.call(ENEMY_SHOWS, typeId)) {
@@ -133,10 +144,19 @@ function showOf(typeId, name) {
 /**
  * 敵の体の見せ方を返す。
  * @param {string} typeId 敵の種類の識別子
- * @returns {'horde'|'figure'} `horde`＝HP の群れ／`figure`＝絵
+ * @returns {'horde'|'figure'|'brood'} `horde`＝HP の群れ／`figure`＝絵／`brood`＝絵と群れの両方
  */
 export function enemyBodyStyle(typeId) {
   return showOf(typeId, 'enemyBodyStyle').body;
+}
+
+/**
+ * 敵が群れの体を持つか（体の見せ方が `horde`・`brood`）を返す。
+ * @param {string} typeId 敵の種類の識別子
+ * @returns {boolean} 群れの体を持つなら true
+ */
+export function enemyHasHorde(typeId) {
+  return HORDE_BODIES[showOf(typeId, 'enemyHasHorde').body];
 }
 
 /**

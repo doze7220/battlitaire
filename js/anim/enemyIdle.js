@@ -5,7 +5,7 @@
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
 import { breathScale } from './troopBreath.js';
-import { enemyBodyStyle } from './enemyShows.js';
+import { enemyHasHorde } from './enemyShows.js';
 
 /**
  * 段取りの間の敵の待機の見た目（描画が読む）。
@@ -75,7 +75,7 @@ export class EnemyIdle {
    */
   update(ms, typeId, count) {
     this.clock += ms;
-    if (enemyBodyStyle(typeId) === 'horde') {
+    if (enemyHasHorde(typeId)) {
       const n = Math.max(0, count);
       if (n > this.scaleX.length) {
         this.scaleX = new Float64Array(n);

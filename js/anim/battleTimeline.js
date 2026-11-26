@@ -26,7 +26,7 @@ import { createTroopCounter } from './troopCounter.js';
 import { enterEnemyTroops, strikeCastle, strikeTroops } from './enemyAttacks.js';
 import { dashBack, dashForward } from './figureDash.js';
 import { enemyPace } from './enemyShows.js';
-import { createEnemyBody, defeatEnemyBody, enemyBodyEnd, hitEnemyBody, hitEnemyShield } from './enemyBody.js';
+import { createEnemyBody, defeatEnemyBody, enemyBodyEnd, hitEnemyBody, hitEnemyShield, isEnemyFigureDown } from './enemyBody.js';
 import { createHitMarkList, hitMarksEnd } from './hitMarks.js';
 import { createImpactLog, recordStepImpacts, watchStep } from './impactLog.js';
 import { battleFxEnd } from './battleFx.js';
@@ -217,9 +217,9 @@ function addCastleHit(state, step, t) {
  * @returns {number} 段の長さ（ms）
  */
 function addEnemyHit(state, step, t) {
-  const hits = hitEnemyBody(state.body, state.roster, step.amount, t, state.enemyShown);
+  const hits = hitEnemyBody(state.body, state.roster, step.amount, t, state.enemyShown, step.part ?? null);
   const d = dropEnemyHpByHits(state, step.amount, hits, t);
-  if (state.enemyShown <= 0) defeatEnemyBody(state.body, t + d);
+  if (isEnemyFigureDown(state.body, state.enemyShown)) defeatEnemyBody(state.body, t + d);
   return d;
 }
 
@@ -467,7 +467,7 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout, wai
     markEliteTroops(state.roster, kind, elites);
     waitingTotal += waiting[kind];
   }
-  state.body = createEnemyBody(state.roster, boardLayout.battle, before.enemyTypeId, before.enemyHp, before.enemyDefense, before.enemyMaxHp, before.enemyUnit);
+  state.body = createEnemyBody(state.roster, boardLayout.battle, before.enemyTypeId, before.enemyHp, before.enemyDefense, before.enemyMaxHp, before.enemyUnit, before.enemyParts);
   /** @type {TimedStep[]} */
   const timed = [];
   let t = 0;
