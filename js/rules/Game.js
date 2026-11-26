@@ -1,7 +1,7 @@
 /**
  * 責務: ゲーム全体の状態（山札・捨て札・列・手札・ゲージ・行動回数・フェーズと段階・城・敵）の保持と、
  * 問い合わせ・操作（置く・捨てる・放つ・手札に入れる・手札から置く・束を移す・攻防・次のフェーズ）の提供。
- * ステージの番号・今の敵（倒した敵の入れ替わりを含む）・結果の集計・取った強化と3択の段階（候補・選ぶ操作）を持つ。攻防では札の燃やしを反映する。操作は「何が起きたか」を返す。
+ * ステージの番号・今の敵（倒した敵の入れ替わりを含む）・結果の集計・取った強化と3択の段階（候補・選ぶ操作）を持ち、放つ計算に強化の足し分を渡す。攻防では札の燃やしを反映する。操作は「何が起きたか」を返す。
  */
 
 import { RULES } from './config.js';
@@ -9,6 +9,7 @@ import { createDecks, takeTop, refillEmptyDecks } from './piles.js';
 import { createColumns, placeableColumnIndices, runStartIndex } from './columns.js';
 import { createHand, isEmptySlot, hasCardInSlot } from './hand.js';
 import { computeRelease } from './release.js';
+import { cardBonusOf, releaseBoostOf } from './upgradeBoosts.js';
 import { createCastle, createEnemy } from './combatants.js';
 import {
   planBehaviorAction,
@@ -431,6 +432,15 @@ export class Game {
   }
 
   /**
+   * 札の +◯（取った強化から求める。札そのものは書き換えない。山札・手札・列・捨て札のどこにある札でも同じ）。
+   * @param {{ suit: string, rank: number }} card 札
+   * @returns {number} 札の +◯
+   */
+  cardBonus(card) {
+    return cardBonusOf(this.config, this.upgrades, card);
+  }
+
+  /**
    * 城を修理した前と後の値（状態は変えない）。
    * @returns {import('./upgrades.js').RepairPreview} 回復量と前後の HP
    */
@@ -538,7 +548,7 @@ export class Game {
   release(c) {
     if (!this.canRelease(c)) return null;
     const cards = this.columns[c].splice(0);
-    const { segments, gains, allSuits } = computeRelease(cards, this.config);
+    const { segments, gains, allSuits } = computeRelease(cards, this.config, releaseBoostOf(this.config, this.upgrades));
     for (const gauge of Object.keys(gains)) {
       this.gauges[gauge] = (this.gauges[gauge] ?? 0) + gains[gauge];
     }

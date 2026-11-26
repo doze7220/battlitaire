@@ -4,6 +4,7 @@
  */
 
 import { rollAmount } from './enemyBehaviors.js';
+import { scaledReleaseBonus, bundleBonus } from './release.js';
 
 /**
  * 取った強化の1種類ぶんの記録。
@@ -119,6 +120,57 @@ export const UPGRADE_EFFECTS = Object.freeze({
       before: taken.amount,
       after: taken.amount + value,
     }),
+  }),
+  cardSuit: Object.freeze({
+    ...EFFECT_DEFAULTS,
+    roll: (spec) => spec.amount,
+    fixedValue: (spec) => spec.amount,
+    cardBonus: (spec, taken, card) => (card.suit === spec.suit ? taken.amount : 0),
+    preview: (game, spec, taken, value) => ({ before: taken.amount, after: taken.amount + value }),
+  }),
+  cardRank: Object.freeze({
+    ...EFFECT_DEFAULTS,
+    roll: (spec) => spec.amount,
+    fixedValue: (spec) => spec.amount,
+    cardBonus: (spec, taken, card) => (card.rank === spec.rank ? taken.amount : 0),
+    preview: (game, spec, taken, value) => ({ before: taken.amount, after: taken.amount + value }),
+  }),
+  /** 4スートそろいの強化。`preview`・`status` は自分の行の取った記録だけから求める（同じ効き方の行は1つだけの前提）。 */
+  allSuitsBoost: Object.freeze({
+    ...EFFECT_DEFAULTS,
+    canOffer: (spec, taken) => taken.count < spec.maxCount,
+    isCapped: (spec, taken) => taken.count >= spec.maxCount,
+    roll: (spec) => spec.amount,
+    fixedValue: (spec) => spec.amount,
+    allSuitsExtra: (spec, taken) => taken.amount,
+    preview: (game, spec, taken, value) => {
+      const before = game.config.allSuitsBonus + taken.amount;
+      return { before, after: before + value, left: spec.maxCount - taken.count - 1 };
+    },
+    status: (game, spec, taken) => ({ shown: true, value: game.config.allSuitsBonus + taken.amount, limit: 0 }),
+  }),
+  /** コンボ（束の補正）の強化。`preview`・`status` は自分の行の取った記録だけから求める（同じ効き方の行は1つだけの前提）。 */
+  comboBoost: Object.freeze({
+    ...EFFECT_DEFAULTS,
+    canOffer: (spec, taken) => taken.count < spec.maxCount,
+    isCapped: (spec, taken) => taken.count >= spec.maxCount,
+    roll: (spec) => spec.amount,
+    fixedValue: (spec) => spec.amount,
+    comboSteps: (spec, taken) => taken.amount,
+    preview: (game, spec, taken, value) => {
+      const cards = spec.previewCards;
+      const bonusAt = (steps) => bundleBonus(cards, scaledReleaseBonus(game.config.releaseBonus, steps));
+      return {
+        before: bonusAt(taken.amount),
+        after: bonusAt(taken.amount + value),
+        cards,
+        left: spec.maxCount - taken.count - 1,
+      };
+    },
+    status: (game, spec, taken) => {
+      const bonus = scaledReleaseBonus(game.config.releaseBonus, taken.amount);
+      return { shown: true, value: bonus.perCard, limit: bonus.max };
+    },
   }),
 });
 

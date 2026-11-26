@@ -1,4 +1,4 @@
-/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・1体のポイント（任意）・防御（張る確率と量の幅）・行動の決まり（毎ターン攻撃と防御・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率）・溜めてからの大攻撃・攻撃か防御のどちらか）と攻撃・防御の量の幅）、敵の★とステージごとの★の決まり、ステージごとの敵の加算量（章ごと）、力こぶの換算、疲弊（長引いた敵の防御の減り方）、4スートそろいの加算量、3択の強化の枠・候補の数・城の修理の割合・強化の種類ごとの設定）を1か所に集める設定ファイル。 */
+/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・1体のポイント（任意）・防御（張る確率と量の幅）・行動の決まり（毎ターン攻撃と防御・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率）・溜めてからの大攻撃・攻撃か防御のどちらか）と攻撃・防御の量の幅）、敵の★とステージごとの★の決まり、ステージごとの敵の加算量（章ごと）、力こぶの換算、疲弊（長引いた敵の防御の減り方）、4スートそろいの加算量、3択の強化の枠・候補の数・城の修理の割合・強化の種類ごとの設定（城・カードの強化））を1か所に集める設定ファイル。 */
 
 /**
  * 行動の量の幅（予告を決めるたびに、この中から整数を1つ抽選する）。
@@ -108,8 +108,12 @@
  * @property {string} effect 効き方の種類（`upgradeEffects.js` の `UPGRADE_EFFECTS` のキー）。
  * @property {Readonly<AmountRangeSpec>} [range] 3択が出たときに抽選する量の幅（'castleMaxHp' のみ）。
  * @property {string} [gauge] ターンの頭に足すゲージの識別子（'autoTroop' のみ）。
- * @property {number} [amount] 取った1回あたりの量（'autoTroop' のみ）。
+ * @property {number} [amount] 取った1回あたりの量（'autoTroop'・'cardSuit'・'cardRank'・'allSuitsBoost'・'comboBoost' が使う）。
  * @property {string} [after] この強化の種類が上限に着いた後だけ出す（`upgrades` のキー）。
+ * @property {string} [suit] 札の +◯ を足すスート（'cardSuit' のみ）。
+ * @property {number} [rank] 札の +◯ を足す数字（'cardRank' のみ）。
+ * @property {number} [maxCount] 取れる回数の上限（'allSuitsBoost'・'comboBoost' のみ）。
+ * @property {number} [previewCards] 選択肢の説明に出す束の枚数（'comboBoost' のみ）。
  */
 
 /**
@@ -298,5 +302,25 @@ export const RULES = Object.freeze({
     autoSword: Object.freeze({ slot: 'castle', weight: 2, effect: 'autoTroop', gauge: 'attack', amount: 1 }),
     autoShield: Object.freeze({ slot: 'castle', weight: 2, effect: 'autoTroop', gauge: 'defense', amount: 1 }),
     autoHammer: Object.freeze({ slot: 'castle', weight: 2, effect: 'autoTroop', gauge: 'heal', amount: 1 }),
+    swordCards: Object.freeze({ slot: 'card', weight: 0.5, effect: 'cardSuit', suit: 'sword', amount: 1 }),
+    shieldCards: Object.freeze({ slot: 'card', weight: 0.5, effect: 'cardSuit', suit: 'shield', amount: 1 }),
+    hammerCards: Object.freeze({ slot: 'card', weight: 0.5, effect: 'cardSuit', suit: 'potion', amount: 1 }),
+    goldCards: Object.freeze({ slot: 'card', weight: 0.5, effect: 'cardSuit', suit: 'muscle', amount: 1 }),
+    rank1Cards: Object.freeze({ slot: 'card', weight: 1, effect: 'cardRank', rank: 1, amount: 1 }),
+    rank2Cards: Object.freeze({ slot: 'card', weight: 1, effect: 'cardRank', rank: 2, amount: 1 }),
+    rank3Cards: Object.freeze({ slot: 'card', weight: 1, effect: 'cardRank', rank: 3, amount: 1 }),
+    rank4Cards: Object.freeze({ slot: 'card', weight: 1, effect: 'cardRank', rank: 4, amount: 1 }),
+    rank5Cards: Object.freeze({ slot: 'card', weight: 1, effect: 'cardRank', rank: 5, amount: 1 }),
+    rank6Cards: Object.freeze({ slot: 'card', weight: 1, effect: 'cardRank', rank: 6, amount: 1 }),
+    rank7Cards: Object.freeze({ slot: 'card', weight: 1, effect: 'cardRank', rank: 7, amount: 1 }),
+    allSuits: Object.freeze({ slot: 'card', weight: 0.5, effect: 'allSuitsBoost', amount: 1, maxCount: 3 }),
+    combo: Object.freeze({
+      slot: 'card',
+      weight: 1,
+      effect: 'comboBoost',
+      amount: 1,
+      maxCount: 3,
+      previewCards: 5,
+    }),
   }),
 });
