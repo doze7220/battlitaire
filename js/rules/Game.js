@@ -1,7 +1,7 @@
 /**
  * 責務: ゲーム全体の状態（山札・捨て札・列・手札・ゲージ・行動回数・フェーズと段階・城・敵）の保持と、
  * 問い合わせ・操作（置く・捨てる・放つ・手札に入れる・手札から置く・束を移す・攻防・次のフェーズ）の提供。
- * ステージの番号とその今の敵（倒した敵の入れ替わりを含む）と結果の集計（数え方は gameStats.js）を持つ。攻防では札の燃やしを反映する。操作は「何が起きたか」を返す。
+ * ステージの番号・今の敵（倒した敵の入れ替わりを含む）・結果の集計・取った強化と3択の段階（候補・選ぶ操作）を持つ。攻防では札の燃やしを反映する。操作は「何が起きたか」を返す。
  */
 
 import { RULES } from './config.js';
@@ -25,6 +25,16 @@ import { stageBonusOf } from './stageBonus.js';
 import { unitPointsOf } from './unitPoints.js';
 import { computePhaseStart } from './phase.js';
 import { createGameStats, tallyBattle } from './gameStats.js';
+import {
+  createUpgradeState,
+  takeUpgrade,
+  turnGainsOf,
+  castleRepairAmount,
+  castleRepairPreview,
+  upgradeTakenOf,
+  upgradePreview,
+} from './upgrades.js';
+import { drawUpgradeChoices } from './upgradeOffer.js';
 
 /**
  * 「攻防」操作の結果。
@@ -51,6 +61,16 @@ import { createGameStats, tallyBattle } from './gameStats.js';
  * @property {number} actionsLeft 残りの行動回数（フェーズの頭では actionsMax と同じ）
  * @property {import('./combatants.js').EnemyIntent} enemyAction 敵の次の行動の予告
  * @property {boolean} enemyChanged このフェーズの頭で敵が入れ替わったか
+ * @property {Object<string, number>} autoTroops このフェーズの頭にゲージへ足した自動兵士の量（`{ ゲージ: 量 }`。強化がなければ `{}`）
+ */
+
+/**
+ * 「3択を選ぶ」操作の結果。
+ * @typedef {Object} UpgradeChoiceResult
+ * @property {'upgrade'} type 操作の種類
+ * @property {import('./upgradeOffer.js').UpgradeChoice|null} picked 選んだ強化（城を修理を選んだときは null）
+ * @property {number} repaired 修理で回復した量（強化を選んだときは 0）
+ * @property {NextPhaseResult|null} nextPhase 次のステージへ進んだ結果（候補の行き先が 'stage' のときだけ。'planning' なら null）
  */
 
 /**
@@ -98,7 +118,7 @@ export class Game {
     this.phase = 1;
     /** @type {number} いまの敵との戦闘で何ターン目か（1 から。敵が替わると 1 に戻る） */
     this.battleTurn = 1;
-    /** @type {'planning'|'result'|'over'} 段階（段取り中・攻防の結果を見ている・決着） */
+    /** @type {'planning'|'result'|'choosing'|'over'} 段階（段取り中・攻防の結果を見ている・3択を選んでいる・決着） */
     this.stage = 'planning';
     /** @type {'lose'|null} 決着（決着前は null） */
     this.outcome = null;
@@ -111,6 +131,10 @@ export class Game {
     this.enterStage(1);
     /** @type {import('./gameStats.js').GameStats} 結果の集計（攻防ごとに足す。新しいゲームで 0 から） */
     this.stats = createGameStats();
+    /** @type {import('./upgrades.js').UpgradeState} 取った強化の状態（新しいゲームで空） */
+    this.upgrades = createUpgradeState();
+    /** @type {import('./upgradeOffer.js').UpgradeOffer|null} 3択の候補（3択を選んでいる間だけ。そうでなければ null） */
+    this.upgradeOffer = null;
     this.planIntent();
   }
 
@@ -347,6 +371,75 @@ export class Game {
   }
 
   /**
+   * 3択を選んでいる段階か。
+   * @returns {boolean} 選んでいれば `true`
+   */
+  isChoosingUpgrade() {
+    return this.stage === 'choosing';
+  }
+
+  /**
+   * 3択を始められるか（攻防の結果を見ている段階で、敵を倒している）。
+   * @returns {boolean} 始められるなら `true`
+   */
+  canBeginUpgradeChoice() {
+    return this.stage === 'result' && this.enemy.hp === 0;
+  }
+
+  /**
+   * 城を修理で回復する量（今の城の最大 HP と HP から。乱数は呼ばず、状態も変えない）。
+   * @returns {number} 回復する量（満タンなら 0）
+   */
+  castleRepairAmount() {
+    return castleRepairAmount(this.castle, this.config.castleRepairPercent);
+  }
+
+  /**
+   * ターンの頭にゲージへ足す自動兵士の量（取った強化から。状態は変えない）。
+   * @returns {Object<string, number>} `{ ゲージ: 量 }`（0 のゲージは入らない）
+   */
+  autoTroopGains() {
+    return turnGainsOf(this.config, this.upgrades);
+  }
+
+  /**
+   * 強化の取った回数と効いた量を返す（写し）。
+   * @param {string} id 強化の識別子
+   * @returns {{ count: number, amount: number }} 取っていなければ両方 0
+   */
+  upgradeTaken(id) {
+    return upgradeTakenOf(this.upgrades, id);
+  }
+
+  /**
+   * 強化を値 `value` で取る前と後の値（状態は変えない）。
+   * @param {string} id 強化の識別子
+   * @param {number} value 取るときの値
+   * @returns {import('./upgradeEffects.js').UpgradePreview} 取る前と後の値
+   */
+  upgradePreview(id, value) {
+    return upgradePreview(this, id, value);
+  }
+
+  /**
+   * 城を修理した前と後の値（状態は変えない）。
+   * @returns {import('./upgrades.js').RepairPreview} 回復量と前後の HP
+   */
+  repairPreview() {
+    return castleRepairPreview(this.castle, this.config.castleRepairPercent);
+  }
+
+  /**
+   * 次のステージの敵（乱数は呼ばず、状態も変えない）。
+   * @returns {{ stageNumber: number, typeId: string, name: string }} 次のステージの番号・敵の種類・名前
+   */
+  nextStageEnemy() {
+    const stageNumber = this.stageNumber + 1;
+    const typeId = enemyTypeIdOfStage(this.config, this.seed, stageNumber);
+    return { stageNumber, typeId, name: enemySpecOf(this.config, typeId).name };
+  }
+
+  /**
    * 決着したか。
    * @returns {boolean} 決着していれば `true`
    */
@@ -492,15 +585,83 @@ export class Game {
   }
 
   /**
-   * 次のフェーズを始める（ゲージの戻し・力こぶの換算・行動回数・倒した敵の入れ替わり・敵の予告）。条件を満たさなければ何もしない。
+   * 3択を始める（敵を倒した直後の `'result'` から）。候補を引いて段階を `'choosing'` にする。条件を満たさなければ何もしない。
+   * @returns {import('./upgradeOffer.js').UpgradeOffer|null} 候補の写し（行き先 `'stage'`）。始められなければ `null`
+   */
+  beginUpgradeChoice() {
+    if (!this.canBeginUpgradeChoice()) return null;
+    this.offerUpgrades('stage');
+    return {
+      choices: this.upgradeOffer.choices.map((c) => ({ ...c })),
+      next: this.upgradeOffer.next,
+    };
+  }
+
+  /**
+   * 3択の候補を引いて段階を `'choosing'` にする（条件は呼ぶ側が確かめる。乱数は `drawUpgradeChoices` の順に呼ぶ）。
+   * @param {'stage'|'planning'} next 選んだ後の行き先（`'stage'` は次のステージ、`'planning'` は今の段取りへ戻る）
+   * @returns {void}
+   */
+  offerUpgrades(next) {
+    this.upgradeOffer = {
+      choices: drawUpgradeChoices(this.config, this.upgrades, this.random),
+      next,
+    };
+    this.stage = 'choosing';
+  }
+
+  /**
+   * 3択を選ぶ。強化なら取り、`'repair'` なら城を修理する。行き先が `'stage'` なら次のステージへ進み、`'planning'` なら段取りへ戻る。
+   * @param {number|'repair'} choice 候補の番号（0 から）か `'repair'`
+   * @returns {UpgradeChoiceResult|null} 結果。3択の段階でない・番号が範囲外なら `null`
+   */
+  chooseUpgrade(choice) {
+    if (!this.isChoosingUpgrade() || !this.upgradeOffer) return null;
+    const { choices, next } = this.upgradeOffer;
+    let picked = null;
+    let repaired = 0;
+    if (choice === 'repair') {
+      repaired = this.castleRepairAmount();
+    } else if (Number.isInteger(choice) && choice >= 0 && choice < choices.length) {
+      picked = { ...choices[choice] };
+    } else {
+      return null;
+    }
+    if (picked) takeUpgrade(this, picked.id, picked.value);
+    else this.castle.hp += repaired;
+    this.upgradeOffer = null;
+    let nextPhase = null;
+    if (next === 'stage') {
+      this.stage = 'result';
+      nextPhase = this.advancePhase();
+    } else {
+      this.stage = 'planning';
+    }
+    return { type: 'upgrade', picked, repaired, nextPhase };
+  }
+
+  /**
+   * 次のフェーズを始める（ゲージの戻し・自動兵士・力こぶの換算・行動回数・倒した敵の入れ替わり・敵の予告）。条件を満たさなければ何もしない。
    * 倒した敵（HP 0）は次のステージの敵（HP 最大）に入れ替わる。山札・列・捨て札・城の HP には触れない。
    * @returns {NextPhaseResult|null} 結果。進めなければ `null`
    */
   startNextPhase() {
     if (!this.canStartNextPhase()) return null;
+    return this.advancePhase();
+  }
+
+  /**
+   * 次のフェーズを始める本体（条件は呼ぶ側が確かめる。`startNextPhase`・`chooseUpgrade` から呼ぶ）。ゲージの戻しの後に自動兵士の量を足す。
+   * @returns {NextPhaseResult} 結果
+   */
+  advancePhase() {
     const start = computePhaseStart(this.gauges, this.config);
     this.phase += 1;
     this.gauges = start.gauges;
+    const autoTroops = this.autoTroopGains();
+    for (const gauge of Object.keys(autoTroops)) {
+      this.gauges[gauge] = (this.gauges[gauge] ?? 0) + autoTroops[gauge];
+    }
     this.actionsMax = start.actions;
     this.actionsLeft = start.actions;
     const enemyChanged = this.enemy.hp === 0;
@@ -522,6 +683,7 @@ export class Game {
       actionsLeft: this.actionsLeft,
       enemyAction: { ...this.enemy.intent },
       enemyChanged,
+      autoTroops,
     };
   }
 }

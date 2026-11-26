@@ -5,6 +5,7 @@
 
 import { RULES } from './config.js';
 import { RULE_ITEMS, ruleItemById } from './debugRuleItems.js';
+import { castleMaxHpBonus } from './upgrades.js';
 import { grownMaxHp } from './stageBonus.js';
 import { unitPointsOf } from './unitPoints.js';
 
@@ -67,7 +68,7 @@ function isValidValue(kind, value) {
 }
 
 /**
- * すぐ効く値を、城・今の敵の状態に効かせる（敵の最大 HP は今のステージの加算後。今の HP は上げず、超えるときだけ下げる）。
+ * すぐ効く値を、城・今の敵の状態に効かせる（城の最大 HP は強化で増えた分を足す。敵の最大 HP は今のステージの加算後。今の HP は上げず、超えるときだけ下げる）。
  * @param {import('./Game.js').Game} game ゲーム
  * @param {import('./debugRuleItems.js').RuleItem} item 項目
  * @returns {void}
@@ -76,8 +77,9 @@ function applyNow(game, item) {
   if (item.timing !== 'now') return;
   const value = item.get(game.config);
   if (item.kind === 'castleMaxHp') {
-    game.castle.maxHp = value;
-    if (game.castle.hp > value) game.castle.hp = value;
+    const maxHp = value + castleMaxHpBonus(game.config, game.upgrades);
+    game.castle.maxHp = maxHp;
+    if (game.castle.hp > maxHp) game.castle.hp = maxHp;
     return;
   }
   if (item.group !== game.enemy.typeId) return;
