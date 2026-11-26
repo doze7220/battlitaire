@@ -1,11 +1,12 @@
 /**
  * 責務: 状態は変えず、兵（攻撃・防御・修理の兵、敵兵・敵の守り・HP の群れの兵・シールド・炎）を1体ずつ描き、城・敵の絵の足元の y で奥・手前に分けて描くこと。
- * 見た目と大きさごとの焼き付けの一覧を作り、焼き付けがあればそれで描く（描き分けは drawTroop の1か所。自動兵士は薄いオレンジの体）。ルール層・anim は実行時に import しない。
+ * 見た目と大きさごとの焼き付けの一覧を作り、焼き付けがあればそれで描く（描き分けは drawTroop の1か所。自動兵士は薄いオレンジの体・精鋭は青い体）。ルール層・anim は実行時に import しない。
  */
 
 import { SPRITE_IDS, drawTroopFigure, drawSpriteCentered, troopFigureBakeBounds } from './spriteView.js';
 import { gaugeSprite } from './suitStyle.js';
 import { openTroopBakes, findTroopBake } from './troopBakes.js';
+import { ELITE_BODY_COLOR } from './eliteStyle.js';
 import { HORDE_SKINS, hordeSkinOf } from './hordeSkins.js';
 
 /** 持ち物の大きさの、体の直径に対する割合。 */
@@ -30,6 +31,7 @@ const AUTO_FILL_RATIO = 0.84;
  * @property {string|null} item 持ち物の絵
  * @property {string} bake 焼き付けの識別子（同じ見た目の種類は1枚を共有する）
  * @property {boolean} [horde] 群れの敵の兵の種類か（真なら drawTroop の enemyTypeId の群れの絵で描く。この項目の体・持ち物は絵を引けないときの既定）
+ * @property {boolean} [eliteTint] 精鋭の青い姿を持つか（真の見た目だけ、drawTroop の elite が効く。自軍の兵）
  * @property {boolean} [autoTint] 自動兵士の薄いオレンジの姿を持つか（真の見た目だけ、drawTroop の auto が効く。自軍の兵）
  */
 
@@ -39,9 +41,9 @@ const AUTO_FILL_RATIO = 0.84;
  * @type {Readonly<Object<string, TroopLook>>}
  */
 const TROOP_LOOKS = Object.freeze({
-  attack: Object.freeze({ body: SPRITE_IDS.soldier, item: gaugeSprite('attack'), bake: 'attack', autoTint: true }),
-  defense: Object.freeze({ body: SPRITE_IDS.soldier, item: gaugeSprite('defense'), bake: 'defense', autoTint: true }),
-  heal: Object.freeze({ body: SPRITE_IDS.soldier, item: gaugeSprite('heal'), bake: 'heal', autoTint: true }),
+  attack: Object.freeze({ body: SPRITE_IDS.soldier, item: gaugeSprite('attack'), bake: 'attack', autoTint: true, eliteTint: true }),
+  defense: Object.freeze({ body: SPRITE_IDS.soldier, item: gaugeSprite('defense'), bake: 'defense', autoTint: true, eliteTint: true }),
+  heal: Object.freeze({ body: SPRITE_IDS.soldier, item: gaugeSprite('heal'), bake: 'heal', autoTint: true, eliteTint: true }),
   enemy: Object.freeze({ body: SPRITE_IDS.goblin, item: null, bake: 'goblin', horde: true }),
   enemyGuard: Object.freeze({ body: SPRITE_IDS.goblin, item: null, bake: 'goblin', horde: true }),
   goblin: Object.freeze({ body: SPRITE_IDS.goblin, item: null, bake: 'goblin', horde: true }),
@@ -61,13 +63,29 @@ function woundedBake(bake) {
 /**
  * 傷ついた体の絵を、足元を原点に描く（焼き付けと直接描くときの両方がこの1つを呼ぶ）。
  * 体と持ち物を足元を軸に WOUND_TILT だけ傾けて描き、同じ傾きで体の円（中心 (0, −size/2)・半径 size/2）に WOUND_SHADE を重ねる。ctx の状態は戻す。
+ * tint が色のとき（傷ついた精鋭）は、体 → 同じ傾きで体の円の内側（半径 size/2 × AUTO_FILL_RATIO）の tint の塗り → 持ち物 → WOUND_SHADE の順に描く。
  * @param {CanvasRenderingContext2D} ctx 描画先（足元が原点）
  * @param {Readonly<TroopLook>} look 見た目
  * @param {number} size 体の直径
+ * @param {string|null} [tint=null] 体の円の内側に重ねる色（null なら塗らない＝ふつうの傷ついた姿）
  * @returns {void}
  */
-function drawWoundedFigure(ctx, look, size) {
-  drawTroopFigure(ctx, look.body, look.item, 0, 0, size, WOUND_TILT, size * ITEM_SIZE_RATIO, size * ITEM_DX_RATIO, size * ITEM_DY_RATIO, 1, 1);
+function drawWoundedFigure(ctx, look, size, tint = null) {
+  if (tint === null) {
+    drawTroopFigure(ctx, look.body, look.item, 0, 0, size, WOUND_TILT, size * ITEM_SIZE_RATIO, size * ITEM_DX_RATIO, size * ITEM_DY_RATIO, 1, 1);
+  } else {
+    drawTroopFigure(ctx, look.body, null, 0, 0, size, WOUND_TILT, size * ITEM_SIZE_RATIO, size * ITEM_DX_RATIO, size * ITEM_DY_RATIO, 1, 1);
+    ctx.save();
+    ctx.rotate(WOUND_TILT);
+    ctx.fillStyle = tint;
+    ctx.beginPath();
+    ctx.arc(0, -size / 2, (size / 2) * AUTO_FILL_RATIO, 0, Math.PI * 2);
+    ctx.fill();
+    if (look.item !== null) {
+      drawSpriteCentered(ctx, look.item, size * ITEM_DX_RATIO, -size / 2 + size * ITEM_DY_RATIO, size * ITEM_SIZE_RATIO);
+    }
+    ctx.restore();
+  }
   ctx.save();
   ctx.rotate(WOUND_TILT);
   ctx.fillStyle = WOUND_SHADE;
@@ -87,17 +105,27 @@ function autoBake(bake) {
 }
 
 /**
- * 自動兵士の絵を、足元を原点に描く（焼き付けと直接描くときの両方がこの1つを呼ぶ）。
- * 体の絵 → 体の円（中心 (0, −size/2)・半径 size/2 × AUTO_FILL_RATIO）の AUTO_BODY_COLOR の塗り → 持ち物の絵（ふつうの兵と同じ大きさ・ずれ）の順。ctx の状態は戻す。
+ * 精鋭の絵の焼き付けの識別子を返す。
+ * @param {string} bake 焼き付けの識別子
+ * @returns {string} 精鋭の絵の焼き付けの識別子（`${bake}:elite`）
+ */
+function eliteBake(bake) {
+  return `${bake}:elite`;
+}
+
+/**
+ * 体の円の内側を色で塗った自軍の兵の絵を、足元を原点に描く（自動兵士と精鋭で共用。焼き付けと直接描くときの両方がこの1つを呼ぶ）。
+ * 体の絵 → 体の円（中心 (0, −size/2)・半径 size/2 × AUTO_FILL_RATIO）の color の塗り → 持ち物の絵（ふつうの兵と同じ大きさ・ずれ）の順。ctx の状態は戻す。
  * @param {CanvasRenderingContext2D} ctx 描画先（足元が原点）
  * @param {Readonly<TroopLook>} look 見た目
  * @param {number} size 体の直径
+ * @param {string} color 体の円の内側を塗る色（自動兵士は AUTO_BODY_COLOR・精鋭は ELITE_BODY_COLOR）
  * @returns {void}
  */
-function drawAutoFigure(ctx, look, size) {
+function drawTintedFigure(ctx, look, size, color) {
   drawTroopFigure(ctx, look.body, null, 0, 0, size, 0, size * ITEM_SIZE_RATIO, size * ITEM_DX_RATIO, size * ITEM_DY_RATIO, 1, 1);
   ctx.save();
-  ctx.fillStyle = AUTO_BODY_COLOR;
+  ctx.fillStyle = color;
   ctx.beginPath();
   ctx.arc(0, -size / 2, (size / 2) * AUTO_FILL_RATIO, 0, Math.PI * 2);
   ctx.fill();
@@ -159,6 +187,7 @@ function bakeSizes(bake, battleLayout) {
  * 兵の焼き付けの入れ物を作る。見た目（兵の種類の表と群れの敵の絵の表。焼き付けの識別子）ごとに、大きさごとに1枚、足元を原点に今の大きさ・傾き 0・伸び縮み 1 で描いた絵を焼き付ける。
  * 群れの敵の絵は、その敵の種類の体の大きさ（hordePlaces）でも焼き付け、傷ついた絵（`:wounded`。傷の傾きを含む）も1枚ずつ焼き付ける。
  * 自軍の兵（autoTint の見た目）は、自動兵士の薄いオレンジの絵（`:auto`）も配置の兵の大きさで1枚ずつ焼き付ける。
+ * 自軍の兵（eliteTint の見た目）は、精鋭の青い絵（`:elite`）も同じく1枚ずつ焼き付ける（傷ついた精鋭は直接描く）。
  * 盤面のシーンの init から呼び、戻り値を destroy で dispose() する（Engine.start の後に呼ぶ）。
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
  * @returns {import('./troopBakes.js').TroopBakeSet} 焼き付けの入れ物
@@ -172,9 +201,10 @@ export function createTroopBakes(battleLayout) {
    * @param {number} size 体の直径
    * @param {boolean} wounded 傷ついた絵か
    * @param {boolean} [auto=false] 自動兵士（薄いオレンジ）の絵か（wounded が偽のときだけ）
+   * @param {boolean} [elite=false] 精鋭（青）の絵か（wounded・auto が偽のときだけ）
    */
-  const add = (look, size, wounded, auto = false) => {
-    const id = wounded ? woundedBake(look.bake) : auto ? autoBake(look.bake) : look.bake;
+  const add = (look, size, wounded, auto = false, elite = false) => {
+    const id = wounded ? woundedBake(look.bake) : auto ? autoBake(look.bake) : elite ? eliteBake(look.bake) : look.bake;
     const key = `${id}@${size}`;
     if (done.has(key)) return;
     done.add(key);
@@ -188,8 +218,10 @@ export function createTroopBakes(battleLayout) {
       source: wounded
         ? (ctx) => drawWoundedFigure(ctx, look, size)
         : auto
-          ? (ctx) => drawAutoFigure(ctx, look, size)
-          : (ctx) => drawTroopFigure(ctx, look.body, look.item, 0, 0, size, 0, itemSize, itemDX, itemDY, 1, 1),
+          ? (ctx) => drawTintedFigure(ctx, look, size, AUTO_BODY_COLOR)
+          : elite
+            ? (ctx) => drawTintedFigure(ctx, look, size, ELITE_BODY_COLOR)
+            : (ctx) => drawTroopFigure(ctx, look.body, look.item, 0, 0, size, 0, itemSize, itemDX, itemDY, 1, 1),
       bounds: wounded ? tiltedBounds(bounds) : bounds,
     });
   };
@@ -210,6 +242,10 @@ export function createTroopBakes(battleLayout) {
     if (look.autoTint !== true) continue;
     for (const size of bakeSizes(look.bake, battleLayout)) add(look, size, false, true);
   }
+  for (const look of Object.values(TROOP_LOOKS)) {
+    if (look.eliteTint !== true) continue;
+    for (const size of bakeSizes(look.bake, battleLayout)) add(look, size, false, false, true);
+  }
   return openTroopBakes(entries);
 }
 
@@ -228,10 +264,11 @@ export function createTroopBakes(battleLayout) {
  * @param {string|null} [enemyTypeId=null] 敵の種類の識別子（群れの敵の兵の種類 enemy・enemyGuard・goblin だけが見る。null・表にない種類は既定のゴブリンの絵。ほかの種類は見ない）
  * @param {boolean} [wounded=false] 傷ついた姿で描くか（傾いて暗い。焼き付けがあればそれを貼る。傾き tilt は傷の傾きに重ねる）
  * @param {boolean} [auto=false] 自動兵士の薄いオレンジの姿で描くか（autoTint の見た目で、wounded が偽のときだけ効く。焼き付けがあればそれを貼る）
+ * @param {boolean} [elite=false] 精鋭の青い姿で描くか（eliteTint の見た目で効く。auto が立てば自動兵士が先。焼き付けがあれば貼る。wounded が真のときは傷ついた姿に青い塗りを重ねて直接描く）
  * @returns {void}
  * @throws {Error} 未知の種類のとき
  */
-export function drawTroop(ctx, kind, x, footY, size, tilt, alpha, scaleX, scaleY, enemyTypeId = null, wounded = false, auto = false) {
+export function drawTroop(ctx, kind, x, footY, size, tilt, alpha, scaleX, scaleY, enemyTypeId = null, wounded = false, auto = false, elite = false) {
   let look = Object.prototype.hasOwnProperty.call(TROOP_LOOKS, kind) ? TROOP_LOOKS[kind] : undefined;
   if (look === undefined) throw new Error(`未知の兵の種類: ${kind}`);
   if (look.horde === true) {
@@ -239,8 +276,10 @@ export function drawTroop(ctx, kind, x, footY, size, tilt, alpha, scaleX, scaleY
     if (skin !== null) look = skin;
   }
   const tinted = auto && !wounded && look.autoTint === true;
-  const bakeId = wounded ? woundedBake(look.bake) : tinted ? autoBake(look.bake) : look.bake;
-  const bake = findTroopBake(bakeId, size);
+  const eliteTinted = elite && !auto && !wounded && look.eliteTint === true;
+  const woundedElite = elite && wounded && look.eliteTint === true;
+  const bakeId = wounded ? woundedBake(look.bake) : tinted ? autoBake(look.bake) : eliteTinted ? eliteBake(look.bake) : look.bake;
+  const bake = woundedElite ? null : findTroopBake(bakeId, size);
   ctx.save();
   ctx.globalAlpha = alpha;
   if (bake !== null) {
@@ -252,12 +291,17 @@ export function drawTroop(ctx, kind, x, footY, size, tilt, alpha, scaleX, scaleY
     ctx.translate(x, footY);
     if (tilt !== 0) ctx.rotate(tilt);
     if (scaleX !== 1 || scaleY !== 1) ctx.scale(scaleX, scaleY);
-    drawWoundedFigure(ctx, look, size);
+    drawWoundedFigure(ctx, look, size, woundedElite ? ELITE_BODY_COLOR : null);
   } else if (tinted) {
     ctx.translate(x, footY);
     if (tilt !== 0) ctx.rotate(tilt);
     if (scaleX !== 1 || scaleY !== 1) ctx.scale(scaleX, scaleY);
-    drawAutoFigure(ctx, look, size);
+    drawTintedFigure(ctx, look, size, AUTO_BODY_COLOR);
+  } else if (eliteTinted) {
+    ctx.translate(x, footY);
+    if (tilt !== 0) ctx.rotate(tilt);
+    if (scaleX !== 1 || scaleY !== 1) ctx.scale(scaleX, scaleY);
+    drawTintedFigure(ctx, look, size, ELITE_BODY_COLOR);
   } else {
     drawTroopFigure(
       ctx,
@@ -298,7 +342,7 @@ const OVER_FIGURE_KINDS = Object.freeze(new Set(['shield', 'flame']));
  */
 export function drawTroopSwarm(ctx, troops, size, layer = 'all', depthY = 0, enemyTypeId = null) {
   if (layer !== 'all' && layer !== 'back' && layer !== 'front') throw new Error(`未知の層: ${layer}`);
-  const { count, kinds, order, visible, sortY, x, footY, tilt, alpha, size: sizes, scaleX, scaleY, wounded, auto } = troops;
+  const { count, kinds, order, visible, sortY, x, footY, tilt, alpha, size: sizes, scaleX, scaleY, wounded, auto, elite } = troops;
   for (let n = 0; n < count; n++) {
     const i = order[n];
     if (visible[i] === 0) continue;
@@ -306,6 +350,6 @@ export function drawTroopSwarm(ctx, troops, size, layer = 'all', depthY = 0, ene
       const isBack = sortY[i] < depthY && !OVER_FIGURE_KINDS.has(kinds[i]);
       if (isBack !== (layer === 'back')) continue;
     }
-    drawTroop(ctx, kinds[i], x[i], footY[i], sizes[i] > 0 ? sizes[i] : size, tilt[i], alpha[i], scaleX[i], scaleY[i], enemyTypeId, wounded[i] === 1, auto[i] === 1);
+    drawTroop(ctx, kinds[i], x[i], footY[i], sizes[i] > 0 ? sizes[i] : size, tilt[i], alpha[i], scaleX[i], scaleY[i], enemyTypeId, wounded[i] === 1, auto[i] === 1, elite[i] === 1);
   }
 }

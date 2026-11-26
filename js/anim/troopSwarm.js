@@ -24,6 +24,7 @@ import { breathScale } from './troopBreath.js';
  * @property {Uint8Array} idle 家で待っているか（1／0）
  * @property {Uint8Array} wounded 傷ついた姿か（1／0）
  * @property {Uint8Array} auto 自動兵士か（1／0。作るときに名簿から書く。見た目の色だけに使う）
+ * @property {Uint8Array} elite 精鋭か（1／0。作るときに名簿から書く。見た目の色だけに使う）
  */
 
 /**
@@ -67,11 +68,14 @@ export class TroopSwarm {
     this.wounded = new Uint8Array(n);
     /** @type {Uint8Array} 自動兵士か（作るときだけ書く） */
     this.auto = new Uint8Array(n);
+    /** @type {Uint8Array} 精鋭か（作るときだけ書く） */
+    this.elite = new Uint8Array(n);
     for (let i = 0; i < n; i++) {
       this.order[i] = i;
       this.sortY[i] = units[i].homeY;
       this.size[i] = units[i].size;
       this.auto[i] = units[i].auto ? 1 : 0;
+      this.elite[i] = units[i].elite ? 1 : 0;
     }
     /** @type {import('./troopMotion.js').TroopSample} sampleTroop 用の入れ物 */
     this._out = { visible: false, x: 0, footY: 0, sortY: 0, tilt: 0, alpha: 1, idle: false, wounded: false };
