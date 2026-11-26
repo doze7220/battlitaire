@@ -1,4 +1,4 @@
-/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・1体のポイント（任意）・防御（張る確率と量の幅）・行動の決まり（毎ターン攻撃と防御・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率）・溜めてからの大攻撃・攻撃か防御のどちらか）と攻撃・防御の量の幅）、敵の★とステージごとの★の決まり、ステージごとの敵の加算量（章ごと）、力こぶの換算、疲弊（長引いた敵の防御の減り方）、4スートそろいの加算量）を1か所に集める設定ファイル。 */
+/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・1体のポイント（任意）・防御（張る確率と量の幅）・行動の決まり（毎ターン攻撃と防御・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率）・溜めてからの大攻撃・攻撃か防御のどちらか）と攻撃・防御の量の幅）、敵の★とステージごとの★の決まり、ステージごとの敵の加算量（章ごと）、力こぶの換算、疲弊（長引いた敵の防御の減り方）、4スートそろいの加算量、3択の強化の枠・候補の数・城の修理の割合・強化の種類ごとの設定）を1か所に集める設定ファイル。 */
 
 /**
  * 行動の量の幅（予告を決めるたびに、この中から整数を1つ抽選する）。
@@ -101,6 +101,17 @@
  */
 
 /**
+ * 強化の種類の設定。
+ * @typedef {Object} UpgradeSpec
+ * @property {string} slot 属する枠の識別子（`upgradeSlots` のキー）。
+ * @property {number} weight 枠の中で選ばれる重み（0 以上。0 なら出ない）。
+ * @property {string} effect 効き方の種類（`upgradeEffects.js` の `UPGRADE_EFFECTS` のキー）。
+ * @property {Readonly<AmountRangeSpec>} [range] 3択が出たときに抽選する量の幅（'castleMaxHp' のみ）。
+ * @property {string} [gauge] ターンの頭に足すゲージの識別子（'autoTroop' のみ）。
+ * @property {number} [amount] 取った1回あたりの量（'autoTroop' のみ）。
+ */
+
+/**
  * ルールの調整値。
  * @typedef {Object} Rules
  * @property {readonly string[]} suits スートの識別子。山札の並び順でもある。
@@ -122,6 +133,10 @@
  * @property {readonly string[]} keptGauges フェーズをまたいで値を残すゲージの識別子。
  * @property {Readonly<{gauge: string, per: number, maxBonus: number}>} muscleConversion 力こぶの換算。gauge のゲージが per ごとに行動回数 +1、最大 maxBonus。
  * @property {readonly Readonly<FatigueStage>[]} fatigue 疲弊の段（fromTurn の昇順）。
+ * @property {Readonly<Object<string, number>>} upgradeSlots 3択の枠の識別子から枠の重みへの対応（書いた順が枠の並び）。
+ * @property {number} upgradeChoiceCount 3択の候補の数。
+ * @property {number} castleRepairPercent 城の修理で戻す、最大 HP に対する百分率（整数。量は切り捨て）。
+ * @property {Readonly<Object<string, Readonly<UpgradeSpec>>>} upgrades 強化の種類の識別子から設定への対応（書いた順が一覧の並び）。
  */
 
 /**
@@ -269,4 +284,18 @@ export const RULES = Object.freeze({
     Object.freeze({ fromTurn: 21, defenseRate: 0.5 }),
     Object.freeze({ fromTurn: 26, defenseRate: 0 }),
   ]),
+  upgradeSlots: Object.freeze({ castle: 1, troop: 1, card: 1, special: 0.5 }),
+  upgradeChoiceCount: 3,
+  castleRepairPercent: 30,
+  upgrades: Object.freeze({
+    castleMaxHp: Object.freeze({
+      slot: 'castle',
+      weight: 3,
+      effect: 'castleMaxHp',
+      range: Object.freeze({ min: 5, max: 10 }),
+    }),
+    autoSword: Object.freeze({ slot: 'castle', weight: 2, effect: 'autoTroop', gauge: 'attack', amount: 1 }),
+    autoShield: Object.freeze({ slot: 'castle', weight: 2, effect: 'autoTroop', gauge: 'defense', amount: 1 }),
+    autoHammer: Object.freeze({ slot: 'castle', weight: 2, effect: 'autoTroop', gauge: 'heal', amount: 1 }),
+  }),
 });
