@@ -80,7 +80,7 @@ function topGaugeValues(game, release) {
 }
 
 /**
- * 盤面全体を描く（背景 → 戦闘の段（奥の兵・城・敵・手前の兵・予告の順） → 人数の表示（3択の間は描かない） → 最上部のゲージ → 行動のゲージの帯 → 行動のゲージのラベル → 山札・捨て札 → 列と放つボタン → 燃える札の明滅 → 玉に変わる前の札 → 手札 → 動いているカード（燃えて飛ぶ札を含む） → 玉と式の順）。札には game.cardBonus の値（札の +◯）を、行動のゲージのラベルには game.actionUpgradeStatus() の値（右の強化の表示）を渡して描く。game は読むだけで、何も書き換えない。
+ * 盤面全体を描く（背景 → 戦闘の段（奥の兵・城・敵・手前の兵・予告の順） → 人数の表示（3択の間は描かない） → 最上部のゲージ → 行動のゲージの帯 → 行動のゲージのラベル → 山札・捨て札 → 列と放つボタン → 燃える札の明滅 → 玉に変わる前の札 → 手札 → 動いているカード（燃えて飛ぶ札を含む） → 玉と式の順）。札には game.cardBonus の値（札の +◯）を、行動のゲージのラベルには game.actionUpgradeStatus() の値（右の強化の表示）を、山札には game.eliteStatus() の値（左下の精鋭の角の表示。スートのゲージごとの状態）を渡して描く。game は読むだけで、何も書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').Layout} layout 画面の配置
  * @param {import('../rules/Game.js').Game} game ゲームの状態（読み取り専用）
@@ -107,12 +107,14 @@ export function drawBoard(ctx, layout, game, ui, anim, release, burn = null, idl
 
   const bonusOf = (card) => game.cardBonus(card);
 
+  const eliteStatus = game.eliteStatus();
   for (let d = 0; d < layout.decks.length; d++) {
     drawDeck(ctx, layout.decks[d], game.visibleCards(d), game.hiddenCount(d), {
       selected: ui.selectedDeck === d,
       discardMode: ui.discardMode && ui.selectedDeck === d,
       flip: anim.deckFlips.get(d) ?? null,
       bonusOf,
+      elite: eliteStatus[game.config.suitGauge[game.decks[d].suit]] ?? null,
     });
   }
   drawDiscard(ctx, layout.discard, game.discard.length, anim.discardPending + (burn === null ? 0 : burn.discardPending));
