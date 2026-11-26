@@ -152,6 +152,14 @@ export const UPGRADE_TEXTS = Object.freeze({
     }),
     taken: (row) => `この戦闘の間 行動 +${row.value}`,
   }),
+  handSlot: Object.freeze({
+    name: '手札の枠',
+    choice: (value, preview) => ({
+      title: `手札の枠 +${value}`,
+      detail: `手札 ${preview.before}枠 → ${preview.after}枠`,
+    }),
+    taken: (row) => `手札の枠 ${row.value}枠`,
+  }),
 });
 
 /**

@@ -108,11 +108,11 @@
  * @property {string} effect 効き方の種類（`upgradeEffects.js` の `UPGRADE_EFFECTS` のキー）。
  * @property {Readonly<AmountRangeSpec>} [range] 3択が出たときに抽選する量の幅（'castleMaxHp'・'actionChance'。後者は発動率の百分率の幅）。
  * @property {string} [gauge] ターンの頭に足すゲージの識別子（'autoTroop' のみ）。
- * @property {number} [amount] 取った1回あたりの量（'autoTroop'・'cardSuit'・'cardRank'・'allSuitsBoost'・'comboBoost'・'battleActions' が使う）。
+ * @property {number} [amount] 取った1回あたりの量（'autoTroop'・'cardSuit'・'cardRank'・'allSuitsBoost'・'comboBoost'・'battleActions'・'handSlot' が使う）。
  * @property {string} [after] この強化の種類が上限に着いた後だけ出す（`upgrades` のキー）。
  * @property {string} [suit] 札の +◯ を足すスート（'cardSuit' のみ）。
  * @property {number} [rank] 札の +◯ を足す数字（'cardRank' のみ）。
- * @property {number} [maxCount] 取れる回数の上限（'allSuitsBoost'・'comboBoost' のみ）。
+ * @property {number} [maxCount] 取れる回数の上限（'allSuitsBoost'・'comboBoost'・'handSlot' のみ）。
  * @property {number} [previewCards] 選択肢の説明に出す束の枚数（'comboBoost' のみ）。
  * @property {number} [maxPercent] 発動率の上限の百分率（'actionChance' のみ）。
  * @property {number} [actions] 発動で増える行動の数（'actionChance' のみ）。
@@ -339,5 +339,6 @@ export const RULES = Object.freeze({
       amount: 1,
       after: 'actionChance',
     }),
+    handSlot: Object.freeze({ slot: 'special', weight: 1, effect: 'handSlot', amount: 1, maxCount: 1 }),
   }),
 });

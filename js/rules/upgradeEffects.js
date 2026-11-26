@@ -5,6 +5,7 @@
 
 import { rollAmount } from './enemyBehaviors.js';
 import { scaledReleaseBonus, bundleBonus } from './release.js';
+import { growHand, shrinkHand } from './hand.js';
 
 /**
  * 取った強化の1種類ぶんの記録。
@@ -202,6 +203,28 @@ export const UPGRADE_EFFECTS = Object.freeze({
       after: Math.max(game.battleActionBonus, value),
     }),
     status: (game) => ({ shown: game.battleActionBonus > 0, value: game.battleActionBonus, limit: 0 }),
+  }),
+  /** 手札の枠の強化（取るとその場で枠が増える。外すと元の枠の数に戻り、外した枠の札は捨て札の後ろへ移る）。 */
+  handSlot: Object.freeze({
+    ...EFFECT_DEFAULTS,
+    canOffer: (spec, taken) => taken.count < spec.maxCount,
+    isCapped: (spec, taken) => taken.count >= spec.maxCount,
+    roll: (spec) => spec.amount,
+    fixedValue: (spec) => spec.amount,
+    take: (game, spec, value) => {
+      game.hand = growHand(game.hand, value);
+    },
+    untake: (game, spec, taken) => {
+      const shrunk = shrinkHand(game.hand, game.hand.length - taken.amount);
+      game.hand = shrunk.hand;
+      game.discard.push(...shrunk.removed);
+    },
+    handSlots: (spec, taken) => taken.amount,
+    preview: (game, spec, taken, value) => ({
+      before: game.hand.length,
+      after: game.hand.length + value,
+    }),
+    status: (game) => ({ shown: true, value: game.hand.length, limit: 0 }),
   }),
 });
 
