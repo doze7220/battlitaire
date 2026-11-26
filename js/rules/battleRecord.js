@@ -68,13 +68,17 @@ function isPlainObject(value) {
  * @returns {boolean} プレーンなオブジェクトで、キーがちょうど3つ（`turns`・`castleDamaged`・`longestRun`）で、形が正しければ true
  */
 export function isBattleRecord(value) {
-  if (!isPlainObject(value)) return false;
-  const keys = Object.keys(value);
-  if (keys.length !== 3) return false;
-  const record = /** @type {Record<string, unknown>} */ (value);
-  return (
-    Number.isInteger(record.turns) && /** @type {number} */ (record.turns) >= 0 &&
-    typeof record.castleDamaged === 'boolean' &&
-    Number.isInteger(record.longestRun) && /** @type {number} */ (record.longestRun) >= 0
-  );
+  try {
+    if (!isPlainObject(value)) return false;
+    const keys = Object.keys(value);
+    if (keys.length !== 3) return false;
+    const record = /** @type {Record<string, unknown>} */ (value);
+    return (
+      Number.isInteger(record.turns) && /** @type {number} */ (record.turns) >= 0 &&
+      typeof record.castleDamaged === 'boolean' &&
+      Number.isInteger(record.longestRun) && /** @type {number} */ (record.longestRun) >= 0
+    );
+  } catch {
+    return false;
+  }
 }
