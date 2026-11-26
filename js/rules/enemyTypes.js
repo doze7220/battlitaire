@@ -20,18 +20,27 @@ export function enemyTypeIdsOfStar(config, star) {
 }
 
 /**
- * 指定した★の敵を、動き（`behavior.type`）ごとに、書いた順でまとめる。
- * @param {{enemies: Readonly<Object<string, {star: number, behavior: {type: string}}>>}} config ルールの設定。
+ * 敵の種類の設定から、並びの組の鍵を求める。`motion` があればそれ、なければ `behavior.type`。
+ * @param {{motion?: string, behavior: {type: string}}} spec 敵の種類の設定。
+ * @returns {string} 並びの組の鍵。
+ */
+export function motionKeyOf(spec) {
+  return spec.motion ?? spec.behavior.type;
+}
+
+/**
+ * 指定した★の敵を、動きの組の鍵（`motionKeyOf`）ごとに、書いた順でまとめる。
+ * @param {{enemies: Readonly<Object<string, {star: number, motion?: string, behavior: {type: string}}>>}} config ルールの設定。
  * @param {number} star ★。
- * @returns {string[][]} 動きごとの敵の種類の識別子の並び（動きの現れる順。その★の敵がなければ空）。
+ * @returns {string[][]} 組ごとの敵の種類の識別子の並び（組の現れる順。その★の敵がなければ空）。
  */
 export function enemyMotionsOfStar(config, star) {
   /** @type {Map<string, string[]>} */
   const groups = new Map();
   for (const typeId of enemyTypeIdsOfStar(config, star)) {
-    const type = config.enemies[typeId].behavior.type;
-    if (!groups.has(type)) groups.set(type, []);
-    groups.get(type).push(typeId);
+    const key = motionKeyOf(config.enemies[typeId]);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(typeId);
   }
   return [...groups.values()];
 }

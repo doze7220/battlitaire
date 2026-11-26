@@ -302,7 +302,7 @@ boar: Object.freeze({
         *   2章「要件2」の剣の当たり方のとおりに書く。`Game.js` には import と呼ぶ行だけを足す。各関数・型に JSDoc。`battle.js` の先頭の責務に親子を足す（3行以内）。
         *   確かめ: (1) スクラッチの写しの設定（猪の親子）で、`splitPartDamage` と `computeBattle` の剣の当たり方の場合分け（要件5）が要件2のとおりで、`computeBattle` が合計の食い違い・親子の回復で Error。`Game` を通した攻防（猪の親子は `switchEnemy(game, 'boar')` で出す。写しでは DEBUG の項目のモジュールを読み込まない。2章「要件5」の先回りの依存）で、倒した数（`enemyDefeat`・結果の記録・`defeated`）とスコアが1回だけ・親だけ・子だけが 0 では数えない・攻防で局面が変わると次のターンの予告から新しい局面の行動になる・ゲームを敵が替わるまで・負けるまで Error なく進められる。(2) `RULES` のままで、変更前と並べたランダムなゲーム（タスク1と同じ3種）で毎手の結果・状態が一致し、ほかの7種と今の猪の攻防の出来事が同じ（`computeBattle` の結果の新しい項目 `enemyParts`・敵の `parts` は比べない）。(3) 代用の `oz` のローダーで `js/main.js` から辿るモジュールがすべて読み込める。
         *   共通の作業。
-*   [ ] タスク4: ルール層の親子の仕組み（4）— 並びの組の鍵
+*   [x] タスク4: ルール層の親子の仕組み（4）— 並びの組の鍵
     *   **対象ファイル** :
         *   `./js/rules/enemyTypes.js` : 更新（`motionKeyOf`・`enemyMotionsOfStar`）
     *   **作業内容** :
@@ -455,7 +455,11 @@ boar: Object.freeze({
 
 ### タスク4: ルール層の親子の仕組み（4）— 並びの組の鍵
 *   **作業内容** :
-    *   （未記入）
+    *   `js/rules/enemyTypes.js`: `motionKeyOf(spec)`（`spec.motion ?? spec.behavior.type`。export。JSDoc 付き）を足し、`enemyMotionsOfStar` の組の鍵を `motionKeyOf` にした（JSDoc の説明・型も合わせた）。先頭の責務は変更なし（1行）。
+    *   確かめ（一時スクリプト・変更前 `git archive c4d8924 js` の展開・猪の行を要件1の猪の親子の行（`motion: 'buildup'`・`brood`・`behavior.type: 'brood'`）に替えた `js/` の写しはスクラッチに置き、終わって消した）。変更した1ファイルの構文チェック OK。
+        *   (1) ★1の並び: 日付の種 3650 通り（20200101 から 1 日ずつ。10 年分）× ステージ 1〜500 = 1,825,000 通りで、変更前・`RULES` の変更後・写しの設定（猪の親子）の3つの `enemyTypeIdOfStage` の結果が全件同じ（食い違い 0）。
+        *   (2) `RULES` のまま、★1〜8 の `enemyMotionsOfStar` の組と組の中の並びが変更前と同じ（食い違い 0。★1は `[goblins, ogres]・[wolf, boar]・[skeletons, slime]`）。写しの設定の★1も `steady`・`buildup`・`either` の3組で、`buildup` が狼・猪の親子（`wolf`・`boar`）の順（各敵の鍵: goblins/ogres = steady、wolf/boar = buildup、skeletons/slime = either、giant = cycle、dragon = inhale）。
+        *   (3) 代用の `oz`（受け流す最小の代わり）と、`oz`・`assets/` だけ解く `module.register` のローダー、`document`・`location` の代わりで、`js/main.js` の import が成功し、`js/` 配下の 168 ファイルすべても個別に読み込めた（失敗 0）。
 
 ### タスク5: DEBUG のルール層 — 指定できる行動・敵の HP の付け方・ルールの値の項目（UI はまだ）
 *   **作業内容** :
