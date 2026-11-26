@@ -20,7 +20,12 @@ export const UPGRADE_NONE_TEXT = 'まだ強化を取っていません';
 
 /**
  * 選択肢の取る前と後（ルール層の UpgradePreview と同じ形）。
- * @typedef {{ before: number, after: number }} UpgradePreviewLike
+ * @typedef {{ before: number, after: number, left?: number, cards?: number, actions?: number }} UpgradePreviewLike
+ */
+
+/**
+ * 「強化」タブの行の値（ルール層の UpgradeRow と同じ形）。
+ * @typedef {{ count: number, amount: number, value: number, limit: number }} UpgradeRowLike
  */
 
 /**
@@ -35,7 +40,7 @@ export const UPGRADE_NONE_TEXT = 'まだ強化を取っていません';
  * @typedef {Object} UpgradeTextSpec
  * @property {string} name 強化の名前
  * @property {(value: number, preview: UpgradePreviewLike) => ChoiceText} choice 選択肢の文字（value は取ったときの値）
- * @property {(taken: { count: number, amount: number }) => string} taken 取った強化の行の文字
+ * @property {(row: UpgradeRowLike) => string} taken 取った強化の行の文字
  */
 
 /**
@@ -50,7 +55,7 @@ function autoTroopText(name) {
       title: `${name} +${value}`,
       detail: `毎ターン ${preview.before}人 → ${preview.after}人`,
     }),
-    taken: (taken) => `${name} +${taken.amount}`,
+    taken: (row) => `${name} +${row.value}`,
   });
 }
 
@@ -65,7 +70,7 @@ export const UPGRADE_TEXTS = Object.freeze({
       title: `城の最大 HP +${value}`,
       detail: `最大 HP ${preview.before} → ${preview.after}`,
     }),
-    taken: (taken) => `城の最大 HP +${taken.amount}（${taken.count}回）`,
+    taken: (row) => `城の最大 HP +${row.value}（${row.count}回）`,
   }),
   autoSword: autoTroopText('毎ターン 剣の兵'),
   autoShield: autoTroopText('毎ターン 盾の兵'),
@@ -105,11 +110,12 @@ export function nextEnemyText(name, stageNumber) {
 }
 
 /**
- * 取った強化の一覧を「強化」タブの行の文字にする。
- * @param {Array<{ id: string, count: number, amount: number }>} list 取った強化（takenUpgradeList の結果）
- * @returns {string[]} 行の文字の並び（空なら取っていないときの文字1行）
+ * 「強化」タブの行の文字にする。
+ * @param {Array<UpgradeRowLike & { id: string }>} rows 表示する行（game.takenUpgradeRows() の結果）
+ * @param {boolean} anyTaken 強化を1つでも取っているか（取った回数で判定した結果）
+ * @returns {string[]} 行の文字の並び（取っていなければ取っていないときの文字1行。取っていて表示する行が無ければ空）
  */
-export function takenUpgradeLines(list) {
-  if (list.length === 0) return [UPGRADE_NONE_TEXT];
-  return list.map((t) => upgradeTextOf(t.id).taken(t));
+export function takenUpgradeLines(rows, anyTaken) {
+  if (!anyTaken) return [UPGRADE_NONE_TEXT];
+  return rows.map((row) => upgradeTextOf(row.id).taken(row));
 }

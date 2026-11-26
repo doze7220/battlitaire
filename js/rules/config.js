@@ -109,6 +109,7 @@
  * @property {Readonly<AmountRangeSpec>} [range] 3択が出たときに抽選する量の幅（'castleMaxHp' のみ）。
  * @property {string} [gauge] ターンの頭に足すゲージの識別子（'autoTroop' のみ）。
  * @property {number} [amount] 取った1回あたりの量（'autoTroop' のみ）。
+ * @property {string} [after] この強化の種類が上限に着いた後だけ出す（`upgrades` のキー）。
  */
 
 /**

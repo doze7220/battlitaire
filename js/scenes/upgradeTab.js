@@ -23,7 +23,8 @@ function buildUpgradeTab(game, tab) {
       y: line.pitch * i,
       width: line.width,
       height: line.height,
-      label: () => takenUpgradeLines(takenUpgradeList(game.config, game.upgrades))[i] ?? '',
+      label: () =>
+        takenUpgradeLines(game.takenUpgradeRows(), takenUpgradeList(game.config, game.upgrades).length > 0)[i] ?? '',
       read: () => '',
     });
   }

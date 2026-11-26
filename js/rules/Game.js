@@ -33,6 +33,7 @@ import {
   castleRepairPreview,
   upgradeTakenOf,
   upgradePreview,
+  takenUpgradeRows,
 } from './upgrades.js';
 import { drawUpgradeChoices } from './upgradeOffer.js';
 
@@ -419,6 +420,14 @@ export class Game {
    */
   upgradePreview(id, value) {
     return upgradePreview(this, id, value);
+  }
+
+  /**
+   * 「強化」タブに出す行（一覧の順。回数 1 以上で出すと決まった種類だけ）。
+   * @returns {import('./upgrades.js').UpgradeRow[]} 行の並び
+   */
+  takenUpgradeRows() {
+    return takenUpgradeRows(this);
   }
 
   /**

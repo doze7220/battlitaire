@@ -1,9 +1,9 @@
 /**
- * 3択の候補の抽選（枠 → 枠の中の強化 → 足りなければ埋める → 値）と、候補の形の確かめ（ルール層。渡された乱数だけを使う）。
+ * 3択の候補の抽選（枠 → 枠の中の強化 → 足りなければ埋める → 値。設定の `after` の強化が上限の後だけ出す）と、候補の形の確かめ（ルール層。渡された乱数だけを使う）。
  */
 
 import { effectOf } from './upgradeEffects.js';
-import { upgradeIds, upgradeSpecOf, upgradeTakenOf } from './upgrades.js';
+import { upgradeIds, upgradeSpecOf, upgradeTakenOf, isUpgradeCapped } from './upgrades.js';
 
 /**
  * 3択の候補1つ。
@@ -47,7 +47,8 @@ export function drawUpgradeChoices(config, state, random) {
   const n = config.upgradeChoiceCount;
   const offerable = upgradeIds(config).filter((id) => {
     const spec = upgradeSpecOf(config, id);
-    return spec.weight > 0 && effectOf(spec).canOffer(spec, upgradeTakenOf(state, id));
+    if (spec.weight <= 0 || !effectOf(spec).canOffer(spec, upgradeTakenOf(state, id))) return false;
+    return spec.after === undefined || isUpgradeCapped(config, state, spec.after);
   });
   const slots = Object.keys(config.upgradeSlots).filter(
     (slot) =>
@@ -75,7 +76,7 @@ export function drawUpgradeChoices(config, state, random) {
   }
   return picked.map((id) => {
     const spec = upgradeSpecOf(config, id);
-    return { id, value: effectOf(spec).roll(spec, random) };
+    return { id, value: effectOf(spec).roll(spec, random, upgradeTakenOf(state, id)) };
   });
 }
 

@@ -216,7 +216,7 @@ export function upgradeChoices(config) {
 export function addUpgrade(game, id) {
   if (!isPlanning(game)) return false;
   if (!upgradeIds(game.config).includes(id)) return false;
-  takeUpgrade(game, id, fixedUpgradeValue(game.config, id));
+  takeUpgrade(game, id, fixedUpgradeValue(game.config, game.upgrades, id));
   return true;
 }
 

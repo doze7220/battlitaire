@@ -59,7 +59,7 @@ const HORDE_DY = Object.freeze([-30, -30, 0]);
  * @param {{
  *   config: { upgrades: Object<string, { slot: string }> },
  *   upgradeOffer: { choices: Array<{ id: string, value: number }> },
- *   upgradePreview: (id: string, value: number) => { before: number, after: number },
+ *   upgradePreview: (id: string, value: number) => import('./upgradeText.js').UpgradePreviewLike,
  *   repairPreview: () => { amount: number, before: number, after: number },
  *   nextStageEnemy: () => { stageNumber: number, typeId: string, name: string },
  * }} game ゲーム

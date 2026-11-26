@@ -1,5 +1,5 @@
 /**
- * 取った強化の状態（種類 → 回数と効いた量）の生成・問い合わせ・取る・外す、城の修理の量、取る前と後の値（ルール層。純粋な計算だけ）。
+ * 取った強化の状態（種類 → 回数と効いた量）の生成・問い合わせ・取る・外す、上限、「強化」タブの行、城の修理の量、取る前と後の値（ルール層。純粋な計算だけ）。
  */
 
 import { effectOf } from './upgradeEffects.js';
@@ -7,6 +7,16 @@ import { effectOf } from './upgradeEffects.js';
 /**
  * 取った強化の状態。取った種類だけが入る。
  * @typedef {Object<string, import('./upgradeEffects.js').UpgradeTaken>} UpgradeState
+ */
+
+/**
+ * 「強化」タブの1行ぶん。
+ * @typedef {Object} UpgradeRow
+ * @property {string} id 強化の種類の識別子。
+ * @property {number} count 取った回数。
+ * @property {number} amount 効いた量の合計。
+ * @property {number} value 効き方の `status` の値。
+ * @property {number} limit 効き方の `status` の2つ目の値（使わなければ 0）。
  */
 
 /**
@@ -73,6 +83,25 @@ export function takenUpgradeList(config, state) {
 }
 
 /**
+ * 「強化」タブに出す行（一覧の順。回数 1 以上で、効き方の `status` の `shown` が真の種類だけ）。
+ * @param {{ config: Object, upgrades: UpgradeState, castle: { hp: number, maxHp: number } }} game ゲーム
+ * @returns {UpgradeRow[]} 行の並び
+ */
+export function takenUpgradeRows(game) {
+  const rows = [];
+  for (const id of upgradeIds(game.config)) {
+    const taken = upgradeTakenOf(game.upgrades, id);
+    if (taken.count < 1) continue;
+    const spec = upgradeSpecOf(game.config, id);
+    const status = effectOf(spec).status(game, spec, taken);
+    if (status.shown) {
+      rows.push({ id, count: taken.count, amount: taken.amount, value: status.value, limit: status.limit });
+    }
+  }
+  return rows;
+}
+
+/**
  * 強化を1つ取る。`game.upgrades` を新しいオブジェクトにして回数と量を足し、効き方の `take` を呼ぶ。
  * @param {{ config: Object, upgrades: UpgradeState, castle: { hp: number, maxHp: number } }} game ゲーム
  * @param {string} id 強化の種類の識別子
@@ -105,12 +134,25 @@ export function clearUpgrades(game) {
 /**
  * DEBUG の「+1」で取る値（乱数なし）。
  * @param {{ upgrades: Object }} config ルールの設定
+ * @param {UpgradeState} state 取った強化の状態
  * @param {string} id 強化の種類の識別子
  * @returns {number} 値
  */
-export function fixedUpgradeValue(config, id) {
+export function fixedUpgradeValue(config, state, id) {
   const spec = upgradeSpecOf(config, id);
-  return effectOf(spec).fixedValue(spec);
+  return effectOf(spec).fixedValue(spec, upgradeTakenOf(state, id));
+}
+
+/**
+ * 強化が上限に着いたか。
+ * @param {{ upgrades: Object }} config ルールの設定
+ * @param {UpgradeState} state 取った強化の状態
+ * @param {string} id 強化の種類の識別子
+ * @returns {boolean} 上限なら true
+ */
+export function isUpgradeCapped(config, state, id) {
+  const spec = upgradeSpecOf(config, id);
+  return effectOf(spec).isCapped(spec, upgradeTakenOf(state, id));
 }
 
 /**
