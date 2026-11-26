@@ -29,8 +29,10 @@ const ROW_W = AREA.width - SCROLL_BAND;
 const HALF_W = (ROW_W - BUTTON_GAP) / 2;
 /** 横に4つ並べるボタンの1つの幅。 @type {number} */
 const QUARTER_W = (ROW_W - BUTTON_GAP * 3) / 4;
-/** 強化の +1 のボタンを横に並べる数。試遊で決め直す値。 @type {number} */
-const UPGRADE_COLS = 2;
+/** 強化の「取る」ボタンを横に並べる数（1 なら 1段に1つ。「ハンマーの精鋭の能力 を取る（今 0 回）」が 2列では縮みすぎるため）。試遊で決め直す値。 @type {number} */
+const UPGRADE_COLS = 1;
+/** 強化の「取る」ボタンの1つの幅。 @type {number} */
+const UPGRADE_W = (ROW_W - BUTTON_GAP * (UPGRADE_COLS - 1)) / UPGRADE_COLS;
 
 /**
  * 領域の中の矩形を作って凍結する。
@@ -68,7 +70,7 @@ const ENEMY_COLS = 2;
  * ほかの矩形は領域の中身の左上が原点。どれも `addSlider` などにそのまま広げて渡せる。
  * `enemyRows` は敵の切り替えの段（上から順）で、`from`〜`to`（`to` は含まない）がその段に並ぶ敵の番号の範囲。
  * 最後の段が `ENEMY_COLS` に満たないときは、その数ぶんの幅にする。`upgradeLabel`・`upgradeButtons`（3択を出す・すべて外す）・
- * `upgradeAddButtons`（強化の種類ごとの +1。1段に2つずつ、最後の段が1つならその幅は半分のまま）は敵の HP の下。
+ * `upgradeAddButtons`（強化の種類ごとの「取る」。1段に `UPGRADE_COLS` 個ずつ。今は1つずつで幅は全幅）は敵の HP の下。
  * `ruleTop` はルールの値の並びの始まりの y。
  * @typedef {Readonly<{
  *   area: Readonly<{ x: number, y: number, width: number, height: number }>,
@@ -88,7 +90,7 @@ const ENEMY_COLS = 2;
  */
 
 /**
- * 敵の数と強化の種類の数から、DEBUG タブの配置を求める（敵の切り替えの段の数・強化の +1 の段の数で、その下の y が変わる）。
+ * 敵の数と強化の種類の数から、DEBUG タブの配置を求める（敵の切り替えの段の数・強化の「取る」の段の数で、その下の y が変わる）。
  * @param {number} enemyCount 敵の種類の数
  * @param {number} upgradeCount 強化の種類の数
  * @returns {DebugLayout} 配置
@@ -125,14 +127,14 @@ export function createDebugLayout(enemyCount, upgradeCount) {
   const upgradeLabelY = enemyButtonsY + BUTTON_H + GAP;
   /** 3択を出す・すべて外すボタンの y（見出しのすぐ下）。 */
   const upgradeButtonsY = upgradeLabelY + LABEL_H;
-  /** 強化の +1 のボタンの最初の段の y。 */
+  /** 強化の「取る」ボタンの最初の段の y。 */
   const upgradeAddY = upgradeButtonsY + BUTTON_H + GAP;
   const upgradeAddRows = Math.ceil(Math.max(0, upgradeCount) / UPGRADE_COLS);
   const upgradeAddButtons = [];
   for (let i = 0; i < upgradeCount; i += 1) {
     const row = Math.floor(i / UPGRADE_COLS);
     const col = i % UPGRADE_COLS;
-    upgradeAddButtons.push(rect(upgradeAddY + row * (BUTTON_H + GAP), BUTTON_H, col * (HALF_W + BUTTON_GAP), HALF_W));
+    upgradeAddButtons.push(rect(upgradeAddY + row * (BUTTON_H + GAP), BUTTON_H, col * (UPGRADE_W + BUTTON_GAP), UPGRADE_W));
   }
   /** 強化の段の終わりの y（段がなければ 3択のボタンの下）。 */
   const upgradeEndY = upgradeAddRows > 0

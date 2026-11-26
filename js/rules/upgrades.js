@@ -132,7 +132,7 @@ export function clearUpgrades(game) {
 }
 
 /**
- * DEBUG の「+1」で取る値（乱数なし）。
+ * DEBUG の「取る」ボタンで取る値（乱数なし）。
  * @param {{ upgrades: Object }} config ルールの設定
  * @param {UpgradeState} state 取った強化の状態
  * @param {string} id 強化の種類の識別子

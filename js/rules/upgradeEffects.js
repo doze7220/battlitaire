@@ -57,7 +57,7 @@ import { growHand, shrinkHand } from './hand.js';
  * @property {(spec: Object, taken: UpgradeTaken) => boolean} canOffer 3択に出せるか。
  * @property {(spec: Object, taken: UpgradeTaken) => boolean} isCapped 上限に着いたか。
  * @property {(spec: Object, random: () => number, taken: UpgradeTaken) => number} roll 3択が出たときに決める値（乱数の呼び出しは行ごとに決まっている）。
- * @property {(spec: Object, taken: UpgradeTaken) => number} fixedValue DEBUG の「+1」の値（乱数なし）。
+ * @property {(spec: Object, taken: UpgradeTaken) => number} fixedValue DEBUG の「取る」ボタンの値（乱数なし）。
  * @property {(game: UpgradeTarget, spec: Object, value: number) => void} take 取ったときにすぐ効くこと。
  * @property {(game: UpgradeTarget, spec: Object, taken: UpgradeTaken) => void} untake DEBUG で外すときに戻すこと。
  * @property {(spec: Object, taken: UpgradeTaken) => number} castleMaxHpBonus 城の最大 HP に足している量。

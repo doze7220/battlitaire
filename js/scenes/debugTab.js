@@ -10,9 +10,9 @@ import { upgradeTextOf } from '../view/upgradeText.js';
 import { troopBakesEnabled, setTroopBakesEnabled } from '../view/troopBakes.js';
 
 /**
- * 兵の数のスライダーの範囲。1種類あたりの理論上の最大
- * （根拠: 7 枚の束を放つ 28 + 6 + 4スートそろい 1 = 35 → 5 枚を置いて放つ 25 + 4 + 1 = 30。合計 65。
- * 強化の自動兵士の分を足しても届くように 99 にした）。
+ * 兵の数のスライダーの範囲。上限 99 は目安の値で、強化（札の +◯・コンボ・自動兵士・精鋭の上振れ）で超えうる
+ * （超えた値はつまみが端に描かれ、数は値のまま）。数を変えると、そのゲージの精鋭はなくなる
+ * （スライダーを今の値のままにしたときは何も変わらず、精鋭も消えない）。
  * `config.js` の値（数字の範囲・束の補正・行動回数・力こぶの換算・4スートそろいの量 `allSuitsBonus`・自動兵士の強化）を変えたら見直す。
  * DEBUG タブのスライダーの範囲で、ルールの値ではない。
  * @type {Readonly<{ min: number, max: number, step: number }>}
