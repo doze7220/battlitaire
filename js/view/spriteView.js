@@ -11,6 +11,7 @@ import unitSolder from 'assets/sprites/unit_solder.js';
 import unitGoblin from 'assets/sprites/unit_goblin.js';
 import unitWolf from 'assets/sprites/unit_wolf.js';
 import unitBoar from 'assets/sprites/unit_boar.js';
+import unitUribo from 'assets/sprites/unit_uribo.js';
 import unitSkeleton from 'assets/sprites/unit_skeleton.js';
 import unitOgre from 'assets/sprites/unit_ogre.js';
 import unitSlime from 'assets/sprites/unit_slime.js';
@@ -57,7 +58,7 @@ import intentBreath from 'assets/sprites/intent_breath.js';
 
 /**
  * スプライトの識別子（呼ぶ側はこの定数で絵を指す）。
- * @type {Readonly<{background: string, castle: string, giant: string, dragon: string, soldier: string, goblin: string, ogre: string, skeleton: string, wolf: string, boar: string, slime: string, sword: string, shield: string, hammer: string, gold: string, fire: string, hit: string, cardFrontSword: string, cardFrontShield: string, cardFrontHammer: string, cardFrontGold: string, cardBack: string}>}
+ * @type {Readonly<{background: string, castle: string, giant: string, dragon: string, soldier: string, goblin: string, ogre: string, skeleton: string, wolf: string, boar: string, uribo: string, slime: string, sword: string, shield: string, hammer: string, gold: string, fire: string, hit: string, cardFrontSword: string, cardFrontShield: string, cardFrontHammer: string, cardFrontGold: string, cardBack: string}>}
  */
 export const SPRITE_IDS = Object.freeze({
   background: 'background',
@@ -70,6 +71,7 @@ export const SPRITE_IDS = Object.freeze({
   skeleton: 'skeleton',
   wolf: 'wolf',
   boar: 'boar',
+  uribo: 'uribo',
   slime: 'slime',
   sword: 'sword',
   shield: 'shield',
@@ -122,6 +124,7 @@ const SPRITE_TABLE = Object.freeze({
   [SPRITE_IDS.ogre]: Object.freeze({ sprite: unitOgre, minX: -99, maxX: 99, minY: -98, maxY: 98 }),
   [SPRITE_IDS.wolf]: Object.freeze({ sprite: unitWolf, minX: -155, maxX: 150, minY: -105, maxY: 108 }),
   [SPRITE_IDS.boar]: Object.freeze({ sprite: unitBoar, minX: -172, maxX: 168, minY: -122, maxY: 128 }),
+  [SPRITE_IDS.uribo]: Object.freeze({ sprite: unitUribo, minX: -172, maxX: 168, minY: -122, maxY: 128 }),
   [SPRITE_IDS.slime]: Object.freeze({ sprite: unitSlime, minX: -156, maxX: 145, minY: -120, maxY: 120 }),
   [SPRITE_IDS.sword]: Object.freeze({ sprite: suitSword, minX: -39.5, maxX: 40.5, minY: -100.5, maxY: 99.5 }),
   [SPRITE_IDS.shield]: Object.freeze({ sprite: suitShield, minX: -80.5, maxX: 80.5, minY: -100.5, maxY: 100.5 }),

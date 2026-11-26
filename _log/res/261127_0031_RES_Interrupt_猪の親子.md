@@ -340,7 +340,7 @@ boar: Object.freeze({
         *   2章「要件3」の体の見せ方・敵の体・段と時間割のとおりに書く。`battleTimeline.js` は要件3の3か所だけ変える（ほかの段の組み立ては変えない）。各関数・型・表の行に JSDoc。
         *   確かめ: (1) `RULES` のまま、8種の敵 × ランダムなゲージ（0 を含む。攻撃・防御・修理の精鋭を含む）× DEBUG の口で指定した次の行動を多数作り、変更前と後の段の並び・時間割（段の時刻・きっかけ・名簿の脚と終わり方・HP の変化・当たりの記録（並びの順まで）・ヒットマーク・終わりの時刻・人数の表示値（時計の多数の点で））・待機の伸び縮みの値が一致（写しの新しい項目 `enemyParts`・体の新しい項目 `partHp` は比べない）。(2) スクラッチの写し（猪の行をタスク12の行にした設定と見せる表）で、親子の攻防の段の並びが要件3のとおりで時間割が Error なく作れる（主な確かめはタスク12）。写しの見せる表のうち、まだない物に頼る値は次のとおり置き換える（2章「要件5」の先回りの依存）: `HORDE_SKINS.boar` の `body` は `SPRITE_IDS.uribo`（タスク8）の代わりに今ある `SPRITE_IDS.goblin`（`bake: 'goblin'`）にする（時間割は群れの絵を読まないので結果は変わらない）。`HORDE_PLACES.boar` の `area.h`（タスク9）は書いてもまだ効かず、群れの範囲は足元の範囲いっぱいになる前提で見る（群れと親の絵の重なりはここでは見ない。タスク9・12で見る）。`ENEMY_SHOWS.boar` の `body: 'brood'` はこのタスクで足す体の見せ方なのでそのまま使える。(3) 2章「要件5」の起動とプレイが壊れないことの確かめ。
         *   共通の作業。
-*   [ ] タスク8: うり坊のスプライト — スプライトのコピーとスプライトの表
+*   [x] タスク8: うり坊のスプライト — スプライトのコピーとスプライトの表
     *   **対象ファイル** :
         *   `./assets/sprites/unit_uribo.js` : 新規（`unit_boar.js` のコピー。先頭の説明の1行目だけ直す）
         *   `./js/view/spriteView.js` : 更新（import・`SPRITE_IDS.uribo`・型・`SPRITE_TABLE` の行）
@@ -504,7 +504,12 @@ boar: Object.freeze({
 
 ### タスク8: うり坊のスプライト — スプライトのコピーとスプライトの表
 *   **作業内容** :
-    *   （未記入）
+    *   `assets/sprites/unit_uribo.js`: `cp` で `unit_boar.js` をコピーして作り、先頭の説明の1行目だけ「うり坊の仮のスプライト（左向き。原点は体の中ほど、足元は範囲の下端）。」に直した（ほかの行・`source`・要素は変えていない）。
+    *   `js/view/spriteView.js`: `import unitUribo from 'assets/sprites/unit_uribo.js'`・`SPRITE_IDS.uribo = 'uribo'`（型の JSDoc にも `uribo` を追記）・`SPRITE_TABLE` の `uribo` の行（猪と同じ x −172〜168・y −122〜128）を足した。`unit_boar.js` とほかのスプライトは変えていない。
+    *   確かめ（一時スクリプト・変更前 `git archive c4d8924 js assets` の展開・代用の `oz`・`assets/` だけ解く `module.register` のローダーはスクラッチに置き、終わって消した）。変更した 2 ファイルの構文チェック OK。
+        *   (1) `diff unit_boar.js unit_uribo.js` の違いは先頭の説明の1行目（2行目）だけ。作業ツリーの `spriteView.js` で `unit_uribo.js` が読み込め、`SPRITE_IDS.uribo` を `drawSpriteCentered`・`drawSpriteFit`・`drawSpriteStretched`・`drawTroopFigure` で描け（代用の `ctx` の呼び出し 620 回）、`save`/`restore` が釣り合った（深さ 0・負になった回数 0）。`uribo` の描く呼び出しの並び・`spriteFitRect`・`troopFigureBakeBounds` の値が `boar` と完全に一致（`SPRITE_TABLE` の行が猪の行と同じ値）。
+        *   (2) `RULES` のまま、変更前と作業ツリーで、`SPRITE_IDS` の識別子 22 個すべての描く呼び出しの並び（上の4つの描く関数）・`spriteFitRect`・`troopFigureBakeBounds` が一致（食い違い 0。作業ツリーの識別子は `uribo` が増えた 23 個）。`createTroopBakes` の焼き付けの一覧（`createLayout` の戦闘の配置で作り、`CanvasCache.create` の呼び出しを記録）は変更前・作業ツリーとも 24 件で、範囲（`bounds`・`scale`）と焼き付ける絵の描く呼び出しの並びまで完全に一致（`uribo` は入らない）。焼き付ける絵の `save`/`restore` も釣り合った。
+        *   (3) 代用の `oz`（`Engine`・`Scene`・`CanvasCache`・`Storage`・`Sound`・`Assets`・`Ui`）・`document`・`location`・`screen` の代わり・`save`/`restore` を数える代用の `ctx` で、作業ツリーの `js/` 配下 168 ファイルすべてが個別に読み込め（失敗 0。変更前は 167 ファイル、失敗 0）、`js/main.js` の import も成功した。`BoardScene` の `init` → `update`（タップを混ぜて進める）→ 積んだ `BattleShowScene` の `update`/`draw` → 次のフェーズ、を 40 ゲーム（約 16 万ティック・16 万回の draw。敵は狼・オーガ・猪・骸骨・スライム・ゴブリンの軍勢。攻防の演出は 1,072 ティック、ターンは 1〜4）で進め、Error 0・`save`/`restore` の不釣り合い 0。変更前も同じ条件で Error 0・不釣り合い 0。3択・結果の画面までは進めていない（本タスクの範囲外）。
 
 ### タスク9: 群れの範囲の高さ（`area.h`）
 *   **作業内容** :
@@ -557,4 +562,4 @@ boar: Object.freeze({
 * （タスク7）`BODY_SETUPS.brood` は `horde` の行と `figure` の行を呼び出して合成する（体の記録の項目を足すときは3つの行を同時に見る）。親が 0 のときの `shieldArea` は `null` で、親のいない守るターンはシールドを置かない（親を 0 にした後の予告の決め直しはタスク5で済み。ルール層が親 0 の守るを出さない前提）。親が 0 のとき `partHp.parent` への当たり（`part: 'parent'`）が来ると絵の記録がないので Error になる（ルール層の `parts` の量が 0 でない親への当たりは親が 0 で出ない）。
 * （タスク7）猪の親子の攻防の演出は、見せる表の猪の行（タスク12）が入るまでは作業ツリーでは起きない（猪の `parts` が `null` で、`ENEMY_SHOWS.boar` も `figure` のまま）。確かめはスクラッチの写しでだけ行った。写しの `HORDE_SKINS.boar` は `SPRITE_IDS.goblin` で代用し、`area.h` は効かないので、群れと親の絵の重なり・うり坊の見え方は未確認（タスク9・12で数値と試遊で見る）。
 * （タスク7）`BODY_SETUPS.brood` の群れは `hordeSlots(typeId, 数)` を使うので、`HORDE_PLACES.boar` の行がないと Error になる（タスク12で見せる表をそろえるまで、作業ツリーでは呼ばれない）。
-
+* （タスク8）`unit_uribo.js` は、変更前の `unit_boar.js` が行の終わりを混在させていたかのように見える表示（`file` コマンド）が出たが、実際には CR を含まないファイルで、コピーは `unit_boar.js` と同一のバイト列（違いは先頭の説明の1行目だけ）。`uribo` の `SPRITE_TABLE` の行は猪と同じ値のまま。発注者が描き直して同じ名前で上書きしたら、`SPRITE_TABLE` の `uribo` の行を新しい `bounds` に合わせる（群れの体は長い方の辺を `size` にして描くので、縦横比が変わっても大きさの決め方は同じ）。`uribo` は `HORDE_SKINS` にまだないので焼き付けの一覧には入らない（タスク12で入る）。
