@@ -4,8 +4,7 @@
  */
 
 import { roundRectPath } from './cardView.js';
-import { drawSpriteFit, drawTroopFigure } from './spriteView.js';
-import { hordeSkinOf } from './hordeSkins.js';
+import { drawEnemyPortrait } from './enemyPortrait.js';
 import {
   UPGRADE_HEADING_TEXT,
   UPGRADE_NEXT_ENEMY_TEXT,
@@ -41,12 +40,12 @@ const SUB_COLOR = '#c8ccd4';
 const ACCENT_COLOR = '#ffd24a';
 /** 光の色（flash の濃さを掛ける）。 */
 const FLASH_COLOR = '255, 255, 255';
-/** 群れの敵の兵の大きさ（体の直径）。 */
-const HORDE_SIZE = 96;
-/** 群れの敵の3体の足元の x のずれ（奥の左・奥の右・手前）。 */
-const HORDE_DX = Object.freeze([-64, 64, 0]);
-/** 群れの敵の3体の足元の y のずれ（奥の左・奥の右・手前。絵の矩形の下端から）。 */
-const HORDE_DY = Object.freeze([-30, -30, 0]);
+/** 次の敵の群れの兵の並び（体の直径 96。足元のずれは奥の左・奥の右・手前の順で、矩形の下端の中央から）。 */
+const NEXT_ENEMY_HORDE = Object.freeze({
+  size: 96,
+  dx: Object.freeze([-64, 64, 0]),
+  dy: Object.freeze([-30, -30, 0]),
+});
 
 /**
  * 3択の画面の描く内容（文字だけ。ゲームを読んで作る）。
@@ -105,18 +104,7 @@ function drawPanel(ctx, r) {
  * @returns {void}
  */
 function drawNextEnemy(ctx, layout, battleLayout, typeId) {
-  const f = layout.enemy.figure;
-  const skin = hordeSkinOf(typeId);
-  if (skin !== null) {
-    const cx = f.x + f.w / 2;
-    const foot = f.y + f.h;
-    for (let i = 0; i < HORDE_DX.length; i++) {
-      drawTroopFigure(ctx, skin.body, skin.item, cx + HORDE_DX[i], foot + HORDE_DY[i], HORDE_SIZE, 0, 0, 0, 0, 1, 1);
-    }
-    return;
-  }
-  const figure = battleLayout.enemyFigures[typeId];
-  if (figure) drawSpriteFit(ctx, figure.sprite, f);
+  drawEnemyPortrait(ctx, battleLayout, typeId, layout.enemy.figure, NEXT_ENEMY_HORDE);
 }
 
 /**
