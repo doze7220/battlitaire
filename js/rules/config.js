@@ -1,4 +1,4 @@
-/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・1体のポイント（任意）・防御（張る確率と量の幅）・行動の決まり（毎ターン攻撃と防御・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率）・溜めてからの大攻撃・攻撃か防御のどちらか）と攻撃・防御の量の幅）、敵の★とステージごとの★の決まり、ステージごとの敵の加算量（章ごと）、力こぶの換算、疲弊（長引いた敵の防御の減り方）、4スートそろいの加算量、3択の強化の枠・候補の数・城の修理の割合・強化の種類ごとの設定（城・カード・特別の強化））を1か所に集める設定ファイル。 */
+/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・1体のポイント（任意）・防御（張る確率と量の幅）・行動の決まり（毎ターン攻撃と防御・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率）・溜めてからの大攻撃・攻撃か防御のどちらか）と攻撃・防御の量の幅）、敵の★とステージごとの★の決まり、ステージごとの敵の加算量（章ごと）、力こぶの換算、疲弊（長引いた敵の防御の減り方）、4スートそろいの加算量、3択の強化の枠・候補の数・城の修理の割合・強化の種類ごとの設定（城・カード・特別の強化）、点の項目の設定）を1か所に集める設定ファイル。 */
 
 /**
  * 行動の量の幅（予告を決めるたびに、この中から整数を1つ抽選する）。
@@ -120,6 +120,16 @@
  */
 
 /**
+ * 点の項目の設定の表（敵を倒すたびに、その戦闘から項目ごとの点を出す）。
+ * @typedef {Object} ScoreItemsSpec
+ * @property {Readonly<{base: number, perStage: number}>} defeat 討伐: base + (ステージの番号 − 1) × perStage。
+ * @property {Readonly<{byStar: Readonly<Object<number, number>>}>} strong 強敵: 敵の★ごとの点（表にない★は 0）。
+ * @property {Readonly<{base: number, perTurn: number, min: number}>} turns ターン: max(min, base − perTurn × 使ったターン数)。
+ * @property {Readonly<{cards: number, points: number}>} combo コンボ: その戦闘で cards 枚以上の区切りを放っていれば points。
+ * @property {Readonly<{points: number}>} noDamage 無傷: その戦闘で城が1度も被害を受けていなければ points。
+ */
+
+/**
  * ルールの調整値。
  * @typedef {Object} Rules
  * @property {readonly string[]} suits スートの識別子。山札の並び順でもある。
@@ -145,6 +155,7 @@
  * @property {number} upgradeChoiceCount 3択の候補の数。
  * @property {number} castleRepairPercent 城の修理で戻す、最大 HP に対する百分率（整数。量は切り捨て）。
  * @property {number} eliteBasePower 精鋭の能力の初めの値（精鋭1体のポイント = 1 + 能力）。
+ * @property {Readonly<ScoreItemsSpec>} scoreItems 点の項目の設定の表（キーは点の項目の識別子。書いた順が内訳の並び。計算は `score.js` の `SCORE_RULES`、文字は `scoreText.js` に同じ識別子で1行ずつ持つ）。
  * @property {Readonly<Object<string, Readonly<UpgradeSpec>>>} upgrades 強化の種類の識別子から設定への対応（書いた順が一覧の並び）。
  */
 
@@ -297,6 +308,13 @@ export const RULES = Object.freeze({
   upgradeChoiceCount: 3,
   castleRepairPercent: 30,
   eliteBasePower: 1,
+  scoreItems: Object.freeze({
+    defeat: Object.freeze({ base: 500, perStage: 20 }),
+    strong: Object.freeze({ byStar: Object.freeze({ 1: 0, 2: 200, 3: 400 }) }),
+    turns: Object.freeze({ base: 500, perTurn: 25, min: 0 }),
+    combo: Object.freeze({ cards: 5, points: 50 }),
+    noDamage: Object.freeze({ points: 25 }),
+  }),
   upgrades: Object.freeze({
     castleMaxHp: Object.freeze({
       slot: 'castle',
