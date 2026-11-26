@@ -19,6 +19,14 @@
  */
 
 /**
+ * 敵を倒した攻防の結果に載せる点（内訳に、足した後のスコアを足したもの）。
+ * @typedef {Object} DefeatScore
+ * @property {Array<{id: string, points: number}>} items 項目ごとの点（`scoreItemIds` の順。0 点も入る。写し）。
+ * @property {number} total その敵の点の合計。
+ * @property {number} after その敵の点を足した後のスコア。
+ */
+
+/**
  * 点の項目の計算の行。
  * @typedef {Object} ScoreRule
  * @property {(spec: any, context: ScoreContext) => number} points 設定と文脈から点を出す。

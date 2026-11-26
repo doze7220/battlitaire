@@ -51,16 +51,14 @@ const AMOUNTLESS_KINDS = new Set(['windup']);
 const RESULT_STAT_LABELS = Object.freeze({
   enemiesDefeated: '倒した敵の数',
   phases: 'かかったターン数',
-  damageDealt: '敵に与えた総ダメージ',
-  damageTaken: '城が受けた総ダメージ',
-  healed: '修理の合計',
+  score: 'スコア',
 });
 
 /**
  * 結果の集計の項目を表示する順の並び。
  * @type {ReadonlyArray<string>}
  */
-const RESULT_STAT_ORDER = Object.freeze(['enemiesDefeated', 'phases', 'damageDealt', 'damageTaken', 'healed']);
+const RESULT_STAT_ORDER = Object.freeze(['enemiesDefeated', 'phases', 'score']);
 
 /** 結果の表示を閉じる案内の文字 */
 const RESULT_HINT_TEXT = 'タップでタイトルへ';
@@ -84,8 +82,8 @@ export function outcomeText(outcome) {
 }
 
 /**
- * 結果の集計を、見出しと数字の文字の5行にする。
- * @param {import('../rules/gameStats.js').GameStats} stats 結果の集計
+ * 結果の記録を、見出しと数字の文字の3行（倒した敵の数・かかったターン数・スコア）にする。
+ * @param {import('../rules/gameStats.js').GameStats} stats 結果の記録
  * @returns {Array<{ label: string, value: string }>} 表示順の行。value は数字をそのまま文字にしたもの
  */
 export function resultStatLines(stats) {

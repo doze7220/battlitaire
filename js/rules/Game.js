@@ -1,7 +1,7 @@
 /**
  * 責務: ゲーム全体の状態（山札・捨て札・列・手札・ゲージ・行動回数・フェーズと段階・城・敵）の保持と、
  * 問い合わせ・操作（置く・捨てる・放つ・手札に入れる・手札から置く・束を移す・攻防・次のフェーズ）の提供。
- * ステージの番号・今の敵・結果の集計・取った強化と3択の段階・この戦闘の間の行動の足し分・ゲージごとの精鋭の数と上振れを持ち、放つ計算とターンの始まりの行動に強化の足し分を渡す。攻防では札の燃やしを反映する。操作は「何が起きたか」を返す。
+ * ステージの番号・今の敵・今の戦闘の記録とスコア（結果の記録）・取った強化と3択の段階・この戦闘の間の行動の足し分・ゲージごとの精鋭の数と上振れを持ち、放つ計算とターンの始まりの行動に強化の足し分を渡す。攻防では札の燃やしを反映する。操作は「何が起きたか」を返す。
  */
 
 import { RULES } from './config.js';
@@ -26,7 +26,9 @@ import { createIntent } from './enemyIntent.js';
 import { stageBonusOf } from './stageBonus.js';
 import { unitPointsOf } from './unitPoints.js';
 import { computePhaseStart } from './phase.js';
-import { createGameStats, tallyBattle } from './gameStats.js';
+import { createGameStats, tallyBattle, addRelease, addDefeat } from './gameStats.js';
+import { createBattleRecord, recordRelease, recordBattle } from './battleRecord.js';
+import { scoreDefeat } from './score.js';
 import {
   createUpgradeState,
   takeUpgrade,
@@ -48,7 +50,7 @@ import { drawUpgradeChoices } from './upgradeOffer.js';
  * @property {number} castleHp 攻防の後の城の HP
  * @property {number} enemyHp 攻防の後の敵の HP
  * @property {'lose'|null} outcome 決着（負けたら 'lose'、そうでなければ null。敵を倒しただけなら null）
- * @property {{ enemyName: string }|null} defeat 敵を倒したときの倒した敵の名前（そうでなければ null）
+ * @property {{ enemyName: string, score: import('./score.js').DefeatScore }|null} defeat 敵を倒したときの倒した敵の名前とその点（項目ごとの点・合計・足した後のスコア。そうでなければ null）
  */
 
 /**
@@ -135,9 +137,11 @@ export class Game {
     this.stageNumber = 1;
     /** @type {import('./combatants.js').Enemy} 敵 */
     this.enemy = undefined;
+    /** @type {import('./battleRecord.js').BattleRecord} 今の敵との戦闘の記録（敵が替わると新しくなる） */
+    this.battleRecord = createBattleRecord();
     this.enterStage(1);
-    /** @type {import('./gameStats.js').GameStats} 結果の集計（攻防ごとに足す。新しいゲームで 0 から） */
-    this.stats = createGameStats();
+    /** @type {import('./gameStats.js').GameStats} 結果の記録（放つ・攻防・敵を倒すごとに足す。新しいゲームで 0 から） */
+    this.stats = createGameStats(config);
     /** @type {import('./upgrades.js').UpgradeState} 取った強化の状態（新しいゲームで空） */
     this.upgrades = createUpgradeState();
     /** @type {import('./upgradeOffer.js').UpgradeOffer|null} 3択の候補（3択を選んでいる間だけ。そうでなければ null） */
@@ -157,20 +161,21 @@ export class Game {
   }
 
   /**
-   * 指定した種類の敵（今のステージの加算後の HP 満タン・決まりの状態は初期値・予告は null）に入れ替え、戦闘のターンを 1 に戻す（乱数は呼ばない。予告は呼ぶ側が `planIntent` で決める）。
+   * 指定した種類の敵（今のステージの加算後の HP 満タン・決まりの状態は初期値・予告は null）に入れ替え、戦闘のターンを 1 に戻し、戦闘の記録を新しくする（乱数は呼ばない。予告は呼ぶ側が `planIntent` で決める）。
    * @param {string} typeId 敵の種類の識別子
    */
   spawnEnemy(typeId) {
     this.enemy = createEnemy(typeId, enemySpecOf(this.config, typeId), this.stageBonus());
     this.battleTurn = 1;
+    this.battleRecord = createBattleRecord();
   }
 
   /**
-   * 結果の集計の写しを返す（書き換えてもゲームの状態に影響しない）。
-   * @returns {import('./gameStats.js').GameStats} 倒した敵の数・かかったフェーズ数・敵に与えた総ダメージ・城が受けた総ダメージ・回復の合計
+   * 結果の記録の写しを返す（入れ子を持つので深い写し。書き換えてもゲームの状態に影響しない）。
+   * @returns {import('./gameStats.js').GameStats} 倒した数・総ターン数・スコア・項目ごとの合計と回数・倒した敵の並び・最大の一撃・一番長いコンボ
    */
   gameStats() {
-    return { ...this.stats };
+    return structuredClone(this.stats);
   }
 
   /**
@@ -586,6 +591,8 @@ export class Game {
     const cards = this.columns[c].splice(0);
     const calc = computeRelease(cards, this.config, releaseBoostOf(this.config, this.upgrades));
     const { segments, gains, allSuits } = calc;
+    this.battleRecord = recordRelease(this.battleRecord, segments);
+    this.stats = addRelease(this.stats, segments);
     // 精鋭の抽選は、放つ量が決まった後・山札の補充の前（確率 0 のゲージは乱数を呼ばない）
     const elites = drawElites(calc, this.eliteStatus(), this.random);
     for (const gauge of Object.keys(gains)) {
@@ -610,8 +617,9 @@ export class Game {
     const spec = enemySpecOf(this.config, this.enemy.typeId);
     const enemyHeal = rollAttackHeal(spec.behavior, enemyAction, this.random);
     const burns = planActionBurns(enemyAction, this.columns, this.random);
+    const attack = this.gauges.attack ?? 0;
     const calc = computeBattle({
-      attack: this.gauges.attack ?? 0,
+      attack,
       defense: this.gauges.defense ?? 0,
       heal: this.gauges.heal ?? 0,
       enemyAction: { kind: enemyAction.kind, amount: enemyAction.amount, defense: enemyAction.defense },
@@ -624,7 +632,21 @@ export class Game {
     });
     this.castle.hp = calc.castleHp;
     this.enemy.hp = calc.enemyHp;
-    this.stats = tallyBattle(this.stats, calc.events);
+    this.stats = tallyBattle(this.stats, calc.events, attack);
+    this.battleRecord = recordBattle(this.battleRecord, calc.events);
+    let defeat = null;
+    if (calc.enemyDefeated) {
+      const breakdown = scoreDefeat(this.config, {
+        stageNumber: this.stageNumber,
+        star: spec.star,
+        record: this.battleRecord,
+      });
+      this.stats = addDefeat(this.stats, breakdown, { typeId: this.enemy.typeId, stageNumber: this.stageNumber });
+      defeat = {
+        enemyName: this.enemy.name,
+        score: { items: breakdown.items.map((item) => ({ ...item })), total: breakdown.total, after: this.stats.score },
+      };
+    }
     applyBurns(this.columns, this.discard, calc.burned);
     if (calc.outcome === null) {
       this.stage = 'result';
@@ -639,7 +661,7 @@ export class Game {
       castleHp: calc.castleHp,
       enemyHp: calc.enemyHp,
       outcome: calc.outcome,
-      defeat: calc.enemyDefeated ? { enemyName: this.enemy.name } : null,
+      defeat,
     };
   }
 
