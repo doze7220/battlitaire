@@ -409,7 +409,7 @@ boar: Object.freeze({
         *   2章「要件5」の確かめを作業ツリーの最新の `js/` でまとめて行い、結果（数値・割合・体の数）を詳細作業内容に書く。不具合が見つかったら直さずに懸念事項に書き、どのタスクの直しかを示す。
         *   発注者に依頼するテストプレイ（REQ の【テストプレイで確かめること】1〜11）の一覧を詳細作業内容に写し、目視が要る所（重なり・大きさ・「怒り」の文字・敵の絵）を挙げる。
         *   共通の作業（RES の記入）。
-*   [ ] タスク16: 開発資料の更新（固定タスク）
+*   [x] タスク16: 開発資料の更新（固定タスク）
     *   **対象ファイル** :
         *   `./PROJECT_ARCHITECTURE.md` : 更新
     *   **作業内容** :
@@ -616,7 +616,13 @@ boar: Object.freeze({
 
 ### タスク16: 開発資料の更新（固定タスク）
 *   **作業内容** :
-    *   （未記入）
+    *   2章の『開発資料の更新予定』と各タスクの追記（追加なしの旨）を確かめ、`PROJECT_ARCHITECTURE.md` だけを更新した（コード・`_doc/`・`README.md` は変えていない）。書いた内容は `config.js`・`enemyParts.js`・`suspendData.js`・`enemyShows.js`・`hordePlaces.js`・`soundCues.js` などの実ファイルと突き合わせた（猪の行・`SUSPEND_VERSION` 7・`RULE_ITEMS` 69 個・`isEnemyPartsShape` の形の確かめ・`BADGE_LABEL_*`・`motionKeyOf`）。
+    *   1章: スプライトの決まり・一覧に `unit_uribo.js`（うり坊）を足し、猪を猪の親に。戦闘の段の説明に、うり坊の群れ・陣地（x 565〜685・y 145〜225、`area.h`）、猪の親子の予告の札（大突進は赤・「怒り」の文字・札の高さは群れの敵と同じ・数え下ろしなし）を足した。
+    *   2章: 「敵」の状態に `parts`、行動の決まりを6種類にして `brood` の項（局面・行動・乱数・状態 `lastVariant`）を足し、狼だけの溜めて大攻撃に直した。並びの組の鍵（`motion`・`motionKeyOf`）、防御なし・隙の一覧、予告の中の種類（`protect`・`rush`・`rage`・`bigRush`）、設定の項（`motion`・`brood`・65 → 69 個）、攻防の出来事の並び（`enemyDamage.parts`・入力・結果の `enemyParts`）、中断データ（版 7・`parts`）を更新。新しく「**親と子を持つ敵（猪の親子）**」の項（HP の分け方・局面・当たる順・倒したのは1回・体の見せ方）を足した。「**敵の種類を足すときに書き足す所**」に、親と子を持つ敵を足すときの項（体の形・HP の分け方・当たる順・局面・演出・絵・中断データ）を足した。
+    *   3章: デバッグ（敵の次の行動の局面ごとの選択肢・HP の「1 にする」「満タンにする」の親子の扱い・「子を 0 にする」「親を 0 にする」・最大 HP を変えたときの親と子の合わせ方・69 個）、1フェーズの流れの1・4（猪の溜めの数え下ろしを外し、猪の親子の見せ方・攻撃の音の行を足した）。
+    *   4章の表: 新しい行 `enemyParts.js`・`bodyHp.js`、更新の行（`config.js`・`combatants.js`・`enemyBehaviors.js`・`enemyTypes.js`・`debugIntents.js`・`debugControls.js`・`debugRules.js`・`debugRuleItems.js`・`suspendData.js`・`battle.js`・`Game.js`・`enemyShows.js`・`enemyBody.js`・`battleSteps.js`・`battleTimeline.js`・`enemyIdle.js`・`spriteView.js`・`hordePlaces.js`・`enemyFigures.js`・`hordeSkins.js`・`battleText.js`・`intentView.js`・`enemyView.js`・`enemyPortrait.js`・`debugText.js`・`debugLayout.js`・`debugTab.js`・`boardDebug.js`・`BoardScene.js`・`soundCues.js`）。
+    *   共通の作業: コードは変えていないので構文チェックは不要。
+    *   （diff 監査の修正）3章デバッグの見出し並びの「猪」を「猪の親子」に、2章の HP の分けの「奇数なら親が1多い」を猪の親子（`childPercent` 50）の場合と分かる書き方に、1章の予告の札の「橙の縁取りの「怒り」」を「縁取りのある橙の「怒り」」に直した。
 
 ## 5. 懸念事項・要確認ポイント
 * （計画時）並ぶ場所は、親の絵の奥（上）にうり坊の群れ、親の左に攻撃のうり坊の陣地とした（要件3）。ふだんのターンに剣の兵がうり坊へ向かうとき、親の絵の後ろを通って見える。重なり・見え方は試遊で確かめ、`HORDE_PLACES.boar`・`ENEMY_FIGURES.boar` の値で直す。
@@ -660,3 +666,4 @@ boar: Object.freeze({
 * （タスク15・目視確認を推奨）目視が要る所は4章タスク15の「目視が要る所」(a)〜(g) にまとめた（重なり・「怒り」の文字・敵の絵・うり坊の浮き・DEBUG の文字の縮み・ステージ 100 付近の重さ・攻撃の音）。
 * （タスク15）描く体の数は、ステージ 100 の子の攻撃 592 体・守る 526 体で目安の 500 体を超える（ゴブリンの軍勢のステージ 100 は 740 体）。実機（スマホ）の重さは試遊で確かめる。
 * （タスク15・開発資料の更新予定）追加なし（2章の更新予定のとおり）。
+* （タスク16）資料の「うり坊の守りの陣地は x 525〜560」は設定値のとおり書いた。親の絵の左端（552）との 8px の重なりは試遊の確認事項（タスク9・12の懸念）のままで、資料には数値だけを書き、重なりの評価は書いていない。ほかに判断に迷った点はない。
