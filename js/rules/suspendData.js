@@ -12,12 +12,14 @@ import { isBehaviorState } from './enemyBehaviors.js';
 import { createGameStats } from './gameStats.js';
 import { isUpgradeState } from './upgrades.js';
 import { isUpgradeOffer } from './upgradeOffer.js';
+import { handSizeOf } from './upgradeBoosts.js';
 
 /**
  * 中断データの版番号（形が変わったら上げる。版番号はここ1か所）。
+ * 4: 強化のカード・特別の枠（この戦闘の間の足し分 `battleActionBonus`・強化から決まる手札の枠の数）を足したとき 3 から上げた。
  * @type {number}
  */
-export const SUSPEND_VERSION = 3;
+export const SUSPEND_VERSION = 4;
 
 /**
  * 中断データ（ターンの始まり、または3択の段階の状態。`null`・真偽値・文字列・数・配列・プレーンなオブジェクトだけでできている）。
@@ -35,7 +37,8 @@ export const SUSPEND_VERSION = 3;
  * @property {{ suit: string, cards: import('./card.js').Card[] }[]} decks 山札（並びの順）
  * @property {import('./card.js').Card[]} discard 捨て札
  * @property {import('./card.js').Card[][]} columns 列
- * @property {(import('./card.js').Card|null)[]} hand 手札（`null` は空き枠）
+ * @property {(import('./card.js').Card|null)[]} hand 手札（`null` は空き枠。長さは設定の初めの枠の数 + 取った手札の枠）
+ * @property {number} battleActionBonus この戦闘の間、毎ターン足す行動の数（3択の段階では 0）
  * @property {Object<string, number>} gauges ゲージの識別子 → 値
  * @property {{ hp: number, maxHp: number }} castle 城
  * @property {{ typeId: string, hp: number, maxHp: number, intent: import('./combatants.js').EnemyIntent, behaviorState: object }} enemy 敵（名前は設定から引くので持たない）
@@ -200,10 +203,16 @@ const FIELDS = Object.freeze({
   }),
   hand: Object.freeze({
     save: (game) => structuredClone(game.hand),
-    check: (value, config) =>
-      Array.isArray(value) && value.length === config.handSize && value.every((slot) => slot === null || isCardShape(slot)),
+    check: (value) => Array.isArray(value) && value.every((slot) => slot === null || isCardShape(slot)),
     load: (game, value) => {
       game.hand = structuredClone(/** @type {any} */ (value));
+    },
+  }),
+  battleActionBonus: Object.freeze({
+    save: (game) => game.battleActionBonus,
+    check: (value) => isIntFrom(value, 0),
+    load: (game, value) => {
+      game.battleActionBonus = /** @type {number} */ (value);
     },
   }),
   gauges: Object.freeze({
@@ -288,6 +297,16 @@ function isStageConsistent(data) {
 }
 
 /**
+ * 手札の長さが、取った強化から決まる枠の数（設定の初めの枠の数 + 取った手札の枠）と一致するか。設定の `handSize` とは直接比べない。
+ * @param {SuspendData} data 項目ごとの形の確かめを通ったデータ
+ * @param {Readonly<import('./config.js').Rules>} config ルールの設定
+ * @returns {boolean} 一致すれば true
+ */
+function isHandConsistent(data, config) {
+  return data.hand.length === handSizeOf(config, data.upgrades);
+}
+
+/**
  * 全部の札（山札・捨て札・列・手札）が、今の設定で作る札とちょうど一致するか（欠け・重なり・知らない札を見つける）。
  * 札の id の決め方は書き写さず、`createDecks` で作った札と比べる。
  * @param {SuspendData} data 項目ごとの形の確かめを通ったデータ
@@ -328,7 +347,7 @@ export function toSuspendData(game) {
 
 /**
  * 保存されていた値を確かめ、今の設定と合えば中断データとして返す（どんな値でも例外を投げない）。
- * 版番号・各項目の形・`actionsLeft <= actionsMax`・段階の整合・全部の札の組が今の設定と合うかを見る。敵の数値などは設定と比べない。
+ * 版番号・各項目の形・`actionsLeft <= actionsMax`・段階の整合・手札の長さ（強化から決まる枠の数）・全部の札の組が今の設定と合うかを見る。敵の数値などは設定と比べない。
  * @param {unknown} raw 保存されていた値（`null`・配列・数・文字列・入れ子の欠けを含む）
  * @param {Readonly<import('./config.js').Rules>} [config] ルールの設定（既定は `RULES`）
  * @returns {SuspendData|null} 合えば `raw` の写し（参照を共有しない）。合わなければ `null`
@@ -343,6 +362,7 @@ export function readSuspendData(raw, config = RULES) {
     const data = /** @type {SuspendData} */ (structuredClone(source));
     if (data.actionsLeft > data.actionsMax) return null;
     if (!isStageConsistent(data)) return null;
+    if (!isHandConsistent(data, config)) return null;
     if (!hasAllCards(data, config)) return null;
     /** @type {Record<string, unknown>} */
     const result = { version: SUSPEND_VERSION };

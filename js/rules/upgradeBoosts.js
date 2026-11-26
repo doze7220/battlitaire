@@ -1,5 +1,5 @@
 /**
- * 責務: 取った強化から、札の +◯・放つ計算の足し分（束の補正の段・4スートそろいの足し分）・ターンの始まりの行動の足し分（発動の抽選を含む）を求める（ルール層）。
+ * 責務: 取った強化から、札の +◯・放つ計算の足し分・ターンの始まりの行動の足し分（発動の抽選を含む）・手札の枠の数を求める（ルール層）。
  * 種類ごとの分岐は効き方の表に任せ、ここは表の口を引いて足すだけ。乱数は渡されたものだけを使う。
  */
 
@@ -104,4 +104,19 @@ export function turnUpgradeActions(config, state, battleActionBonus, random) {
   let chanceActions = 0;
   if (percent > 0 && random() < percent / 100) chanceActions = actions;
   return { battleActions: battleActionBonus, chanceActions };
+}
+
+/**
+ * 手札の枠の数（設定の初めの枠の数 + 全種類の `handSlots` の合計）。中断データの手札の長さの確かめが使う。
+ * @param {{ handSize: number, upgrades: Object }} config ルールの設定
+ * @param {import('./upgrades.js').UpgradeState} state 取った強化の状態
+ * @returns {number} 手札の枠の数
+ */
+export function handSizeOf(config, state) {
+  let total = config.handSize;
+  for (const id of upgradeIds(config)) {
+    const spec = upgradeSpecOf(config, id);
+    total += effectOf(spec).handSlots(spec, upgradeTakenOf(state, id));
+  }
+  return total;
 }
