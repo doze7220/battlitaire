@@ -1,5 +1,5 @@
 /**
- * 放つ演出全体の管理（時計を進め、放つたびの玉の記録（4スートそろいの文字と玉を含む）と段取りの間の兵を持ち、連鎖のきっかけ・札を止めているか・動いているか・ゲージの表示値・待っている兵の数（自動兵士の印のある数を含む）・描画用の見た目の値を答え、段取りの間の兵の数をその場で合わせ、自動兵士を陣地に現す）。
+ * 放つ演出全体の管理（時計を進め、放つたびの玉の記録（4スートそろいの文字と玉を含む）と段取りの間の兵を持ち、連鎖のきっかけ・札を止めているか・動いているか・ゲージの表示値（精鋭の上振れを含む）・待っている兵の数（自動兵士の印・精鋭を含む）・描画用の見た目の値を答え、段取りの間の兵の数をその場で合わせ、自動兵士を陣地に現す）。
  * 描画せず、ゲームの状態に触れない。
  */
 
@@ -18,7 +18,8 @@ import { createGaugeCount, sampleGaugeCount, gaugeCountEnd } from './gaugeCount.
  * @property {import('./orbTrack.js').FormulaLook[]} formulas 式
  * @property {import('./allSuitsTrack.js').AllSuitsLabelLook[]} labels 4スートそろいの文字
  * @property {import('./troopSwarm.js').TroopSwarmLook} troops 段取りの間の兵
- * @property {Object<string, number>} gaugeValues まだ数えていない分のあるゲージだけの表示値
+ * @property {Object<string, number>} gaugeValues まだ数えていない分のあるゲージだけの表示値（人数 + 上振れ）
+ * @property {Object<string, number>} extraValues まだ数えていない上振れのあるゲージだけの上振れの表示値
  */
 
 /**
@@ -39,6 +40,8 @@ export class ReleaseShow {
     this.allSuits = [];
     /** @type {import('./gaugeCount.js').GaugeCount[]} 区切りごとの数え上げ */
     this.counts = [];
+    /** @type {import('./gaugeCount.js').GaugeCount[]} 区切りごとの上振れの数え上げ（`counts` と同じ時間） */
+    this.extraCounts = [];
     /** @type {{time: number, ordinal: number}[]} 連鎖のきっかけ（時刻の昇順） */
     this.chainCues = [];
     /** @type {CampTroops} 段取りの間の兵 */
@@ -59,18 +62,23 @@ export class ReleaseShow {
     orbs.chainTimes.forEach((time, i) => this.chainCues.push({ time, ordinal: i + 1 }));
     this.chainCues.sort((a, b) => a.time - b.time);
     let end = Math.max(this.endTime, orbs.endTime);
-    orbs.segments.forEach((seg) => {
+    const elites = result.elites ?? null;
+    orbs.segments.forEach((seg, i) => {
       if (seg.amount <= 0) return;
-      end = Math.max(end, this.addArrival(seg.gauge, seg.amount, seg.target, seg.arriveAt));
+      const n = elites === null ? 0 : elites.segments[i] ?? 0;
+      const points = elites === null ? 1 : elites.points[seg.gauge] ?? 1;
+      end = Math.max(end, this.addArrival(seg.gauge, seg.amount, seg.target, seg.arriveAt, n, points));
     });
     if (result.allSuits !== null && result.allSuits !== undefined && orbs.segments.length > 0) {
       const base = orbs.segments[orbs.segments.length - 1].flyStart;
       const track = createAllSuitsTrack(result.allSuits, geometry, base);
       this.allSuits.push(track);
       end = Math.max(end, track.endTime);
-      track.orbs.forEach((o) => {
+      track.orbs.forEach((o, j) => {
         if (o.amount <= 0) return;
-        end = Math.max(end, this.addArrival(o.gauge, o.amount, o.target, o.arriveAt));
+        const n = elites === null ? 0 : elites.allSuits[j] ?? 0;
+        const points = elites === null ? 1 : elites.points[o.gauge] ?? 1;
+        end = Math.max(end, this.addArrival(o.gauge, o.amount, o.target, o.arriveAt, n, points));
       });
     }
     this.endTime = end;
@@ -80,23 +88,29 @@ export class ReleaseShow {
 
   /**
    * 玉が着いたときの兵・金貨の加算を記録に足す（区切りの玉と4スートそろいの玉で共用）。
-   * 自軍の兵のゲージなら陣地へ兵を `amount` 体着かせ、それ以外（金貨）は `coinCountMs` で数え上げる。
+   * 自軍の兵のゲージなら陣地へ兵を `amount` 体着かせ（後ろの `elites` 体は精鋭）、それ以外（金貨）は `coinCountMs` で数え上げる。
+   * 表示の数え上げは「人数 + 上振れ」まで、上振れの数え上げは上振れまでを、同じ時間で数える。
    * @param {string} gauge 加算先のゲージ
-   * @param {number} amount 加算量（1 以上）
+   * @param {number} amount 加算量（人数。1 以上）
    * @param {{x: number, y: number}} target 飛ぶ先（玉の中心）
    * @param {number} arriveAt 玉が着く時刻
+   * @param {number} [elites] 着く amount 体のうち、精鋭の数（省くと 0。自軍の兵のゲージだけ）
+   * @param {number} [points] 精鋭1体のポイント（省くと 1）
    * @returns {number} 数え上げ・兵の到着が終わる時刻
    */
-  addArrival(gauge, amount, target, arriveAt) {
+  addArrival(gauge, amount, target, arriveAt, elites = 0, points = 1) {
     let duration;
+    let extra = 0;
     if (OWN_KINDS.includes(gauge)) {
-      const last = this.camp.land(gauge, amount, target.x, target.y, arriveAt);
+      const last = this.camp.land(gauge, amount, target.x, target.y, arriveAt, elites, points);
       duration = last - arriveAt;
+      extra = elites * (points - 1);
     } else {
       duration = ANIM_TIMING.coinCountMs;
     }
-    const count = createGaugeCount({ gauge, from: 0, to: amount, delay: arriveAt, duration });
+    const count = createGaugeCount({ gauge, from: 0, to: amount + extra, delay: arriveAt, duration });
     this.counts.push(count);
+    if (extra > 0) this.extraCounts.push(createGaugeCount({ gauge, from: 0, to: extra, delay: arriveAt, duration }));
     return gaugeCountEnd(count);
   }
 
@@ -113,6 +127,7 @@ export class ReleaseShow {
     this.releases = this.releases.filter((r) => r.endTime > this.clock);
     this.allSuits = this.allSuits.filter((a) => a.endTime > this.clock);
     this.counts = this.counts.filter((c) => gaugeCountEnd(c) > this.clock);
+    this.extraCounts = this.extraCounts.filter((c) => gaugeCountEnd(c) > this.clock);
   }
 
   /**
@@ -150,7 +165,15 @@ export class ReleaseShow {
   }
 
   /**
-   * 段取りの間の兵の数を、玉を飛ばさずその場で count 体にそろえる。
+   * 段取りの間に待っている精鋭の、種類ごとの番号と1体のポイント（攻防の時間割へ引き継ぐ）。
+   * @returns {{attack: Array<{index: number, points: number}>, defense: Array<{index: number, points: number}>, heal: Array<{index: number, points: number}>}}
+   */
+  waitingElites() {
+    return this.camp.eliteUnits();
+  }
+
+  /**
+   * 段取りの間の兵の数を、玉を飛ばさずその場で count 体にそろえる（その種類の精鋭はなくなる）。
    * 動いている間（`isBusy()`）は呼ばないこと（判断は呼ぶ側）。
    * @param {string} kind 兵の種類（'attack' | 'defense' | 'heal'）
    * @param {number} count そろえる数（0 以上の整数）
@@ -192,9 +215,10 @@ export class ReleaseShow {
    * 描画用の見た目の値を作る。状態は変えない。
    * @param {Object<string, number>} gauges ルール層のゲージの値
    * @param {Object<string, number>|null} [held] まだ現れていない自動兵士の数（種類 → 量）。あれば、そのゲージの表示値から引く（省くと引かない）
+   * @param {Object<string, {count: number, extra: number}>|null} [elites] ルール層の精鋭の状態（`game.eliteBoost()`）。あれば、まだ数えていない上振れのあるゲージの上振れの表示値（`extraValues`）を作る（省くと作らない）
    * @returns {ReleaseLook}
    */
-  view(gauges, held = null) {
+  view(gauges, held = null, elites = null) {
     const out = { cards: [], orbs: [], formulas: [], labels: [] };
     for (const r of this.releases) sampleReleaseOrbs(r, this.clock, out);
     for (const a of this.allSuits) sampleAllSuits(a, this.clock, out);
@@ -210,6 +234,14 @@ export class ReleaseShow {
         if (amount > 0) gaugeValues[kind] = (gaugeValues[kind] ?? gauges[kind]) - amount;
       }
     }
-    return { cards: out.cards, orbs: out.orbs, formulas: out.formulas, labels: out.labels, troops: this.camp.look(), gaugeValues };
+    /** @type {Object<string, number>} */
+    const extraValues = {};
+    if (elites !== null) {
+      for (const c of this.extraCounts) {
+        const pending = c.to - sampleGaugeCount(c, this.clock);
+        if (pending > 0) extraValues[c.gauge] = (extraValues[c.gauge] ?? elites[c.gauge].extra) - pending;
+      }
+    }
+    return { cards: out.cards, orbs: out.orbs, formulas: out.formulas, labels: out.labels, troops: this.camp.look(), gaugeValues, extraValues };
   }
 }

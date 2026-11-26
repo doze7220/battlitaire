@@ -1,10 +1,10 @@
 /**
  * 段取りの間に陣地で待つ自軍の兵（名簿と、全員の見た目の入れ物）を持ち、弾けた玉から兵を足し、時計から見た目を書き込み、種類ごとの数を答える。
- * 種類の兵の数をその場でそろえ、自動兵士（印つき）を家に現し、印のある兵の数を答える。描画も状態の変更（ルール層）もしない。
+ * 種類の兵の数をその場でそろえ（精鋭は消える）、自動兵士（印つき）を家に現し、印のある兵の数と待っている精鋭を答える。描画も状態の変更（ルール層）もしない。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
-import { createTroopRoster, landTroops, OWN_KINDS, removeTroops, spawnTroops } from './troopRoster.js';
+import { clearEliteTroops, createTroopRoster, landTroops, OWN_KINDS, removeTroops, spawnTroops } from './troopRoster.js';
 import { TroopSwarm } from './troopSwarm.js';
 
 /**
@@ -42,11 +42,13 @@ export class CampTroops {
    * @param {number} x 飛び出す位置の x
    * @param {number} y 飛び出す位置の y
    * @param {number} t 兵が飛び出し始める時刻（ms）
+   * @param {number} [elites] 足す count 体のうち、後ろの何体を精鋭にするか（省くと 0）
+   * @param {number} [points] 精鋭1体のポイント（省くと 1）
    * @returns {number} 全員が家に着く時刻（ms。count が 0 以下なら t）
    */
-  land(kind, count, x, y, t) {
+  land(kind, count, x, y, t, elites = 0, points = 1) {
     if (count <= 0) return t;
-    const end = landTroops(this.roster, kind, count, x, y, t, BATTLE_ANIM.landMs);
+    const end = landTroops(this.roster, kind, count, x, y, t, BATTLE_ANIM.landMs, elites, points);
     this.swarm = new TroopSwarm(this.roster.units);
     this.settledAt = Math.max(this.settledAt, end);
     this.dirty = true;
@@ -74,17 +76,19 @@ export class CampTroops {
 
   /**
    * 種類の兵の数を、玉を飛ばさずその場で count 体にそろえる（足りなければ家にすぐ現し、多ければ番号の大きい方から消す）。
-   * 変えたときは入れ物を作り直し、今の時計で見た目を書き込む。
+   * まずその種類の精鋭の印を消し（すべてふつうの兵になる）、それから数をそろえる。
+   * 変えたとき（精鋭を消したときを含む）は入れ物を作り直し、今の時計で見た目を書き込む。
    * @param {string} kind 兵の種類（'attack' | 'defense' | 'heal'）
    * @param {number} count そろえる数（0 以上の整数）
    * @param {number} clock 時計の値（ms）
    * @returns {void}
    */
   setCount(kind, count, clock) {
+    const cleared = clearEliteTroops(this.roster, kind);
     const now = (this.roster.ranked[kind] ?? []).length;
-    if (count === now) return;
+    if (count === now && !cleared) return;
     if (count > now) spawnTroops(this.roster, kind, count - now, clock, 0);
-    else removeTroops(this.roster, kind, now - count);
+    else if (count < now) removeTroops(this.roster, kind, now - count);
     this.swarm = new TroopSwarm(this.roster.units);
     this.dirty = true;
     this.settledAt = Math.max(this.settledAt, clock);
@@ -133,6 +137,22 @@ export class CampTroops {
       for (const unit of this.roster.ranked[kind] ?? []) {
         if (unit.auto) out[kind]++;
       }
+    }
+    return out;
+  }
+
+  /**
+   * 待っている兵のうち、精鋭の番号と1体のポイント（種類ごと。番号の昇順）。
+   * 攻防の時間割へ引き継ぐ（`waitingElites`）。
+   * @returns {{attack: Array<{index: number, points: number}>, defense: Array<{index: number, points: number}>, heal: Array<{index: number, points: number}>}}
+   */
+  eliteUnits() {
+    const out = { attack: [], defense: [], heal: [] };
+    for (const kind of OWN_KINDS) {
+      for (const unit of this.roster.ranked[kind] ?? []) {
+        if (unit.elite) out[kind].push({ index: unit.index, points: unit.points });
+      }
+      out[kind].sort((a, b) => a.index - b.index);
     }
     return out;
   }

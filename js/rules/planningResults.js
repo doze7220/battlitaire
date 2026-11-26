@@ -31,8 +31,9 @@
  * @property {number} columnIndex 放った列の番号
  * @property {import('./card.js').Card[]} cards 放ったカード（列の下から順）
  * @property {import('./release.js').ReleaseSegment[]} segments 区切りごとの計算結果
- * @property {Object<string, number>} gains ゲージごとの加算量（4スートそろいの加算を含む）
+ * @property {Object<string, number>} gains ゲージごとの加算量（4スートそろいの加算を含む。人数だけで、精鋭の上振れは含まない）
  * @property {import('./release.js').AllSuitsBonus|null} allSuits 4スートそろいの加算（そろわない・量 0 なら `null`）
+ * @property {import('./elites.js').EliteDraw} elites 精鋭の抽選の結果（区切り・4スートそろいごとの精鋭の数、1体のポイント、ゲージごとの増えた数・上振れ。ゲージには `gains` に加えて上振れが足される）
  * @property {number} actionsLeft 操作後の残り行動回数
  * @property {import('./piles.js').Refill[]} refills 操作後に起きた補充
  */

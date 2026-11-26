@@ -6,6 +6,7 @@
 import { enemyTypeIds, enemySpecOf } from './enemyTypes.js';
 import { refreshIntent } from './enemyIntent.js';
 import { intentChoiceIds, planChosenIntent, chosenIntentOf } from './debugIntents.js';
+import { clearEliteOf } from './elites.js';
 import { upgradeIds, takeUpgrade, clearUpgrades, fixedUpgradeValue, isUpgradeCapped, takenUpgradeList } from './upgrades.js';
 
 /**
@@ -28,7 +29,7 @@ export function troopGaugeIds(config) {
 
 /**
  * 兵のゲージの値を指定した数にする。段取り中で、兵のゲージで、0 以上の整数のときだけ。
- * 上限はここでは決めない。行動の回数は使わない。
+ * 上限はここでは決めない。行動の回数は使わない。そのゲージの精鋭はなくなる（値はすべて人数になる）。
  * @param {import('./Game.js').Game} game ゲーム
  * @param {string} gauge ゲージの識別子
  * @param {number} count 新しい値
@@ -40,6 +41,7 @@ export function setTroopGauge(game, gauge, count) {
   if (!Number.isInteger(count) || count < 0) return false;
   if (game.gauges[gauge] === count) return false;
   game.gauges[gauge] = count;
+  game.elites = clearEliteOf(game.elites, gauge);
   return true;
 }
 

@@ -1,6 +1,6 @@
 /**
  * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面と合図を描くこと。
- * 操作の結果を anim に渡して時間を進め、段階の管理（boardFlow.js）を進めて、TURN の表示で自動兵士を陣地に現し、BATTLE! が終わったら攻防に入り待っていた兵の数（自動兵士の印の数を含む）を演出のシーンへ渡し、新しいゲームの始まりを中断データに保存し、中断データがあればそのターンの始まりへ戻して始めること。
+ * 操作の結果を anim に渡して時間を進め、段階の管理（boardFlow.js）を進めて、TURN の表示で自動兵士を陣地に現し、BATTLE! が終わったら攻防に入り待っていた兵の数（自動兵士の印の数・待っている精鋭を含む）を演出のシーンへ渡し、新しいゲームの始まりを中断データに保存し、中断データがあればそのターンの始まりへ戻して始めること。
  * 3択の段階なら3択の画面を積み、操作・連鎖のきっかけで効果音を鳴らし（soundCues.js）、積んだ演出のシーンから札が燃える段の盤面を読んで描き、TURN の区画でメニューの窓を積み、兵の焼き付けを init で作り destroy で手放すこと。「DEBUG MODE」のレイヤーも描く（debugModeLayer.js）。
  */
 import { Engine, Scene } from 'oz';
@@ -161,7 +161,7 @@ export class BoardScene extends Scene {
   }
 
   /**
-   * 攻防に入る（BATTLE! が消えたとき update が呼ぶ。攻防の前の値の写し → 待っている兵の数（自動兵士の印のある数も） → 攻防の解決 → 放つ演出の作り直し → 攻防の演出のシーンを積む）。
+   * 攻防に入る（BATTLE! が消えたとき update が呼ぶ。攻防の前の値の写し → 待っている兵の数（自動兵士の印のある数・待っている精鋭も） → 攻防の解決 → 放つ演出の作り直し → 攻防の演出のシーンを積む）。
    * 攻防を解決できなければ何もしない。
    * @returns {void}
    */
@@ -170,6 +170,7 @@ export class BoardScene extends Scene {
     const battleBefore = snapshotBattle(game);
     const waiting = this.releaseShow.waitingCounts();
     const waitingAuto = this.releaseShow.waitingAutoCounts();
+    const waitingElites = this.releaseShow.waitingElites();
     this.lastResult = game.resolveBattle();
     if (this.lastResult === null) return;
     this.releaseShow = new ReleaseShow(this.layout.battle.troops); // 次のフェーズは兵のいない状態から
@@ -183,6 +184,7 @@ export class BoardScene extends Scene {
       createUpgradeChoice: () => this.createUpgradeChoice(),
       waiting,
       waitingAuto,
+      waitingElites,
     });
     Engine.pushScene(this.battleShow);
   }
@@ -250,7 +252,7 @@ export class BoardScene extends Scene {
     if (layer !== this.layer) return;
     const game = this.game;
     const burn = this.battleShow === null ? null : this.battleShow.boardLook();
-    drawBoard(ctx, this.layout, game, boardUiFor(game, this.selection), this.animator.view(), this.releaseShow.view(game.gauges, this.flow.isTurnStartPending(game) ? game.autoTroopGains() : null), burn, this.enemyIdle.look(), this.flow.entranceLook(game));
+    drawBoard(ctx, this.layout, game, boardUiFor(game, this.selection), this.animator.view(), this.releaseShow.view(game.gauges, this.flow.isTurnStartPending(game) ? game.autoTroopGains() : null, game.eliteBoost()), burn, this.enemyIdle.look(), this.flow.entranceLook(game));
     drawBanner(ctx, this.bannerLayout, this.flow.bannerLook(), {
       turn: game.battleTurn,
       stageNumber: game.stageNumber,

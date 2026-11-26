@@ -10,7 +10,7 @@ import { createColumns, placeableColumnIndices, runStartIndex } from './columns.
 import { createHand, isEmptySlot, hasCardInSlot } from './hand.js';
 import { computeRelease } from './release.js';
 import { cardBonusOf, releaseBoostOf, actionChanceOf, turnUpgradeActions, eliteStatusOf } from './upgradeBoosts.js';
-import { createEliteState } from './elites.js';
+import { createEliteState, drawElites, addElites } from './elites.js';
 import { createCastle, createEnemy } from './combatants.js';
 import {
   planBehaviorAction,
@@ -577,20 +577,25 @@ export class Game {
 
   /**
    * 列のカードをすべて放ち、ゲージに加算して捨て札に移す。条件を満たさなければ何もしない。
+   * 放つ量が決まった後・山札の補充の前に精鋭を抽選し（確率 0 のゲージは乱数を呼ばない）、ゲージには人数に精鋭の上振れを足し、`elites` の状態にも足す。
    * @param {number} c 列の番号
    * @returns {import('./planningResults.js').ReleaseResult|null} 結果。放てなければ `null`
    */
   release(c) {
     if (!this.canRelease(c)) return null;
     const cards = this.columns[c].splice(0);
-    const { segments, gains, allSuits } = computeRelease(cards, this.config, releaseBoostOf(this.config, this.upgrades));
+    const calc = computeRelease(cards, this.config, releaseBoostOf(this.config, this.upgrades));
+    const { segments, gains, allSuits } = calc;
+    // 精鋭の抽選は、放つ量が決まった後・山札の補充の前（確率 0 のゲージは乱数を呼ばない）
+    const elites = drawElites(calc, this.eliteStatus(), this.random);
     for (const gauge of Object.keys(gains)) {
-      this.gauges[gauge] = (this.gauges[gauge] ?? 0) + gains[gauge];
+      this.gauges[gauge] = (this.gauges[gauge] ?? 0) + gains[gauge] + (elites.extra[gauge] ?? 0);
     }
+    this.elites = addElites(this.elites, elites);
     this.discard.push(...cards);
     this.actionsLeft -= 1;
     const refills = refillEmptyDecks(this.decks, this.discard, this.random);
-    return { type: 'release', columnIndex: c, cards, segments, gains, allSuits, actionsLeft: this.actionsLeft, refills };
+    return { type: 'release', columnIndex: c, cards, segments, gains, allSuits, elites, actionsLeft: this.actionsLeft, refills };
   }
 
   /**

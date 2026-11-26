@@ -1,6 +1,6 @@
 /**
  * 兵1体ずつの名簿を作り（自動兵士・精鋭の印を付けることを含む）、段ごとに兵へ脚と終わり方を割り当てる
- * （出す・置く・行進・当たる（敵の HP を減らす当たりの記録を含む）・相打ち・前からポイントを使って落とす・城へ入る・右へ帰す・家へ跳ばす・段取りの間の名簿から消す）。
+ * （出す・置く・行進・当たる（敵の HP を減らす当たりの記録を含む）・相打ち・前からポイントを使って落とす・城へ入る・右へ帰す・家へ跳ばす（後ろの精鋭を含む）・段取りの間の名簿から消す・精鋭の印を消す）。
  * 前から遅らせる式と、兵ごとのずれ（troopJitter.js）の足し方はここだけに置く。乱数は使わない。
  */
 
@@ -309,15 +309,38 @@ export function removeTroops(roster, kind, count) {
  * @param {number} fromY 飛び出す位置の足元の y
  * @param {number} t 跳び始める時刻（ms）
  * @param {number} moveMs 家へ跳ぶ時間（ms）
+ * @param {number} [elites] 足す count 体のうち、後ろの（番号の大きい方の）何体を精鋭にするか（省くと 0。count を超えない）
+ * @param {number} [elitePoints] 精鋭1体のポイント（省くと 1。精鋭がいるときは 2 以上）
  * @returns {number} 全員が家に着く時刻（ms。count が 0 以下なら t）
  * @throws {Error} 未知の種類のとき
  */
-export function landTroops(roster, kind, count, fromX, fromY, t, moveMs) {
+export function landTroops(roster, kind, count, fromX, fromY, t, moveMs, elites = 0, elitePoints = 1) {
   const { landStaggerMs, landStaggerMaxMs, landJitterMs, speedSpread } = BATTLE_ANIM;
   return jumpTroops(
     'landTroops', roster, kind, count, null, fromX, fromY, t, moveMs,
-    landStaggerMs, landStaggerMaxMs, landJitterMs, speedSpread,
+    landStaggerMs, landStaggerMaxMs, landJitterMs, speedSpread, elites, elitePoints,
   );
+}
+
+/**
+ * 種類 kind の兵の精鋭の印をすべて消し（ふつうの兵に戻し、ポイントを 1 にする）、前からの並びを並べ直す。
+ * 動き・時刻は変えない（段取りの間の名簿に使う）。
+ * @param {TroopRoster} roster 名簿（その場で書き換える）
+ * @param {string} kind 種類
+ * @returns {boolean} 消した精鋭がいれば true
+ */
+export function clearEliteTroops(roster, kind) {
+  const list = roster.ranked[kind];
+  if (!list) return false;
+  let cleared = false;
+  for (const unit of list) {
+    if (!unit.elite) continue;
+    unit.elite = false;
+    unit.points = 1;
+    cleared = true;
+  }
+  if (cleared) sortRanked(list, kind);
+  return cleared;
 }
 
 /**
@@ -335,10 +358,12 @@ export function landTroops(roster, kind, count, fromX, fromY, t, moveMs) {
  * @param {number} maxMs 遅れの広がり全体の上限（ms）
  * @param {number} jitterMs 兵ごとの動き出しのずれの最大（ms。0 ならずれなし）
  * @param {number} spread 動きの長さのばらつきの幅（割合。0 ならずれなし）
+ * @param {number} [elites] 足す count 体のうち後ろの何体を精鋭にするか（省くと 0。`bodies` を渡すときは使わない）
+ * @param {number} [elitePoints] 精鋭1体のポイント（省くと 1）
  * @returns {number} 全員が家に着く時刻（ms。全員の「t＋遅れ＋長さ」の最大。count が 0 以下なら t）
  * @throws {Error} 未知の種類のとき
  */
-function jumpTroops(name, roster, kind, count, bodies, fromX, fromY, t, moveMs, staggerMs, maxMs, jitterMs, spread) {
+function jumpTroops(name, roster, kind, count, bodies, fromX, fromY, t, moveMs, staggerMs, maxMs, jitterMs, spread, elites = 0, elitePoints = 1) {
   const campName = CAMP_OF[kind];
   if (campName === undefined) throw new Error(`${name}: 未知の種類 ${kind}`);
   const camp = roster.layout.camps[campName];
@@ -361,6 +386,10 @@ function jumpTroops(name, roster, kind, count, bodies, fromX, fromY, t, moveMs, 
     if (bodies !== null) {
       unit.points = bodies[i].points;
       if (bodies[i].wounded) unit.woundAt = start;
+    }
+    if (i >= n - elites) {
+      unit.elite = true;
+      unit.points = elitePoints;
     }
     addTroopLeg(unit, start, home.x, home.y, ms);
     roster.units.push(unit);
