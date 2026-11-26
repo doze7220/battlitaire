@@ -57,15 +57,15 @@ export class BoardFlow {
 
   /**
    * 毎ティックの段階の進行。次の順に上から1つだけ判断する。
-   * 1. BATTLE! が終わった → BATTLE! を消して true を返す（呼ぶ側が攻防に入る）。
+   * 1. BATTLE! が終わった → BATTLE! を消して 'battle' を返す（呼ぶ側が攻防に入る）。
    * 2. 合図が出ている → 何もしない。
    * 3. ステージの始まりをまだ出していないステージの番号 → スタートの待ちが残っていれば待ち、0 ならステージの曲とステージの始まりを同時に始める。
-   * 4. フェーズの始まりをまだ出していない → スタートの待ちが残っていれば待ち（ふつうの流れでは 3 で 0 になっているので待たない。再開の盤面だけここで待つ）、0 なら（再開の曲の約束があれば曲を鳴らして）フェーズの始まりを出す。
+   * 4. フェーズの始まりをまだ出していない → スタートの待ちが残っていれば待ち（ふつうの流れでは 3 で 0 になっているので待たない。再開の盤面だけここで待つ）、0 なら（再開の曲の約束があれば曲を鳴らして）フェーズの始まりを出し、'turn' を返す（呼ぶ側が自動兵士を陣地に現す）。
    * 5. 段取りが止まっていて攻防を計算できる → 準備終了を出し、音を鳴らす。
    * @param {number} dt 経過時間（ミリ秒）
    * @param {{stageNumber: number, phase: number, enemy: {typeId: string}, canResolveBattle: function(): boolean}} game ルール層の状態（読むだけ）
    * @param {boolean} boardIdle 札・玉・兵の動きが全部止まっているか
-   * @returns {boolean} BATTLE! が終わって攻防に入る時なら true
+   * @returns {'battle'|'turn'|null} BATTLE! が終わって攻防に入る時なら 'battle'、フェーズの始まり（TURN）を出した update なら 'turn'、ほかは null
    */
   update(dt, game, boardIdle) {
     this.banner.update(dt);
@@ -73,32 +73,42 @@ export class BoardFlow {
 
     if (this.banner.isBattleCallOver()) {
       this.banner.clear();
-      return true;
+      return 'battle';
     }
-    if (!this.banner.isIdle()) return false;
+    if (!this.banner.isIdle()) return null;
 
     if (this.introStageNumber !== game.stageNumber) {
-      if (this.stageWaitMs > 0) return false;
+      if (this.stageWaitMs > 0) return null;
       this.introStageNumber = game.stageNumber;
       playStageBgm(game.enemy.typeId);
       this.banner.showStage();
-      return false;
+      return null;
     }
     if (this.introPhase !== game.phase) {
-      if (this.stageWaitMs > 0) return false;
+      if (this.stageWaitMs > 0) return null;
       if (this.resumeBgmPending) {
         this.resumeBgmPending = false;
         playStageBgm(game.enemy.typeId);
       }
       this.introPhase = game.phase;
       this.banner.showPhase();
-      return false;
+      return 'turn';
     }
     if (boardIdle && game.canResolveBattle()) {
       this.banner.showReady();
       playReadySe();
     }
-    return false;
+    return null;
+  }
+
+  /**
+   * フェーズの始まり（TURN の表示）をまだ出していないか（読むだけ。状態は変えない）。
+   * 真の間は、自動兵士がまだ陣地に現れていないので、人数の表示から引く量（`ReleaseShow.view` の `held`）を渡す目印になる。
+   * @param {{phase: number}} game ルール層の状態（読むだけ）
+   * @returns {boolean} まだ出していなければ true
+   */
+  isTurnStartPending(game) {
+    return this.introPhase !== game.phase;
   }
 
   /**

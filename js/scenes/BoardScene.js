@@ -1,6 +1,6 @@
 /**
  * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面と合図を描くこと。
- * 操作の結果を anim に渡して時間を進め、段階の管理（boardFlow.js）を進めて、BATTLE! が終わったら攻防に入り待っていた兵の数を演出のシーンへ渡し、新しいゲームの始まりを中断データに保存し、中断データがあればそのターンの始まりへ戻して始めること。
+ * 操作の結果を anim に渡して時間を進め、段階の管理（boardFlow.js）を進めて、TURN の表示で自動兵士を陣地に現し、BATTLE! が終わったら攻防に入り待っていた兵の数（自動兵士の印の数を含む）を演出のシーンへ渡し、新しいゲームの始まりを中断データに保存し、中断データがあればそのターンの始まりへ戻して始めること。
  * 操作・連鎖のきっかけで効果音を鳴らし（soundCues.js）、積んだ演出のシーンから札が燃える段の盤面を読んで描き、TURN の区画でメニューの窓を積み、兵の焼き付けを init で作り destroy で手放すこと。「DEBUG MODE」のレイヤーも描く（debugModeLayer.js）。
  */
 import { Engine, Scene } from 'oz';
@@ -29,8 +29,8 @@ import { bodyCount } from '../view/bodyPoints.js';
  * @typedef {Object} BoardOptions BoardScene に渡すオプション
  * @property {{ width: number, height: number }} screen 解像度
  * @property {string} layer 描くレイヤー名
- * @property {import('../rules/rng.js').Rng} [rng] 乱数（状態を取り出し・戻せる。ルール層へ渡す。新しいゲームのときだけ必須）
- * @property {number} [seed] 敵の並びを決める種（整数。始めた日付から作られる。ゲームへ渡す。新しいゲームのときだけ必須）
+ * @property {import('../rules/rng.js').Rng} [rng] 乱数（状態を取り出し・戻せる。ルール層へ渡す。新しいゲームのときだけ渡される。中断データから戻すときは undefined）
+ * @property {number} [seed] 敵の並びを決める種（整数。始めた日付から作られる。ゲームへ渡す。新しいゲームのときだけ渡される。中断データから戻すときは undefined）
  * @property {import('../rules/suspendData.js').SuspendData|null} [suspend] 中断データ（省略は null＝新しいゲーム。あれば rng・seed はその中のものを使い、渡した値は使わない）
  * @property {() => Scene} createTitle タイトルの画面のシーンを作る関数（攻防の演出のシーンへ渡す）
  * @property {(target: import('./boardDebug.js').BoardMenuTarget) => Scene} createMenu メニューの窓のシーンを作る関数（TURN の区画を押したとき、盤面の部品 { game, releaseShow, flow } を渡して積む。使うかは関数の側が決める）
@@ -46,7 +46,7 @@ export class BoardScene extends Scene {
     super();
     /** @type {import('../rules/suspendData.js').SuspendData|null} 戻す中断データ（なければ null＝新しいゲーム） */
     this.suspend = suspend;
-    /** @type {number} 敵の並びを決める種（整数。ゲームへ渡す） */
+    /** @type {number|undefined} 敵の並びを決める種（整数。ゲームへ渡す。新しいゲームのときだけ渡される） */
     this.seed = seed;
     /** @type {import('../rules/config.js').Rules|undefined} ゲームに渡すルールの値（undefined なら Game の既定の RULES） */
     this.rules = rules;
@@ -58,7 +58,7 @@ export class BoardScene extends Scene {
     this.screen = screen;
     /** @type {string} 描くレイヤー名 */
     this.layer = layer;
-    /** @type {import('../rules/rng.js').Rng} 乱数 */
+    /** @type {import('../rules/rng.js').Rng|undefined} 乱数（新しいゲームのときだけ渡される） */
     this.rng = rng;
     /** @type {Game|null} ルール層のゲーム（init で作る） */
     this.game = null;
@@ -131,7 +131,7 @@ export class BoardScene extends Scene {
   /**
    * 動きの時計に dt（ミリ秒）を足して進める（dt はエンジンが渡した値をそのまま足し、倍率は掛けない。ルール層の状態は変えない）。
    * 放つ演出の時計も進め、進めた直後に、その間に玉に変わった札の序数ごとに連鎖の効果音を鳴らす。
-   * 最後に、札の移動・山札のめくれ・玉に変わる前の札・玉・兵が全部止まっているかを段階の管理（BoardFlow.update）に渡して進め、BATTLE! が終わったと返されたら攻防に入る（startBattle）。
+   * 最後に、札の移動・山札のめくれ・玉に変わる前の札・玉・兵が全部止まっているかを段階の管理（BoardFlow.update）に渡して進め、'battle'（BATTLE! が終わった）と返されたら攻防に入り（startBattle）、'turn'（TURN の表示を出した）と返されたら自動兵士を陣地に現す（ReleaseShow.landAuto。量はルール層の autoTroopGains）。
    * 頭で `this.battleShow` を外す（update は最前面のときだけ呼ばれるので、攻防の演出のシーンが外れた後になる）。
    * @param {number} dt 1ティックの長さ（ミリ秒）
    * @returns {void}
@@ -143,11 +143,13 @@ export class BoardScene extends Scene {
     this.enemyIdle.update(dt, this.game.enemy.typeId, bodyCount(this.game.enemy.hp, this.game.enemyUnitPoints()));
     for (const ordinal of this.releaseShow.chainCuesInLastUpdate()) playChainSe(ordinal);
     const boardIdle = !this.animator.isBusy() && !this.releaseShow.isBusy();
-    if (this.flow.update(dt, this.game, boardIdle)) this.startBattle();
+    const flowEvent = this.flow.update(dt, this.game, boardIdle);
+    if (flowEvent === 'battle') this.startBattle();
+    else if (flowEvent === 'turn') this.releaseShow.landAuto(this.game.autoTroopGains());
   }
 
   /**
-   * 攻防に入る（BATTLE! が消えたとき update が呼ぶ。攻防の前の値の写し → 待っている兵の数 → 攻防の解決 → 放つ演出の作り直し → 攻防の演出のシーンを積む）。
+   * 攻防に入る（BATTLE! が消えたとき update が呼ぶ。攻防の前の値の写し → 待っている兵の数（自動兵士の印のある数も） → 攻防の解決 → 放つ演出の作り直し → 攻防の演出のシーンを積む）。
    * 攻防を解決できなければ何もしない。
    * @returns {void}
    */
@@ -155,6 +157,7 @@ export class BoardScene extends Scene {
     const game = this.game;
     const battleBefore = snapshotBattle(game);
     const waiting = this.releaseShow.waitingCounts();
+    const waitingAuto = this.releaseShow.waitingAutoCounts();
     this.lastResult = game.resolveBattle();
     if (this.lastResult === null) return;
     this.releaseShow = new ReleaseShow(this.layout.battle.troops); // 次のフェーズは兵のいない状態から
@@ -166,6 +169,7 @@ export class BoardScene extends Scene {
       result: this.lastResult,
       createTitle: this.createTitle,
       waiting,
+      waitingAuto,
     });
     Engine.pushScene(this.battleShow);
   }
@@ -221,6 +225,7 @@ export class BoardScene extends Scene {
   /**
    * ルール層の問い合わせと anim の見た目の値から盤面を描く（状態は変えない）。
    * 攻防の演出のシーンを積んでいれば、その `boardLook()`（燃える段の盤面の見た目。なければ null）を読んで `drawBoard` に渡す。
+   * 人数の表示には、フェーズの始まりを出すまで（自動兵士がまだ現れていない間）だけ、自動兵士の量を引く値（autoTroopGains）を放つ演出の見た目へ渡す。
    * 盤面の最後に、段階の管理の敵の入りの見た目を渡し、その上に合図（準備終了・BATTLE!・フェーズ・ステージの始まり）を描く。
    * 頭で「DEBUG MODE」のレイヤーも描く（debugModeLayer.js）。
    * @param {CanvasRenderingContext2D} ctx 描画先
@@ -232,7 +237,7 @@ export class BoardScene extends Scene {
     if (layer !== this.layer) return;
     const game = this.game;
     const burn = this.battleShow === null ? null : this.battleShow.boardLook();
-    drawBoard(ctx, this.layout, game, boardUiFor(game, this.selection), this.animator.view(), this.releaseShow.view(game.gauges), burn, this.enemyIdle.look(), this.flow.entranceLook(game));
+    drawBoard(ctx, this.layout, game, boardUiFor(game, this.selection), this.animator.view(), this.releaseShow.view(game.gauges, this.flow.isTurnStartPending(game) ? game.autoTroopGains() : null), burn, this.enemyIdle.look(), this.flow.entranceLook(game));
     drawBanner(ctx, this.bannerLayout, this.flow.bannerLook(), {
       turn: game.battleTurn,
       stageNumber: game.stageNumber,
