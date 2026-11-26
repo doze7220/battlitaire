@@ -7,7 +7,7 @@
  * 群れの敵の種類ごとの大きさと並ぶ場所の表の行（標準と違う敵だけが持つ）。x・w は段の左端からの絶対値（足元の中心が入る範囲）。
  * @typedef {Object} HordePlaceDef
  * @property {number} size 体の大きさ（直径）
- * @property {{ x: number, w: number }} area 群れの足元の中心が入る範囲の x と幅
+ * @property {{ x: number, w: number, h?: number }} area 群れの足元の中心が入る範囲の x と幅、高さ（任意。あれば足元の範囲の高さ − 削る量を上限に縮める。y は足元の範囲の上端のまま）
  * @property {{ x: number, w: number }} enemy 攻撃の兵の陣地の x と幅
  * @property {{ x: number, w: number }} enemyGuard 守りの兵の陣地の x と幅
  */
@@ -39,6 +39,7 @@ export const HORDE_PLACES = Object.freeze({
 /**
  * 群れの敵の種類ごとの配置を作る。標準の行（null）は `standard` そのもの（同じオブジェクト）を返す。
  * 標準でない行は、縦を兵の足元の範囲から上を `size − 標準の大きさ` だけ削る（体の上端が標準の兵と同じ高さになる）。
+ * 群れの範囲だけ、行に `area.h` があれば高さを `min(area.h, 削った後の高さ)` にする（攻撃・守りの陣地は削った後の高さのまま）。
  * @param {Object} params 引数
  * @param {number} params.groundY 地面の下端の y（足元の範囲の下端）
  * @param {number} params.fieldH 兵の足元の範囲の高さ
@@ -57,9 +58,10 @@ export function createHordePlaces({ groundY, fieldH, standard }) {
     const cut = Math.max(0, def.size - standard.size);
     const y = groundY - fieldH + cut;
     const h = fieldH - cut;
+    const areaH = def.area.h === undefined ? h : Math.min(def.area.h, h);
     places[typeId] = Object.freeze({
       size: def.size,
-      area: Object.freeze({ x: def.area.x, y, w: def.area.w, h }),
+      area: Object.freeze({ x: def.area.x, y, w: def.area.w, h: areaH }),
       camps: Object.freeze({
         enemy: Object.freeze({ x: def.enemy.x, y, w: def.enemy.w, h }),
         enemyGuard: Object.freeze({ x: def.enemyGuard.x, y, w: def.enemyGuard.w, h }),
