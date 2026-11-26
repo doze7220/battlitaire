@@ -4,6 +4,7 @@
  */
 
 import { drawTroop } from './troopView.js';
+import { splitPoints, isWoundedBody } from './bodyPoints.js';
 import { isHordeEnemy } from './hordeSkins.js';
 import { drawSpriteFit } from './spriteView.js';
 import { bodyScale, scaledShieldArea } from './figureScale.js';
@@ -16,23 +17,27 @@ const SHIELD_KIND = 'shield';
 const NO_POSE = Object.freeze({ tilt: 0, scaleX: 1, scaleY: 1 });
 
 /**
- * 群れの敵の兵の群れ（HP の数）を、足元の y の小さい（奥の）順（同じなら番号の小さい順）に描く。
+ * 群れの敵の兵の群れ（HP を1体のポイントで割った数の体。切り上げ）を、足元の y の小さい（奥の）順（同じなら番号の小さい順）に描く。
+ * 並びの番号の大きい体が前（次に当たる体）。HP が1体のポイントで割り切れないとき、前の1体は1体のポイントより少なく、傷ついた姿で描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
  * @param {string} typeId 敵の種類の識別子（群れの兵の絵を選ぶ）
- * @param {number} count 群れの兵の数（敵の HP）
+ * @param {number} hp 敵の HP（群れのポイントの量）
+ * @param {number} unitPoints 敵の1体のポイント（1 以上の整数。1 なら体の数は HP で傷ついた体はない）
  * @param {{ count: number, scaleX: Float64Array, scaleY: Float64Array }|null} idle 待機の伸び縮み（並びの番号 i が idle.count 未満ならその値、そうでなければ 1・1。null なら伸び縮みなし）
  * @returns {void}
  */
-function drawHorde(ctx, battleLayout, typeId, count, idle) {
-  const slots = battleLayout.hordeSlots(typeId, count);
+function drawHorde(ctx, battleLayout, typeId, hp, unitPoints, idle) {
+  const bodies = splitPoints(hp, unitPoints);
+  const slots = battleLayout.hordeSlots(typeId, bodies.length);
   const order = [];
   for (let i = 0; i < slots.length; i++) order.push(i);
   order.sort((a, b) => slots[a].footY - slots[b].footY || a - b);
   for (const i of order) {
     const slot = slots[i];
     const own = idle !== null && i < idle.count;
-    drawTroop(ctx, HORDE_KIND, slot.x, slot.footY, slot.size, 0, 1, own ? idle.scaleX[i] : 1, own ? idle.scaleY[i] : 1, typeId);
+    const wounded = isWoundedBody(bodies[bodies.length - 1 - i], unitPoints);
+    drawTroop(ctx, HORDE_KIND, slot.x, slot.footY, slot.size, 0, 1, own ? idle.scaleX[i] : 1, own ? idle.scaleY[i] : 1, typeId, wounded);
   }
 }
 
@@ -73,14 +78,15 @@ function drawShieldMark(ctx, rect) {
  * 引数は読むだけで書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').BattleLayout} battleLayout 戦闘の段の配置
- * @param {{ typeId: string, hp: number, maxHp: number, intent: import('../rules/combatants.js').EnemyIntent|null }} enemy 描く敵（種類の識別子・HP・最大 HP・予告。群れの数は HP、シールドマークの数は予告の `defense`、絵の体の大きさ（縮み）は HP と最大 HP と表の `minScale`。群れにはシールドマークを描かない）
+ * @param {{ typeId: string, hp: number, maxHp: number, intent: import('../rules/combatants.js').EnemyIntent|null }} enemy 描く敵（種類の識別子・HP・最大 HP・予告。群れの体の数は HP と1体のポイント、シールドマークの数は予告の `defense`、絵の体の大きさ（縮み）は HP と最大 HP と表の `minScale`。群れにはシールドマークを描かない）
  * @param {{ visible: boolean, dy: number, dx: number }|null} [figure] 敵の絵の見た目（EnemyFigureLook。倒れる動き・駆け寄りのずれ）。null か省くと段取りの絵
  * @param {{ tilt: number, scaleX: number, scaleY: number }|null} [pose] ための姿勢（ChargePoseLook。攻防の演出中の絵を足元を軸に傾け・伸ばす）。null か省くと姿勢なし
  * @param {{ count: number, scaleX: Float64Array, scaleY: Float64Array, figure: { tilt: number, scaleX: number, scaleY: number } }|null} [idle] 段取りの間の待機の伸び縮み（EnemyIdleLook。絵は足元を軸に、群れは1体ずつ。null か省くと伸び縮みなし。シールドマークは伸び縮みしない）
  * @param {import('../anim/enemyEntrance.js').EnemyEntranceLook|null} [entrance] 段取りの間の敵の入りの見た目（visible が偽なら描かない、dx は右へのずれ px。攻防の演出中は使わない。null か省くと常に見えてずれなし）
+ * @param {number} [unitPoints=1] 敵の1体のポイント（群れの体の数・傷ついた体を決める。1 なら今と同じ）
  * @returns {void}
  */
-export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = null, idle = null, entrance = null) {
+export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = null, idle = null, entrance = null, unitPoints = 1) {
   const hasFigure = Object.prototype.hasOwnProperty.call(battleLayout.enemyFigures, enemy.typeId);
   const scale = hasFigure ? bodyScale(battleLayout.enemyFigures[enemy.typeId].minScale, enemy.hp, enemy.maxHp) : 1;
   ctx.save();
@@ -114,7 +120,7 @@ export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = 
       for (const rect of battleLayout.shieldRects(enemy.intent.defense, shieldArea)) drawShieldMark(ctx, rect);
     }
   } else if (isHordeEnemy(enemy.typeId)) {
-    drawHorde(ctx, battleLayout, enemy.typeId, enemy.hp, idle);
+    drawHorde(ctx, battleLayout, enemy.typeId, enemy.hp, unitPoints, idle);
   }
   ctx.restore();
 }

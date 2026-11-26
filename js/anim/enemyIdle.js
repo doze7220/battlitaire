@@ -70,13 +70,13 @@ export class EnemyIdle {
    * 時計を進め、いまの敵の伸び縮みを入れ物に書く。
    * @param {number} ms 進める時間（ms）
    * @param {string} typeId 敵の種類の識別子
-   * @param {number} hp 敵の HP（群れの数）
+   * @param {number} count 群れの体の数（群れでない敵は見ない。1体のポイントが 2 以上の敵は HP でなく体の数）
    * @returns {void}
    */
-  update(ms, typeId, hp) {
+  update(ms, typeId, count) {
     this.clock += ms;
     if (enemyBodyStyle(typeId) === 'horde') {
-      const n = Math.max(0, hp);
+      const n = Math.max(0, count);
       if (n > this.scaleX.length) {
         this.scaleX = new Float64Array(n);
         this.scaleY = new Float64Array(n);

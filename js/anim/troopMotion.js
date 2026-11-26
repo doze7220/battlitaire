@@ -96,6 +96,7 @@ const KNOCK_DIRS = Object.freeze({
  * @property {number} tilt 傾き（rad。足元を軸）
  * @property {number} alpha 濃さ（0〜1）
  * @property {boolean} idle 家の位置で止まって待っているか（見えていて、終わり方が始まっておらず、脚の途中でない）
+ * @property {boolean} wounded 傷ついた姿か（見えていて、`woundAt` が null でなく、時計が `woundAt` 以上）
  */
 
 /**
@@ -240,6 +241,7 @@ export function sampleTroop(unit, clock, out) {
 
   out.visible = false;
   out.idle = false;
+  out.wounded = false;
   out.tilt = 0;
   out.alpha = 1;
   if (clock < unit.appearAt) return;
@@ -249,6 +251,7 @@ export function sampleTroop(unit, clock, out) {
     if (end.type === 'vanish') return;
     if (clock >= end.doneAt) return;
     out.visible = true;
+    out.wounded = unit.woundAt !== null && clock >= unit.woundAt;
     out.sortY = end.y;
     const { popHeight, popMs, fallAccel } = BATTLE_ANIM;
     const tau = clock - end.time;
@@ -268,6 +271,7 @@ export function sampleTroop(unit, clock, out) {
   }
 
   out.visible = true;
+  out.wounded = unit.woundAt !== null && clock >= unit.woundAt;
   if (unit.appearMs > 0) {
     out.alpha = Math.min(1, (clock - unit.appearAt) / unit.appearMs);
   }

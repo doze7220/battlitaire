@@ -23,6 +23,7 @@ import { BoardFlow } from './boardFlow.js';
 import { createBannerLayout } from '../view/bannerLayout.js';
 import { drawBanner } from '../view/bannerView.js';
 import { createTroopBakes } from '../view/troopView.js';
+import { bodyCount } from '../view/bodyPoints.js';
 
 /**
  * @typedef {Object} BoardOptions BoardScene に渡すオプション
@@ -139,7 +140,7 @@ export class BoardScene extends Scene {
     this.battleShow = null; // update は最前面のときだけ呼ばれる＝演出のシーンが外れた後
     this.animator.update(dt);
     this.releaseShow.update(dt);
-    this.enemyIdle.update(dt, this.game.enemy.typeId, this.game.enemy.hp);
+    this.enemyIdle.update(dt, this.game.enemy.typeId, bodyCount(this.game.enemy.hp, this.game.enemyUnitPoints()));
     for (const ordinal of this.releaseShow.chainCuesInLastUpdate()) playChainSe(ordinal);
     const boardIdle = !this.animator.isBusy() && !this.releaseShow.isBusy();
     if (this.flow.update(dt, this.game, boardIdle)) this.startBattle();

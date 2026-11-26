@@ -22,6 +22,7 @@ import { breathScale } from './troopBreath.js';
  * @property {Float64Array} scaleX 横の伸び縮み（1 で元の大きさ）
  * @property {Float64Array} scaleY 縦の伸び縮み（1 で元の大きさ）
  * @property {Uint8Array} idle 家で待っているか（1／0）
+ * @property {Uint8Array} wounded 傷ついた姿か（1／0）
  */
 
 /**
@@ -61,13 +62,15 @@ export class TroopSwarm {
     this.scaleY = new Float64Array(n).fill(1);
     /** @type {Uint8Array} 家で待っているか */
     this.idle = new Uint8Array(n);
+    /** @type {Uint8Array} 傷ついた姿か */
+    this.wounded = new Uint8Array(n);
     for (let i = 0; i < n; i++) {
       this.order[i] = i;
       this.sortY[i] = units[i].homeY;
       this.size[i] = units[i].size;
     }
     /** @type {import('./troopMotion.js').TroopSample} sampleTroop 用の入れ物 */
-    this._out = { visible: false, x: 0, footY: 0, sortY: 0, tilt: 0, alpha: 1, idle: false };
+    this._out = { visible: false, x: 0, footY: 0, sortY: 0, tilt: 0, alpha: 1, idle: false, wounded: false };
     /** @type {{scaleX: number, scaleY: number}} 伸び縮みの作業用の入れ物 */
     this._scale = { scaleX: 1, scaleY: 1 };
   }
@@ -92,6 +95,7 @@ export class TroopSwarm {
       this.tilt[i] = out.tilt;
       this.alpha[i] = out.alpha;
       this.idle[i] = out.idle ? 1 : 0;
+      this.wounded[i] = out.wounded ? 1 : 0;
       if (out.idle) {
         breathScale(this.kinds[i], units[i].index, clock, this._scale);
         this.scaleX[i] = this._scale.scaleX;

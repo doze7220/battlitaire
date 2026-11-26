@@ -83,7 +83,7 @@ export function drawBoard(ctx, layout, game, ui, anim, release, burn = null, idl
   ctx.fillRect(0, 0, layout.screen.width, layout.screen.height);
   ctx.restore();
 
-  drawBattleStage(ctx, layout.battle, { enemy: game.enemy, countdown: game.attackCountdown(), idle, entrance, troops: release.troops });
+  drawBattleStage(ctx, layout.battle, { enemy: game.enemy, countdown: game.attackCountdown(), idle, entrance, troops: release.troops, unitPoints: game.enemyUnitPoints() });
 
   drawTroopCounter(ctx, layout.battle.troopCounter, troopCounts(game, release));
   drawTopGauges(ctx, layout.battle.topGauges, topGaugeValues(game, release));

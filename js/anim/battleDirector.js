@@ -72,7 +72,7 @@ export class BattleDirector {
     /** @type {import('./enemyBody.js').EnemyFigureLook} 倒れる絵の見た目の入れ物 */
     this.figure = { visible: false, dy: 0, dx: 0 };
     /** @type {import('./troopMotion.js').TroopSample} 倒れる絵を求める作業用の入れ物 */
-    this.figureScratch = { visible: false, x: 0, footY: 0, sortY: 0, tilt: 0, alpha: 1, idle: false };
+    this.figureScratch = { visible: false, x: 0, footY: 0, sortY: 0, tilt: 0, alpha: 1, idle: false, wounded: false };
     /** @type {BattleFx} 攻防のエフェクトの見た目の入れ物 */
     this.fx = new BattleFx(timeline);
     /** @type {import('./chargeShow.js').ChargePoseLook} 絵の姿勢の入れ物（ための姿勢に待機の伸び縮みと、へこむ敵のへこみを重ねる） */
