@@ -1,5 +1,5 @@
 /**
- * 放つ演出全体の管理（時計を進め、放つたびの玉の記録（4スートそろいの文字と玉を含む）と段取りの間の兵を持ち、連鎖のきっかけ・札を止めているか・動いているか・ゲージの表示値・待っている兵の数・描画用の見た目の値を答え、段取りの間の兵の数をその場で合わせる）。
+ * 放つ演出全体の管理（時計を進め、放つたびの玉の記録（4スートそろいの文字と玉を含む）と段取りの間の兵を持ち、連鎖のきっかけ・札を止めているか・動いているか・ゲージの表示値・待っている兵の数（自動兵士の印のある数を含む）・描画用の見た目の値を答え、段取りの間の兵の数をその場で合わせ、自動兵士を陣地に現す）。
  * 描画せず、ゲームの状態に触れない。
  */
 
@@ -161,11 +161,40 @@ export class ReleaseShow {
   }
 
   /**
+   * 段取りの間に待っている兵のうち、自動兵士の印のある兵の種類ごとの数。
+   * @returns {import('./campTroops.js').CampCounts}
+   */
+  waitingAutoCounts() {
+    return this.camp.autoCounts();
+  }
+
+  /**
+   * ターンの始まりに、自動兵士を陣地の家にその場で濃くなって現し、人数の表示を現れる時間で 0 から数え上げる。
+   * 量が 0（または `gains` にない）種類は何も足さず、`endTime` も延ばさない。
+   * @param {Object<string, number>} gains 種類ごとの足す数（`Game.autoTroopGains()` の値）
+   * @returns {void}
+   */
+  landAuto(gains) {
+    let end = this.endTime;
+    for (const kind of OWN_KINDS) {
+      const amount = gains[kind] ?? 0;
+      if (amount <= 0) continue;
+      const arriveAt = this.clock;
+      const last = this.camp.appear(kind, amount, arriveAt);
+      const count = createGaugeCount({ gauge: kind, from: 0, to: amount, delay: arriveAt, duration: last - arriveAt });
+      this.counts.push(count);
+      end = Math.max(end, gaugeCountEnd(count));
+    }
+    this.endTime = end;
+  }
+
+  /**
    * 描画用の見た目の値を作る。状態は変えない。
    * @param {Object<string, number>} gauges ルール層のゲージの値
+   * @param {Object<string, number>|null} [held] まだ現れていない自動兵士の数（種類 → 量）。あれば、そのゲージの表示値から引く（省くと引かない）
    * @returns {ReleaseLook}
    */
-  view(gauges) {
+  view(gauges, held = null) {
     const out = { cards: [], orbs: [], formulas: [], labels: [] };
     for (const r of this.releases) sampleReleaseOrbs(r, this.clock, out);
     for (const a of this.allSuits) sampleAllSuits(a, this.clock, out);
@@ -174,6 +203,12 @@ export class ReleaseShow {
     for (const c of this.counts) {
       const pending = c.to - sampleGaugeCount(c, this.clock);
       if (pending > 0) gaugeValues[c.gauge] = (gaugeValues[c.gauge] ?? gauges[c.gauge]) - pending;
+    }
+    if (held !== null) {
+      for (const kind of OWN_KINDS) {
+        const amount = held[kind] ?? 0;
+        if (amount > 0) gaugeValues[kind] = (gaugeValues[kind] ?? gauges[kind]) - amount;
+      }
     }
     return { cards: out.cards, orbs: out.orbs, formulas: out.formulas, labels: out.labels, troops: this.camp.look(), gaugeValues };
   }

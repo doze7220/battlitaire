@@ -76,6 +76,7 @@ const KNOCK_DIRS = Object.freeze({
  * @property {number} appearMs 現れる（濃くなる）時間（ms。0 ならすぐ）
  * @property {number} size 描く大きさ（0 なら配置の兵の大きさ）
  * @property {boolean} glide true なら弾み・揺れなしで真っすぐ動く
+ * @property {boolean} auto 自動兵士か（印だけ。動き・時刻・結果には影響せず、見た目の色だけに使う。既定 false）
  * @property {TroopLeg[]} legs 移動の区間の並び（時刻の昇順）
  * @property {TroopEnd|null} end 終わり方（まだなら null）
  * @property {number} x 作るときだけ使う。最後の脚の行き先の x（いまいる位置）
@@ -107,7 +108,7 @@ const KNOCK_DIRS = Object.freeze({
  * @param {number} homeY 家の足元の y
  * @param {number} appearAt 現れ始める時刻（ms）
  * @param {number} appearMs 現れる時間（ms。0 ならすぐ）
- * @returns {TroopUnit} 脚・終わり方・傷のない記録（points は 1、woundAt は null、woundHits は空）
+ * @returns {TroopUnit} 脚・終わり方・傷のない記録（points は 1、woundAt は null、woundHits は空、auto は false）
  */
 export function createTroopUnit(kind, index, homeX, homeY, appearAt, appearMs) {
   return {
@@ -119,6 +120,7 @@ export function createTroopUnit(kind, index, homeX, homeY, appearAt, appearMs) {
     appearMs,
     size: 0,
     glide: GLIDE_KINDS.has(kind),
+    auto: false,
     legs: [],
     end: null,
     x: homeX,

@@ -1,5 +1,5 @@
 /**
- * 攻防の演出の設定（段・兵の動き・弾かれて落ちる距離・燃える札・段取りの間・敵の側の兵・打撃・ヒットマークの時間と大きさ、
+ * 攻防の演出の設定（段・兵の動き・弾かれて落ちる距離・燃える札・段取りの間・自動兵士の現れ方・敵の側の兵・打撃・ヒットマークの時間と大きさ、
  * 兵ごとの動きのずれ・攻撃の兵が当たる間隔、攻防のエフェクトの値・呼吸の深さと速さ・敵の絵の呼吸の深さと速さ）を1か所に凍結して持つ。これらの数値は、ほかのファイルに書かない。
  */
 
@@ -38,6 +38,7 @@
  * @property {number} landStaggerMs 段取りの間、兵が1体ずつ飛び出すときの1体ごとの遅れ（ms）。試遊で決め直す。
  * @property {number} landStaggerMaxMs 段取りの間、飛び出す遅れの広がり全体の上限（ms）。試遊で決め直す。
  * @property {number} landJitterMs 段取りの間、兵が家へ跳ぶ動きの、兵ごとの動き出しのずれの最大（ms。前からの遅れに足す）。試遊で決め直す。
+ * @property {number} autoTroopAppearMs 自動兵士が（ターンの始まりに）陣地の家へその場で濃くなって現れる時間（ms）。試遊で決め直す。
  * @property {number} enterMs 敵の側の兵（群れの敵の兵・炎）が画面の外・ドラゴンの口から陣地の家まで動く時間（ms。前から出る遅れは別。敵の種類ごとに `ENEMY_PACES` の `moveScale` を掛ける）。試遊で決め直す。
  * @property {number} strikeStaggerMs 飛ぶもののない打撃で、防御の兵・城に1つずつ当たる間隔の上限（ms）。試遊で決め直す。
  * @property {number} strikeStaggerMaxMs 打撃の間隔の広がり全体の上限（ms）。試遊で決め直す。
@@ -119,6 +120,7 @@ export const BATTLE_ANIM = Object.freeze({
   landStaggerMs: 10,
   landStaggerMaxMs: 300,
   landJitterMs: 300,
+  autoTroopAppearMs: 300,
   enterMs: 600,
   strikeStaggerMs: 90,
   strikeStaggerMaxMs: 1200,

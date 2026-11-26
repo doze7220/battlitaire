@@ -1,5 +1,5 @@
 /**
- * 兵1体ずつの名簿を作り、段ごとに兵へ脚と終わり方を割り当てる
+ * 兵1体ずつの名簿を作り（自動兵士の印を付けることを含む）、段ごとに兵へ脚と終わり方を割り当てる
  * （出す・置く・行進・当たる・相打ち・落とす・城へ入る・右へ帰す・家へ跳ばす・段取りの間の名簿から消す）。
  * 前から遅らせる式と、兵ごとのずれ（troopJitter.js）の足し方はここだけに置く。乱数は使わない。
  */
@@ -206,10 +206,11 @@ export function createTroopRoster(troopLayout) {
  * @param {number} count 人数（0 以上の整数）
  * @param {number} t 現れ始める時刻（ms）
  * @param {number} appearMs 濃くなる時間（ms。0 ならすぐ）
+ * @param {boolean} [auto] 自動兵士の印を付けるか（省くと false）
  * @returns {void}
  * @throws {Error} 未知の種類のとき
  */
-export function spawnTroops(roster, kind, count, t, appearMs) {
+export function spawnTroops(roster, kind, count, t, appearMs, auto = false) {
   const campName = CAMP_OF[kind];
   if (campName === undefined) throw new Error(`spawnTroops: 未知の種類 ${kind}`);
   const camp = roster.layout.camps[campName];
@@ -220,10 +221,26 @@ export function spawnTroops(roster, kind, count, t, appearMs) {
     const home = campSlot(camp, index);
     const unit = createTroopUnit(kind, index, home.x, home.y, t, appearMs);
     unit.size = roster.layout.kindSizes[kind] ?? 0;
+    unit.auto = auto;
     roster.units.push(unit);
     list.push(unit);
   }
   sortRanked(list, kind);
+}
+
+/**
+ * 種類 kind の兵のうち、番号（index）が count 未満の兵に自動兵士の印を付ける（見た目だけの印。動き・時刻・結果は変えない）。
+ * @param {TroopRoster} roster 名簿（その場で書き換える）
+ * @param {string} kind 種類
+ * @param {number} count 印を付ける数（番号 0 から count−1。0 以下なら何もしない）
+ * @returns {void}
+ */
+export function markAutoTroops(roster, kind, count) {
+  const list = roster.ranked[kind];
+  if (!list || count <= 0) return;
+  for (const unit of list) {
+    if (unit.index < count) unit.auto = true;
+  }
 }
 
 /**

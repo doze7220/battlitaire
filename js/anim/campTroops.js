@@ -1,6 +1,6 @@
 /**
  * 段取りの間に陣地で待つ自軍の兵（名簿と、全員の見た目の入れ物）を持ち、弾けた玉から兵を足し、時計から見た目を書き込み、種類ごとの数を答える。
- * 種類の兵の数をその場でそろえる。描画も状態の変更（ルール層）もしない。
+ * 種類の兵の数をその場でそろえ、自動兵士（印つき）を家に現し、印のある兵の数を答える。描画も状態の変更（ルール層）もしない。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
@@ -54,6 +54,25 @@ export class CampTroops {
   }
 
   /**
+   * 自動兵士を count 体、陣地の家にその場で濃くなって現す（印を付ける。家の番号はその種類のすでにいる兵の続き）。
+   * 入れ物を作り直し、今の時計で見た目を書き込む。
+   * @param {string} kind 兵の種類（'attack' | 'defense' | 'heal'）
+   * @param {number} count 足す数（0 以下なら何もしない）
+   * @param {number} clock 現れ始める時刻（ms。今の時計の値）
+   * @returns {number} 全員が現れきる時刻（ms。count が 0 以下なら clock）
+   */
+  appear(kind, count, clock) {
+    if (count <= 0) return clock;
+    const ms = BATTLE_ANIM.autoTroopAppearMs;
+    spawnTroops(this.roster, kind, count, clock, ms, true);
+    this.swarm = new TroopSwarm(this.roster.units);
+    this.dirty = true;
+    this.settledAt = Math.max(this.settledAt, clock + ms);
+    this.sample(clock);
+    return clock + ms;
+  }
+
+  /**
    * 種類の兵の数を、玉を飛ばさずその場で count 体にそろえる（足りなければ家にすぐ現し、多ければ番号の大きい方から消す）。
    * 変えたときは入れ物を作り直し、今の時計で見た目を書き込む。
    * @param {string} kind 兵の種類（'attack' | 'defense' | 'heal'）
@@ -101,6 +120,20 @@ export class CampTroops {
   counts() {
     const out = { attack: 0, defense: 0, heal: 0 };
     for (const kind of OWN_KINDS) out[kind] = (this.roster.ranked[kind] ?? []).length;
+    return out;
+  }
+
+  /**
+   * 待っている兵のうち、自動兵士の印のある兵の種類ごとの数。
+   * @returns {CampCounts}
+   */
+  autoCounts() {
+    const out = { attack: 0, defense: 0, heal: 0 };
+    for (const kind of OWN_KINDS) {
+      for (const unit of this.roster.ranked[kind] ?? []) {
+        if (unit.auto) out[kind]++;
+      }
+    }
     return out;
   }
 }

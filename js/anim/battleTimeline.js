@@ -14,6 +14,7 @@ import {
   enterCastle,
   finishTroops,
   marchSquad,
+  markAutoTroops,
   OWN_KINDS,
   rosterEndTime,
   rosterEndTimes,
@@ -415,9 +416,10 @@ const STEP_BUILDERS = {
  * @param {import('../view/layout.js').TroopLayout} troopLayout 兵の配置
  * @param {import('../view/layout.js').Layout} boardLayout 盤面の配置（燃える札の位置と、敵の体・敵の側の兵の出る位置 battle に使う）
  * @param {{attack: number, defense: number, heal: number}} waiting 段取りの間に待っていた兵の数（家の番号は 0 から数−1。`before` の値と同じでなければ Error）
+ * @param {{attack: number, defense: number, heal: number}} [waitingAuto] 待っていた兵のうち自動兵士の数（番号 0 から数−1 に印を付ける。見た目だけの印。省くと印なし）
  * @returns {BattleTimeline} 時間割
  */
-export function buildBattleTimeline(steps, before, troopLayout, boardLayout, waiting) {
+export function buildBattleTimeline(steps, before, troopLayout, boardLayout, waiting, waitingAuto = { attack: 0, defense: 0, heal: 0 }) {
   /** @type {BuildState} */
   const state = {
     roster: createTroopRoster(troopLayout),
@@ -441,6 +443,7 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout, wai
       throw new Error(`buildBattleTimeline: 待っていた兵の数 ${kind}=${waiting[kind]} が攻防の前の値 ${before[kind]} と違います`);
     }
     spawnTroops(state.roster, kind, waiting[kind], 0, 0);
+    markAutoTroops(state.roster, kind, waitingAuto[kind] ?? 0);
     waitingTotal += waiting[kind];
   }
   state.body = createEnemyBody(state.roster, boardLayout.battle, before.enemyTypeId, before.enemyHp, before.enemyDefense, before.enemyMaxHp, before.enemyUnit);
