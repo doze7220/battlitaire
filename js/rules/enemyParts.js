@@ -50,3 +50,53 @@ export function enemySituationOf(parts) {
   if (parts.child > 0) return 'young';
   return null;
 }
+
+/**
+ * 攻防の剣の当たり方の入力（攻防の前の親と子の HP と当たる順）。
+ * @typedef {Object} BattleParts
+ * @property {EnemyParts} hp 攻防の前の親と子の HP
+ * @property {ReadonlyArray<'parent'|'child'>} order 防御で止まった後の剣の当たる順
+ */
+
+/**
+ * 剣が当たった先と量。
+ * @typedef {Object} PartDamage
+ * @property {'parent'|'child'} part 当たった先
+ * @property {number} amount 当たった量（0 より大きい）
+ */
+
+/**
+ * 攻防に渡す親と子の HP と当たる順を求める。
+ * @param {{ brood?: { hitOrder: Object<string, ReadonlyArray<'parent'|'child'>> } }} spec 敵の種類の設定
+ * @param {EnemyParts|null|undefined} parts 敵の今の親と子の HP（親子でない敵は null か undefined）
+ * @param {string} kind 予告の種類（'attack'・'windup'・'guard'）
+ * @returns {BattleParts|null} 親子の敵なら親と子の HP と当たる順、そうでなければ null
+ */
+export function battlePartsOf(spec, parts, kind) {
+  if (!spec.brood || !parts) return null;
+  const { hitOrder } = spec.brood;
+  const order = Object.prototype.hasOwnProperty.call(hitOrder, kind) ? hitOrder[kind] : hitOrder.default;
+  return { hp: { parent: parts.parent, child: parts.child }, order: order.slice() };
+}
+
+/**
+ * 敵へのダメージを、当たる順に親と子へ分ける。その部分の HP までを当て、残りを次へ回す。
+ * @param {BattleParts} battleParts 攻防の前の親と子の HP と当たる順
+ * @param {number} dealt 敵へのダメージの合計（0 以上の整数）
+ * @returns {{ damages: PartDamage[], after: EnemyParts }} 当たった先ごとの量（当たる順・量が 0 より大きいものだけ）と、攻防の後の親と子の HP
+ */
+export function splitPartDamage(battleParts, dealt) {
+  const after = { parent: battleParts.hp.parent, child: battleParts.hp.child };
+  /** @type {PartDamage[]} */
+  const damages = [];
+  let rest = dealt;
+  for (const part of battleParts.order) {
+    const amount = Math.min(rest, after[part]);
+    if (amount > 0) {
+      damages.push({ part, amount });
+      after[part] -= amount;
+      rest -= amount;
+    }
+  }
+  return { damages, after };
+}

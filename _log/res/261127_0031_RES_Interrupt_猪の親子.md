@@ -269,6 +269,7 @@ boar: Object.freeze({
 *   2章「中断データ」: 版 7（6 から上げた理由: 敵の親と子の HP `parts` を足した）、敵の項目に `parts`（形の確かめは `enemyParts.js` の `isEnemyPartsShape`。親子の敵だけ値を持ち、合計が `hp` と同じ）。
 *   2章「設定（調整値）」・3章「デバッグ」: 敵の種類の設定に `motion`・`brood`。猪（溜める確率と溜めのターン数）の記述を猪の親子（子の攻撃・守る確率と幅・突進・怒りを溜める確率・大突進）に。DEBUG のルールの値 65 個 → 69 個（猪の親子の最大 HP は「最大 HP（合計）」）。敵の次の行動の指定に猪の親子（今の局面でできる行動だけ）。敵の HP の「1 にする」の親子の扱い（親が生きていれば親 1・子 0、親が 0 なら子 1）と、「子を 0 にする」「親を 0 にする」（もう片方が 0 なら 1 を残す。親を 0 にして今の予告が今の局面でできなければ決め直す）。最大 HP を変えたときの親と子の合わせ方。
 *   3章「1フェーズの流れ」1・4: 猪の溜めの数え下ろしの記述を外す。猪の親子の見せ方（子の攻撃はうり坊が画面の外から陣地へ出て城へ向かう、守るターンは親の前にシールド、剣はふだんは子 → 余りが親・守るターンはシールド → 親 → 余りが子、親が先に倒れると絵が倒れて消えうり坊が残る、怒った後は今の猪の駆け寄り・溜め・大きな一撃）。攻撃の音の表の猪の行（突進・大突進だけ）。
+*   2章「攻防の出来事の並び」: （タスク3）計算の入力に任意の `enemyParts`（親子の敵の攻防の前の親と子の HP と当たる順）、結果に `enemyParts`（攻防の後の親と子の HP。親子でない敵は null）。親子の敵で親と子の合計が敵の HP と違うとき・敵の回復があるときは Error。`Game.resolveBattle` は設定の `brood.hitOrder` から `battlePartsOf` で入力を作り、結果を `enemy.parts` に入れる（`BattleResult` には足さない）。
 *   4章の表: 新規の行 `enemyParts.js`・`bodyHp.js`。行の更新 `config.js`・`enemyBehaviors.js`（`brood`・局面の引数・行動を作る関数）・`combatants.js`・`battle.js`・`Game.js`・`enemyTypes.js`（組の鍵）・`debugIntents.js`・`debugControls.js`・`debugRules.js`・`debugRuleItems.js`（69 個）・`suspendData.js`（版 7）・`enemyShows.js`・`enemyBody.js`・`battleSteps.js`・`battleTimeline.js`・`enemyIdle.js`・`spriteView.js`（`uribo`）・`hordePlaces.js`（`area.h`）・`hordeSkins.js`・`enemyFigures.js`・`enemyView.js`・`battleText.js`・`intentView.js`・`enemyPortrait.js`・`debugText.js`・`debugLayout.js`・`debugTab.js`・`boardDebug.js`・`BoardScene.js`・`soundCues.js`。
 
 ## 3. タスクリスト
@@ -292,7 +293,7 @@ boar: Object.freeze({
         *   2章「要件2」の行動の決まり `brood` のとおりに書く。`Game.js` には import と呼ぶ行だけを足す。各関数・表の行に JSDoc（`BROOD_PLANS` の各行に乱数の回数）。`enemyBehaviors.js`・`Game.js` の先頭の責務に親子を足す（3行以内）。
         *   確かめ: (1) スクラッチの写しの設定（猪の親子）で `planBehaviorAction` を局面ごとに多数呼び、予告の行動・量の幅・確率（守る ≈ 30%、溜めの抽選のうち溜める ≈ 30%、溜めの次は大突進、大突進の次は突進、子だけは子の攻撃だけ）・次の状態・乱数の呼び出しの回数が要件2の表のとおり。`isState`・`countdown`・`isOpening`・局面 `null` で Error。`createIntent` を通した予告（攻撃の加算・守るの `defense`・ほかの行動の防御 0）が要件2のとおり。写しの設定の `Game` で、敵の `parts` を手で書き換えて `planIntent` が今の局面の行動を出す（猪の親子は `switchEnemy(game, 'boar')` で出す。写しでは DEBUG の項目のモジュールを読み込まない。2章「要件5」の先回りの依存）。(2) `RULES` のままで、変更前と並べたランダムなゲーム（タスク1と同じ3種）で毎手の結果・状態が一致し、ほかの7種と今の猪の予告・乱数の呼び出し（順と回数）が同じ。(3) 代用の `oz` のローダーで `js/main.js` から辿るモジュールがすべて読み込める。
         *   共通の作業。
-*   [ ] タスク3: ルール層の親子の仕組み（3）— 剣の当たり方の分け方と、攻防で親と子の HP を渡して受け取ること
+*   [x] タスク3: ルール層の親子の仕組み（3）— 剣の当たり方の分け方と、攻防で親と子の HP を渡して受け取ること
     *   **対象ファイル** :
         *   `./js/rules/enemyParts.js` : 更新（`battlePartsOf`・`splitPartDamage`・型 `BattleParts`・`PartDamage`）
         *   `./js/rules/battle.js` : 更新（入力 `enemyParts`・出来事の `parts`・結果 `BattleCalc.enemyParts`・先頭の責務）
@@ -442,7 +443,15 @@ boar: Object.freeze({
 
 ### タスク3: ルール層の親子の仕組み（3）— 剣の当たり方の分け方と、攻防で親と子の HP を渡して受け取ること
 *   **作業内容** :
-    *   （未記入）
+    *   `js/rules/enemyParts.js`: 型 `BattleParts`（`hp`・`order`）・`PartDamage`（`part`・`amount`）、`battlePartsOf(spec, parts, kind)`（`spec.brood` がないか `parts` が null/undefined なら null。`hitOrder[kind]` がなければ `default`。順の配列は写し）、`splitPartDamage(battleParts, dealt)`（当たる順に `min(残り, HP)` を当て、量が 0 より大きいものだけ `damages` に入れ、攻防の後の `after` を返す。入力は書き換えない）を足した。先頭の責務は変更なし（すでに剣の当たり方を含めて3行以内）。
+    *   `js/rules/battle.js`: `enemyParts` を import せず `splitPartDamage` だけ import。入力 `enemyParts`（任意。省く・null は今と同じ）、出来事 `enemyDamage` の `parts`（親子の敵のときだけ。親子でない敵の出来事には `parts` の項目自体がない）、結果 `BattleCalc.enemyParts`（親子でない敵は null、城が落ちた攻防は入力のまま）。親子の敵で合計が `enemyHp` と違う・`enemyHeal > 0` は Error。相殺・`dealt`・`enemyDefeat` の式は変えていない。先頭の責務に親子の1行を足した（2行）。
+    *   `js/rules/Game.js`: import に `battlePartsOf` を足し、`resolveBattle` の `computeBattle` の入力に `enemyParts: battlePartsOf(spec, this.enemy.parts, enemyAction.kind)` を足し、`this.enemy.parts = calc.enemyParts` を足した。`BattleResult` には足していない。先頭の責務の括弧に「親と子の HP を攻防に渡す」を足した（3行のまま）。
+    *   確かめ（一時スクリプトと、変更前 `git archive c4d8924 js` の展開・猪の行を要件1の猪の親子の行に替えた `js/` の写しはスクラッチに置き、終わって消した）。変更した3ファイルの構文チェック OK。
+        *   (1) 写しの設定（猪の親子。`behavior.type: 'brood'`。タスク2の後なので `createEnemy` は通る。DEBUG の項目のモジュールは読み込まない。`motion` は付けたが並びには効かないので `spawnEnemy('boar')`＋`planIntent` で出した。`switchEnemy` は `debugIntents.js` を import するので使わず、同じ処理を直接呼んだ）。`splitPartDamage`・`computeBattle` の場合分け: ふだんのターン（剣 0・子より少ない・子と同じ・子より多い（余りが親）・合計以上（倒す）・合計を超える）、守るターン（防御以下・防御と親の間・親を越えて子へ・倒す。防御で相殺してから親 → 子）、怒り（突進・溜め・大突進。剣が親より多くても親の HP で頭打ち）、子だけ（倒すときを含む）、城が落ちる攻防（親と子・HP は入力のまま）がすべて要件2のとおり。剣 0〜50 × 3種類の予告 × 5通りの親と子（22/22・22/0・0/22・23/22・1/1）で、`parts` の量の合計 = `enemyDamage` の量 = `min(剣, 合計 HP)`、攻防の後の親 + 子 = `enemyHp`、`enemyDefeated` は `enemyHp === 0` のときだけ。合計の食い違い・親子の回復は Error（2件とも投げる）。`enemyParts` を省く・null は結果が `enemyParts: null` になるだけで、出来事は今と同じ（`parts` の項目なし）。
+        *   `Game` を通した攻防（上と同じ写し）: 上の場合分けを `resolveBattle` で行い、`enemy.parts`・`enemy.hp`（= 親 + 子）・`enemyDefeat` の数・`stats.enemiesDefeated`・結果の `defeat` が、親と子の両方が 0 になったときだけ 1 回で、親だけ・子だけが 0 では 0 回。`BattleResult` に `parts` はない。城が落ちた攻防は `enemy.parts`・`enemy.hp` が変わらず倒した数 0。攻防で together → enraged（子を倒した）にすると、次のフェーズの予告が突進か溜める。守るターンで親を倒して young にすると次の予告が子の攻撃。`parts` を手で書き換えた各局面で 300 回ずつ予告を決めると、together = 子の攻撃・守る、enraged = 突進・溜める、young = 子の攻撃だけ。
+        *   ゲームを通す: どのステージの敵も猪の親子にして（倒すたびに `spawnEnemy('boar')`）、放つ頻度 0.9・0.7・0.5 × 各 40 ゲーム = 120 ゲーム、186,512 手、すべて負けまで（120 回。最大ステージ 16、敵を倒した 1122 回）、Error 0。毎手の `hp === parent + child`、攻防ごとの「`enemyDefeat` の有無 = 倒した数の増え方 = `hp` が 0」・「`hp` が 0 のとき親も子も 0」、段取りの間の予告が今の局面の行動（together = 子の攻撃・守る、enraged = 突進・溜める・大突進、young = 子の攻撃）であること、がすべて成り立った（局面を通った回数: together 122750・enraged 61193・young 325）。
+        *   (2) `RULES` のまま（今の猪）、変更前 `c4d8924` と作業ツリーの `Game` を同じ乱数・同じ日付の種から作り、同じ操作を同時に行って、毎手の戻り値（攻防の `BattleResult`・出来事を含む）と状態全体（乱数の状態・予告・3択の候補を含む。敵の `parts` だけ除く）を JSON で比べた。放つ頻度 0.7・0.9・0 × 各 30 ゲーム = 90 ゲーム、143,804 手、敵を倒した 340・3択の選択 340、負け 68。8種すべて（猪 24,714 回の攻防を含む）で一致、作業ツリー側の敵の `parts` は常に null。予告は attack（ふつう・爪・ブレス・大攻撃）・windup（ふつう・吸い込む・溜める）・guard（ふつう・大防御）を通った。
+        *   (3) 代用の `oz`（受け流す最小の代わり）と、`oz`・`assets/` だけ解く `module.register` のローダー、`document`・`location` の代わりで、`js/main.js` の import が成功し、`js/` 配下の 168 ファイルすべても個別に読み込めた（失敗 0）。
 
 ### タスク4: ルール層の親子の仕組み（4）— 並びの組の鍵
 *   **作業内容** :
@@ -503,3 +512,5 @@ boar: Object.freeze({
 * （計画時）DEBUG の「子どもたちを守る」は3つ並びの選択肢の1つ分の幅に入るので、文字が縮む見込み。タスク13で見積もる。
 * （計画時・**発注者に確かめてもらう点**）子の攻撃（子がいる間のふだんのターンと、子だけのターンのうり坊の攻撃）では、攻撃の始まりの音を鳴らさない計画にした（`ENEMY_ATTACK_SE.boar` を `{ rush: 'giantAttack', bigRush: 'giantAttack' }` にして `default` を外す。ゴブリンの攻撃と同じ）。今の猪はどの攻撃でも `giantAttack` が鳴る（`soundCues.js` の `ENEMY_ATTACK_SE.boar` = `{ default: 'giantAttack' }`）。REQ は「BGM・当たりの音は今の猪と同じで、新しい音は作らない」としか書いていないため、子の攻撃でも今の猪と同じく `giantAttack` を鳴らすか、鳴らさないかを発注者に確かめてもらう。鳴らすなら、タスク12で `default: 'giantAttack'` を足すだけで済む（ほかは変わらない）。
 * （計画時・持ち越し）タスク7で体の見せ方に `'brood'` が増えるが、`js/anim/impactLog.js` の `recordStepImpacts` の JSDoc（引数 `bodyStyle` の説明「敵の体の見せ方（'horde'・'figure'）」）は古いままになる。このファイルは本 REQ の変更対象ではないのでコードは変えない（引数は今は使わない＝動きは変わらない）。次に `impactLog.js` を触る REQ で `'brood'` を足す。
+* （タスク3）`computeBattle` の `enemyParts` の入力は、`battlePartsOf` が返す `{ hp, order }` の形をそのまま渡す（`order` は予告の `kind` ごとに `Game.resolveBattle` が求める）。`enemyDamage.parts` は親子の敵だけに付くので、演出（タスク7）は `parts` の有無で親子かを決めず、体の見せ方（`body: 'brood'`）で決めること。
+* （タスク3）攻防の後の局面は `Game.resolveBattle` が `enemy.parts` を更新した時点で変わるが、予告はターンの始まり（`planIntent`）でだけ読むので、攻防の結果の画面を見ている間の予告（`enemy.intent`）は前の局面のまま。タスク10以降で画面が `enemy.intent` と `enemy.parts` を同時に読むときは、結果の画面では `parts` が新しい局面、予告が古い局面になる点に注意（試遊で確かめる）。
