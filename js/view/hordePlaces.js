@@ -28,6 +28,12 @@
 export const HORDE_PLACES = Object.freeze({
   goblins: null,
   skeletons: null,
+  boar: Object.freeze({
+    size: 24,
+    area: Object.freeze({ x: 565, w: 120, h: 80 }),
+    enemy: Object.freeze({ x: 455, w: 45 }),
+    enemyGuard: Object.freeze({ x: 525, w: 35 }),
+  }),
   ogres: Object.freeze({
     size: 48,
     area: Object.freeze({ x: 605, w: 75 }),

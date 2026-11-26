@@ -49,11 +49,11 @@ const ENEMY_FIGURES = Object.freeze({
   }),
   boar: Object.freeze({
     sprite: SPRITE_IDS.boar,
-    height: 130,
-    shield: null,
+    height: 100,
+    shield: Object.freeze({ cx: 0.35, cy: 0.55, w: 0.55, h: 0.6 }),
     hit: 0.12,
     mouth: null,
-    intent: Object.freeze({ x: 0.5, gap: 30 }),
+    intent: Object.freeze({ x: 0.5, gap: null }),
     minScale: 1,
   }),
   slime: Object.freeze({
