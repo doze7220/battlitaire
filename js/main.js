@@ -12,6 +12,7 @@ import { BoardScene } from './scenes/BoardScene.js';
 import { HowToScene } from './scenes/HowToScene.js';
 import { MenuScene } from './scenes/MenuScene.js';
 import { createMenuTabs } from './scenes/menuTabs.js';
+import { createUpgradeTab } from './scenes/upgradeTab.js';
 import { BoardDebug } from './scenes/boardDebug.js';
 import { createDebugTab } from './scenes/debugTab.js';
 import { createDebugRules } from './rules/debugRules.js';
@@ -44,7 +45,7 @@ function createBoard() {
   const seed = todaySeed();
   const rng = newPlayRng();
   if (Engine.debug) return createDebugBoard(seed, rng);
-  return new BoardScene({ screen, layer: 'main', rng, seed, createTitle, createMenu });
+  return new BoardScene({ screen, layer: 'main', rng, seed, createTitle, createMenu: createBoardMenu });
 }
 
 /**
@@ -54,7 +55,7 @@ function createBoard() {
  * @returns {Scene} 再開する盤面のシーン
  */
 function createResumedBoard(suspend) {
-  return new BoardScene({ screen, layer: 'main', suspend, createTitle, createMenu });
+  return new BoardScene({ screen, layer: 'main', suspend, createTitle, createMenu: createBoardMenu });
 }
 
 /**
@@ -84,7 +85,7 @@ function createHowTo() {
 }
 
 /**
- * メニューの窓のシーンを作る（標準のタブの一覧で組み立てる。開くたびに新しい窓）。盤面から渡される引数は使わない（DEBUG タブなし。デバッグのゲームの盤面は createDebugMenu を使う）。
+ * メニューの窓のシーンを作る（標準のタブの一覧で組み立てる。開くたびに新しい窓）。タイトル画面のメニュー（強化タブなし。盤面のメニューは createBoardMenu・createDebugMenu を使う）。
  * @returns {Scene} 新しいメニューのシーン
  */
 function createMenu() {
@@ -92,12 +93,21 @@ function createMenu() {
 }
 
 /**
- * DEBUG タブ付きのメニューの窓のシーンを作る（標準のタブの一覧の後ろに DEBUG タブを足す。開くたびに新しい窓。デバッグのゲームの盤面だけが使う）。
+ * 盤面のメニューの窓のシーンを作る（設定・強化・クレジット。開くたびに新しい窓。デバッグでないふつうの盤面が使う）。
+ * @param {import('./scenes/boardDebug.js').BoardMenuTarget} target 盤面の部品（game・releaseShow・flow。game だけ使う）
+ * @returns {Scene} 新しいメニューのシーン
+ */
+function createBoardMenu(target) {
+  return new MenuScene({ layer: 'main', tabs: createMenuTabs([createUpgradeTab(target.game)]) });
+}
+
+/**
+ * DEBUG タブ付きのメニューの窓のシーンを作る（標準のタブの一覧の後ろに DEBUG タブを足す。並びは 設定・強化・クレジット・DEBUG。開くたびに新しい窓。デバッグのゲームの盤面だけが使う）。
  * @param {import('./scenes/boardDebug.js').BoardMenuTarget} target 盤面の部品（game・releaseShow・flow）
  * @returns {Scene} 新しいメニューのシーン
  */
 function createDebugMenu(target) {
-  return new MenuScene({ layer: 'main', tabs: [...createMenuTabs(), createDebugTab(new BoardDebug(target))] });
+  return new MenuScene({ layer: 'main', tabs: [...createMenuTabs([createUpgradeTab(target.game)]), createDebugTab(new BoardDebug(target))] });
 }
 
 /**

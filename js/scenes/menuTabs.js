@@ -1,5 +1,5 @@
 /**
- * 責務: メニューの標準のタブ（「設定」「クレジット」）の一覧を作り、
+ * 責務: メニューの標準のタブ（「設定」「クレジット」。間に別のタブを入れられる）の一覧を作り、
  * 各タブの部品を設定の読み書きの口（settingsStore.js）につないで足す。
  */
 import { MENU_LAYOUT } from '../view/menuLayout.js';
@@ -80,13 +80,15 @@ function buildCreditsTab(tab) {
 }
 
 /**
- * メニューの標準のタブの一覧（「設定」「クレジット」）を作る。
+ * メニューの標準のタブの一覧（「設定」・間に入れるタブ・「クレジット」の順）を作る。
  * 後で DEBUG タブなどを足すときは、呼ぶ側（main.js）がこの配列の後ろに足す。
+ * @param {import('./MenuScene.js').MenuTab[]} [innerTabs] 「設定」と「クレジット」の間に入れるタブ（盤面の「強化」タブなど）
  * @returns {import('./MenuScene.js').MenuTab[]} 毎回新しい配列
  */
-export function createMenuTabs() {
+export function createMenuTabs(innerTabs = []) {
   return [
     { label: MENU_TEXT.tabs.settings, build: buildSettingsTab },
+    ...innerTabs,
     { label: MENU_TEXT.tabs.credits, build: buildCreditsTab },
   ];
 }

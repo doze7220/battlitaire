@@ -53,7 +53,9 @@ const CREDIT_PITCH = 80;
  *   speedLabel: MenuRect,
  *   speedChoices: MenuRect,
  *   creditArea: MenuRect,
- *   creditLine: Readonly<{ width: number, height: number, pitch: number }>
+ *   creditLine: Readonly<{ width: number, height: number, pitch: number }>,
+ *   upgradeArea: MenuRect,
+ *   upgradeLine: Readonly<{ width: number, height: number, pitch: number }>
  * }>}
  */
 export const MENU_LAYOUT = Object.freeze({
@@ -70,4 +72,7 @@ export const MENU_LAYOUT = Object.freeze({
   }),
   creditArea: Object.freeze({ x: MARGIN, y: BODY_Y, width: ITEM_W, height: CREDIT_AREA_H }),
   creditLine: Object.freeze({ width: CREDIT_LINE_W, height: LABEL_H, pitch: CREDIT_PITCH }),
+  // 「強化」タブはクレジットと同じ領域・同じ行の幅・高さ・間隔
+  upgradeArea: Object.freeze({ x: MARGIN, y: BODY_Y, width: ITEM_W, height: CREDIT_AREA_H }),
+  upgradeLine: Object.freeze({ width: CREDIT_LINE_W, height: LABEL_H, pitch: CREDIT_PITCH }),
 });

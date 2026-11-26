@@ -5,11 +5,11 @@
 
 /**
  * メニューの窓の文字（凍結）。演出の速さの選択肢の文字は settingsStore.js の BATTLE_SPEEDS に置く。
- * @type {Readonly<{ title: string, tabs: Readonly<{ settings: string, credits: string }>, bgmVolume: string, seVolume: string, battleSpeed: string }>}
+ * @type {Readonly<{ title: string, tabs: Readonly<{ settings: string, upgrades: string, credits: string }>, bgmVolume: string, seVolume: string, battleSpeed: string }>}
  */
 export const MENU_TEXT = Object.freeze({
   title: 'メニュー',
-  tabs: Object.freeze({ settings: '設定', credits: 'クレジット' }),
+  tabs: Object.freeze({ settings: '設定', upgrades: '強化', credits: 'クレジット' }),
   bgmVolume: 'BGM の音量',
   seVolume: '効果音の音量',
   battleSpeed: '攻防の演出の速さ',
