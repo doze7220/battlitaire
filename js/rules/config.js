@@ -1,4 +1,4 @@
-/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・1体のポイント（任意）・防御（張る確率と量の幅）・行動の決まり（毎ターン攻撃と防御・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率）・溜めてからの大攻撃・攻撃か防御のどちらか）と攻撃・防御の量の幅）、敵の★とステージごとの★の決まり、ステージごとの敵の加算量（章ごと）、力こぶの換算、疲弊（長引いた敵の防御の減り方）、4スートそろいの加算量、3択の強化の枠・候補の数・城の修理の割合・強化の種類ごとの設定（城・カードの強化））を1か所に集める設定ファイル。 */
+/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・1体のポイント（任意）・防御（張る確率と量の幅）・行動の決まり（毎ターン攻撃と防御・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率）・溜めてからの大攻撃・攻撃か防御のどちらか）と攻撃・防御の量の幅）、敵の★とステージごとの★の決まり、ステージごとの敵の加算量（章ごと）、力こぶの換算、疲弊（長引いた敵の防御の減り方）、4スートそろいの加算量、3択の強化の枠・候補の数・城の修理の割合・強化の種類ごとの設定（城・カード・特別の強化））を1か所に集める設定ファイル。 */
 
 /**
  * 行動の量の幅（予告を決めるたびに、この中から整数を1つ抽選する）。
@@ -106,14 +106,16 @@
  * @property {string} slot 属する枠の識別子（`upgradeSlots` のキー）。
  * @property {number} weight 枠の中で選ばれる重み（0 以上。0 なら出ない）。
  * @property {string} effect 効き方の種類（`upgradeEffects.js` の `UPGRADE_EFFECTS` のキー）。
- * @property {Readonly<AmountRangeSpec>} [range] 3択が出たときに抽選する量の幅（'castleMaxHp' のみ）。
+ * @property {Readonly<AmountRangeSpec>} [range] 3択が出たときに抽選する量の幅（'castleMaxHp'・'actionChance'。後者は発動率の百分率の幅）。
  * @property {string} [gauge] ターンの頭に足すゲージの識別子（'autoTroop' のみ）。
- * @property {number} [amount] 取った1回あたりの量（'autoTroop'・'cardSuit'・'cardRank'・'allSuitsBoost'・'comboBoost' が使う）。
+ * @property {number} [amount] 取った1回あたりの量（'autoTroop'・'cardSuit'・'cardRank'・'allSuitsBoost'・'comboBoost'・'battleActions' が使う）。
  * @property {string} [after] この強化の種類が上限に着いた後だけ出す（`upgrades` のキー）。
  * @property {string} [suit] 札の +◯ を足すスート（'cardSuit' のみ）。
  * @property {number} [rank] 札の +◯ を足す数字（'cardRank' のみ）。
  * @property {number} [maxCount] 取れる回数の上限（'allSuitsBoost'・'comboBoost' のみ）。
  * @property {number} [previewCards] 選択肢の説明に出す束の枚数（'comboBoost' のみ）。
+ * @property {number} [maxPercent] 発動率の上限の百分率（'actionChance' のみ）。
+ * @property {number} [actions] 発動で増える行動の数（'actionChance' のみ）。
  */
 
 /**
@@ -321,6 +323,21 @@ export const RULES = Object.freeze({
       amount: 1,
       maxCount: 3,
       previewCards: 5,
+    }),
+    actionChance: Object.freeze({
+      slot: 'special',
+      weight: 2,
+      effect: 'actionChance',
+      range: Object.freeze({ min: 5, max: 10 }),
+      maxPercent: 50,
+      actions: 1,
+    }),
+    battleAction: Object.freeze({
+      slot: 'special',
+      weight: 2,
+      effect: 'battleActions',
+      amount: 1,
+      after: 'actionChance',
     }),
   }),
 });

@@ -172,6 +172,37 @@ export const UPGRADE_EFFECTS = Object.freeze({
       return { shown: true, value: bonus.perCard, limit: bonus.max };
     },
   }),
+  /** アクションポイント（ターンの始まりに発動率で行動が増える）。取った記録の `amount` がそのまま発動率の百分率になる。 */
+  actionChance: Object.freeze({
+    ...EFFECT_DEFAULTS,
+    canOffer: (spec, taken) => taken.amount < spec.maxPercent,
+    isCapped: (spec, taken) => taken.amount >= spec.maxPercent,
+    roll: (spec, random, taken) => Math.min(rollAmount(spec.range, random), spec.maxPercent - taken.amount),
+    fixedValue: (spec, taken) => Math.min(spec.range.min, spec.maxPercent - taken.amount),
+    actionChance: (spec, taken) => ({ percent: taken.amount, actions: spec.actions }),
+    preview: (game, spec, taken, value) => ({
+      before: taken.amount,
+      after: taken.amount + value,
+      actions: spec.actions,
+    }),
+  }),
+  /** 次の戦闘の間の行動（敵を倒すまで毎ターン行動が増える。重ねて取っても足し分は増えない）。 */
+  battleActions: Object.freeze({
+    ...EFFECT_DEFAULTS,
+    roll: (spec) => spec.amount,
+    fixedValue: (spec) => spec.amount,
+    take: (game, spec, value) => {
+      game.battleActionBonus = Math.max(game.battleActionBonus, value);
+    },
+    untake: (game) => {
+      game.battleActionBonus = 0;
+    },
+    preview: (game, spec, taken, value) => ({
+      before: game.battleActionBonus,
+      after: Math.max(game.battleActionBonus, value),
+    }),
+    status: (game) => ({ shown: game.battleActionBonus > 0, value: game.battleActionBonus, limit: 0 }),
+  }),
 });
 
 /**

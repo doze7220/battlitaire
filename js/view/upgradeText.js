@@ -136,6 +136,22 @@ export const UPGRADE_TEXTS = Object.freeze({
     }),
     taken: (row) => `コンボ 1枚ごと +${row.value}・上限 +${row.limit}（${row.count}回）`,
   }),
+  actionChance: Object.freeze({
+    name: 'アクションポイント',
+    choice: (value, preview) => ({
+      title: `アクションポイント +${value}%`,
+      detail: `行動 +${preview.actions} の発動率 ${preview.before}% → ${preview.after}%`,
+    }),
+    taken: (row) => `アクションポイント ${row.value}%`,
+  }),
+  battleAction: Object.freeze({
+    name: '次の戦闘の間の行動',
+    choice: (value) => ({
+      title: `次の戦闘の間 行動 +${value}`,
+      detail: `次の敵を倒すまで、毎ターン行動 +${value}`,
+    }),
+    taken: (row) => `この戦闘の間 行動 +${row.value}`,
+  }),
 });
 
 /**

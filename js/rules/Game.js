@@ -1,7 +1,7 @@
 /**
  * 責務: ゲーム全体の状態（山札・捨て札・列・手札・ゲージ・行動回数・フェーズと段階・城・敵）の保持と、
  * 問い合わせ・操作（置く・捨てる・放つ・手札に入れる・手札から置く・束を移す・攻防・次のフェーズ）の提供。
- * ステージの番号・今の敵（倒した敵の入れ替わりを含む）・結果の集計・取った強化と3択の段階（候補・選ぶ操作）を持ち、放つ計算に強化の足し分を渡す。攻防では札の燃やしを反映する。操作は「何が起きたか」を返す。
+ * ステージの番号・今の敵・結果の集計・取った強化と3択の段階・この戦闘の間の行動の足し分を持ち、放つ計算とターンの始まりの行動に強化の足し分を渡す。攻防では札の燃やしを反映する。操作は「何が起きたか」を返す。
  */
 
 import { RULES } from './config.js';
@@ -9,7 +9,7 @@ import { createDecks, takeTop, refillEmptyDecks } from './piles.js';
 import { createColumns, placeableColumnIndices, runStartIndex } from './columns.js';
 import { createHand, isEmptySlot, hasCardInSlot } from './hand.js';
 import { computeRelease } from './release.js';
-import { cardBonusOf, releaseBoostOf } from './upgradeBoosts.js';
+import { cardBonusOf, releaseBoostOf, actionChanceOf, turnUpgradeActions } from './upgradeBoosts.js';
 import { createCastle, createEnemy } from './combatants.js';
 import {
   planBehaviorAction,
@@ -64,6 +64,8 @@ import { drawUpgradeChoices } from './upgradeOffer.js';
  * @property {import('./combatants.js').EnemyIntent} enemyAction 敵の次の行動の予告
  * @property {boolean} enemyChanged このフェーズの頭で敵が入れ替わったか
  * @property {Object<string, number>} autoTroops このフェーズの頭にゲージへ足した自動兵士の量（`{ ゲージ: 量 }`。強化がなければ `{}`）
+ * @property {number} battleActions このフェーズの行動回数に足した「この戦闘の間」の足し分（強化がなければ 0）
+ * @property {number} chanceActions このフェーズの行動回数に足したアクションポイントの発動分（発動しなければ 0）
  */
 
 /**
@@ -137,6 +139,8 @@ export class Game {
     this.upgrades = createUpgradeState();
     /** @type {import('./upgradeOffer.js').UpgradeOffer|null} 3択の候補（3択を選んでいる間だけ。そうでなければ null） */
     this.upgradeOffer = null;
+    /** @type {number} この戦闘の間、毎ターン足す行動の数（新しいゲームで 0。敵を倒して3択が始まると 0 に戻る） */
+    this.battleActionBonus = 0;
     this.planIntent();
   }
 
@@ -432,6 +436,18 @@ export class Game {
   }
 
   /**
+   * 行動のゲージの横に出す強化の表示の値（アクションポイントの発動率・この戦闘の間の足し分。状態は変えない）。
+   * @returns {{ chance: { actions: number, percent: number, capped: boolean }|null, battleActions: number }} `chance` は率 0 なら `null`
+   */
+  actionUpgradeStatus() {
+    const { percent, actions, capped } = actionChanceOf(this.config, this.upgrades);
+    return {
+      chance: percent > 0 ? { actions, percent, capped } : null,
+      battleActions: this.battleActionBonus,
+    };
+  }
+
+  /**
    * 札の +◯（取った強化から求める。札そのものは書き換えない。山札・手札・列・捨て札のどこにある札でも同じ）。
    * @param {{ suit: string, rank: number }} card 札
    * @returns {number} 札の +◯
@@ -609,6 +625,7 @@ export class Game {
    */
   beginUpgradeChoice() {
     if (!this.canBeginUpgradeChoice()) return null;
+    this.battleActionBonus = 0;
     this.offerUpgrades('stage');
     return {
       choices: this.upgradeOffer.choices.map((c) => ({ ...c })),
@@ -670,7 +687,7 @@ export class Game {
   }
 
   /**
-   * 次のフェーズを始める本体（条件は呼ぶ側が確かめる。`startNextPhase`・`chooseUpgrade` から呼ぶ）。ゲージの戻しの後に自動兵士の量を足す。
+   * 次のフェーズを始める本体（条件は呼ぶ側が確かめる。`startNextPhase`・`chooseUpgrade` から呼ぶ）。ゲージの戻しの後に自動兵士の量を足し、予告を決めた後に強化の行動（この戦闘の間の足し分・発動の抽選。率 0 では乱数を呼ばない）を行動回数へ足す。
    * @returns {NextPhaseResult} 結果
    */
   advancePhase() {
@@ -681,8 +698,6 @@ export class Game {
     for (const gauge of Object.keys(autoTroops)) {
       this.gauges[gauge] = (this.gauges[gauge] ?? 0) + autoTroops[gauge];
     }
-    this.actionsMax = start.actions;
-    this.actionsLeft = start.actions;
     const enemyChanged = this.enemy.hp === 0;
     if (enemyChanged) {
       this.enterStage(this.stageNumber + 1);
@@ -690,6 +705,14 @@ export class Game {
       this.battleTurn += 1;
     }
     this.planIntent();
+    const { battleActions, chanceActions } = turnUpgradeActions(
+      this.config,
+      this.upgrades,
+      this.battleActionBonus,
+      this.random,
+    );
+    this.actionsMax = start.actions + battleActions + chanceActions;
+    this.actionsLeft = this.actionsMax;
     this.stage = 'planning';
     return {
       type: 'nextPhase',
@@ -703,6 +726,8 @@ export class Game {
       enemyAction: { ...this.enemy.intent },
       enemyChanged,
       autoTroops,
+      battleActions,
+      chanceActions,
     };
   }
 }
