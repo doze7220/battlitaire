@@ -1,5 +1,5 @@
 /**
- * 責務: 攻防のエフェクト（当たりの白い光・粒・「-1」、戦闘の段の暗さと撃つ瞬間の光）を、見た目の値のとおりに描く。
+ * 責務: 攻防のエフェクト（当たりの白い光・粒・「-N」（HP が減る量）、戦闘の段の暗さと撃つ瞬間の光）を、見た目の値のとおりに描く。
  * 状態は変えず、ルール層・anim は実行時に import しない。
  */
 
@@ -11,13 +11,13 @@ const FLASH_COLOR = '#ffffff';
 const DAMAGE_SPARK_COLOR = '#ffd25a';
 /** 修理の粒の色。 */
 const REPAIR_SPARK_COLOR = '#7cf08a';
-/** 城の HP が減る「-1」の色。 */
+/** 城の HP が減る「-N」の色。 */
 const CASTLE_POP_COLOR = '#ff5a4a';
-/** 敵の HP が減る「-1」の色。 */
+/** 敵の HP が減る「-N」の色。 */
 const ENEMY_POP_COLOR = '#ffe680';
-/** 「-1」の文字のふちの色。 */
+/** 「-N」の文字のふちの色。 */
 const POP_OUTLINE_COLOR = 'rgba(0, 0, 0, 0.7)';
-/** 「-1」の文字のふちの太さ。 */
+/** 「-N」の文字のふちの太さ。 */
 const POP_OUTLINE_WIDTH = 3;
 /** 戦闘の段の暗さの色。 */
 const DIM_COLOR = '#000000';

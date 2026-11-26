@@ -1,5 +1,5 @@
 /**
- * 敵の体（群れ・シールドを名簿へ置く、攻撃の兵が当たる・シールドが剥がれる、倒れたとき絵が跳ねて落ちる記録）と、
+ * 敵の体（群れ・シールドを名簿へ置く、攻撃の兵が当たる（精鋭は自分のポイントを1回で使う）・シールドが剥がれる、倒れたとき絵が跳ねて落ちる記録）と、
  * 時計からの絵の見た目を求める。体の見せ方ごとの違いはこのファイルの表で分ける。描画も状態の変更もしない。
  */
 
@@ -7,7 +7,7 @@ import { BATTLE_ANIM } from './battleAnimConfig.js';
 import { enemyBodyStyle, enemyDents } from './enemyShows.js';
 import { createFigureDash, sampleFigureDash } from './figureDash.js';
 import { createTroopUnit, sampleTroop, setTroopEnd } from './troopMotion.js';
-import { chargePairs, chargeTo, placeTroops, popTroops } from './troopRoster.js';
+import { chargePairs, chargePoints, placeTroops, popTroops } from './troopRoster.js';
 import { bodyScale, scaledShieldArea, scaledX } from '../view/figureScale.js';
 import { isWoundedBody, splitPoints } from '../view/bodyPoints.js';
 
@@ -103,18 +103,18 @@ const BODY_SETUPS = Object.freeze({
 });
 
 /**
- * 体の見せ方ごとの、攻撃の兵が敵に当たる動き（着く時刻の昇順を返す）。
+ * 体の見せ方ごとの、攻撃の兵が敵に当たる動き（当たりを着く時刻の昇順で返す）。
  * 敵に当たる間隔（`hitStaggerMs`・上限 `hitStaggerMaxMs`）で1体ずつずらす。
- * 絵は、k 体目の兵が「その前の表示 HP（shownHp − k）」の倍率の位置へ着く。
- * @type {Readonly<Record<string, function(EnemyBody, import('./troopRoster.js').TroopRoster, number, number, number): number[]>>}
+ * 絵は、兵が「その前の表示 HP（shownHp − 前の兵までに使ったポイント）」の倍率の位置へ着く。
+ * @type {Readonly<Record<string, function(EnemyBody, import('./troopRoster.js').TroopRoster, number, number, number): import('./troopRoster.js').TroopHit[]>>}
  */
 const BODY_HITS = Object.freeze({
   horde: (body, roster, count, t) => chargePairs(roster, 'attack', 'goblin', count, t, BATTLE_ANIM.hitMoveMs, 'hit'),
-  figure: (body, roster, count, t, shownHp) => chargeTo(
+  figure: (body, roster, count, t, shownHp) => chargePoints(
     roster,
     'attack',
     count,
-    (k) => scaledX(body.figure, body.figure.hitX, bodyScale(body.figure.minScale, shownHp - k, body.maxHp)),
+    (spent) => scaledX(body.figure, body.figure.hitX, bodyScale(body.figure.minScale, shownHp - spent, body.maxHp)),
     t,
     BATTLE_ANIM.hitMoveMs,
     'hit',
@@ -150,38 +150,46 @@ export function createEnemyBody(roster, battleLayout, typeId, hp, defense, maxHp
 }
 
 /**
- * 攻撃の兵を count 体、シールドに当たる位置へ進め、着いた時刻に兵と前からのシールドを1つずつ跳ねて落とす（HP は変わらない）。
+ * 攻撃の兵を前から count ポイントぶん、シールドに当たる位置へ進め、着いた時刻に兵が自分のポイントを使い（精鋭は1回で複数。使い切れば落ち、残れば傷ついて残る）、
+ * 使ったポイントの数だけ前からのシールドを同じ時刻に跳ねて落とす（HP は変わらない）。
  * 敵に当たる間隔（`hitStaggerMs`・上限 `hitStaggerMaxMs`）で1体ずつずらす。
  * @param {EnemyBody} body 敵の体
  * @param {import('./troopRoster.js').TroopRoster} roster 名簿
  * @param {number} count 剥がす数
  * @param {number} t 段の始め（ms）
- * @returns {number[]} 着く時刻（ms）の昇順
- * @throws {Error} シールドが足りないとき
+ * @returns {number[]} 当たりごとの着く時刻（ms）の昇順（1体1ポイントなら兵ごと）
+ * @throws {Error} シールド・攻撃の兵のポイントが足りないとき
  */
 export function hitEnemyShield(body, roster, count, t) {
-  const arrivals = chargeTo(roster, 'attack', count, body.shieldHitX, t, BATTLE_ANIM.hitMoveMs, 'hit');
-  popTroops(roster, 'shield', arrivals);
-  return arrivals;
+  const hits = chargePoints(roster, 'attack', count, body.shieldHitX, t, BATTLE_ANIM.hitMoveMs, 'hit');
+  const popTimes = [];
+  for (const hit of hits) {
+    for (let i = 0; i < hit.points; i++) popTimes.push(hit.time);
+  }
+  popTroops(roster, 'shield', popTimes);
+  return hits.map((hit) => hit.time);
 }
 
 /**
- * 攻撃の兵を、敵に当たる位置へ進める（群れは count ポイントぶん相手と消し合い、1体1ポイントなら1対1で2体とも落ち、相手が傷つくだけで残ることもある。絵は count 体ぶん進み、着いた時刻に兵が落ちる）。
+ * 攻撃の兵を、敵に当たる位置へ進める（群れは count ポイントぶん相手と消し合い、1体1ポイントなら1対1で2体とも落ち、相手が傷つくだけで残ることもある。
+ * 絵は前から count ポイントぶんの兵が進み、着いた時刻に自分のポイントを使う。精鋭は1回の当たりで自分のポイントを使い、使い切れば落ちる）。
  * 敵に当たる間隔（`hitStaggerMs`・上限 `hitStaggerMaxMs`）で1体ずつずらす。へこむ敵は着いた時刻を `body.dents` に記録する（シールドに当たった兵は記録しない）。
+ * 当たりごとに、敵の HP を減らす当たり（時刻・ポイント・減った体）を名簿の `strikes` に足す（`impactLog.js` が「-N」にする）。
  * @param {EnemyBody} body 敵の体
- * @param {import('./troopRoster.js').TroopRoster} roster 名簿
- * @param {number} count 当たるポイントの量（群れはポイント、絵は兵の数。1体1ポイントなら同じ）
+ * @param {import('./troopRoster.js').TroopRoster} roster 名簿（`strikes` に足す）
+ * @param {number} count 当たるポイントの量
  * @param {number} t 段の始め（ms）
- * @param {number} shownHp 段の始めの敵の HP の表示値（絵の当たる位置の倍率を求める。k 体目は `shownHp − k`）
- * @returns {number[]} 着く時刻（ms）の昇順
- * @throws {Error} 群れのポイントが足りないとき
+ * @param {number} shownHp 段の始めの敵の HP の表示値（絵の当たる位置の倍率を求める。兵は `shownHp − 前の兵までに使ったポイント`）
+ * @returns {import('./troopRoster.js').TroopHit[]} 当たり（着く時刻の昇順）
+ * @throws {Error} ポイントが足りないとき
  */
 export function hitEnemyBody(body, roster, count, t, shownHp) {
-  const arrivals = BODY_HITS[body.style](body, roster, count, t, shownHp);
-  if (body.dents !== null) {
-    for (const time of arrivals) body.dents.push(time);
+  const hits = BODY_HITS[body.style](body, roster, count, t, shownHp);
+  for (const hit of hits) {
+    roster.strikes.push({ time: hit.time, points: hit.points, bodies: hit.bodies });
+    if (body.dents !== null) body.dents.push(hit.time);
   }
-  return arrivals;
+  return hits;
 }
 
 /**

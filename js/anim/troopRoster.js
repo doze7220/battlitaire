@@ -1,6 +1,6 @@
 /**
  * 兵1体ずつの名簿を作り（自動兵士・精鋭の印を付けることを含む）、段ごとに兵へ脚と終わり方を割り当てる
- * （出す・置く・行進・当たる・相打ち・前からポイントを使って落とす・城へ入る・右へ帰す・家へ跳ばす・段取りの間の名簿から消す）。
+ * （出す・置く・行進・当たる（敵の HP を減らす当たりの記録を含む）・相打ち・前からポイントを使って落とす・城へ入る・右へ帰す・家へ跳ばす・段取りの間の名簿から消す）。
  * 前から遅らせる式と、兵ごとのずれ（troopJitter.js）の足し方はここだけに置く。乱数は使わない。
  */
 
@@ -25,6 +25,24 @@ import { matchPoints, spendFromFront } from './pointMatch.js';
  * @property {import('./troopMotion.js').TroopUnit[]} units 全員（作った順）
  * @property {Object<string, import('./troopMotion.js').TroopUnit[]>} ranked 種類ごとの前からの並び（自軍は精鋭でない兵が前・精鋭が後ろで、それぞれ家の x の大きい順、敵の側は小さい順、同じなら番号順）
  * @property {TroopContact[]} contacts 行進で決めた、まだ相打ちになっていない組（作った順）
+ * @property {EnemyStrike[]} strikes 敵の HP を減らす当たり（`enemyBody.js` が足し、`impactLog.js` が読む。作った順）
+ */
+
+/**
+ * 進む側の1体の当たり（`chargePairs`・`chargePoints` の返り値の要素）。
+ * @typedef {Object} TroopHit
+ * @property {number} time 当たった時刻（ms。進む側の兵が着いた時刻）
+ * @property {number} points この当たりで使った、進む側の兵のポイント
+ * @property {import('./troopMotion.js').TroopUnit} unit 進む側の兵
+ * @property {Array<{unit: import('./troopMotion.js').TroopUnit, time: number}>} bodies この当たりで減った体と、減った時刻（`chargePoints` は進む側の兵自身）
+ */
+
+/**
+ * 敵の HP を減らす当たり（「-N」と光を1回出す元）。
+ * @typedef {Object} EnemyStrike
+ * @property {number} time 当たった時刻（ms）
+ * @property {number} points 当てたポイント（HP が減る量）
+ * @property {Array<{unit: import('./troopMotion.js').TroopUnit, time: number}>} bodies その当たりで減った体と減った時刻
  */
 
 /**
@@ -197,7 +215,7 @@ function fallOutOf(roster, unit) {
  * @returns {TroopRoster} 空の名簿
  */
 export function createTroopRoster(troopLayout) {
-  return { layout: troopLayout, units: [], ranked: {}, contacts: [] };
+  return { layout: troopLayout, units: [], ranked: {}, contacts: [], strikes: [] };
 }
 
 /**
@@ -442,7 +460,8 @@ export function spendFront(roster, kind, amount, timesOf) {
 
 /**
  * kind の前から並んだ兵が、partnerKind の前から並んだ兵と count ポイントぶんだけ消し合う（`matchPoints` の組を当たる順に）。
- * k 組目で、進む側の兵が相手の手前へ進んで着いた時刻に落ち、相手はその組のポイントだけ減る（0 になれば落ち、残れば傷つく）。
+ * 進む側の兵ごとに1回の当たりになり、その兵は最初の組の相手の手前へ1本の脚で進む（遅れの番号は進む側の兵ごと）。
+ * 着いた時刻に、各相手をその組のポイントだけ減らし（0 になれば落ち、残れば傷つく）、自分は組の合計だけ減らす（0 になれば落ち、残れば傷つく）。
  * 1体1ポイントなら count 組の1対1で、2体とも着いた時刻に終わる。
  * @param {TroopRoster} roster 名簿
  * @param {string} kind 進む側の種類
@@ -451,37 +470,48 @@ export function spendFront(roster, kind, amount, timesOf) {
  * @param {number} t 段の始め（ms）
  * @param {number} moveMs 進む時間（ms）
  * @param {string} [pace] 遅れの決め方（`'move'`＝移動の遅れ、`'hit'`＝敵に当たる間隔。省くと `'move'`）
- * @returns {number[]} 着く時刻の昇順の配列（行き先の y は相手の y）
- * @throws {Error} どちらかのポイントが足りないとき、pace が未知のとき、進む側の兵が2つ以上の組を持つとき（自軍の兵の複数のポイントは後の Phase）
+ * @returns {TroopHit[]} 当たり（着く時刻の昇順。同じ時刻は当たった順）
+ * @throws {Error} どちらかのポイントが足りないとき、pace が未知のとき
  */
 export function chargePairs(roster, kind, partnerKind, count, t, moveMs, pace = 'move') {
-  const m0 = Math.max(0, count);
   const squad = activeOf(roster, kind);
   const partners = activeOf(roster, partnerKind);
   const pairs = matchPoints(
     squad.map((u) => u.points),
     partners.map((u) => u.points),
-    m0,
+    Math.max(0, count),
   );
-  const m = pairs.length;
-  const used = new Set();
-  const arrivals = [];
-  for (let k = 0; k < m; k++) {
-    const pair = pairs[k];
-    if (used.has(pair.a)) {
-      throw new Error(`chargePairs: 進む側の兵が2つ以上の組を持つ場合は未対応です（${kind}）`);
+  /** @type {Array<{a: number, pairs: import('./pointMatch.js').PointPair[]}>} */
+  const groups = [];
+  for (const pair of pairs) {
+    const last = groups.length > 0 ? groups[groups.length - 1] : null;
+    if (last !== null && last.a === pair.a) {
+      last.pairs.push(pair);
+    } else {
+      groups.push({ a: pair.a, pairs: [pair] });
     }
-    used.add(pair.a);
-    const unit = squad[pair.a];
-    const partner = partners[pair.b];
-    const side = partner.x >= unit.x ? 1 : -1;
-    const start = Math.max(t + chargeDelay(pace, k, m), unit.freeAt);
-    addTroopLeg(unit, start, partner.x - side * roster.layout.contactGap, partner.y, moveMs);
-    setTroopEnd(unit, troopHitEnd(kind), unit.freeAt, fallOutOf(roster, unit));
-    spendTroopPoints(partner, pair.points, Math.max(unit.freeAt, partner.freeAt), fallOutOf(roster, partner));
-    arrivals.push(unit.freeAt);
   }
-  return arrivals.sort((a, b) => a - b);
+  const m = groups.length;
+  /** @type {TroopHit[]} */
+  const hits = [];
+  groups.forEach((group, k) => {
+    const unit = squad[group.a];
+    const first = partners[group.pairs[0].b];
+    const side = first.x >= unit.x ? 1 : -1;
+    const start = Math.max(t + chargeDelay(pace, k, m), unit.freeAt);
+    addTroopLeg(unit, start, first.x - side * roster.layout.contactGap, first.y, moveMs);
+    const total = group.pairs.reduce((sum, pair) => sum + pair.points, 0);
+    spendTroopPoints(unit, total, unit.freeAt, fallOutOf(roster, unit));
+    const time = unit.freeAt;
+    const bodies = group.pairs.map((pair) => {
+      const partner = partners[pair.b];
+      const bodyTime = Math.max(time, partner.freeAt);
+      spendTroopPoints(partner, pair.points, bodyTime, fallOutOf(roster, partner));
+      return { unit: partner, time: bodyTime };
+    });
+    hits.push({ time, points: total, unit, bodies });
+  });
+  return hits.sort((a, b) => a.time - b.time);
 }
 
 /**
@@ -632,6 +662,37 @@ export function chargeTo(roster, kind, count, targetX, t, moveMs, pace = 'move')
     arrivals.push(unit.freeAt);
   }
   return arrivals.sort((a, b) => a - b);
+}
+
+/**
+ * まだ終わっていない kind の兵を前から amount ポイントぶん選び（`spendFromFront`）、`chargeTo` と同じ遅れ・脚で行き先へ進め、
+ * 着いた時刻にその兵の使う分だけポイントを減らす（0 になれば跳ねて落ち、残れば傷ついた姿で残る）。1体1ポイントなら `chargeTo` と同じ。
+ * @param {TroopRoster} roster 名簿
+ * @param {string} kind 種類
+ * @param {number} amount 使うポイントの量
+ * @param {number|function(number): number} targetX 行き先の x（関数なら、前の兵までに使ったポイントの合計 → その兵の行き先）
+ * @param {number} t 段の始め（ms）
+ * @param {number} moveMs 移動の時間（ms）
+ * @param {string} [pace] 遅れの決め方（`'move'`＝移動の遅れ、`'hit'`＝敵に当たる間隔。省くと `'move'`）
+ * @returns {TroopHit[]} 当たり（着く時刻の昇順。同じ時刻は前から。`bodies` は進んだ兵自身）
+ * @throws {Error} ポイントが足りないとき、pace が未知のとき
+ */
+export function chargePoints(roster, kind, amount, targetX, t, moveMs, pace = 'move') {
+  const active = activeOf(roster, kind);
+  const picks = spendFromFront(active.map((u) => u.points), Math.max(0, amount));
+  const m = picks.length;
+  let spent = 0;
+  /** @type {TroopHit[]} */
+  const hits = [];
+  for (let k = 0; k < m; k++) {
+    const unit = active[picks[k].index];
+    const start = Math.max(t + chargeDelay(pace, k, m), unit.freeAt);
+    addTroopLeg(unit, start, typeof targetX === 'function' ? targetX(spent) : targetX, contactY(roster, unit.y), moveMs);
+    spendTroopPoints(unit, picks[k].points, unit.freeAt, fallOutOf(roster, unit));
+    spent += picks[k].points;
+    hits.push({ time: unit.freeAt, points: picks[k].points, unit, bodies: [{ unit, time: unit.freeAt }] });
+  }
+  return hits.sort((a, b) => a.time - b.time);
 }
 
 /**

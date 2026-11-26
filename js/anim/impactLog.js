@@ -10,12 +10,6 @@
 export const IMPACT_KINDS = Object.freeze({ hit: 0, enemyDamage: 1, castleDamage: 2, repair: 3 });
 
 /**
- * 体の見せ方ごとの「敵の HP を減らす側の兵の種類」。
- * @type {Readonly<Object<string, string>>}
- */
-const ENEMY_DAMAGE_KIND = Object.freeze({ horde: 'goblin', figure: 'attack' });
-
-/**
  * 当たりの記録。同じ番号の要素が1つの当たりを表す並んだ配列。
  * @typedef {Object} ImpactLog
  * @property {number[]} x 光・数字・粒の中心の x
@@ -36,6 +30,7 @@ const ENEMY_DAMAGE_KIND = Object.freeze({ horde: 'goblin', figure: 'attack' });
  * @property {number} firstNew そのときの名簿の長さ（これ以降が段で足された兵）
  * @property {number} marksFrom そのときのヒットマークの数
  * @property {Map<import('./troopMotion.js').TroopUnit, number>} woundFrom そのときの兵ごとの `woundHits` の数（これより後の分が段で傷ついた当たり。写しにない兵は 0）
+ * @property {number} strikesFrom そのときの名簿の `strikes` の長さ（これ以降が段で足された、敵の HP を減らす当たり）
  */
 
 /**
@@ -70,6 +65,7 @@ export function watchStep(roster, marks) {
     firstNew: roster.units.length,
     marksFrom: marks.time.length,
     woundFrom: new Map(roster.units.map((unit) => [unit, unit.woundHits.length])),
+    strikesFrom: roster.strikes.length,
   };
 }
 
@@ -118,7 +114,7 @@ function addEventImpact(log, event, kind, heavy, step, amount = 1) {
  * @property {import('./battleSteps.js').BattleStep} step 段
  * @property {number} index 段の番号
  * @property {number} heavy 大きな一撃なら 1
- * @property {string} bodyStyle 敵の体の見せ方
+ * @property {string} bodyStyle 敵の体の見せ方（今は使わない。呼び出し側の形を保つため受け取る）
  */
 
 /**
@@ -150,21 +146,36 @@ function recordCastleHit(c) {
 }
 
 /**
- * 敵の HP を減らす側の種類の体の当たり（倒れた体と傷ついた体の当たり）の前から `step.amount` 個を `enemyDamage`（量 1）、
- * それ以外の当たりを `hit` にする。
+ * 段で足された、敵の HP を減らす当たり（`roster.strikes`）ごとに、その当たりの体（群れは体、絵は攻撃の兵）の当たりのうち
+ * 時刻の最初の1つを `enemyDamage`（量はその当たりのポイント。合計は `step.amount` まで）にし、同じ当たりの残りの体の当たりは記録しない
+ * （「-N」と光は1回）。当たりに含まれない当たりは `hit` にする。1体1ポイントの当たりなら、前から `step.amount` 個の体の当たりが量 1 の `enemyDamage` になる。
  * @param {RuleContext} c 引数
  * @returns {void}
  */
 function recordEnemyHit(c) {
-  const damageKind = ENEMY_DAMAGE_KIND[c.bodyStyle];
-  let damaged = 0;
-  for (const event of c.events) {
-    let kind = IMPACT_KINDS.hit;
-    if (event.unit.kind === damageKind && damaged < c.step.amount) {
-      kind = IMPACT_KINDS.enemyDamage;
-      damaged++;
+  /** @type {Map<ImpactEvent, number>} 当たりの当たり → 量（0 は同じ当たりの残りで、記録しない） */
+  const roles = new Map();
+  let left = c.step.amount;
+  for (const strike of c.watch.roster.strikes.slice(c.watch.strikesFrom)) {
+    if (left <= 0) break;
+    const found = [];
+    for (const body of strike.bodies) {
+      const event = c.events.find((e) => e.unit === body.unit && e.time === body.time && !roles.has(e) && !found.includes(e));
+      if (event !== undefined) found.push(event);
     }
-    addEventImpact(c.log, event, kind, c.heavy, c.index);
+    if (found.length === 0) continue;
+    found.sort((a, b) => c.events.indexOf(a) - c.events.indexOf(b));
+    const spend = Math.min(strike.points, left);
+    left -= spend;
+    roles.set(found[0], spend);
+    for (let i = 1; i < found.length; i++) roles.set(found[i], 0);
+  }
+  for (const event of c.events) {
+    if (!roles.has(event)) {
+      addEventImpact(c.log, event, IMPACT_KINDS.hit, c.heavy, c.index);
+    } else if (roles.get(event) > 0) {
+      addEventImpact(c.log, event, IMPACT_KINDS.enemyDamage, c.heavy, c.index, roles.get(event));
+    }
   }
 }
 
@@ -241,7 +252,7 @@ function collectEvents(watch) {
  * @param {StepWatch} watch `watchStep` の戻り値
  * @param {import('./battleSteps.js').BattleStep} step 組み立てた段
  * @param {number} index 段の番号
- * @param {string} bodyStyle 敵の体の見せ方（'horde'・'figure'）
+ * @param {string} bodyStyle 敵の体の見せ方（'horde'・'figure'）。今は使わない（呼び出し側の形を保つため受け取る）
  * @returns {void}
  */
 export function recordStepImpacts(log, watch, step, index, bodyStyle) {

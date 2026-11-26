@@ -172,23 +172,26 @@ function dropHp(state, target, amount, arrivals, t) {
 }
 
 /**
- * 敵の HP の表示が、攻撃の兵が当たるたびに 1 ずつ減る変化を足す。当たった数と量が同じときだけ当たりごとにし、
- * 数が違うときは dropHp に任せる。きっかけは当たりの時刻ごと。
+ * 敵の HP の表示が、攻撃の兵が当たるたびに、その当たりのポイントだけ減る変化を足す（1体1ポイントなら 1 ずつ）。
+ * 当たりのポイントの合計と量が同じときだけ当たりごとにし、違うときは dropHp に任せる。きっかけは当たりの時刻ごと。
  * @param {BuildState} state 組み立て中の状態
  * @param {number} amount 減る量
- * @param {number[]} arrivals 当たった時刻（ms）の昇順
+ * @param {import('./troopRoster.js').TroopHit[]} hits 当たり（着く時刻の昇順）
  * @param {number} t 段の開始時刻（ms）
  * @returns {number} 段の長さ（ms）
  */
-function dropEnemyHpByHits(state, amount, arrivals, t) {
-  if (arrivals.length !== amount || amount <= 0) return dropHp(state, 'enemy', amount, arrivals, t);
-  const first = arrivals[0];
-  const last = arrivals[arrivals.length - 1];
-  for (const at of arrivals) {
-    const to = state.enemyShown - 1;
-    state.enemyChanges.push(createHpChange({ from: state.enemyShown, to, start: at, duration: 0 }));
+function dropEnemyHpByHits(state, amount, hits, t) {
+  const total = hits.reduce((sum, hit) => sum + hit.points, 0);
+  if (amount <= 0 || total !== amount) {
+    return dropHp(state, 'enemy', amount, hits.map((hit) => hit.time), t);
+  }
+  const first = hits[0].time;
+  const last = hits[hits.length - 1].time;
+  for (const hit of hits) {
+    const to = state.enemyShown - hit.points;
+    state.enemyChanges.push(createHpChange({ from: state.enemyShown, to, start: hit.time, duration: 0 }));
     state.enemyShown = to;
-    state.cueTimes.push(at);
+    state.cueTimes.push(hit.time);
   }
   return first + Math.max(BATTLE_ANIM.hpMs, last - first) - t;
 }
@@ -206,7 +209,7 @@ function addCastleHit(state, step, t) {
 }
 
 /**
- * 攻撃の兵が敵に当たって落ち、敵の HP の表示が減る段。HP の表示は当たるたびに 1 減る。きっかけは当たりごと。
+ * 攻撃の兵が敵に当たって（精鋭は自分のポイントを1回で使い）、敵の HP の表示が減る段。HP の表示は当たるたびにその当たりのポイントだけ減る。きっかけは当たりごと。
  * HP の表示が 0 になる時刻に、敵の体の倒れる動きを記録する。
  * @param {BuildState} state 組み立て中の状態
  * @param {import('./battleSteps.js').BattleStep} step 段
@@ -214,8 +217,8 @@ function addCastleHit(state, step, t) {
  * @returns {number} 段の長さ（ms）
  */
 function addEnemyHit(state, step, t) {
-  const arrivals = hitEnemyBody(state.body, state.roster, step.amount, t, state.enemyShown);
-  const d = dropEnemyHpByHits(state, step.amount, arrivals, t);
+  const hits = hitEnemyBody(state.body, state.roster, step.amount, t, state.enemyShown);
+  const d = dropEnemyHpByHits(state, step.amount, hits, t);
   if (state.enemyShown <= 0) defeatEnemyBody(state.body, t + d);
   return d;
 }
@@ -241,7 +244,7 @@ function addMarch(state, step, t) {
 }
 
 /**
- * 攻撃の兵が敵の当たる位置まで進んで量だけ跳ねて落ち、同じ数のシールドが剥がれて落ちる段（絵を持つ敵の防御）。HP は変わらない。
+ * 攻撃の兵が敵の当たる位置まで進み、量のポイントだけ使って（精鋭は1回で複数）同じ数のシールドが剥がれて落ちる段（絵を持つ敵の防御）。HP は変わらない。
  * きっかけは兵が当たる位置に着いた時刻ごと。
  * @param {BuildState} state 組み立て中の状態
  * @param {import('./battleSteps.js').BattleStep} step 段
