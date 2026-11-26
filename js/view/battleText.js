@@ -1,5 +1,5 @@
 /**
- * 責務: 敵の行動（爪・吸い込む・ブレス・溜める・大攻撃の種類と防御を含む）・予告の量の数字・表にない予告の印・決着・敵を倒したときの案内・敵の名前とレベル・数え下ろし・回復の量・当たりのダメージの数字・放った区切りの式・4スートそろいの文字を、画面に出す文字に直す。
+ * 責務: 敵の行動（爪・吸い込む・ブレス・溜める・大攻撃・突進・怒りを溜める・大突進の種類と防御を含む）・予告の量の数字・量の代わりの文字（怒り）・表にない予告の印・決着・敵を倒したときの案内・敵の名前とレベル・数え下ろし・回復の量・当たりのダメージの数字・放った区切りの式・4スートそろいの文字を、画面に出す文字に直す。
  * 計算はせず、量をそのまま文字にする。ルール層は実行時に import しない。
  */
 
@@ -36,6 +36,17 @@ const VARIANT_LABELS = Object.freeze({
   breath: 'ブレス',
   charge: '溜める',
   heavy: '大攻撃',
+  rush: '突進',
+  rage: '怒りを溜める',
+  bigRush: '大突進',
+});
+
+/**
+ * 行動の中の種類（variant）→ 予告の札に量の代わりに出す文字の対応表（量を出さない行動用）。
+ * @type {Readonly<Record<string, string>>}
+ */
+const BADGE_LABELS = Object.freeze({
+  rage: '怒り',
 });
 
 /**
@@ -126,6 +137,17 @@ function attackSideText(action) {
 export function intentAmountText(action) {
   if (AMOUNTLESS_KINDS.has(action.kind)) return null;
   return String(action.amount);
+}
+
+/**
+ * 敵の行動に、予告の札へ量の代わりに出す文字があれば返す。
+ * @param {import('../rules/combatants.js').EnemyAction} action 敵の行動
+ * @returns {string|null} 表（BADGE_LABELS）にある中の種類ならその文字（「怒り」）。なければ null
+ */
+export function intentBadgeLabel(action) {
+  return typeof action.variant === 'string' && Object.prototype.hasOwnProperty.call(BADGE_LABELS, action.variant)
+    ? BADGE_LABELS[action.variant]
+    : null;
 }
 
 /**

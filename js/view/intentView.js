@@ -1,10 +1,10 @@
 /**
- * 責務: 敵の頭の上の予告の札（攻撃の側・防御の側の絵と量の数字・ブレスと大攻撃の目立たせ。右端からはみ出さない）と、その下の数え下ろしの文字の描画。
+ * 責務: 敵の頭の上の予告の札（攻撃の側・防御の側の絵と量の数字・ブレス・大攻撃・大突進の目立たせ、量のない行動の「怒り」の文字。右端からはみ出さない）と、その下の数え下ろしの文字の描画。
  * 予告の種類 → 絵の表を持つ。状態は変えず、ルール層・anim は実行時に import しない。
  */
 
 import { roundRectPath } from './cardView.js';
-import { intentAmountText, intentDefenseText, unknownIntentText, countdownText } from './battleText.js';
+import { intentAmountText, intentBadgeLabel, intentDefenseText, unknownIntentText, countdownText } from './battleText.js';
 import { intentParts } from './intentParts.js';
 import { INTENT_IDS, drawIntentIcon } from './spriteView.js';
 import { bodyScale, scaledIntentY } from './figureScale.js';
@@ -21,6 +21,9 @@ const INTENT_ICONS = Object.freeze({
   breath: INTENT_IDS.breath,
   charge: INTENT_IDS.windup,
   heavy: INTENT_IDS.attack,
+  rush: INTENT_IDS.attack,
+  rage: INTENT_IDS.windup,
+  bigRush: INTENT_IDS.attack,
 });
 
 /** 予告の札の防御の側の絵の識別子。 */
@@ -30,7 +33,12 @@ const DEFENSE_ICON = INTENT_IDS.defend;
  * 札を目立たせる行動の中の種類（variant）の集合。
  * @type {Set<string>}
  */
-const EMPHASIZED_VARIANTS = new Set(['breath', 'heavy']);
+const EMPHASIZED_VARIANTS = new Set(['breath', 'heavy', 'bigRush']);
+
+/** 量のない行動の札に量の代わりに出す文字（「怒り」）のフォント。 */
+const BADGE_LABEL_FONT = 'bold 22px sans-serif';
+/** 量のない行動の札に量の代わりに出す文字（「怒り」）の芯の色（橙）。 */
+const BADGE_LABEL_COLOR = '#ffb347';
 
 /** 札の角の半径。 */
 const BADGE_CORNER = 10;
@@ -123,20 +131,31 @@ export function drawEnemyIntent(ctx, battleLayout, enemy, countdown, entrance) {
   /** 札に並べる側（左から攻撃の側、防御の側）。iconId が null なら「？」を出す。 */
   const sides = [];
   if (parts.attack) {
-    sides.push({ iconId: hasIcon ? INTENT_ICONS[iconKey] : null, amount: intentAmountText(action) });
+    const amount = intentAmountText(action);
+    sides.push({
+      iconId: hasIcon ? INTENT_ICONS[iconKey] : null,
+      amount,
+      label: amount === null ? intentBadgeLabel(action) : null,
+    });
   }
   if (parts.defense) {
-    sides.push({ iconId: DEFENSE_ICON, amount: intentDefenseText(action) });
+    sides.push({ iconId: DEFENSE_ICON, amount: intentDefenseText(action), label: null });
   }
 
   ctx.save();
   if (entrance !== null && entrance.dx !== 0) ctx.translate(entrance.dx, 0);
 
-  ctx.font = AMOUNT_FONT;
   let w = badge.padX * 2 + badge.sideGap * Math.max(0, sides.length - 1);
+  ctx.font = AMOUNT_FONT;
   for (const side of sides) {
     side.amountW = side.amount === null ? 0 : ctx.measureText(side.amount).width;
     w += badge.iconW + (side.amount === null ? 0 : badge.gap + side.amountW);
+  }
+  for (const side of sides) {
+    if (side.label === null) continue;
+    ctx.font = BADGE_LABEL_FONT;
+    side.labelW = ctx.measureText(side.label).width;
+    w += badge.gap + side.labelW;
   }
   const left = Math.min(spot.x - w / 2, area.x + area.w - badge.edge - w);
   const cy = spotY + badge.h / 2;
@@ -170,6 +189,13 @@ export function drawEnemyIntent(ctx, battleLayout, enemy, countdown, entrance) {
       });
       ctx.restore();
       cursor += badge.gap + side.amountW;
+    } else if (side.label !== null) {
+      ctx.save();
+      drawOutlinedText(ctx, side.label, cursor + badge.gap, cy, {
+        font: BADGE_LABEL_FONT, align: 'left', color: BADGE_LABEL_COLOR, outlineWidth: AMOUNT_OUTLINE_WIDTH,
+      });
+      ctx.restore();
+      cursor += badge.gap + side.labelW;
     }
     cursor += badge.sideGap;
   }
