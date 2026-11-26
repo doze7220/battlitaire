@@ -1,6 +1,6 @@
 /**
  * 責務: DEBUG タブのスクロールする領域と中の部品（焼き付けのチェックボックスを含む）の位置・大きさ、FPS の表示の隅を
- * 値で持ち、敵の数から配置を、ルールの値の並びの矩形を項目の数から求める。座標は論理座標。import は menuLayout.js の MENU_LAYOUT だけ。
+ * 値で持ち、敵・強化の数から配置を、ルールの値の並びの矩形を項目の数から求める。座標は論理座標。import は menuLayout.js の MENU_LAYOUT だけ。
  */
 import { MENU_LAYOUT } from './menuLayout.js';
 
@@ -29,6 +29,8 @@ const ROW_W = AREA.width - SCROLL_BAND;
 const HALF_W = (ROW_W - BUTTON_GAP) / 2;
 /** 横に4つ並べるボタンの1つの幅。 @type {number} */
 const QUARTER_W = (ROW_W - BUTTON_GAP * 3) / 4;
+/** 強化の +1 のボタンを横に並べる数。試遊で決め直す値。 @type {number} */
+const UPGRADE_COLS = 2;
 
 /**
  * 領域の中の矩形を作って凍結する。
@@ -65,7 +67,9 @@ const ENEMY_COLS = 2;
  * DEBUG タブの配置（凍結。試遊で決め直す値）。`area` は窓の内側の原点から、
  * ほかの矩形は領域の中身の左上が原点。どれも `addSlider` などにそのまま広げて渡せる。
  * `enemyRows` は敵の切り替えの段（上から順）で、`from`〜`to`（`to` は含まない）がその段に並ぶ敵の番号の範囲。
- * 最後の段が `ENEMY_COLS` に満たないときは、その数ぶんの幅にする。`ruleTop` はルールの値の並びの始まりの y。
+ * 最後の段が `ENEMY_COLS` に満たないときは、その数ぶんの幅にする。`upgradeLabel`・`upgradeButtons`（3択を出す・すべて外す）・
+ * `upgradeAddButtons`（強化の種類ごとの +1。1段に2つずつ、最後の段が1つならその幅は半分のまま）は敵の HP の下。
+ * `ruleTop` はルールの値の並びの始まりの y。
  * @typedef {Readonly<{
  *   area: Readonly<{ x: number, y: number, width: number, height: number }>,
  *   troopNote: object,
@@ -76,17 +80,20 @@ const ENEMY_COLS = 2;
  *   intentLabel: object, intentChoices: object,
  *   battleTurn: object, castleHp: object, castleButtons: Readonly<{ one: object, full: object }>,
  *   enemyHp: object, enemyButtons: Readonly<{ one: object, full: object }>,
+ *   upgradeLabel: object, upgradeButtons: Readonly<{ offer: object, clear: object }>,
+ *   upgradeAddButtons: ReadonlyArray<object>,
  *   fpsCheckbox: object, fpsValue: object, bakeCheckbox: object,
  *   ruleTop: number
  * }>} DebugLayout
  */
 
 /**
- * 敵の数から、DEBUG タブの配置を求める（敵の切り替えの段の数で、その下の y が変わる）。
+ * 敵の数と強化の種類の数から、DEBUG タブの配置を求める（敵の切り替えの段の数・強化の +1 の段の数で、その下の y が変わる）。
  * @param {number} enemyCount 敵の種類の数
+ * @param {number} upgradeCount 強化の種類の数
  * @returns {DebugLayout} 配置
  */
-export function createDebugLayout(enemyCount) {
+export function createDebugLayout(enemyCount, upgradeCount) {
   const rowCount = Math.max(1, Math.ceil(enemyCount / ENEMY_COLS));
   const enemyRows = [];
   for (let r = 0; r < rowCount; r += 1) {
@@ -114,8 +121,25 @@ export function createDebugLayout(enemyCount) {
   const enemyHpY = castleButtonsY + BUTTON_H + GAP;
   /** 敵の HP のボタンの y（表示のすぐ下）。 */
   const enemyButtonsY = enemyHpY + LABEL_H;
+  /** 強化の見出しの y。 */
+  const upgradeLabelY = enemyButtonsY + BUTTON_H + GAP;
+  /** 3択を出す・すべて外すボタンの y（見出しのすぐ下）。 */
+  const upgradeButtonsY = upgradeLabelY + LABEL_H;
+  /** 強化の +1 のボタンの最初の段の y。 */
+  const upgradeAddY = upgradeButtonsY + BUTTON_H + GAP;
+  const upgradeAddRows = Math.ceil(Math.max(0, upgradeCount) / UPGRADE_COLS);
+  const upgradeAddButtons = [];
+  for (let i = 0; i < upgradeCount; i += 1) {
+    const row = Math.floor(i / UPGRADE_COLS);
+    const col = i % UPGRADE_COLS;
+    upgradeAddButtons.push(rect(upgradeAddY + row * (BUTTON_H + GAP), BUTTON_H, col * (HALF_W + BUTTON_GAP), HALF_W));
+  }
+  /** 強化の段の終わりの y（段がなければ 3択のボタンの下）。 */
+  const upgradeEndY = upgradeAddRows > 0
+    ? upgradeAddY + upgradeAddRows * BUTTON_H + (upgradeAddRows - 1) * GAP
+    : upgradeButtonsY + BUTTON_H;
   /** FPS のチェックボックスの y。 */
-  const fpsCheckY = enemyButtonsY + BUTTON_H + GAP;
+  const fpsCheckY = upgradeEndY + GAP;
   /** FPS の値の y。 */
   const fpsValueY = fpsCheckY + CHECK_H + GAP;
   /** 「焼き付けで描く」のチェックボックスの y（FPS の値のすぐ下）。 */
@@ -147,6 +171,12 @@ export function createDebugLayout(enemyCount) {
       one: rect(enemyButtonsY, BUTTON_H, 0, HALF_W),
       full: rect(enemyButtonsY, BUTTON_H, HALF_W + BUTTON_GAP, HALF_W),
     }),
+    upgradeLabel: rect(upgradeLabelY, LABEL_H),
+    upgradeButtons: Object.freeze({
+      offer: rect(upgradeButtonsY, BUTTON_H, 0, HALF_W),
+      clear: rect(upgradeButtonsY, BUTTON_H, HALF_W + BUTTON_GAP, HALF_W),
+    }),
+    upgradeAddButtons: Object.freeze(upgradeAddButtons),
     fpsCheckbox: rect(fpsCheckY, CHECK_H),
     fpsValue: rect(fpsValueY, LABEL_H),
     bakeCheckbox: rect(bakeCheckY, CHECK_H),

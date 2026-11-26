@@ -9,7 +9,7 @@ import { MENU_TEXT } from '../view/menuText.js';
 /**
  * @typedef {Object} MenuTab メニューの窓のタブ1つ分
  * @property {string} label タブの名前
- * @property {(tab: object) => void} build addTabs が返したそのタブのオブジェクトに部品を足す関数
+ * @property {(tab: object, close: () => void) => void} build addTabs が返したそのタブのオブジェクトと、窓を閉じる関数を受けて部品を足す関数
  */
 
 /**
@@ -50,7 +50,7 @@ export class MenuScene extends Scene {
       ...MENU_LAYOUT.tabs,
       labels: this.tabs.map((t) => t.label),
     });
-    tabObjects.forEach((tabObject, i) => this.tabs[i].build(tabObject));
+    tabObjects.forEach((tabObject, i) => this.tabs[i].build(tabObject, () => this.close()));
   }
 
   /**

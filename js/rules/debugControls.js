@@ -1,11 +1,12 @@
 /**
- * 責務: DEBUG タブから呼ばれる、ゲームの状態を書き換えるデバッグ用の操作（兵のゲージ・ステージを移る・敵の切り替え・次の行動の指定・戦闘のターンの番号・城と敵の HP）と問い合わせ。
+ * 責務: DEBUG タブから呼ばれる、ゲームの状態を書き換えるデバッグ用の操作（兵のゲージ・ステージを移る・敵の切り替え・次の行動の指定・戦闘のターンの番号・城と敵の HP・強化の +1・すべて外す・3択を出す）と問い合わせ。
  * 段取り中だけ効き、行動の回数は使わない（ルール層）。
  */
 
 import { enemyTypeIds, enemySpecOf } from './enemyTypes.js';
 import { refreshIntent } from './enemyIntent.js';
 import { intentChoiceIds, planChosenIntent, chosenIntentOf } from './debugIntents.js';
+import { upgradeIds, takeUpgrade, clearUpgrades, fixedUpgradeValue, takenUpgradeList } from './upgrades.js';
 
 /**
  * 段取り中か。
@@ -194,4 +195,50 @@ export function setCastleHp(game, hp) {
  */
 export function setEnemyHp(game, hp) {
   return setHp(game, game.enemy, hp);
+}
+
+/**
+ * DEBUG タブに並べる強化の識別子の並び（設定に書いた順）。
+ * @param {import('./config.js').Rules} config ルールの設定
+ * @returns {string[]} 強化の種類の識別子
+ */
+export function upgradeChoices(config) {
+  return upgradeIds(config);
+}
+
+/**
+ * 強化を1つ取る（DEBUG の「+1」。値は乱数なしの決まった値）。段取り中で、一覧にある識別子のときだけ。
+ * 自動兵士は次のターンの頭から効く（今のターンのゲージは変えない）。
+ * @param {import('./Game.js').Game} game ゲーム
+ * @param {string} id 強化の種類の識別子
+ * @returns {boolean} 取ったら true
+ */
+export function addUpgrade(game, id) {
+  if (!isPlanning(game)) return false;
+  if (!upgradeIds(game.config).includes(id)) return false;
+  takeUpgrade(game, id, fixedUpgradeValue(game.config, id));
+  return true;
+}
+
+/**
+ * 取った強化をすべて外す。段取り中で、取った強化があるときだけ。
+ * @param {import('./Game.js').Game} game ゲーム
+ * @returns {boolean} 外したら true
+ */
+export function clearAllUpgrades(game) {
+  if (!isPlanning(game)) return false;
+  if (takenUpgradeList(game.config, game.upgrades).length === 0) return false;
+  clearUpgrades(game);
+  return true;
+}
+
+/**
+ * 3択を出す（選ぶと今の段取りへ戻る。ステージは進まない）。段取り中だけ。候補は今のプレイ用の乱数で引く。
+ * @param {import('./Game.js').Game} game ゲーム
+ * @returns {boolean} 3択の段階にしたら true
+ */
+export function openUpgradeChoice(game) {
+  if (!isPlanning(game)) return false;
+  game.offerUpgrades('planning');
+  return true;
 }

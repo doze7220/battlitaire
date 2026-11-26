@@ -14,6 +14,10 @@ import {
   setCastleHp,
   setEnemyHp,
   setBattleTurn,
+  upgradeChoices,
+  addUpgrade,
+  clearAllUpgrades,
+  openUpgradeChoice,
 } from '../rules/debugControls.js';
 import {
   ruleGroups,
@@ -70,7 +74,7 @@ export class BoardDebug {
   /**
    * ルールの値の項目の種類と名前。
    * @param {string} id 項目の識別子
-   * @returns {{ kind: string, name: string }|null} 値の種類と項目の名前の識別子。知らない識別子は null
+   * @returns {{ kind: string, name: string, unit: number|null }|null} 値の種類・項目の名前の識別子・1体のポイントの刻み（量の項目以外は null）。知らない識別子は null
    */
   ruleItemInfo(id) {
     return ruleItemInfo(id);
@@ -262,5 +266,45 @@ export class BoardDebug {
    */
   setEnemyHp(hp) {
     setEnemyHp(this.game, hp);
+  }
+
+  /**
+   * 強化の種類の識別子の並び（設定に書いた順）。
+   * @returns {string[]} 識別子の並び
+   */
+  upgradeIds() {
+    return upgradeChoices(this.game.config);
+  }
+
+  /**
+   * 強化を取った回数。
+   * @param {string} id 強化の種類の識別子
+   * @returns {number} 回数（取っていなければ 0）
+   */
+  upgradeCount(id) {
+    return this.game.upgradeTaken(id).count;
+  }
+
+  /**
+   * 強化を1つ取る。見た目は描くときにルール層を読んで合うので、anim・段階の管理の口は呼ばない。
+   * @param {string} id 強化の種類の識別子
+   */
+  addUpgrade(id) {
+    addUpgrade(this.game, id);
+  }
+
+  /**
+   * 取った強化をすべて外す。
+   */
+  clearUpgrades() {
+    clearAllUpgrades(this.game);
+  }
+
+  /**
+   * 3択を出す。
+   * @returns {boolean} 3択の段階にしたら true（窓を閉じる合図）
+   */
+  openUpgradeChoice() {
+    return openUpgradeChoice(this.game);
   }
 }

@@ -1,21 +1,23 @@
 /**
  * 責務: DEBUG タブ（MenuTab）を作り、領域の部品を盤面のデバッグの口（BoardDebug）と FPS の表示につなぐ。
- * FPS の下に焼き付けで描くかのチェックボックス（troopBakes.js の設定）とルールの値の並びを足す。ルール層は import しない。
+ * 強化の段・FPS の下に焼き付けで描くかのチェックボックス（troopBakes.js の設定）とルールの値の並びを足す。ルール層は import しない。
  */
 import { Engine } from 'oz';
 import { addRuleSliders } from './debugRuleSliders.js';
 import { createDebugLayout, DEBUG_FPS_POSITION } from '../view/debugLayout.js';
-import { DEBUG_TEXT, intentChoiceText, hpText, fpsText, stageStepText } from '../view/debugText.js';
+import { DEBUG_TEXT, intentChoiceText, hpText, fpsText, stageStepText, upgradeAddText } from '../view/debugText.js';
+import { upgradeTextOf } from '../view/upgradeText.js';
 import { troopBakesEnabled, setTroopBakesEnabled } from '../view/troopBakes.js';
 
 /**
  * 兵の数のスライダーの範囲。1種類あたりの理論上の最大
- * （根拠: 7 枚の束を放つ 28 + 6 + 4スートそろい 1 = 35 → 5 枚を置いて放つ 25 + 4 + 1 = 30。合計 65）。
- * `config.js` の値（数字の範囲・束の補正・行動回数・力こぶの換算・4スートそろいの量 `allSuitsBonus`）を変えたら見直す。
+ * （根拠: 7 枚の束を放つ 28 + 6 + 4スートそろい 1 = 35 → 5 枚を置いて放つ 25 + 4 + 1 = 30。合計 65。
+ * 強化の自動兵士の分を足しても届くように 99 にした）。
+ * `config.js` の値（数字の範囲・束の補正・行動回数・力こぶの換算・4スートそろいの量 `allSuitsBonus`・自動兵士の強化）を変えたら見直す。
  * DEBUG タブのスライダーの範囲で、ルールの値ではない。
  * @type {Readonly<{ min: number, max: number, step: number }>}
  */
-export const TROOP_SLIDER = Object.freeze({ min: 0, max: 65, step: 1 });
+export const TROOP_SLIDER = Object.freeze({ min: 0, max: 99, step: 1 });
 
 /**
  * 戦闘のターンの番号のスライダーの範囲。DEBUG タブのスライダーの範囲で、ルールの値ではない。
@@ -74,10 +76,11 @@ function addHpControls(area, { value, buttons, label, target, setHp }) {
  * 最後にルールの値の並び（debugRuleSliders.js）を足す。
  * @param {object} debug 盤面のデバッグの口（BoardDebug）
  * @param {object} tab addTabs が返したタブのオブジェクト
+ * @param {() => void} close メニューの窓を閉じる関数（「3択を出す」が成り立ったときに呼ぶ）
  * @returns {void}
  */
-function buildDebugTab(debug, tab) {
-  const layout = createDebugLayout(debug.enemyChoices().length);
+function buildDebugTab(debug, tab, close) {
+  const layout = createDebugLayout(debug.enemyChoices().length, debug.upgradeIds().length);
   const area = tab.addScroll(layout.area);
 
   area.addValue({
@@ -162,6 +165,27 @@ function buildDebugTab(debug, tab) {
     setHp: (hp) => debug.setEnemyHp(hp),
   });
 
+  area.addValue({ ...layout.upgradeLabel, label: DEBUG_TEXT.upgrades, read: () => '' });
+  area.addButton({
+    ...layout.upgradeButtons.offer,
+    label: DEBUG_TEXT.upgradeOffer,
+    onPress: () => {
+      if (debug.openUpgradeChoice()) close();
+    },
+  });
+  area.addButton({
+    ...layout.upgradeButtons.clear,
+    label: DEBUG_TEXT.upgradeClear,
+    onPress: () => debug.clearUpgrades(),
+  });
+  debug.upgradeIds().forEach((id, i) => {
+    area.addButton({
+      ...layout.upgradeAddButtons[i],
+      label: () => upgradeAddText(upgradeTextOf(id).name, debug.upgradeCount(id)),
+      onPress: () => debug.addUpgrade(id),
+    });
+  });
+
   area.addCheckbox({
     ...layout.fpsCheckbox,
     label: DEBUG_TEXT.fpsVisible,
@@ -194,5 +218,5 @@ function buildDebugTab(debug, tab) {
  * @returns {import('./MenuScene.js').MenuTab} 「DEBUG」タブ（名前と build）
  */
 export function createDebugTab(debug) {
-  return { label: DEBUG_TEXT.tab, build: (tab) => buildDebugTab(debug, tab) };
+  return { label: DEBUG_TEXT.tab, build: (tab, close) => buildDebugTab(debug, tab, close) };
 }

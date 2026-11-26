@@ -1,6 +1,6 @@
 /**
  * 責務: DEBUG タブの文字を凍結した定数で持ち、ステージを移るボタン・次の行動の選択肢・HP・FPS・
- * ルールの値の項目名・効く時期・百分率を文字にする。何も import しない。
+ * 強化のボタン・ルールの値の項目名・効く時期・百分率を文字にする。何も import しない。
  */
 
 /**
@@ -10,6 +10,7 @@
  *   troops: Readonly<{ attack: string, defense: string, heal: string }>,
  *   stage: string, enemy: string, intent: string, noChoice: string, battleTurn: string,
  *   castleHp: string, enemyHp: string, hpToOne: string, hpToFull: string,
+ *   upgrades: string, upgradeOffer: string, upgradeClear: string,
  *   fpsVisible: string, fps: string, bakedDrawing: string,
  *   rulesCastle: string, rulesReset: string
  * }>}
@@ -28,6 +29,9 @@ export const DEBUG_TEXT = Object.freeze({
   enemyHp: '敵の HP',
   hpToOne: '1 にする',
   hpToFull: '満タンにする',
+  upgrades: '強化',
+  upgradeOffer: '3択を出す',
+  upgradeClear: '強化をすべて外す',
   fpsVisible: 'FPS を表示',
   fps: 'FPS',
   bakedDrawing: '焼き付けで描く',
@@ -151,4 +155,14 @@ export function stageStepText(delta) {
  */
 export function fpsText(v) {
   return v === null ? '--' : String(v);
+}
+
+/**
+ * 強化の「+1」ボタンの文字にする。
+ * @param {string} name 強化の名前
+ * @param {number} count 今取っている回数
+ * @returns {string} 例「毎ターン 剣の兵 +1（今 2）」
+ */
+export function upgradeAddText(name, count) {
+  return `${name} +1（今 ${count}）`;
 }
