@@ -1,12 +1,12 @@
 /**
- * 責務: DEBUG タブから呼ばれる、ゲームの状態を書き換えるデバッグ用の操作（兵のゲージ・ステージを移る・敵の切り替え・次の行動の指定・戦闘のターンの番号・城と敵の HP・強化の +1・すべて外す・3択を出す）と問い合わせ。
+ * 責務: DEBUG タブから呼ばれる、ゲームの状態を書き換えるデバッグ用の操作（兵のゲージ・ステージを移る・敵の切り替え・次の行動の指定・戦闘のターンの番号・城と敵の HP・強化の取る（上限で止まる）・すべて外す・3択を出す）と問い合わせ。
  * 段取り中だけ効き、行動の回数は使わない（ルール層）。
  */
 
 import { enemyTypeIds, enemySpecOf } from './enemyTypes.js';
 import { refreshIntent } from './enemyIntent.js';
 import { intentChoiceIds, planChosenIntent, chosenIntentOf } from './debugIntents.js';
-import { upgradeIds, takeUpgrade, clearUpgrades, fixedUpgradeValue, takenUpgradeList } from './upgrades.js';
+import { upgradeIds, takeUpgrade, clearUpgrades, fixedUpgradeValue, isUpgradeCapped, takenUpgradeList } from './upgrades.js';
 
 /**
  * 段取り中か。
@@ -207,21 +207,22 @@ export function upgradeChoices(config) {
 }
 
 /**
- * 強化を1つ取る（DEBUG の「+1」。値は乱数なしの決まった値）。段取り中で、一覧にある識別子のときだけ。
- * 自動兵士は次のターンの頭から効く（今のターンのゲージは変えない）。
+ * 強化を1つ取る（DEBUG の「取る」。値は乱数なしの決まった値）。段取り中で、一覧にある識別子で、上限に着いていないときだけ（上限では何もしない）。
+ * 自動兵士・アクションポイント・「次の戦闘の間」は次のターンの頭から効く（今のターンのゲージ・行動の数は変えない）。手札の枠はその場で増える。
  * @param {import('./Game.js').Game} game ゲーム
  * @param {string} id 強化の種類の識別子
- * @returns {boolean} 取ったら true
+ * @returns {boolean} 取ったら true（条件外・上限なら false）
  */
 export function addUpgrade(game, id) {
   if (!isPlanning(game)) return false;
   if (!upgradeIds(game.config).includes(id)) return false;
+  if (isUpgradeCapped(game.config, game.upgrades, id)) return false;
   takeUpgrade(game, id, fixedUpgradeValue(game.config, game.upgrades, id));
   return true;
 }
 
 /**
- * 取った強化をすべて外す。段取り中で、取った強化があるときだけ。
+ * 取った強化をすべて外す。段取り中で、取った強化があるときだけ。手札は設定の枠の数に戻り（外した枠の札は捨て札の後ろへ）、「この戦闘の間」の足し分は 0 になる。今のターンの行動の数は変えない。
  * @param {import('./Game.js').Game} game ゲーム
  * @returns {boolean} 外したら true
  */

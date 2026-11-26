@@ -286,7 +286,7 @@ export class BoardDebug {
   }
 
   /**
-   * 強化を1つ取る。見た目は描くときにルール層を読んで合うので、anim・段階の管理の口は呼ばない。
+   * 強化を1つ取る（上限に着いていれば何もしない）。見た目は描くときにルール層を読んで合うので、anim・段階の管理の口は呼ばない。
    * @param {string} id 強化の種類の識別子
    */
   addUpgrade(id) {
@@ -294,7 +294,7 @@ export class BoardDebug {
   }
 
   /**
-   * 取った強化をすべて外す。
+   * 取った強化をすべて外す（手札の枠は1枠に戻り、外した枠の札は捨て札へ）。
    */
   clearUpgrades() {
     clearAllUpgrades(this.game);

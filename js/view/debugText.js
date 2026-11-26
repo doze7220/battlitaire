@@ -158,11 +158,11 @@ export function fpsText(v) {
 }
 
 /**
- * 強化の「+1」ボタンの文字にする。
+ * 強化の「取る」ボタンの文字にする。
  * @param {string} name 強化の名前
  * @param {number} count 今取っている回数
- * @returns {string} 例「毎ターン 剣の兵 +1（今 2）」
+ * @returns {string} 例「城の最大 HP を取る（今 0 回）」「数字 3 の札 を取る（今 1 回）」
  */
 export function upgradeAddText(name, count) {
-  return `${name} +1（今 ${count}）`;
+  return `${name} を取る（今 ${count} 回）`;
 }
