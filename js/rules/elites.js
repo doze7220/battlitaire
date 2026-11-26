@@ -119,19 +119,30 @@ export function clearEliteOf(state, gauge) {
 }
 
 /**
+ * 値がプレーンなオブジェクト（配列でなく、プロトタイプが `Object.prototype` か `null`）か。
+ * @param {unknown} value 調べる値
+ * @returns {boolean} プレーンなオブジェクトなら true
+ */
+function isPlainObject(value) {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+/**
  * 値が精鋭の状態の形か確かめる（例外を投げない）。
  * @param {unknown} value 確かめる値
  * @param {{ gauges: readonly string[] }} config ルールの設定
  * @returns {boolean} プレーンなオブジェクトで、キーが `config.gauges` とちょうど同じで、各値が 0 以上の整数の `count`・`extra` を持てば true
  */
 export function isEliteState(value, config) {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  if (!isPlainObject(value)) return false;
   const keys = Object.keys(value);
   if (keys.length !== config.gauges.length) return false;
   for (const gauge of config.gauges) {
     if (!Object.hasOwn(value, gauge)) return false;
     const e = value[gauge];
-    if (typeof e !== 'object' || e === null || Array.isArray(e)) return false;
+    if (!isPlainObject(e)) return false;
     if (!Number.isInteger(e.count) || e.count < 0) return false;
     if (!Number.isInteger(e.extra) || e.extra < 0) return false;
   }

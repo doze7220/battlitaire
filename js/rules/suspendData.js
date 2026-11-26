@@ -11,15 +11,17 @@ import { enemyTypeIds, enemySpecOf } from './enemyTypes.js';
 import { isBehaviorState } from './enemyBehaviors.js';
 import { createGameStats } from './gameStats.js';
 import { isUpgradeState } from './upgrades.js';
+import { isEliteState } from './elites.js';
 import { isUpgradeOffer } from './upgradeOffer.js';
 import { handSizeOf } from './upgradeBoosts.js';
 
 /**
  * 中断データの版番号（形が変わったら上げる。版番号はここ1か所）。
  * 4: 強化のカード・特別の枠（この戦闘の間の足し分 `battleActionBonus`・強化から決まる手札の枠の数）を足したとき 3 から上げた。
+ * 5: 精鋭の状態 `elites` を足したとき 4 から上げた。
  * @type {number}
  */
-export const SUSPEND_VERSION = 4;
+export const SUSPEND_VERSION = 5;
 
 /**
  * 中断データ（ターンの始まり、または3択の段階の状態。`null`・真偽値・文字列・数・配列・プレーンなオブジェクトだけでできている）。
@@ -44,6 +46,7 @@ export const SUSPEND_VERSION = 4;
  * @property {{ typeId: string, hp: number, maxHp: number, intent: import('./combatants.js').EnemyIntent, behaviorState: object }} enemy 敵（名前は設定から引くので持たない）
  * @property {import('./gameStats.js').GameStats} stats 結果の集計
  * @property {import('./upgrades.js').UpgradeState} upgrades 取った強化
+ * @property {import('./elites.js').EliteState} elites ゲージごとの精鋭の数と上振れ（ターンの始まりはいつも 0、3択の段階は攻防のターンの値）
  * @property {import('./upgradeOffer.js').UpgradeOffer|null} upgradeOffer 3択の候補（3択の段階のときだけ。それ以外は null）
  */
 
@@ -274,6 +277,13 @@ const FIELDS = Object.freeze({
     check: (value, config) => isUpgradeState(value, config),
     load: (game, value) => {
       game.upgrades = structuredClone(/** @type {any} */ (value));
+    },
+  }),
+  elites: Object.freeze({
+    save: (game) => structuredClone(game.elites),
+    check: (value, config) => isEliteState(value, config),
+    load: (game, value) => {
+      game.elites = structuredClone(/** @type {any} */ (value));
     },
   }),
   upgradeOffer: Object.freeze({
