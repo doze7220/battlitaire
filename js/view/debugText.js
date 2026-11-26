@@ -10,6 +10,7 @@
  *   troops: Readonly<{ attack: string, defense: string, heal: string }>,
  *   stage: string, enemy: string, intent: string, noChoice: string, battleTurn: string,
  *   castleHp: string, enemyHp: string, hpToOne: string, hpToFull: string,
+ *   childToZero: string, parentToZero: string,
  *   upgrades: string, upgradeOffer: string, upgradeClear: string,
  *   fpsVisible: string, fps: string, bakedDrawing: string,
  *   rulesCastle: string, rulesReset: string
@@ -29,6 +30,8 @@ export const DEBUG_TEXT = Object.freeze({
   enemyHp: '敵の HP',
   hpToOne: '1 にする',
   hpToFull: '満タンにする',
+  childToZero: '子を 0 にする',
+  parentToZero: '親を 0 にする',
   upgrades: '強化',
   upgradeOffer: '3択を出す',
   upgradeClear: '強化をすべて外す',
@@ -68,6 +71,17 @@ export const RULE_ITEM_TEXT = Object.freeze({
   bigGuardChance: '大防御の確率',
   bigGuardMin: '大防御の量 最小',
   bigGuardMax: '大防御の量 最大',
+  maxHpTotal: '最大 HP（合計）',
+  youngAttackMin: '子の攻撃の量 最小',
+  youngAttackMax: '子の攻撃の量 最大',
+  protectChance: '守る確率',
+  protectMin: '守るの防御 最小',
+  protectMax: '守るの防御 最大',
+  rushMin: '突進の量 最小',
+  rushMax: '突進の量 最大',
+  rageChance: '怒りを溜める確率',
+  bigRushMin: '大突進の量 最小',
+  bigRushMax: '大突進の量 最大',
 });
 
 /**
@@ -118,6 +132,11 @@ export const INTENT_CHOICE_TEXT = Object.freeze({
   heavy: '大攻撃',
   guard: '防御',
   bigGuard: '大防御',
+  youngAttack: '子の攻撃',
+  protect: '子どもたちを守る',
+  rush: '突進',
+  rage: '怒りを溜める',
+  bigRush: '大突進',
 });
 
 /**

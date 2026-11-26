@@ -164,6 +164,16 @@ function buildDebugTab(debug, tab, close) {
     target: () => debug.enemy(),
     setHp: (hp) => debug.setEnemyHp(hp),
   });
+  area.addButton({
+    ...layout.enemyPartButtons.child,
+    label: DEBUG_TEXT.childToZero,
+    onPress: () => debug.zeroEnemyChild(),
+  });
+  area.addButton({
+    ...layout.enemyPartButtons.parent,
+    label: DEBUG_TEXT.parentToZero,
+    onPress: () => debug.zeroEnemyParent(),
+  });
 
   area.addValue({ ...layout.upgradeLabel, label: DEBUG_TEXT.upgrades, read: () => '' });
   area.addButton({

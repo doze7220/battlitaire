@@ -13,6 +13,8 @@ import {
   chooseEnemyIntent,
   setCastleHp,
   setEnemyHp,
+  zeroEnemyChild,
+  zeroEnemyParent,
   setBattleTurn,
   upgradeChoices,
   addUpgrade,
@@ -266,6 +268,21 @@ export class BoardDebug {
    */
   setEnemyHp(hp) {
     setEnemyHp(this.game, hp);
+  }
+
+  /**
+   * 敵の子の HP を 0 にする（親が 0 なら 1 を残す）。親子の敵でないとき・子が 0 のときは何もしない。
+   */
+  zeroEnemyChild() {
+    zeroEnemyChild(this.game);
+  }
+
+  /**
+   * 敵の親の HP を 0 にする（子が 0 なら 1 を残す）。親子の敵でないとき・親が 0 のときは何もしない。
+   * 予告が今の局面でできない行動になったときの決め直しはルール層が行う。
+   */
+  zeroEnemyParent() {
+    zeroEnemyParent(this.game);
   }
 
   /**
