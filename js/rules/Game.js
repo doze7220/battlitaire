@@ -363,11 +363,11 @@ export class Game {
   }
 
   /**
-   * 次のフェーズに進めるか（攻防の結果を見ている段階）。
+   * 次のフェーズに進めるか（攻防の結果を見ている段階で、敵が生きている。敵を倒したときは3択を選ぶまで進めない）。
    * @returns {boolean} 進めるなら `true`
    */
   canStartNextPhase() {
-    return this.stage === 'result';
+    return this.stage === 'result' && this.enemy.hp > 0;
   }
 
   /**

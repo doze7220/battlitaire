@@ -1,13 +1,14 @@
 /**
  * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面と合図を描くこと。
  * 操作の結果を anim に渡して時間を進め、段階の管理（boardFlow.js）を進めて、TURN の表示で自動兵士を陣地に現し、BATTLE! が終わったら攻防に入り待っていた兵の数（自動兵士の印の数を含む）を演出のシーンへ渡し、新しいゲームの始まりを中断データに保存し、中断データがあればそのターンの始まりへ戻して始めること。
- * 操作・連鎖のきっかけで効果音を鳴らし（soundCues.js）、積んだ演出のシーンから札が燃える段の盤面を読んで描き、TURN の区画でメニューの窓を積み、兵の焼き付けを init で作り destroy で手放すこと。「DEBUG MODE」のレイヤーも描く（debugModeLayer.js）。
+ * 3択の段階なら3択の画面を積み、操作・連鎖のきっかけで効果音を鳴らし（soundCues.js）、積んだ演出のシーンから札が燃える段の盤面を読んで描き、TURN の区画でメニューの窓を積み、兵の焼き付けを init で作り destroy で手放すこと。「DEBUG MODE」のレイヤーも描く（debugModeLayer.js）。
  */
 import { Engine, Scene } from 'oz';
 import { drawDebugModeLayer } from './debugModeLayer.js';
 import { Game } from '../rules/Game.js';
 import { restoreGame } from '../rules/suspendData.js';
 import { BattleShowScene } from './BattleShowScene.js';
+import { UpgradeChoiceScene } from './UpgradeChoiceScene.js';
 import { saveSuspend } from './suspendStore.js';
 import { snapshotBattle } from '../anim/battleSteps.js';
 import { createLayout } from '../view/layout.js';
@@ -132,12 +133,16 @@ export class BoardScene extends Scene {
    * 動きの時計に dt（ミリ秒）を足して進める（dt はエンジンが渡した値をそのまま足し、倍率は掛けない。ルール層の状態は変えない）。
    * 放つ演出の時計も進め、進めた直後に、その間に玉に変わった札の序数ごとに連鎖の効果音を鳴らす。
    * 最後に、札の移動・山札のめくれ・玉に変わる前の札・玉・兵が全部止まっているかを段階の管理（BoardFlow.update）に渡して進め、'battle'（BATTLE! が終わった）と返されたら攻防に入り（startBattle）、'turn'（TURN の表示を出した）と返されたら自動兵士を陣地に現す（ReleaseShow.landAuto。量はルール層の autoTroopGains）。
-   * 頭で `this.battleShow` を外す（update は最前面のときだけ呼ばれるので、攻防の演出のシーンが外れた後になる）。
+   * 頭で `this.battleShow` を外し（update は最前面のときだけ呼ばれるので、攻防の演出のシーンが外れた後になる）、ゲームが3択の段階（再開・DEBUG の「3択を出す」）なら3択の画面を積んで戻る。
    * @param {number} dt 1ティックの長さ（ミリ秒）
    * @returns {void}
    */
   update(dt) {
     this.battleShow = null; // update は最前面のときだけ呼ばれる＝演出のシーンが外れた後
+    if (this.game.isChoosingUpgrade()) {
+      Engine.pushScene(this.createUpgradeChoice());
+      return;
+    }
     this.animator.update(dt);
     this.releaseShow.update(dt);
     this.enemyIdle.update(dt, this.game.enemy.typeId, bodyCount(this.game.enemy.hp, this.game.enemyUnitPoints()));
@@ -146,6 +151,14 @@ export class BoardScene extends Scene {
     const flowEvent = this.flow.update(dt, this.game, boardIdle);
     if (flowEvent === 'battle') this.startBattle();
     else if (flowEvent === 'turn') this.releaseShow.landAuto(this.game.autoTroopGains());
+  }
+
+  /**
+   * 3択の画面のシーンを作る（攻防の演出のシーンの敵を倒した後のタップと、update の頭の3択の段階の道が使う。作るだけで積まない）。
+   * @returns {UpgradeChoiceScene} 3択の画面のシーン
+   */
+  createUpgradeChoice() {
+    return new UpgradeChoiceScene({ layer: this.layer, game: this.game, layout: this.layout });
   }
 
   /**
@@ -168,6 +181,7 @@ export class BoardScene extends Scene {
       before: battleBefore,
       result: this.lastResult,
       createTitle: this.createTitle,
+      createUpgradeChoice: () => this.createUpgradeChoice(),
       waiting,
       waitingAuto,
     });

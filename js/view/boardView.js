@@ -65,7 +65,7 @@ function topGaugeValues(game, release) {
 }
 
 /**
- * 盤面全体を描く（背景 → 戦闘の段（奥の兵・城・敵・手前の兵・予告の順） → 人数の表示 → 最上部のゲージ → 行動のゲージの帯 → 行動のゲージのラベル → 山札・捨て札 → 列と放つボタン → 燃える札の明滅 → 玉に変わる前の札 → 手札 → 動いているカード（燃えて飛ぶ札を含む） → 玉と式の順）。game は読むだけで、何も書き換えない。
+ * 盤面全体を描く（背景 → 戦闘の段（奥の兵・城・敵・手前の兵・予告の順） → 人数の表示（3択の間は描かない） → 最上部のゲージ → 行動のゲージの帯 → 行動のゲージのラベル → 山札・捨て札 → 列と放つボタン → 燃える札の明滅 → 玉に変わる前の札 → 手札 → 動いているカード（燃えて飛ぶ札を含む） → 玉と式の順）。game は読むだけで、何も書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').Layout} layout 画面の配置
  * @param {import('../rules/Game.js').Game} game ゲームの状態（読み取り専用）
@@ -85,7 +85,7 @@ export function drawBoard(ctx, layout, game, ui, anim, release, burn = null, idl
 
   drawBattleStage(ctx, layout.battle, { enemy: game.enemy, countdown: game.attackCountdown(), idle, entrance, troops: release.troops, unitPoints: game.enemyUnitPoints() });
 
-  drawTroopCounter(ctx, layout.battle.troopCounter, troopCounts(game, release));
+  if (!game.isChoosingUpgrade()) drawTroopCounter(ctx, layout.battle.troopCounter, troopCounts(game, release));
   drawTopGauges(ctx, layout.battle.topGauges, topGaugeValues(game, release));
   drawActionGauge(ctx, layout.actionGauge, game.actionsLeft);
   drawActionGaugeLabel(ctx, layout.actionGauge);

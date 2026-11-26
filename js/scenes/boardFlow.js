@@ -1,6 +1,6 @@
 /**
  * 責務: 盤面のシーンの区切りの段階（スタートの待ち → ステージの始まり → フェーズの始まり → 段取り → 準備終了 → BATTLE!）を管理する。
- * ルール層の問い合わせを読み、ステージの曲（デバッグで入れ替わった敵の曲を含む）・準備終了・BATTLE! の音を鳴らし、BannerShow を進める。中断データから戻した盤面（TURN 2 以降）の始まり方も決める。ルールの操作は呼ばない（Scene を継承しない）。
+ * ルール層の問い合わせを読み、ステージの曲（デバッグで入れ替わった敵の曲を含む）・準備終了・BATTLE! の音を鳴らし、BannerShow を進める。中断データから戻した盤面（TURN 2 以降・3択の段階）の始まり方も決める。3択の間は盤面を触らせず、メニューを開かせない。ルールの操作は呼ばない（Scene を継承しない）。
  */
 import { BannerShow } from '../anim/bannerShow.js';
 import { BGM_TIMING } from '../audio/soundConfig.js';
@@ -44,12 +44,20 @@ export class BoardFlow {
 
   /**
    * 中断データから戻した盤面の始まり方を決める（`init` で作った直後に1回呼ぶ）。
-   * 戦闘のターンが 1 ならふつうにステージへ入ったときと同じ流れにするので何もしない。
+   * 3択の段階なら、倒した敵のステージの始まりを出さず（`introStageNumber`・`introPhase` を今のステージ・フェーズにし、スタートの待ちを 0 にする。曲の約束は立てない）、選んだ後のステージの始まりをすぐ出せるようにする。
+   * そうでなく戦闘のターンが 1 ならふつうにステージへ入ったときと同じ流れにするので何もしない。
    * 2 以上なら「STAGE N」を出さず（`introStageNumber` を今のステージの番号にする。敵は初めから立つ）、スタートの待ちが終わったときに曲を鳴らす約束（`resumeBgmPending`）を立てる。
-   * @param {{stageNumber: number, battleTurn: number}} game ルール層の状態（読むだけ）
+   * @param {{stageNumber: number, phase: number, battleTurn: number, isChoosingUpgrade: function(): boolean}} game ルール層の状態（読むだけ）
    * @returns {void}
    */
   resumeFrom(game) {
+    if (game.isChoosingUpgrade()) {
+      this.introStageNumber = game.stageNumber;
+      this.introPhase = game.phase;
+      this.stageWaitMs = 0;
+      this.resumeBgmPending = false;
+      return;
+    }
     if (game.battleTurn <= 1) return;
     this.introStageNumber = game.stageNumber;
     this.resumeBgmPending = true;
@@ -126,10 +134,12 @@ export class BoardFlow {
    * 盤面のタップ（`'down'`）の頭で呼ぶ。
    * 準備終了が出きっていれば BATTLE! を始めて音を鳴らす（盤面の操作はしない）。
    * 合図が出ている間、またはステージ・フェーズの始まりの待ちの間は盤面を触らせない。
-   * @param {{stageNumber: number, phase: number}} game ルール層の状態（読むだけ）
+   * 3択の間は盤面を触らせない。
+   * @param {{stageNumber: number, phase: number, isChoosingUpgrade: function(): boolean}} game ルール層の状態（読むだけ）
    * @returns {boolean} 盤面の処理へ進んでよければ true。false なら呼ぶ側は選択を外して戻る
    */
   tap(game) {
+    if (game.isChoosingUpgrade()) return false;
     if (this.banner.isWaitingTap()) {
       this.banner.showBattle();
       playBattleStartSe();
@@ -154,22 +164,23 @@ export class BoardFlow {
   /**
    * 盤面の最上部の TURN の区画を押してメニューの窓を開いてよいか（読むだけ。状態は変えない）。
    * 真になる間: ステージ・フェーズの始まりを出し終えて合図が空のとき（札・玉・兵が動いている途中、行動を使い切ってから準備終了が出るまでの間を含む）。
-   * 偽になる間: スタートの待ち・ステージとフェーズの始まりの待ちと合図の間、準備終了が出ている間・BATTLE! の間。
-   * @param {{stageNumber: number, phase: number}} game ルール層の状態（読むだけ）
+   * 偽になる間: スタートの待ち・ステージとフェーズの始まりの待ちと合図の間、準備終了が出ている間・BATTLE! の間、3択の間。
+   * @param {{stageNumber: number, phase: number, isChoosingUpgrade: function(): boolean}} game ルール層の状態（読むだけ）
    * @returns {boolean} 開いてよければ true
    */
   canOpenMenu(game) {
-    return this.banner.isIdle() && !this.isPending(game);
+    return this.banner.isIdle() && !this.isPending(game) && !game.isChoosingUpgrade();
   }
 
   /**
    * 段取りの間の敵の絵の入りの見た目。状態は変えず、毎回新しいオブジェクトを返す。
    * ステージの始まりを出す前の敵は描かない（入れ替わった直後の `draw` が `update` より先に来ても元の位置に見せないため）。
-   * @param {{stageNumber: number}} game ルール層の状態（読むだけ）
+   * 倒した敵（HP 0）も描かない（3択の画面の後ろに倒した敵を残さないため）。
+   * @param {{stageNumber: number, enemy: {hp: number}}} game ルール層の状態（読むだけ）
    * @returns {import('../anim/enemyEntrance.js').EnemyEntranceLook} 見えるか・右へのずれ
    */
   entranceLook(game) {
-    return { visible: this.introStageNumber === game.stageNumber, dx: this.banner.enemyOffset() };
+    return { visible: this.introStageNumber === game.stageNumber && game.enemy.hp > 0, dx: this.banner.enemyOffset() };
   }
 
   /**

@@ -1,6 +1,6 @@
 /**
  * 責務: 攻防の演出のシーン。結果を anim に渡して時間を進め、決着後・敵を倒した後のタップだけを受けること（演出の途中のタップでは何もしない）。
- * 終わったら次のフェーズへ進めて（ターンの始まりを中断データに保存して）戻る／タイトルへ切り替え、負けの結果が出たとき中断データを消し、見た目の値を view に渡して描き、背面の盤面のシーンへ札が燃える段の盤面の見た目を答えること。
+ * 終わったら（敵が生きていれば）次のフェーズへ進めて（ターンの始まりを中断データに保存して）戻る／敵を倒したときはタップで3択を始めて（3択の段階を保存して）3択の画面を積む／決着ならタイトルへ切り替え、負けの結果が出たとき中断データを消し、見た目の値を view に渡して描き、背面の盤面のシーンへ札が燃える段の盤面の見た目を答えること。
  * 攻防のきっかけ・決着と敵の撃破の表示で効果音を鳴らし（soundCues.js）、HP が 0 になった瞬間に BGM を止めること（bgmCues.js）。設定の演出の速さで時間を進めること。
  */
 import { Engine, Scene } from 'oz';
@@ -23,6 +23,7 @@ import { drawActionGaugeLabel } from '../view/actionGaugeView.js';
  * @property {import('../anim/battleSteps.js').BattleSnapshot} before 攻防の前の値の写し
  * @property {import('../rules/Game.js').BattleResult} result game.resolveBattle() の戻り値
  * @property {() => Scene} createTitle タイトルの画面のシーンを作る関数
+ * @property {() => Scene} createUpgradeChoice 3択の画面のシーンを作る関数（敵を倒した後のタップで積む）
  * @property {{attack: number, defense: number, heal: number}} waiting 段取りの間に陣地で待っていた兵の数（時間割へ引き継ぐ）
  * @property {{attack: number, defense: number, heal: number}} [waitingAuto] 待っていた兵のうち自動兵士の印のある数（時間割へ引き継ぐ。見た目だけ。省略は 0・0・0）
  */
@@ -32,7 +33,7 @@ export class BattleShowScene extends Scene {
   /**
    * @param {BattleShowOptions} options オプション
    */
-  constructor({ layer, game, layout, before, result, createTitle, waiting, waitingAuto = { attack: 0, defense: 0, heal: 0 } }) {
+  constructor({ layer, game, layout, before, result, createTitle, createUpgradeChoice, waiting, waitingAuto = { attack: 0, defense: 0, heal: 0 } }) {
     super();
     /** @type {string} 描くレイヤー名 */
     this.layer = layer;
@@ -46,6 +47,8 @@ export class BattleShowScene extends Scene {
     this.result = result;
     /** @type {() => Scene} タイトルの画面のシーンを作る関数 */
     this.createTitle = createTitle;
+    /** @type {() => Scene} 3択の画面のシーンを作る関数 */
+    this.createUpgradeChoice = createUpgradeChoice;
     /** @type {{attack: number, defense: number, heal: number}} 段取りの間に待っていた兵の数 */
     this.waiting = waiting;
     /** @type {{attack: number, defense: number, heal: number}} 待っていた兵のうち自動兵士の印のある数（見た目だけ） */
@@ -94,13 +97,25 @@ export class BattleShowScene extends Scene {
   }
 
   /**
-   * 次のフェーズへ進め、新しいターンの始まりを中断データとして保存してから、この演出のシーンを外して盤面へ戻る（保存はここだけ。デバッグでは保存されない）。
+   * 敵が生きているときの自動の道。次のフェーズへ進め、新しいターンの始まりを中断データとして保存してから、この演出のシーンを外して盤面へ戻る（デバッグでは保存されない）。
    * @returns {void}
    */
   goToNextPhase() {
     this.game.startNextPhase();
     saveSuspend(this.game);
     Engine.popScene();
+  }
+
+  /**
+   * 敵を倒した後のタップの道。3択を始め（候補を決める）、3択の段階を中断データとして保存してから、この演出のシーンを外して3択の画面を積む（同じ入力の中で続けて呼ぶ。BGM は止まったまま）。
+   * 3択を始められなければ何もしない。
+   * @returns {void}
+   */
+  goToUpgradeChoice() {
+    if (this.game.beginUpgradeChoice() === null) return;
+    saveSuspend(this.game);
+    Engine.popScene();
+    Engine.pushScene(this.createUpgradeChoice());
   }
 
   /**
@@ -125,7 +140,7 @@ export class BattleShowScene extends Scene {
   }
 
   /**
-   * 押したとき（'down'）だけ反応する。終わっていれば決着のときタイトルへ、敵を倒したときは次のフェーズへ進めて戻り（次の敵に入れ替わる）、終わっていなければ何もしない（早送り・スキップはない）。
+   * 押したとき（'down'）だけ反応する。終わっていれば決着のときタイトルへ、敵を倒したときは3択の画面へ（goToUpgradeChoice）、終わっていなければ何もしない（早送り・スキップはない）。
    * @param {{ type: string, x: number, y: number }} pointer ポインタ入力
    * @returns {void}
    */
@@ -134,8 +149,8 @@ export class BattleShowScene extends Scene {
     if (!this.director.isFinished()) return;
     if (this.game.isOver()) {
       Engine.changeScene(this.createTitle());
-    } else if (this.result.defeat !== null && this.game.canStartNextPhase()) {
-      this.goToNextPhase();
+    } else if (this.result.defeat !== null && this.game.canBeginUpgradeChoice()) {
+      this.goToUpgradeChoice();
     }
   }
 
