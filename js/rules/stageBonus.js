@@ -3,6 +3,8 @@
  * 加算量を求めるのはこのファイルだけ。
  */
 
+import { floorToUnit } from './unitPoints.js';
+
 /**
  * ステージの加算量。
  * @typedef {Object} StageBonus
@@ -43,8 +45,9 @@ export function stageBonusOf(stageGrowth, stageNumber) {
  * 加算後の最大 HP を求める。
  * @param {number} baseMaxHp 設定の最大 HP
  * @param {StageBonus} bonus ステージの加算量
- * @returns {number} 加算後の最大 HP（切り捨て）
+ * @param {number} [unit] 1体のポイント（結果をこの倍数に切り捨てる。既定 1。1 では今と同じ値）
+ * @returns {number} 加算後の最大 HP（切り捨て。unit の倍数）
  */
-export function grownMaxHp(baseMaxHp, bonus) {
-  return Math.floor((baseMaxHp * (100 + bonus.hpPercent)) / 100);
+export function grownMaxHp(baseMaxHp, bonus, unit = 1) {
+  return floorToUnit(Math.floor((baseMaxHp * (100 + bonus.hpPercent)) / 100), unit);
 }

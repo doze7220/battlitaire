@@ -4,14 +4,19 @@
  */
 
 /**
- * 量の幅から整数を1つ抽選する（min・max を含む等確率）。`random()` は必ず1回呼ぶ。
- * min・max は整数で min ≤ max であること（設定の責任）。
+ * 量の幅から、1体のポイント unit の倍数を1つ抽選する（幅の中の倍数から等確率）。`random()` は必ず1回呼ぶ。
+ * min・max は整数で min ≤ max、かつ unit の倍数であること（設定の責任）。
+ * 幅の中に倍数がないときは `ceil(min / unit) × unit` を返す。unit 1 では min・max を含む整数の等確率で、1体のポイントがない敵と同じ値になる。
  * @param {{ min: number, max: number }} range 量の幅
  * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @param {number} [unit] 1体のポイント（1 以上の整数。既定 1）
  * @returns {number} 抽選した量
  */
-export function rollAmount(range, random) {
-  return range.min + Math.floor(random() * (range.max - range.min + 1));
+export function rollAmount(range, random, unit = 1) {
+  const lo = Math.ceil(range.min / unit);
+  const hi = Math.floor(range.max / unit);
+  const count = Math.max(1, hi - lo + 1);
+  return (lo + Math.floor(random() * count)) * unit;
 }
 
 /**
@@ -26,20 +31,22 @@ export function windupAction() {
  * 周期の決まり（巨人）の攻撃の行動を作る。量の抽選で `random()` を1回呼ぶ。
  * @param {{ attackRange: { min: number, max: number } }} behavior 行動の決まりの設定
  * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @param {number} [unit] 1体のポイント（量はこの倍数。既定 1。1 では今と同じ値）
  * @returns {import('./combatants.js').EnemyAction} 新しい行動
  */
-export function cycleAttackAction(behavior, random) {
-  return { kind: 'attack', amount: rollAmount(behavior.attackRange, random) };
+export function cycleAttackAction(behavior, random, unit = 1) {
+  return { kind: 'attack', amount: rollAmount(behavior.attackRange, random, unit) };
 }
 
 /**
  * 爪の攻撃の行動を作る。量の抽選で `random()` を1回呼ぶ。
  * @param {{ claw: { range: { min: number, max: number } } }} behavior 行動の決まりの設定
  * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @param {number} [unit] 1体のポイント（量はこの倍数。既定 1。1 では今と同じ値）
  * @returns {import('./combatants.js').EnemyAction} 新しい行動
  */
-export function clawAction(behavior, random) {
-  return { kind: 'attack', amount: rollAmount(behavior.claw.range, random), variant: 'claw' };
+export function clawAction(behavior, random, unit = 1) {
+  return { kind: 'attack', amount: rollAmount(behavior.claw.range, random, unit), variant: 'claw' };
 }
 
 /**
@@ -47,12 +54,13 @@ export function clawAction(behavior, random) {
  * 燃やす札の枚数の範囲は設定の写し（後から設定が変わっても予告は変わらない）。
  * @param {{ breath: { range: { min: number, max: number }, burn: { min: number, max: number } } }} behavior 行動の決まりの設定
  * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @param {number} [unit] 1体のポイント（量はこの倍数。既定 1。1 では今と同じ値）
  * @returns {import('./combatants.js').EnemyAction} 新しい行動
  */
-export function breathAction(behavior, random) {
+export function breathAction(behavior, random, unit = 1) {
   return {
     kind: 'attack',
-    amount: rollAmount(behavior.breath.range, random),
+    amount: rollAmount(behavior.breath.range, random, unit),
     variant: 'breath',
     burn: { min: behavior.breath.burn.min, max: behavior.breath.burn.max },
   };
@@ -70,10 +78,11 @@ export function inhaleAction() {
  * ふつうの攻撃の行動を作る（毎ターン攻撃の決まり・溜めて大攻撃・攻撃か防御の決まりで共通）。量の抽選で `random()` を1回呼ぶ。
  * @param {{ attackRange: { min: number, max: number } }} behavior 行動の決まりの設定
  * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @param {number} [unit] 1体のポイント（量はこの倍数。既定 1。1 では今と同じ値）
  * @returns {import('./combatants.js').EnemyAction} 新しい行動
  */
-export function steadyAttackAction(behavior, random) {
-  return { kind: 'attack', amount: rollAmount(behavior.attackRange, random) };
+export function steadyAttackAction(behavior, random, unit = 1) {
+  return { kind: 'attack', amount: rollAmount(behavior.attackRange, random, unit) };
 }
 
 /**
@@ -88,30 +97,33 @@ export function chargeAction() {
  * 大攻撃の行動を作る。量の抽選で `random()` を1回呼ぶ。
  * @param {{ heavyRange: { min: number, max: number } }} behavior 行動の決まりの設定
  * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @param {number} [unit] 1体のポイント（量はこの倍数。既定 1。1 では今と同じ値）
  * @returns {import('./combatants.js').EnemyAction} 新しい行動
  */
-export function heavyAction(behavior, random) {
-  return { kind: 'attack', amount: rollAmount(behavior.heavyRange, random), variant: 'heavy' };
+export function heavyAction(behavior, random, unit = 1) {
+  return { kind: 'attack', amount: rollAmount(behavior.heavyRange, random, unit), variant: 'heavy' };
 }
 
 /**
  * 防御だけの行動を作る。防御の量（加算の前）の抽選で `random()` を1回呼ぶ。
  * @param {{ guardRange: { min: number, max: number } }} behavior 行動の決まりの設定
  * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @param {number} [unit] 1体のポイント（量はこの倍数。既定 1。1 では今と同じ値）
  * @returns {import('./combatants.js').EnemyAction} 新しい行動
  */
-export function guardAction(behavior, random) {
-  return { kind: 'guard', amount: 0, guard: rollAmount(behavior.guardRange, random) };
+export function guardAction(behavior, random, unit = 1) {
+  return { kind: 'guard', amount: 0, guard: rollAmount(behavior.guardRange, random, unit) };
 }
 
 /**
  * 大防御（防御だけの行動の一種）を作る。防御の量（加算の前）の抽選で `random()` を1回呼ぶ。
  * @param {{ bigGuardRange: { min: number, max: number } }} behavior 行動の決まりの設定
  * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @param {number} [unit] 1体のポイント（量はこの倍数。既定 1。1 では今と同じ値）
  * @returns {import('./combatants.js').EnemyAction} 新しい行動
  */
-export function bigGuardAction(behavior, random) {
-  return { kind: 'guard', amount: 0, guard: rollAmount(behavior.bigGuardRange, random), variant: 'bigGuard' };
+export function bigGuardAction(behavior, random, unit = 1) {
+  return { kind: 'guard', amount: 0, guard: rollAmount(behavior.bigGuardRange, random, unit), variant: 'bigGuard' };
 }
 
 /**
@@ -128,7 +140,7 @@ function isPlainObject(value) {
  * @type {Readonly<Object<string, {
  *   initialState: (behavior: any) => object,
  *   isState: (state: unknown) => boolean,
- *   planNext: (behavior: any, state: object, random: () => number) => { action: import('./combatants.js').EnemyAction, state: object },
+ *   planNext: (behavior: any, state: object, random: () => number, unit: number) => { action: import('./combatants.js').EnemyAction, state: object },
  *   countdown: (behavior: any, state: object) => number|null,
  *   isOpening: (action: import('./combatants.js').EnemyAction) => boolean
  * }>>}
@@ -137,8 +149,8 @@ const BEHAVIORS = Object.freeze({
   steady: Object.freeze({
     initialState: () => ({}),
     isState: (state) => isPlainObject(state),
-    planNext: (behavior, state, random) => ({
-      action: steadyAttackAction(behavior, random),
+    planNext: (behavior, state, random, unit) => ({
+      action: steadyAttackAction(behavior, random, unit),
       state,
     }),
     countdown: () => null,
@@ -147,12 +159,12 @@ const BEHAVIORS = Object.freeze({
   cycle: Object.freeze({
     initialState: () => ({ countdown: null }),
     isState: (state) => isPlainObject(state) && Number.isInteger(state.countdown) && state.countdown >= 0,
-    planNext: (behavior, state, random) => {
+    planNext: (behavior, state, random, unit) => {
       const countdown =
         state.countdown === null || state.countdown <= 0 ? behavior.cycleLength - 1 : state.countdown - 1;
       const action =
         countdown === 0
-          ? cycleAttackAction(behavior, random)
+          ? cycleAttackAction(behavior, random, unit)
           : windupAction();
       return { action, state: { countdown } };
     },
@@ -162,16 +174,16 @@ const BEHAVIORS = Object.freeze({
   inhale: Object.freeze({
     initialState: () => ({ lastVariant: null }),
     isState: (state) => isPlainObject(state) && ['claw', 'inhale', 'breath'].includes(state.lastVariant),
-    planNext: (behavior, state, random) => {
+    planNext: (behavior, state, random, unit) => {
       let action;
       if (state.lastVariant === 'inhale') {
-        action = breathAction(behavior, random);
+        action = breathAction(behavior, random, unit);
       } else if (state.lastVariant === 'breath') {
-        action = clawAction(behavior, random);
+        action = clawAction(behavior, random, unit);
       } else if (random() < behavior.inhaleChance) {
         action = inhaleAction();
       } else {
-        action = clawAction(behavior, random);
+        action = clawAction(behavior, random, unit);
       }
       return { action, state: { lastVariant: action.variant } };
     },
@@ -185,7 +197,7 @@ const BEHAVIORS = Object.freeze({
       (state.turnsToHeavy === null || (Number.isInteger(state.turnsToHeavy) && state.turnsToHeavy >= 0)) &&
       Number.isInteger(state.chargeTurns) &&
       state.chargeTurns >= 0,
-    planNext: (behavior, state, random) => {
+    planNext: (behavior, state, random, unit) => {
       const idle = { turnsToHeavy: null, chargeTurns: 0 };
       if (state.turnsToHeavy !== null && state.turnsToHeavy >= 2) {
         return {
@@ -195,12 +207,12 @@ const BEHAVIORS = Object.freeze({
       }
       if (state.turnsToHeavy === 1) {
         return {
-          action: heavyAction(behavior, random),
+          action: heavyAction(behavior, random, unit),
           state: { turnsToHeavy: 0, chargeTurns: state.chargeTurns },
         };
       }
       if (state.turnsToHeavy === 0) {
-        return { action: steadyAttackAction(behavior, random), state: idle };
+        return { action: steadyAttackAction(behavior, random, unit), state: idle };
       }
       if (random() < behavior.chargeChance) {
         return {
@@ -208,7 +220,7 @@ const BEHAVIORS = Object.freeze({
           state: { turnsToHeavy: behavior.chargeTurns, chargeTurns: behavior.chargeTurns },
         };
       }
-      return { action: steadyAttackAction(behavior, random), state: idle };
+      return { action: steadyAttackAction(behavior, random, unit), state: idle };
     },
     countdown: (behavior, state) =>
       state.chargeTurns >= 2 && state.turnsToHeavy !== null && state.turnsToHeavy >= 1 ? state.turnsToHeavy : null,
@@ -217,14 +229,14 @@ const BEHAVIORS = Object.freeze({
   either: Object.freeze({
     initialState: () => ({}),
     isState: (state) => isPlainObject(state),
-    planNext: (behavior, state, random) => {
+    planNext: (behavior, state, random, unit) => {
       let action;
       if (random() < behavior.attackChance) {
-        action = steadyAttackAction(behavior, random);
+        action = steadyAttackAction(behavior, random, unit);
       } else if (random() < behavior.bigGuardChance) {
-        action = bigGuardAction(behavior, random);
+        action = bigGuardAction(behavior, random, unit);
       } else {
-        action = guardAction(behavior, random);
+        action = guardAction(behavior, random, unit);
       }
       return { action, state };
     },
@@ -276,11 +288,12 @@ export function isBehaviorState(behavior, state) {
  * @param {{ type: string }} behavior 行動の決まりの設定
  * @param {object} state いまの決まりの状態
  * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @param {number} [unit] 1体のポイント（量の抽選の刻み。既定 1。乱数を呼ぶ順・回数は変わらない）
  * @returns {{ action: import('./combatants.js').EnemyAction, state: object }} 次の行動と、次の決まりの状態
  * @throws {Error} 未知の種類のとき
  */
-export function planBehaviorAction(behavior, state, random) {
-  return lookupBehavior(behavior).planNext(behavior, state, random);
+export function planBehaviorAction(behavior, state, random, unit = 1) {
+  return lookupBehavior(behavior).planNext(behavior, state, random, unit);
 }
 
 /**

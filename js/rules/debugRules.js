@@ -6,6 +6,7 @@
 import { RULES } from './config.js';
 import { RULE_ITEMS, ruleItemById } from './debugRuleItems.js';
 import { grownMaxHp } from './stageBonus.js';
+import { unitPointsOf } from './unitPoints.js';
 
 /**
  * プレーンなオブジェクトと配列だけを再帰で深く写す（凍結は引き継がない）。
@@ -81,7 +82,7 @@ function applyNow(game, item) {
   }
   if (item.group !== game.enemy.typeId) return;
   if (item.kind === 'enemyMaxHp') {
-    const grown = grownMaxHp(value, game.stageBonus());
+    const grown = grownMaxHp(value, game.stageBonus(), unitPointsOf(game.config.enemies[item.group]));
     game.enemy.maxHp = grown;
     if (game.enemy.hp > grown) game.enemy.hp = grown;
   }

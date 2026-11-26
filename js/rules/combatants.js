@@ -4,6 +4,7 @@
 
 import { createBehaviorState } from './enemyBehaviors.js';
 import { grownMaxHp } from './stageBonus.js';
+import { unitPointsOf } from './unitPoints.js';
 
 /**
  * 敵の行動（予告にも使う）。
@@ -55,11 +56,11 @@ export function createCastle(config) {
  * 敵の初期状態を種類の設定とステージの加算から作る（予告はまだ決めない）。
  * @param {string} typeId 敵の種類の識別子
  * @param {import('./config.js').EnemySpec} spec 敵の種類の設定
- * @param {import('./stageBonus.js').StageBonus} bonus ステージの加算量（最大 HP に効く）
+ * @param {import('./stageBonus.js').StageBonus} bonus ステージの加算量（最大 HP に効く。最大 HP は敵の1体のポイントの倍数に切り捨てる）
  * @returns {Enemy} HP が加算後の最大で、予告が null、決まりの状態が初期値の敵
  */
 export function createEnemy(typeId, spec, bonus) {
-  const maxHp = grownMaxHp(spec.maxHp, bonus);
+  const maxHp = grownMaxHp(spec.maxHp, bonus, unitPointsOf(spec));
   return {
     typeId,
     name: spec.name,

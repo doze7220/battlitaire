@@ -23,16 +23,16 @@ import {
  * - `chosen`: 今の予告に当たる識別子（当たるものがなければ null）
  * @type {Readonly<Object<string, {
  *   ids: (behavior: any) => string[],
- *   plan: (behavior: any, id: string, random: () => number) => { action: import('./combatants.js').EnemyAction, state: object },
+ *   plan: (behavior: any, id: string, random: () => number, unit: number) => { action: import('./combatants.js').EnemyAction, state: object },
  *   chosen: (behavior: any, intent: import('./combatants.js').EnemyAction) => string|null
  * }>>}
  */
 const INTENT_TABLE = Object.freeze({
   steady: Object.freeze({
     ids: () => ['attackDefend'],
-    plan: (behavior, id, random) => {
+    plan: (behavior, id, random, unit) => {
       if (id !== 'attackDefend') throw new Error(`unknown intent id: ${id}`);
-      return { action: steadyAttackAction(behavior, random), state: {} };
+      return { action: steadyAttackAction(behavior, random, unit), state: {} };
     },
     chosen: () => 'attackDefend',
   }),
@@ -42,15 +42,15 @@ const INTENT_TABLE = Object.freeze({
       if (behavior.attackHeal && behavior.attackHeal.amount > 0) ids.push('attackHeal');
       return ids;
     },
-    plan: (behavior, id, random) => {
+    plan: (behavior, id, random, unit) => {
       if (id === 'windup') {
         return { action: windupAction(), state: { countdown: behavior.cycleLength - 1 } };
       }
       if (id === 'attack') {
-        return { action: cycleAttackAction(behavior, random), state: { countdown: 0 } };
+        return { action: cycleAttackAction(behavior, random, unit), state: { countdown: 0 } };
       }
       if (id === 'attackHeal') {
-        return { action: { ...cycleAttackAction(behavior, random), sureHeal: true }, state: { countdown: 0 } };
+        return { action: { ...cycleAttackAction(behavior, random, unit), sureHeal: true }, state: { countdown: 0 } };
       }
       throw new Error(`unknown intent id: ${id}`);
     },
@@ -61,11 +61,11 @@ const INTENT_TABLE = Object.freeze({
   }),
   inhale: Object.freeze({
     ids: () => ['claw', 'inhale', 'breath'],
-    plan: (behavior, id, random) => {
+    plan: (behavior, id, random, unit) => {
       let action;
-      if (id === 'claw') action = clawAction(behavior, random);
+      if (id === 'claw') action = clawAction(behavior, random, unit);
       else if (id === 'inhale') action = inhaleAction();
-      else if (id === 'breath') action = breathAction(behavior, random);
+      else if (id === 'breath') action = breathAction(behavior, random, unit);
       else throw new Error(`unknown intent id: ${id}`);
       return { action, state: { lastVariant: action.variant } };
     },
@@ -73,9 +73,9 @@ const INTENT_TABLE = Object.freeze({
   }),
   buildup: Object.freeze({
     ids: () => ['attack', 'charge', 'heavy'],
-    plan: (behavior, id, random) => {
+    plan: (behavior, id, random, unit) => {
       if (id === 'attack') {
-        return { action: steadyAttackAction(behavior, random), state: { turnsToHeavy: null, chargeTurns: 0 } };
+        return { action: steadyAttackAction(behavior, random, unit), state: { turnsToHeavy: null, chargeTurns: 0 } };
       }
       if (id === 'charge') {
         return {
@@ -85,7 +85,7 @@ const INTENT_TABLE = Object.freeze({
       }
       if (id === 'heavy') {
         return {
-          action: heavyAction(behavior, random),
+          action: heavyAction(behavior, random, unit),
           state: { turnsToHeavy: 0, chargeTurns: behavior.chargeTurns },
         };
       }
@@ -95,11 +95,11 @@ const INTENT_TABLE = Object.freeze({
   }),
   either: Object.freeze({
     ids: () => ['attack', 'guard', 'bigGuard'],
-    plan: (behavior, id, random) => {
+    plan: (behavior, id, random, unit) => {
       let action;
-      if (id === 'attack') action = steadyAttackAction(behavior, random);
-      else if (id === 'guard') action = guardAction(behavior, random);
-      else if (id === 'bigGuard') action = bigGuardAction(behavior, random);
+      if (id === 'attack') action = steadyAttackAction(behavior, random, unit);
+      else if (id === 'guard') action = guardAction(behavior, random, unit);
+      else if (id === 'bigGuard') action = bigGuardAction(behavior, random, unit);
       else throw new Error(`unknown intent id: ${id}`);
       return { action, state: {} };
     },
@@ -138,11 +138,12 @@ export function intentChoiceIds(behavior) {
  * @param {{ type: string }} behavior 行動の決まりの設定
  * @param {string} id 指定する行動の識別子
  * @param {() => number} random 0以上1未満を返す乱数の関数
+ * @param {number} [unit] 1体のポイント（量の抽選の刻み。既定 1。1 では今と同じ値）
  * @returns {{ action: import('./combatants.js').EnemyAction, state: object }} 行動と、決まりの状態
  * @throws {Error} 未知の種類、または表にない識別子のとき
  */
-export function planChosenIntent(behavior, id, random) {
-  return lookupIntent(behavior).plan(behavior, id, random);
+export function planChosenIntent(behavior, id, random, unit = 1) {
+  return lookupIntent(behavior).plan(behavior, id, random, unit);
 }
 
 /**

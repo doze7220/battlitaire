@@ -22,6 +22,7 @@ import { computeBattle } from './battle.js';
 import { isFatigued } from './enemyDefense.js';
 import { createIntent } from './enemyIntent.js';
 import { stageBonusOf } from './stageBonus.js';
+import { unitPointsOf } from './unitPoints.js';
 import { computePhaseStart } from './phase.js';
 import { createGameStats, tallyBattle } from './gameStats.js';
 
@@ -147,9 +148,18 @@ export class Game {
       enemySpecOf(this.config, this.enemy.typeId).behavior,
       this.enemy.behaviorState,
       this.random,
+      this.enemyUnitPoints(),
     );
     this.enemy.intent = this.intentOf(action);
     this.enemy.behaviorState = state;
+  }
+
+  /**
+   * いまの敵の1体のポイントを返す（乱数は呼ばず、状態も変えない）。
+   * @returns {number} 1体が受け持つポイント（1 以上の整数。設定に書かなければ 1）
+   */
+  enemyUnitPoints() {
+    return unitPointsOf(enemySpecOf(this.config, this.enemy.typeId));
   }
 
   /**

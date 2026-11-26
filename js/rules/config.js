@@ -73,6 +73,7 @@
  * @property {string} name 敵の名前（表示用）。
  * @property {number} star 敵の★（1〜3。ステージの★と同じ敵の中から選ばれる）。
  * @property {number} maxHp 敵の元の最大 HP（ステージの加算の前）。
+ * @property {number} [unitPoints] 1体が受け持つポイント（1 以上の整数。書かなければ 1。HP・攻撃・防御の量はポイントで書き、この倍数にする）。
  * @property {Readonly<EnemyDefenseSpec>} [defense] 防御（ターンごとの張る確率と量の幅）。行動と別に防御を抽選する敵だけが持つ。
  * @property {Readonly<EnemyBehaviorSpec>} behavior 行動の決まり。
  */

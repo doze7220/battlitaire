@@ -155,7 +155,7 @@ export function chooseEnemyIntent(game, id) {
   if (!(game.enemy.hp > 0)) return false;
   if (!intentChoiceIdsOf(game).includes(id)) return false;
   if (currentIntentChoice(game) === id) return false;
-  const { action, state } = planChosenIntent(currentBehavior(game), id, game.random);
+  const { action, state } = planChosenIntent(currentBehavior(game), id, game.random, game.enemyUnitPoints());
   game.enemy.intent = game.intentOf(action);
   game.enemy.behaviorState = state;
   return true;
