@@ -113,11 +113,11 @@ export function ruleGroups(config) {
 /**
  * 項目の種類と名前を答える。
  * @param {string} id 項目の識別子
- * @returns {{ kind: string, name: string }|null} 知らない id は null
+ * @returns {{ kind: string, name: string, unit: number|null }|null} `unit` は1体のポイントの刻み（量の項目以外は null）。知らない id は null
  */
 export function ruleItemInfo(id) {
   const it = ruleItemById(id);
-  return it ? { kind: it.kind, name: it.name } : null;
+  return it ? { kind: it.kind, name: it.name, unit: it.unit } : null;
 }
 
 /**
@@ -146,6 +146,7 @@ export function ruleTiming(game, id) {
 
 /**
  * ルールの値を変える。組の決まり（最小 ≤ 最大）を守り、すぐ効く値は効かせる。
+ * 項目に1体のポイントの刻み（`unit`）があるときは、その倍数でない値は変えない。
  * @param {import('./Game.js').Game} game ゲーム
  * @param {string} id 項目の識別子
  * @param {number} value 新しい値
@@ -156,6 +157,7 @@ export function setRuleValue(game, id, value) {
   const item = ruleItemById(id);
   if (!item) return false;
   if (!isValidValue(item.kind, value)) return false;
+  if (item.unit !== null && value % item.unit !== 0) return false;
   if (item.get(game.config) === value) return false;
   item.set(game.config, value);
   const pair = item.pairId ? ruleItemById(item.pairId) : null;

@@ -5,6 +5,7 @@
 
 import { RULES } from './config.js';
 import { enemyTypeIds } from './enemyTypes.js';
+import { unitPointsOf } from './unitPoints.js';
 
 /**
  * DEBUG タブで変えられるルールの値の項目。
@@ -18,6 +19,7 @@ import { enemyTypeIds } from './enemyTypes.js';
  * @property {'min'|'max'|null} side 組の中で自分が最小か最大か（組でなければ null）。
  * @property {(config: any) => number} get 設定から値を読む。
  * @property {(config: any, value: number) => void} set 設定の値を書く（写しにだけ使う）。
+ * @property {number|null} unit 1体のポイントの刻み（HP・攻撃・防御の量の項目だけ、その敵の `unitPointsOf(spec)`。ほか（城・確率・周期・溜めのターン数・燃やす札・巨人の回復の量）は null）。
  */
 
 /**
@@ -31,10 +33,11 @@ import { enemyTypeIds } from './enemyTypes.js';
  * @param {'min'|'max'|null} side 組の中の側
  * @param {(config: any) => number} get 読む関数
  * @param {(config: any, value: number) => void} set 書く関数
+ * @param {number|null} [unit] 1体のポイントの刻み（量の項目だけ。既定 null）
  * @returns {Readonly<RuleItem>} 項目
  */
-function item(id, group, kind, name, timing, pairId, side, get, set) {
-  return Object.freeze({ id, group, kind, name, timing, pairId, side, get, set });
+function item(id, group, kind, name, timing, pairId, side, get, set, unit = null) {
+  return Object.freeze({ id, group, kind, name, timing, pairId, side, get, set, unit });
 }
 
 /**
@@ -44,32 +47,33 @@ function item(id, group, kind, name, timing, pairId, side, get, set) {
  * @param {string} baseName 項目の名前の前半（'attack' なら 'attackMin'・'attackMax'）
  * @param {string} kind 値の種類
  * @param {(config: any) => { min: number, max: number }} rangeOf 設定から範囲のオブジェクトを引く
+ * @param {number|null} [unit] 1体のポイントの刻み（量の幅だけ。既定 null）
  * @returns {Readonly<RuleItem>[]} [最小, 最大]
  */
-function rangeItems(baseId, group, baseName, kind, rangeOf) {
+function rangeItems(baseId, group, baseName, kind, rangeOf, unit = null) {
   const minId = `${baseId}.min`;
   const maxId = `${baseId}.max`;
   return [
     item(minId, group, kind, `${baseName}Min`, 'nextIntent', maxId, 'min',
-      (c) => rangeOf(c).min, (c, v) => { rangeOf(c).min = v; }),
+      (c) => rangeOf(c).min, (c, v) => { rangeOf(c).min = v; }, unit),
     item(maxId, group, kind, `${baseName}Max`, 'nextIntent', minId, 'max',
-      (c) => rangeOf(c).max, (c, v) => { rangeOf(c).max = v; }),
+      (c) => rangeOf(c).max, (c, v) => { rangeOf(c).max = v; }, unit),
   ];
 }
 
 /**
  * 行動の決まりの種類ごとの、敵の行動の項目（最大 HP より後）の組み立ての表。
- * @type {Readonly<Object<string, (typeId: string, behavior: any) => Readonly<RuleItem>[]>>}
+ * @type {Readonly<Object<string, (typeId: string, behavior: any, unit: number) => Readonly<RuleItem>[]>>}
  */
 const BEHAVIOR_ITEMS = Object.freeze({
-  steady: (typeId) => rangeItems(`${typeId}.attack`, typeId, 'attack', 'amount',
-    (c) => c.enemies[typeId].behavior.attackRange),
-  cycle: (typeId, behavior) => {
+  steady: (typeId, behavior, unit) => rangeItems(`${typeId}.attack`, typeId, 'attack', 'amount',
+    (c) => c.enemies[typeId].behavior.attackRange, unit),
+  cycle: (typeId, behavior, unit) => {
     const items = [
       item(`${typeId}.cycleLength`, typeId, 'cycleLength', 'cycleLength', 'nextCycle', null, null,
         (c) => c.enemies[typeId].behavior.cycleLength,
         (c, v) => { c.enemies[typeId].behavior.cycleLength = v; }),
-      ...rangeItems(`${typeId}.attack`, typeId, 'attack', 'amount', (c) => c.enemies[typeId].behavior.attackRange),
+      ...rangeItems(`${typeId}.attack`, typeId, 'attack', 'amount', (c) => c.enemies[typeId].behavior.attackRange, unit),
     ];
     if (behavior.attackHeal) {
       items.push(
@@ -83,17 +87,17 @@ const BEHAVIOR_ITEMS = Object.freeze({
     }
     return items;
   },
-  inhale: (typeId) => [
-    ...rangeItems(`${typeId}.claw`, typeId, 'claw', 'amount', (c) => c.enemies[typeId].behavior.claw.range),
-    ...rangeItems(`${typeId}.breath`, typeId, 'breath', 'amount', (c) => c.enemies[typeId].behavior.breath.range),
+  inhale: (typeId, behavior, unit) => [
+    ...rangeItems(`${typeId}.claw`, typeId, 'claw', 'amount', (c) => c.enemies[typeId].behavior.claw.range, unit),
+    ...rangeItems(`${typeId}.breath`, typeId, 'breath', 'amount', (c) => c.enemies[typeId].behavior.breath.range, unit),
     ...rangeItems(`${typeId}.burn`, typeId, 'burn', 'burn', (c) => c.enemies[typeId].behavior.breath.burn),
     item(`${typeId}.inhaleChance`, typeId, 'chance', 'inhaleChance', 'nextIntent', null, null,
       (c) => c.enemies[typeId].behavior.inhaleChance,
       (c, v) => { c.enemies[typeId].behavior.inhaleChance = v; }),
   ],
-  buildup: (typeId) => [
-    ...rangeItems(`${typeId}.attack`, typeId, 'attack', 'amount', (c) => c.enemies[typeId].behavior.attackRange),
-    ...rangeItems(`${typeId}.heavy`, typeId, 'heavy', 'amount', (c) => c.enemies[typeId].behavior.heavyRange),
+  buildup: (typeId, behavior, unit) => [
+    ...rangeItems(`${typeId}.attack`, typeId, 'attack', 'amount', (c) => c.enemies[typeId].behavior.attackRange, unit),
+    ...rangeItems(`${typeId}.heavy`, typeId, 'heavy', 'amount', (c) => c.enemies[typeId].behavior.heavyRange, unit),
     item(`${typeId}.chargeChance`, typeId, 'chance', 'chargeChance', 'nextIntent', null, null,
       (c) => c.enemies[typeId].behavior.chargeChance,
       (c, v) => { c.enemies[typeId].behavior.chargeChance = v; }),
@@ -101,16 +105,16 @@ const BEHAVIOR_ITEMS = Object.freeze({
       (c) => c.enemies[typeId].behavior.chargeTurns,
       (c, v) => { c.enemies[typeId].behavior.chargeTurns = v; }),
   ],
-  either: (typeId) => [
+  either: (typeId, behavior, unit) => [
     item(`${typeId}.attackChance`, typeId, 'chance', 'attackChance', 'nextIntent', null, null,
       (c) => c.enemies[typeId].behavior.attackChance,
       (c, v) => { c.enemies[typeId].behavior.attackChance = v; }),
-    ...rangeItems(`${typeId}.attack`, typeId, 'attack', 'amount', (c) => c.enemies[typeId].behavior.attackRange),
-    ...rangeItems(`${typeId}.guard`, typeId, 'defense', 'defense', (c) => c.enemies[typeId].behavior.guardRange),
+    ...rangeItems(`${typeId}.attack`, typeId, 'attack', 'amount', (c) => c.enemies[typeId].behavior.attackRange, unit),
+    ...rangeItems(`${typeId}.guard`, typeId, 'defense', 'defense', (c) => c.enemies[typeId].behavior.guardRange, unit),
     item(`${typeId}.bigGuardChance`, typeId, 'chance', 'bigGuardChance', 'nextIntent', null, null,
       (c) => c.enemies[typeId].behavior.bigGuardChance,
       (c, v) => { c.enemies[typeId].behavior.bigGuardChance = v; }),
-    ...rangeItems(`${typeId}.bigGuard`, typeId, 'bigGuard', 'defense', (c) => c.enemies[typeId].behavior.bigGuardRange),
+    ...rangeItems(`${typeId}.bigGuard`, typeId, 'bigGuard', 'defense', (c) => c.enemies[typeId].behavior.bigGuardRange, unit),
   ],
 });
 
@@ -118,15 +122,16 @@ const BEHAVIOR_ITEMS = Object.freeze({
  * 敵の防御の項目（張る確率と量の幅）を作る。行動と別に防御を抽選する敵（`defense` を持つ敵）だけ。
  * @param {string} typeId 敵の種類の識別子
  * @param {any} spec 敵の設定
+ * @param {number} unit 1体のポイント
  * @returns {Readonly<RuleItem>[]} [確率, 最小, 最大]。`defense` を持たない敵は空
  */
-function defenseItems(typeId, spec) {
+function defenseItems(typeId, spec, unit) {
   if (!spec.defense) return [];
   return [
     item(`${typeId}.defense.chance`, typeId, 'chance', 'defenseChance', 'nextIntent', null, null,
       (c) => c.enemies[typeId].defense.chance,
       (c, v) => { c.enemies[typeId].defense.chance = v; }),
-    ...rangeItems(`${typeId}.defense`, typeId, 'defense', 'defense', (c) => c.enemies[typeId].defense.range),
+    ...rangeItems(`${typeId}.defense`, typeId, 'defense', 'defense', (c) => c.enemies[typeId].defense.range, unit),
   ];
 }
 
@@ -143,13 +148,14 @@ function buildItems(rules) {
   ];
   for (const typeId of enemyTypeIds(rules)) {
     const behavior = rules.enemies[typeId].behavior;
+    const unit = unitPointsOf(rules.enemies[typeId]);
     const build = BEHAVIOR_ITEMS[behavior.type];
     if (!build) throw new Error(`unknown enemy behavior type: ${behavior.type}`);
     items.push(
       item(`${typeId}.maxHp`, typeId, 'enemyMaxHp', 'maxHp', 'now', null, null,
-        (c) => c.enemies[typeId].maxHp, (c, v) => { c.enemies[typeId].maxHp = v; }),
-      ...build(typeId, behavior),
-      ...defenseItems(typeId, rules.enemies[typeId]),
+        (c) => c.enemies[typeId].maxHp, (c, v) => { c.enemies[typeId].maxHp = v; }, unit),
+      ...build(typeId, behavior, unit),
+      ...defenseItems(typeId, rules.enemies[typeId], unit),
     );
   }
   return items;

@@ -23,6 +23,23 @@ export const RULE_SLIDERS = Object.freeze({
 });
 
 /**
+ * 1体のポイントの刻みに合わせたスライダーの範囲を求める。unit が null か 1 なら範囲のまま。
+ * 2 以上なら刻みは `unit × ceil(step / unit)`、最小・最大はその刻みの倍数に寄せる（奇数を選べない）。
+ * @param {{ min: number, max: number, step: number }} range 種類ごとの範囲
+ * @param {number|null} unit 1体のポイントの刻み
+ * @returns {{ min: number, max: number, step: number }} 範囲と刻み
+ */
+function unitRange(range, unit) {
+  if (unit === null || unit <= 1) return range;
+  const step = unit * Math.ceil(range.step / unit);
+  return {
+    min: Math.ceil(range.min / step) * step,
+    max: Math.floor(range.max / step) * step,
+    step,
+  };
+}
+
+/**
  * ルールの値のスライダーを1本足す。
  * @param {object} area スクロールする領域のオブジェクト
  * @param {object} debug 盤面のデバッグの口（BoardDebug）
@@ -32,8 +49,9 @@ export const RULE_SLIDERS = Object.freeze({
  */
 function addRuleSlider(area, debug, id, rect) {
   const info = debug.ruleItemInfo(id);
-  const range = RULE_SLIDERS[info.kind];
-  if (!range) throw new Error(`unknown rule kind: ${info.kind}`);
+  const base = RULE_SLIDERS[info.kind];
+  if (!base) throw new Error(`unknown rule kind: ${info.kind}`);
+  const range = unitRange(base, info.unit);
   const spec = {
     ...rect,
     label: () => ruleItemText(info.name, debug.ruleTiming(id)),
