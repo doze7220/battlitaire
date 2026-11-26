@@ -5,6 +5,7 @@
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
 import { createHitStops, showTimeAt } from './hitStop.js';
+import { enemyPace } from './enemyShows.js';
 import { sampleHp } from './hpTrack.js';
 import { samplePopTrack } from './popTrack.js';
 import { TroopSwarm } from './troopSwarm.js';
@@ -42,7 +43,7 @@ export class BattleDirector {
    * @param {Object} options
    * @param {import('./battleTimeline.js').BattleTimeline} options.timeline 時間割
    * @param {import('../rules/Game.js').BattleResult} options.result 攻防の結果（終わったときの HP に使う。読むだけ）
-   * @param {import('./battleSteps.js').BattleSnapshot} options.before 攻防の前の写し（列。読むだけ）
+   * @param {import('./battleSteps.js').BattleSnapshot} options.before 攻防の前の写し（列と敵の種類。読むだけ。敵の種類は止めの長さの倍率に使う）
    */
   constructor({ timeline, result, before }) {
     /** @type {import('./battleTimeline.js').BattleTimeline} 時間割 */
@@ -54,7 +55,7 @@ export class BattleDirector {
     /** @type {number} 壁の時計（ms）。`dt` を足して進め、ヒットストップの間も進む */
     this.wall = 0;
     /** @type {import('./hitStop.js').HitStops} ヒットストップの並び */
-    this.stops = createHitStops(timeline.impacts);
+    this.stops = createHitStops(timeline.impacts, enemyPace(before.enemyTypeId).stopScale);
     /** @type {number} 演出の時計（ms。時間割の時刻。壁の時計からヒットストップの並びで求める） */
     this.clock = 0;
     /** @type {number} 直前の update の前の時計（ms）。きっかけの区間を答えるためだけに使う */

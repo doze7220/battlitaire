@@ -22,6 +22,7 @@ import {
 import { createTroopCounter } from './troopCounter.js';
 import { enterEnemyTroops, strikeCastle, strikeTroops } from './enemyAttacks.js';
 import { dashBack, dashForward } from './figureDash.js';
+import { enemyPace } from './enemyShows.js';
 import { createEnemyBody, defeatEnemyBody, enemyBodyEnd, hitEnemyBody, hitEnemyShield } from './enemyBody.js';
 import { createHitMarkList, hitMarksEnd } from './hitMarks.js';
 import { createImpactLog, recordStepImpacts, watchStep } from './impactLog.js';
@@ -100,6 +101,8 @@ function addEnemyMarch(state, step, t) {
       dir: -1,
       advanceX: state.roster.layout.enemyAdvanceX,
       t: arrived,
+      moveScale: enemyPace(state.typeId).moveScale,
+      partnerScale: 1,
     })
   );
 }
@@ -188,14 +191,14 @@ function dropEnemyHpByHits(state, amount, arrivals, t) {
 }
 
 /**
- * 敵の側の兵が城に当たる位置へ進んで落ち（炎は消え）、城の HP の表示が減る段。
+ * 敵の側の兵が城に当たる位置へ進んで落ち（炎は消え）、城の HP の表示が減る段。進む時間はその敵の `moveScale` 倍。
  * @param {BuildState} state 組み立て中の状態
  * @param {import('./battleSteps.js').BattleStep} step 段
  * @param {number} t 開始時刻（ms）
  * @returns {number} 段の長さ（ms）
  */
 function addCastleHit(state, step, t) {
-  const arrivals = chargeTo(state.roster, step.kind ?? 'enemy', Infinity, state.roster.layout.castleHitX, t, BATTLE_ANIM.hitMoveMs);
+  const arrivals = chargeTo(state.roster, step.kind ?? 'enemy', Infinity, state.roster.layout.castleHitX, t, BATTLE_ANIM.hitMoveMs * enemyPace(state.typeId).moveScale);
   return dropHp(state, 'castle', step.amount, arrivals, t);
 }
 
@@ -229,6 +232,8 @@ function addMarch(state, step, t) {
     dir: 1,
     advanceX: state.roster.layout.attackAdvanceX,
     t,
+    moveScale: 1,
+    partnerScale: enemyPace(state.typeId).moveScale,
   });
 }
 

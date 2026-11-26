@@ -38,7 +38,7 @@
  * @property {number} landStaggerMs 段取りの間、兵が1体ずつ飛び出すときの1体ごとの遅れ（ms）。試遊で決め直す。
  * @property {number} landStaggerMaxMs 段取りの間、飛び出す遅れの広がり全体の上限（ms）。試遊で決め直す。
  * @property {number} landJitterMs 段取りの間、兵が家へ跳ぶ動きの、兵ごとの動き出しのずれの最大（ms。前からの遅れに足す）。試遊で決め直す。
- * @property {number} enterMs 敵の側の兵（ゴブリン・炎）が画面の外・ドラゴンの口から陣地の家まで動く時間（ms。前から出る遅れは別）。試遊で決め直す。
+ * @property {number} enterMs 敵の側の兵（群れの敵の兵・炎）が画面の外・ドラゴンの口から陣地の家まで動く時間（ms。前から出る遅れは別。敵の種類ごとに `ENEMY_PACES` の `moveScale` を掛ける）。試遊で決め直す。
  * @property {number} strikeStaggerMs 飛ぶもののない打撃で、防御の兵・城に1つずつ当たる間隔の上限（ms）。試遊で決め直す。
  * @property {number} strikeStaggerMaxMs 打撃の間隔の広がり全体の上限（ms）。試遊で決め直す。
  * @property {number} hitStaggerMs 攻撃の兵が敵（群れ・絵・シールド）に1体ずつ当たる間隔の上限（ms）。試遊で決め直す。
@@ -161,6 +161,22 @@ export const BATTLE_ANIM = Object.freeze({
   dentOutMs: 220,
   dentSquash: 0.18,
   dentWiden: 0.08,
+});
+
+/**
+ * 敵の動きの速さと止めの長さ1つぶん（敵の側の兵の動きの長さとヒットストップの長さに掛ける倍率）。
+ * @typedef {Object} EnemyPace
+ * @property {number} moveScale 敵の側の兵が出る・進む・城に当たるまで進む動きの長さの倍率（1 で今と同じ。大きいほど遅い）
+ * @property {number} stopScale ヒットストップの1回の長さと段の合計の上限の倍率（1 で今と同じ）
+ */
+
+/**
+ * 動きの速さの表（名前 → 倍率。凍結）。`ENEMY_SHOWS` の `pace` がこの名前を指す。値は試遊で決め直す。
+ * @type {Readonly<Record<'normal'|'slow', Readonly<EnemyPace>>>}
+ */
+export const ENEMY_PACES = Object.freeze({
+  normal: Object.freeze({ moveScale: 1, stopScale: 1 }),
+  slow: Object.freeze({ moveScale: 1.5, stopScale: 2 }),
 });
 
 /**

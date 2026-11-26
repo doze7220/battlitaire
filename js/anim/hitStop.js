@@ -22,10 +22,12 @@ import { IMPACT_KINDS } from './impactLog.js';
  * 段ごとに、時刻の昇順に同じ時刻を1つにまとめ、1つごとに通常は `hitStopMs`・大きな一撃は `heavyStopMs` 止める。
  * 段の合計は `hitStopCapMs`・`heavyStopCapMs` を上限とし、上限に届く1つは残りの分だけにして、その後は止めない。
  * 全部の段の分は時刻の昇順に並べ、同じ時刻は長い方の1つにまとめる。
+ * 1回の長さと段の合計の上限（ふつう・大きな一撃とも）には stopScale を掛ける（1 で今と同じ）。
  * @param {import('./impactLog.js').ImpactLog} log 当たりの記録
+ * @param {number} [stopScale] 止まりの長さと上限の倍率（`ENEMY_PACES` の `stopScale`。省くと 1）
  * @returns {HitStops} ヒットストップの並び
  */
-export function createHitStops(log) {
+export function createHitStops(log, stopScale = 1) {
   /** @type {Map<number, {heavy: boolean, times: Set<number>}>} 段の番号ごとの当たりの時刻 */
   const bySteps = new Map();
   for (let i = 0; i < log.time.length; i++) {
@@ -42,8 +44,8 @@ export function createHitStops(log) {
   /** @type {Map<number, number>} 時刻 → 止まる長さ（同じ時刻は長い方） */
   const merged = new Map();
   for (const entry of bySteps.values()) {
-    const each = entry.heavy ? BATTLE_ANIM.heavyStopMs : BATTLE_ANIM.hitStopMs;
-    const cap = entry.heavy ? BATTLE_ANIM.heavyStopCapMs : BATTLE_ANIM.hitStopCapMs;
+    const each = (entry.heavy ? BATTLE_ANIM.heavyStopMs : BATTLE_ANIM.hitStopMs) * stopScale;
+    const cap = (entry.heavy ? BATTLE_ANIM.heavyStopCapMs : BATTLE_ANIM.hitStopCapMs) * stopScale;
     const times = [...entry.times].sort((a, b) => a - b);
     let used = 0;
     for (const time of times) {

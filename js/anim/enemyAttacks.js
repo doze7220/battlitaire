@@ -7,6 +7,7 @@ import { BATTLE_ANIM } from './battleAnimConfig.js';
 import { campSlot } from '../view/campSlots.js';
 import { isWoundedBody, splitPoints } from '../view/bodyPoints.js';
 import { addHitMark } from './hitMarks.js';
+import { enemyPace } from './enemyShows.js';
 import { enterTroops, popTroops, staggerDelay } from './troopRoster.js';
 
 /**
@@ -32,6 +33,7 @@ const ENTRANCES = Object.freeze({
 
 /**
  * 敵の側の兵を amount ポイントぶん、画面の外・口から陣地の家へ跳ねながら（炎は真っすぐ）動かして足す。
+ * 動く時間は `BATTLE_ANIM.enterMs` に、その敵の `enemyPace(typeId).moveScale` を掛けたもの。
  * @param {import('./troopRoster.js').TroopRoster} roster 名簿
  * @param {import('../view/layout.js').BattleLayout} battleLayout 最上段の配置（口の位置を読む）
  * @param {string} typeId 敵の種類の識別子
@@ -48,7 +50,7 @@ export function enterEnemyTroops(roster, battleLayout, typeId, kind, from, amoun
   if (entrance === null) throw new Error(`enemyAttacks: 未知の出る場所 ${from}`);
   const pos = entrance(roster, battleLayout, typeId);
   const bodies = splitPoints(amount, unit).map((points) => ({ points, wounded: isWoundedBody(points, unit) }));
-  return enterTroops(roster, kind, bodies, pos.x, pos.y, t, BATTLE_ANIM.enterMs);
+  return enterTroops(roster, kind, bodies, pos.x, pos.y, t, BATTLE_ANIM.enterMs * enemyPace(typeId).moveScale);
 }
 
 /**

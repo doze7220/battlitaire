@@ -4,7 +4,7 @@
  * シーンから呼ばれる音の補助モジュール（Scene を継承しない）。ルールの判定はしない。
  */
 import { Sound } from 'oz';
-import { CHAIN_PITCH } from '../audio/soundConfig.js';
+import { CHAIN_PITCH, ENEMY_HIT_RATE } from '../audio/soundConfig.js';
 
 /**
  * 段取りの操作の種類 → 音の名前。
@@ -173,7 +173,26 @@ export function battleCueSeName(type, enemyTypeId, variant) {
 }
 
 /**
- * 攻防のきっかけの種類に対応する音を鳴らす。対応表にない種類は鳴らさない。
+ * 当たりの音の高さを変える段の種類（きっかけの type）の集合（修理・回復・燃える札・敵の攻撃の始まりは含まない）。
+ * @type {ReadonlySet<string>}
+ */
+export const HIT_CUE_TYPES = Object.freeze(
+  new Set(['block', 'enemyBlock', 'shieldBlock', 'castleHit', 'enemyHit', 'strikeBlock', 'strikeCastle']),
+);
+
+/**
+ * 攻防のきっかけの音の再生速度を決める（純粋関数）。当たりの段で、敵が `ENEMY_HIT_RATE` の表にあればその値、ほかは 1。
+ * @param {string} type きっかけの種類
+ * @param {string} enemyTypeId この攻防の敵の種類の識別子
+ * @returns {number} 再生速度 rate（1 で今と同じ鳴り方）
+ */
+export function battleCueSeRate(type, enemyTypeId) {
+  if (!HIT_CUE_TYPES.has(type)) return 1;
+  return Object.prototype.hasOwnProperty.call(ENEMY_HIT_RATE, enemyTypeId) ? ENEMY_HIT_RATE[enemyTypeId] : 1;
+}
+
+/**
+ * 攻防のきっかけの種類に対応する音を鳴らす。対応表にない種類は鳴らさない。当たりの音の高さは `battleCueSeRate`。
  * @param {string} type きっかけの種類
  * @param {string} enemyTypeId この攻防の敵の種類の識別子
  * @param {string|null|undefined} variant 行動の中の種類
@@ -181,7 +200,7 @@ export function battleCueSeName(type, enemyTypeId, variant) {
  */
 export function playBattleCueSe(type, enemyTypeId, variant) {
   const name = battleCueSeName(type, enemyTypeId, variant);
-  if (name !== null) Sound.playSe(name);
+  if (name !== null) Sound.playSe(name, { rate: battleCueSeRate(type, enemyTypeId) });
 }
 
 /**

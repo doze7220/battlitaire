@@ -428,13 +428,16 @@ export function chargePairs(roster, kind, partnerKind, count, t, moveMs, pace = 
  * 2つ目以降の組の相手は、最初の相手の踏み出した位置へ同じ開始と長さで進む（すでに踏み出した相手は動かさない）。
  * 組は名簿の `contacts` に足す（相打ちの段が読む）。組でない兵は家から advanceX だけ進む。1体1ポイントなら pairs 組の1対1。
  * @param {TroopRoster} roster 名簿
- * @param {{ kind: string, partnerKind: string, pairs: number, dir: number, advanceX: number, t: number }} spec
- *   kind＝進む側、partnerKind＝相手、pairs＝消し合うポイントの量（1体1ポイントなら組の数）、dir＝進む向き（右 1・左 -1）、advanceX＝組でない兵が進む距離、t＝段の始め
+ * @param {{ kind: string, partnerKind: string, pairs: number, dir: number, advanceX: number, t: number, moveScale?: number, partnerScale?: number }} spec
+ *   kind＝進む側、partnerKind＝相手、pairs＝消し合うポイントの量（1体1ポイントなら組の数）、dir＝進む向き（右 1・左 -1）、advanceX＝組でない兵が進む距離、t＝段の始め、
+ *   moveScale＝進む側の脚の長さの倍率（省くと 1）、partnerScale＝相手の踏み出しの脚の長さの倍率（省くと 1。1 のとき、どの時刻・長さも倍率のなかった今と同じ）
  * @returns {number} 段の長さ（全員の「遅れ＋長さ」の最大。兵がいなければ marchMs。ms）
  * @throws {Error} 量に対してポイントが足りないとき
  */
 export function marchSquad(roster, spec) {
   const { kind, partnerKind, pairs, dir, advanceX, t } = spec;
+  const moveScale = spec.moveScale ?? 1;
+  const partnerScale = spec.partnerScale ?? 1;
   const { marchMs, moveStaggerMs, moveStaggerMaxMs, moveJitterMs, speedSpread } = BATTLE_ANIM;
   const squad = activeOf(roster, kind);
   const partners = activeOf(roster, partnerKind);
@@ -451,8 +454,11 @@ export function marchSquad(roster, spec) {
   for (let k = 0; k < n; k++) {
     const unit = squad[k];
     const delay = delays[k];
-    const ms = legMs(unit.kind, unit.index, marchMs, speedSpread);
+    const baseMs = legMs(unit.kind, unit.index, marchMs, speedSpread);
+    const ms = baseMs * moveScale;
+    const partnerMs = baseMs * partnerScale;
     const mine = matched.filter((p) => p.a === k);
+    let end = delay + ms;
     if (mine.length > 0) {
       let firstX = 0;
       let firstY = 0;
@@ -464,8 +470,9 @@ export function marchSquad(roster, spec) {
         } else {
           partnerX = j === 0 ? partner.x - dir * roster.layout.blockStepX : firstX;
           const partnerStart = Math.max(t + delay, partner.freeAt);
-          addTroopLeg(partner, partnerStart, partnerX, partner.y, ms);
+          addTroopLeg(partner, partnerStart, partnerX, partner.y, partnerMs);
           stepped.set(partner, partnerX);
+          end = Math.max(end, delay + partnerMs);
         }
         if (j === 0) {
           firstX = partnerX;
@@ -479,7 +486,7 @@ export function marchSquad(roster, spec) {
       const start = Math.max(t + delay, unit.freeAt);
       addTroopLeg(unit, start, unit.homeX + dir * advanceX, unit.y, ms);
     }
-    span = k === 0 ? delay + ms : Math.max(span, delay + ms);
+    span = k === 0 ? end : Math.max(span, end);
   }
   return span;
 }

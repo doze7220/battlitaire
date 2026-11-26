@@ -3,6 +3,8 @@
  * 大きな一撃・ための動きの表も持つ。敵の種類の識別子と行動の中の種類はルール層の値を読む。描画も状態の変更もしない。
  */
 
+import { ENEMY_PACES } from './battleAnimConfig.js';
+
 /**
  * 攻撃の見せ方ごとの段の作り方。
  * @typedef {Object} AttackShow
@@ -43,10 +45,10 @@ export const DEFENSE_SHOWS = Object.freeze({
 });
 
 /**
- * 敵の種類の識別子ごとの見せ方の表。`dents` は体に当たるとへこむか（スライムだけ真）。`attacks` は行動の中の種類（`variant`）→ 攻撃の見せ方の名前（`default` は既定）。
+ * 敵の種類の識別子ごとの見せ方の表。`dents` は体に当たるとへこむか（スライムだけ真）。`pace` は動きの速さと止めの長さの名前（`ENEMY_PACES` の項目名）。`attacks` は行動の中の種類（`variant`）→ 攻撃の見せ方の名前（`default` は既定）。
  * `heavy` は大きな一撃とみなす攻撃の中の種類の並び、`charge` はための動きを見せる振りかぶりの中の種類の並び
  * （中の種類のない行動は `default`）。
- * @type {Readonly<Record<string, Readonly<{body: 'horde'|'figure', attacks: Readonly<Record<string, string>>, heavy: readonly string[], charge: readonly string[], dents: boolean}>>>}
+ * @type {Readonly<Record<string, Readonly<{body: 'horde'|'figure', attacks: Readonly<Record<string, string>>, heavy: readonly string[], charge: readonly string[], dents: boolean, pace: 'normal'|'slow'}>>>}
  */
 export const ENEMY_SHOWS = Object.freeze({
   goblins: Object.freeze({
@@ -55,6 +57,7 @@ export const ENEMY_SHOWS = Object.freeze({
     heavy: Object.freeze([]),
     charge: Object.freeze([]),
     dents: false,
+    pace: 'normal',
   }),
   wolf: Object.freeze({
     body: 'figure',
@@ -62,6 +65,7 @@ export const ENEMY_SHOWS = Object.freeze({
     heavy: Object.freeze(['heavy']),
     charge: Object.freeze(['charge']),
     dents: false,
+    pace: 'normal',
   }),
   boar: Object.freeze({
     body: 'figure',
@@ -69,6 +73,7 @@ export const ENEMY_SHOWS = Object.freeze({
     heavy: Object.freeze(['heavy']),
     charge: Object.freeze(['charge']),
     dents: false,
+    pace: 'normal',
   }),
   slime: Object.freeze({
     body: 'figure',
@@ -76,6 +81,7 @@ export const ENEMY_SHOWS = Object.freeze({
     heavy: Object.freeze([]),
     charge: Object.freeze([]),
     dents: true,
+    pace: 'normal',
   }),
   skeletons: Object.freeze({
     body: 'horde',
@@ -83,6 +89,7 @@ export const ENEMY_SHOWS = Object.freeze({
     heavy: Object.freeze([]),
     charge: Object.freeze([]),
     dents: false,
+    pace: 'normal',
   }),
   giant: Object.freeze({
     body: 'figure',
@@ -90,6 +97,7 @@ export const ENEMY_SHOWS = Object.freeze({
     heavy: Object.freeze(['default']),
     charge: Object.freeze(['default']),
     dents: false,
+    pace: 'normal',
   }),
   dragon: Object.freeze({
     body: 'figure',
@@ -97,6 +105,7 @@ export const ENEMY_SHOWS = Object.freeze({
     heavy: Object.freeze(['breath']),
     charge: Object.freeze(['inhale']),
     dents: false,
+    pace: 'normal',
   }),
 });
 
@@ -104,7 +113,7 @@ export const ENEMY_SHOWS = Object.freeze({
  * 敵の種類の見せ方の項目を引く。
  * @param {string} typeId 敵の種類の識別子
  * @param {string} name 呼び出し元の関数名（Error の文の頭）
- * @returns {Readonly<{body: 'horde'|'figure', attacks: Readonly<Record<string, string>>, heavy: readonly string[], charge: readonly string[], dents: boolean}>}
+ * @returns {Readonly<{body: 'horde'|'figure', attacks: Readonly<Record<string, string>>, heavy: readonly string[], charge: readonly string[], dents: boolean, pace: 'normal'|'slow'}>}
  */
 function showOf(typeId, name) {
   if (!Object.prototype.hasOwnProperty.call(ENEMY_SHOWS, typeId)) {
@@ -183,4 +192,18 @@ export function hasChargeShow(typeId, variant) {
  */
 export function enemyDents(typeId) {
   return showOf(typeId, 'enemyDents').dents;
+}
+
+/**
+ * 敵の動きの速さと止めの長さの倍率（`ENEMY_PACES` の、その敵の `pace` の名前の項目）を返す。
+ * @param {string} typeId 敵の種類の識別子
+ * @returns {Readonly<import('./battleAnimConfig.js').EnemyPace>} 倍率（`moveScale`・`stopScale`）
+ * @throws {Error} 見せ方のない敵の種類、または `ENEMY_PACES` にない名前のとき
+ */
+export function enemyPace(typeId) {
+  const name = showOf(typeId, 'enemyPace').pace;
+  if (!Object.prototype.hasOwnProperty.call(ENEMY_PACES, name)) {
+    throw new Error(`enemyPace: 未知の動きの速さ ${name}（${typeId}）`);
+  }
+  return ENEMY_PACES[name];
 }

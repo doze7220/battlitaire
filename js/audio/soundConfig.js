@@ -71,6 +71,15 @@ export const STAGE_BGM = Object.freeze({
 });
 
 /**
+ * 敵の種類の識別子 → 攻防の当たりの音の再生速度 rate（1 で元の高さ、小さいほど低く長い）。表にない敵は 1。試遊で決め直す。
+ * 識別子はルール層の値（`game.enemy.typeId`）を文字として書いたもので、`js/rules/` は import しない。
+ * @type {Readonly<Record<string, number>>}
+ */
+export const ENEMY_HIT_RATE = Object.freeze({
+  ogres: 0.7,
+});
+
+/**
  * BGM のフェードと待ち時間（すべてミリ秒。0 以上の有限数）。試遊で決め直す。
  * - titleFadeInMs: タイトルの曲のフェードイン
  * - startFadeOutMs: 「はじめる」でタイトルの曲を止めるフェードアウト
