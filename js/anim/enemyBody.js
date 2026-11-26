@@ -1,5 +1,5 @@
 /**
- * 敵の体（ゴブリンの群れ・シールドを名簿へ置く、攻撃の兵が当たる・シールドが剥がれる、倒れたとき絵が跳ねて落ちる記録）と、
+ * 敵の体（群れ・シールドを名簿へ置く、攻撃の兵が当たる・シールドが剥がれる、倒れたとき絵が跳ねて落ちる記録）と、
  * 時計からの絵の見た目を求める。体の見せ方ごとの違いはこのファイルの表で分ける。描画も状態の変更もしない。
  */
 
@@ -9,6 +9,7 @@ import { createFigureDash, sampleFigureDash } from './figureDash.js';
 import { createTroopUnit, sampleTroop, setTroopEnd } from './troopMotion.js';
 import { chargePairs, chargeTo, placeTroops, popTroops } from './troopRoster.js';
 import { bodyScale, scaledShieldArea, scaledX } from '../view/figureScale.js';
+import { isWoundedBody, splitPoints } from '../view/bodyPoints.js';
 
 /**
  * 敵の体の記録。
@@ -41,14 +42,22 @@ const DASH_SCRATCH = { dx: 0, lift: 0 };
 
 /**
  * 体の見せ方ごとの準備。群れ・絵を名簿へ置き、体の記録の一部とシールドの並べ先を返す（群れはシールドを置かないので null）。
- * @type {Readonly<Record<string, function(import('./troopRoster.js').TroopRoster, import('../view/layout.js').BattleLayout, string, number, number): {body: EnemyBody, shieldArea: import('../view/layout.js').Rect|null}>>}
+ * 群れは `splitPoints(hp, unit)` の数の体を、並びの番号の大きい方（前）から置き、前から順に体のポイントと傷ついた姿を入れる。
+ * @type {Readonly<Record<string, function(import('./troopRoster.js').TroopRoster, import('../view/layout.js').BattleLayout, string, number, number, number): {body: EnemyBody, shieldArea: import('../view/layout.js').Rect|null}>>}
  */
 const BODY_SETUPS = Object.freeze({
-  horde: (roster, battleLayout, typeId, hp, maxHp) => {
-    const slots = battleLayout.hordeSlots(hp);
+  horde: (roster, battleLayout, typeId, hp, maxHp, unit) => {
+    const parts = splitPoints(hp, unit);
+    const slots = battleLayout.hordeSlots(parts.length);
     const points = [];
-    for (let i = slots.length - 1; i >= 0; i--) {
-      points.push({ x: slots[i].x, y: slots[i].footY, size: slots[i].size });
+    for (let i = slots.length - 1, k = 0; i >= 0; i--, k++) {
+      points.push({
+        x: slots[i].x,
+        y: slots[i].footY,
+        size: slots[i].size,
+        points: parts[k],
+        wounded: isWoundedBody(parts[k], unit),
+      });
     }
     placeTroops(roster, 'goblin', points, 0);
     return {
@@ -67,7 +76,7 @@ const BODY_SETUPS = Object.freeze({
       shieldArea: null,
     };
   },
-  figure: (roster, battleLayout, typeId, hp, maxHp) => {
+  figure: (roster, battleLayout, typeId, hp, maxHp, unit) => {
     const figures = battleLayout.enemyFigures;
     if (!Object.prototype.hasOwnProperty.call(figures, typeId)) {
       throw new Error(`enemyBody: 絵を持たない敵 ${typeId}`);
@@ -113,20 +122,21 @@ const BODY_HITS = Object.freeze({
 });
 
 /**
- * 敵の体を作り、群れ（ゴブリン）とシールドを時刻 0 から名簿へ置く。
+ * 敵の体を作り、群れとシールドを時刻 0 から名簿へ置く。
  * 落とす順は、群れは番号の大きい方から、シールドは左の列から（同じ列は上から）。
  * @param {import('./troopRoster.js').TroopRoster} roster 名簿
  * @param {import('../view/layout.js').BattleLayout} battleLayout 最上段の配置
  * @param {string} typeId 敵の種類の識別子
- * @param {number} hp 攻防の前の敵の HP（群れの数）
+ * @param {number} hp 攻防の前の敵の HP（群れのポイントの量）
  * @param {number} defense 攻防の前の敵の防御の量（絵を持つ敵のシールドの数。群れはシールドを置かない）
  * @param {number} maxHp 敵の最大 HP（絵の体の倍率を求める。シールドの並べ先は攻防の前の HP の倍率）
+ * @param {number} unit 1体のポイント（1 以上の整数。群れの体の数と傷ついた体を決める。1 なら HP の数の体）
  * @returns {EnemyBody} 敵の体の記録
  * @throws {Error} 絵を持たない敵を絵の見せ方で作るとき
  */
-export function createEnemyBody(roster, battleLayout, typeId, hp, defense, maxHp) {
+export function createEnemyBody(roster, battleLayout, typeId, hp, defense, maxHp, unit) {
   const style = enemyBodyStyle(typeId);
-  const { body, shieldArea } = BODY_SETUPS[style](roster, battleLayout, typeId, hp, maxHp);
+  const { body, shieldArea } = BODY_SETUPS[style](roster, battleLayout, typeId, hp, maxHp, unit);
   if (shieldArea !== null && defense > 0) {
     const points = battleLayout.shieldRects(defense, shieldArea).map((r) => ({
       x: r.x + r.w / 2,
@@ -156,15 +166,15 @@ export function hitEnemyShield(body, roster, count, t) {
 }
 
 /**
- * 攻撃の兵を count 体、敵に当たる位置へ進める（群れは1対1で2体とも落ち、絵は着いた時刻に兵が落ちる）。
+ * 攻撃の兵を、敵に当たる位置へ進める（群れは count ポイントぶん相手と消し合い、1体1ポイントなら1対1で2体とも落ち、相手が傷つくだけで残ることもある。絵は count 体ぶん進み、着いた時刻に兵が落ちる）。
  * 敵に当たる間隔（`hitStaggerMs`・上限 `hitStaggerMaxMs`）で1体ずつずらす。へこむ敵は着いた時刻を `body.dents` に記録する（シールドに当たった兵は記録しない）。
  * @param {EnemyBody} body 敵の体
  * @param {import('./troopRoster.js').TroopRoster} roster 名簿
- * @param {number} count 当たる数
+ * @param {number} count 当たるポイントの量（群れはポイント、絵は兵の数。1体1ポイントなら同じ）
  * @param {number} t 段の始め（ms）
  * @param {number} shownHp 段の始めの敵の HP の表示値（絵の当たる位置の倍率を求める。k 体目は `shownHp − k`）
  * @returns {number[]} 着く時刻（ms）の昇順
- * @throws {Error} 群れの数が足りないとき
+ * @throws {Error} 群れのポイントが足りないとき
  */
 export function hitEnemyBody(body, roster, count, t, shownHp) {
   const arrivals = BODY_HITS[body.style](body, roster, count, t, shownHp);

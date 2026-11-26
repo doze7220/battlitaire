@@ -64,19 +64,20 @@ import { battleFxEnd } from './battleFx.js';
  * @property {import('./hitMarks.js').HitMarkList} hitMarks ヒットマークの記録
  * @property {import('./impactLog.js').ImpactLog} impacts 当たりの記録
  * @property {string} typeId 敵の種類の識別子
+ * @property {number} unit 敵の1体のポイント（`before.enemyUnit`。1 以上の整数）
  * @property {number[]} cueTimes いま組み立てている段の音のきっかけの時刻（絶対 ms。段ごとに空にして、builder が足す）
  * @property {import('../view/layout.js').Layout} boardLayout 盤面の配置（columnCardRects・discard と、敵の体・敵の側の兵の出る位置の battle を使う）
  */
 
 /**
- * 敵の守りが画面の外（攻撃のゴブリンの後ろ）から守りの陣地へ跳ねて現れる段。
+ * 敵の守りが画面の外（攻撃の兵の後ろ）から守りの陣地へ跳ねて現れる段。
  * @param {BuildState} state 組み立て中の状態
  * @param {import('./battleSteps.js').BattleStep} step 段
  * @param {number} t 開始時刻（ms）
  * @returns {number} 段の長さ（ms）
  */
 function addForm(state, step, t) {
-  return enterEnemyTroops(state.roster, state.boardLayout.battle, state.typeId, 'enemyGuard', 'offscreenBack', step.enemyGuards ?? 0, t) - t;
+  return enterEnemyTroops(state.roster, state.boardLayout.battle, state.typeId, 'enemyGuard', 'offscreenBack', step.enemyGuards ?? 0, state.unit, t) - t;
 }
 
 /**
@@ -88,7 +89,7 @@ function addForm(state, step, t) {
  */
 function addEnemyMarch(state, step, t) {
   const kind = step.kind ?? 'enemy';
-  const arrived = enterEnemyTroops(state.roster, state.boardLayout.battle, state.typeId, kind, step.from ?? 'offscreen', step.amount, t);
+  const arrived = enterEnemyTroops(state.roster, state.boardLayout.battle, state.typeId, kind, step.from ?? 'offscreen', step.amount, state.unit, t);
   return (
     arrived -
     t +
@@ -104,7 +105,7 @@ function addEnemyMarch(state, step, t) {
 }
 
 /**
- * 相打ちの段の、ぶつかって落ち始める時刻。段の始め t と、組になる2体（相手が決まっていて、まだ終わっていない兵と、その相手）の
+ * 相打ちの段の、ぶつかって落ち始める時刻。段の始め t と、名簿の組（進む側が kind で、両方ともまだ終わっていないもの）の2体の
  * 行進が終わる時刻（freeAt）の遅い方。行進の段の長さには「遅れの広がり」が含まれるのでふつうは t のままだが、
  * 組の片方の行進が終わる前に落ちて2体の時刻がずれることがないよう、ここで必ず行進の後にそろえる。
  * @param {BuildState} state 組み立て中の状態
@@ -114,9 +115,8 @@ function addEnemyMarch(state, step, t) {
  */
 function clashStartOf(state, kind, t) {
   let start = t;
-  for (const unit of state.roster.ranked[kind] ?? []) {
-    const partner = unit.partner;
-    if (unit.end !== null || partner === null || partner.end !== null) continue;
+  for (const { unit, partner } of state.roster.contacts) {
+    if (unit.kind !== kind || unit.end !== null || partner.end !== null) continue;
     start = Math.max(start, unit.freeAt, partner.freeAt);
   }
   return start;
@@ -126,7 +126,7 @@ function clashStartOf(state, kind, t) {
  * 相打ちの段。組になった2体が、双方の行進が終わった後に、跳ねて落ちる。きっかけは最初の組がぶつかる時刻。
  * @param {BuildState} state 組み立て中の状態
  * @param {string} kind 落ちる側の種類（'enemy'・'attack'）
- * @param {number} amount 相打ちの組の数
+ * @param {number} amount 消し合うポイントの量（1体1ポイントなら組の数）
  * @param {number} t 開始時刻（ms）
  * @returns {number} 段の長さ（ms）
  */
@@ -426,6 +426,7 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout, wai
     hitMarks: createHitMarkList(),
     impacts: createImpactLog(),
     typeId: before.enemyTypeId,
+    unit: before.enemyUnit,
     cueTimes: [],
     boardLayout,
   };
@@ -437,7 +438,7 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout, wai
     spawnTroops(state.roster, kind, waiting[kind], 0, 0);
     waitingTotal += waiting[kind];
   }
-  state.body = createEnemyBody(state.roster, boardLayout.battle, before.enemyTypeId, before.enemyHp, before.enemyDefense, before.enemyMaxHp);
+  state.body = createEnemyBody(state.roster, boardLayout.battle, before.enemyTypeId, before.enemyHp, before.enemyDefense, before.enemyMaxHp, before.enemyUnit);
   /** @type {TimedStep[]} */
   const timed = [];
   let t = 0;

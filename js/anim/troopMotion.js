@@ -66,7 +66,7 @@ const KNOCK_DIRS = Object.freeze({
  */
 
 /**
- * 兵1体の記録。攻防の始めに作り、毎フレームは書き換えない（作るときだけ x・y・freeAt・partner を使う）。
+ * 兵1体の記録。攻防の始めに作り、毎フレームは書き換えない（作るときだけ x・y・freeAt・points を使う）。
  * @typedef {Object} TroopUnit
  * @property {TroopKind} kind 種類
  * @property {number} index 種類の中の何番目か
@@ -81,7 +81,9 @@ const KNOCK_DIRS = Object.freeze({
  * @property {number} x 作るときだけ使う。最後の脚の行き先の x（いまいる位置）
  * @property {number} y 作るときだけ使う。最後の脚の行き先の足元の y
  * @property {number} freeAt 作るときだけ使う。最後の脚の終わりの時刻（次の脚はこれ以降に始める）
- * @property {TroopUnit|null} partner 作るときだけ使う。相打ちの相手
+ * @property {number} points 作るときだけ使う。残りのポイント（名簿を組み立てる間だけ減らす。既定 1）
+ * @property {number|null} woundAt 傷ついた姿になる時刻（ms。null なら傷つかない。始めから傷ついた体は現れる時刻）
+ * @property {Array<{time: number, x: number, y: number}>} woundHits 攻防の途中で傷ついた当たり（時刻と位置。始めから傷ついた体は空）
  */
 
 /**
@@ -104,7 +106,7 @@ const KNOCK_DIRS = Object.freeze({
  * @param {number} homeY 家の足元の y
  * @param {number} appearAt 現れ始める時刻（ms）
  * @param {number} appearMs 現れる時間（ms。0 ならすぐ）
- * @returns {TroopUnit} 脚・終わり方・相手のない記録
+ * @returns {TroopUnit} 脚・終わり方・傷のない記録（points は 1、woundAt は null、woundHits は空）
  */
 export function createTroopUnit(kind, index, homeX, homeY, appearAt, appearMs) {
   return {
@@ -121,7 +123,9 @@ export function createTroopUnit(kind, index, homeX, homeY, appearAt, appearMs) {
     x: homeX,
     y: homeY,
     freeAt: appearAt,
-    partner: null,
+    points: 1,
+    woundAt: null,
+    woundHits: [],
   };
 }
 
@@ -198,6 +202,26 @@ export function setTroopEnd(unit, type, time, fallOutY) {
     throw new Error(`setTroopEnd: 未知の終わり方 ${type}`);
   }
   unit.end = { type, time, doneAt, x: unit.x, y: unit.y, dx };
+}
+
+/**
+ * 兵の残りのポイントを points だけ減らす。0 以下なら終わり方を決め（`setTroopEnd`）、残れば傷ついた姿になり（`woundAt` が null のときだけ time）、
+ * 傷ついた当たり（time と今いる位置）を `woundHits` に足す。1体1ポイントなら必ず終わり方が決まる。
+ * @param {TroopUnit} unit 兵
+ * @param {number} points 減らすポイント
+ * @param {number} time 当たる時刻（ms。呼ぶ側が `unit.freeAt` 以降にそろえる）
+ * @param {number} fallOutY 落ちる兵が消える y（終わり方が 'fall' のときだけ使う）
+ * @returns {void}
+ * @throws {Error} 終わり方が決まるとき、すでに終わり方があれば（`setTroopEnd` と同じ）
+ */
+export function spendTroopPoints(unit, points, time, fallOutY) {
+  unit.points -= points;
+  if (unit.points <= 0) {
+    setTroopEnd(unit, troopHitEnd(unit.kind), time, fallOutY);
+    return;
+  }
+  if (unit.woundAt === null) unit.woundAt = time;
+  unit.woundHits.push({ time, x: unit.x, y: unit.y });
 }
 
 /**

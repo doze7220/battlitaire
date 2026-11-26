@@ -1,10 +1,11 @@
 /**
- * 敵の側の兵（ゴブリン・炎）を画面の外・ドラゴンの口から陣地の家へ出すことと、飛ぶもののない打撃の時刻（式はここだけ）と、
+ * 敵の側の兵（群れの敵の兵・炎）を画面の外・ドラゴンの口から陣地の家へ出すことと、飛ぶもののない打撃の時刻（式はここだけ）と、
  * 当たった防御の兵・城のヒットマークの記録を作る。描画も状態の変更もしない。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
 import { campSlot } from '../view/campSlots.js';
+import { isWoundedBody, splitPoints } from '../view/bodyPoints.js';
 import { addHitMark } from './hitMarks.js';
 import { enterTroops, popTroops, staggerDelay } from './troopRoster.js';
 
@@ -14,7 +15,7 @@ import { enterTroops, popTroops, staggerDelay } from './troopRoster.js';
  */
 const ENTRANCES = Object.freeze({
   offscreen: (roster) => ({ x: roster.layout.offscreenX, y: null }),
-  // 守りのゴブリンは、攻撃のゴブリンの後ろから同じくらいの間隔（家の x の差）で走ってくるので、走る間も重ならない
+  // 守りの兵は、攻撃の兵の後ろから同じくらいの間隔（家の x の差）で走ってくるので、走る間も重ならない
   offscreenBack: (roster) => ({
     x: roster.layout.offscreenX + (roster.layout.camps.enemyGuard.x - roster.layout.camps.enemy.x),
     y: null,
@@ -30,22 +31,24 @@ const ENTRANCES = Object.freeze({
 });
 
 /**
- * 敵の側の兵を count 体、画面の外・口から陣地の家へ跳ねながら（炎は真っすぐ）動かして足す。
+ * 敵の側の兵を amount ポイントぶん、画面の外・口から陣地の家へ跳ねながら（炎は真っすぐ）動かして足す。
  * @param {import('./troopRoster.js').TroopRoster} roster 名簿
  * @param {import('../view/layout.js').BattleLayout} battleLayout 最上段の配置（口の位置を読む）
  * @param {string} typeId 敵の種類の識別子
  * @param {string} kind 兵の種類（enemy・enemyGuard・flame）
  * @param {string} from 出る場所（offscreen・offscreenBack・mouth）
- * @param {number} count 人数
+ * @param {number} amount 出す量（ポイント）。体の数は `splitPoints(amount, unit)`（端数の体は前で傷ついた姿）
+ * @param {number} unit 1体のポイント（1 以上の整数。1 なら amount 体）
  * @param {number} t 出始める時刻（ms）
- * @returns {number} 全員が家に着く時刻（ms。count が 0 以下なら t）
+ * @returns {number} 全員が家に着く時刻（ms。amount が 0 以下なら t）
  * @throws {Error} 未知の出る場所のとき・口のない敵から口を使うとき
  */
-export function enterEnemyTroops(roster, battleLayout, typeId, kind, from, count, t) {
+export function enterEnemyTroops(roster, battleLayout, typeId, kind, from, amount, unit, t) {
   const entrance = Object.prototype.hasOwnProperty.call(ENTRANCES, from) ? ENTRANCES[from] : null;
   if (entrance === null) throw new Error(`enemyAttacks: 未知の出る場所 ${from}`);
   const pos = entrance(roster, battleLayout, typeId);
-  return enterTroops(roster, kind, count, pos.x, pos.y, t, BATTLE_ANIM.enterMs);
+  const bodies = splitPoints(amount, unit).map((points) => ({ points, wounded: isWoundedBody(points, unit) }));
+  return enterTroops(roster, kind, bodies, pos.x, pos.y, t, BATTLE_ANIM.enterMs);
 }
 
 /**

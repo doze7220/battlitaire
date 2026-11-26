@@ -14,6 +14,7 @@ import { enemyAttackShow, enemyDefenseShow, hasChargeShow, isHeavyAttack } from 
  * @property {number} enemyHp 攻防の前の敵の HP
  * @property {number} enemyMaxHp 敵の最大 HP（絵の体の大きさ（縮み）を求める）
  * @property {string} enemyTypeId 攻防をする敵の種類の識別子
+ * @property {number} enemyUnit 攻防をする敵の1体のポイント（1 以上の整数。群れ・攻撃・守りの体の割り振りに使う）
  * @property {number} enemyDefense そのターンの敵の防御の量（疲弊の後。攻防の前の予告の `defense` の写し。絵を持つ敵のシールドの数）
  * @property {number} attack 攻防の前の攻撃ゲージの値（攻撃の兵の数）
  * @property {number} defense 攻防の前の防御ゲージの値（防御の兵の数）
@@ -29,7 +30,7 @@ import { enemyAttackShow, enemyDefenseShow, hasChargeShow, isHeavyAttack } from 
  * @property {boolean} [heavy] 敵の攻撃の段（`enemyMarch`・`block`・`castleHit`・`strikeBlock`・`strikeCastle`）のみ: 大きな一撃なら true（そうでなければ付けない）
  * @property {Array<{columnIndex: number, cardIndex: number, card: *}>} [burns] `burn` のみ: 燃える札の並び（燃える順）
  * @property {number} [enemyGuards] `form` のみ: 現れる敵の守りの数
- * @property {number} [pairs] `enemyMarch` のみ: 防御の兵と相打ちになる組の数（`block` の量。なければ 0）。`march` のみ: 敵の守りと相打ちになる組の数（`enemyBlock` の量。なければ 0）
+ * @property {number} [pairs] `enemyMarch` のみ: 防御の兵と相打ちで消し合うポイントの量（`block` の量。1体1ポイントなら組の数。なければ 0）。`march` のみ: 敵の守りと相打ちで消し合うポイントの量（`enemyBlock` の量。なければ 0）
  * @property {'enemy'|'flame'} [kind] `enemyMarch`・`block`・`castleHit` のみ: 敵の側の兵の種類
  * @property {'offscreen'|'mouth'} [from] `enemyMarch` のみ: 敵の側の兵の出る場所
  * @property {'defense'|'castle'} [to] `dash` のみ: 絵が駆け寄る行き先（防御の兵の前・城の前）
@@ -58,6 +59,7 @@ export function snapshotBattle(game) {
     enemyHp: game.enemy.hp,
     enemyMaxHp: game.enemy.maxHp,
     enemyTypeId: game.enemy.typeId,
+    enemyUnit: game.enemyUnitPoints(),
     enemyDefense: game.enemy.intent === null ? 0 : game.enemy.intent.defense,
     attack: game.gauges.attack ?? 0,
     defense: game.gauges.defense ?? 0,

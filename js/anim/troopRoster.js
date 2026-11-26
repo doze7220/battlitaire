@@ -7,7 +7,16 @@
 import { BATTLE_ANIM } from './battleAnimConfig.js';
 import { campSlot } from '../view/campSlots.js';
 import { durationScale, startJitter } from './troopJitter.js';
-import { addTroopLeg, createTroopUnit, setTroopEnd, troopHitEnd } from './troopMotion.js';
+import { addTroopLeg, createTroopUnit, setTroopEnd, spendTroopPoints, troopHitEnd } from './troopMotion.js';
+import { matchPoints } from './pointMatch.js';
+
+/**
+ * 行進で決めた、まだ相打ちになっていない組。
+ * @typedef {Object} TroopContact
+ * @property {import('./troopMotion.js').TroopUnit} unit 進む側の兵
+ * @property {import('./troopMotion.js').TroopUnit} partner 相手の兵
+ * @property {number} points この組で消し合うポイント
+ */
 
 /**
  * 兵の名簿。攻防の始めに1回作り、段ごとに脚と終わり方を足していく。
@@ -15,6 +24,7 @@ import { addTroopLeg, createTroopUnit, setTroopEnd, troopHitEnd } from './troopM
  * @property {import('../view/layout.js').TroopLayout} layout 兵の配置（陣地・当たる位置・落ちて消える y）
  * @property {import('./troopMotion.js').TroopUnit[]} units 全員（作った順）
  * @property {Object<string, import('./troopMotion.js').TroopUnit[]>} ranked 種類ごとの前からの並び（自軍は家の x の大きい順、敵の側は小さい順、同じなら番号順）
+ * @property {TroopContact[]} contacts 行進で決めた、まだ相打ちになっていない組（作った順）
  */
 
 /**
@@ -174,7 +184,7 @@ function activeOf(roster, kind) {
  * @returns {TroopRoster} 空の名簿
  */
 export function createTroopRoster(troopLayout) {
-  return { layout: troopLayout, units: [], ranked: {} };
+  return { layout: troopLayout, units: [], ranked: {}, contacts: [] };
 }
 
 /**
@@ -235,7 +245,7 @@ export function removeTroops(roster, kind, count) {
 export function landTroops(roster, kind, count, fromX, fromY, t, moveMs) {
   const { landStaggerMs, landStaggerMaxMs, landJitterMs, speedSpread } = BATTLE_ANIM;
   return jumpTroops(
-    'landTroops', roster, kind, count, fromX, fromY, t, moveMs,
+    'landTroops', roster, kind, count, null, fromX, fromY, t, moveMs,
     landStaggerMs, landStaggerMaxMs, landJitterMs, speedSpread,
   );
 }
@@ -246,6 +256,7 @@ export function landTroops(roster, kind, count, fromX, fromY, t, moveMs) {
  * @param {TroopRoster} roster 名簿
  * @param {string} kind 種類
  * @param {number} count 人数（0 以下なら何もしない）
+ * @param {Array<{points: number, wounded: boolean}>|null} bodies 体ごとのポイントと始めから傷ついているか（前から。count 体分。null なら全員 1 ポイントで傷なし）
  * @param {number} fromX 飛び出す位置の x
  * @param {number|null} fromY 飛び出す位置の足元の y（null なら兵ごとの家の y）
  * @param {number} t 動き始める時刻（ms）
@@ -257,7 +268,7 @@ export function landTroops(roster, kind, count, fromX, fromY, t, moveMs) {
  * @returns {number} 全員が家に着く時刻（ms。全員の「t＋遅れ＋長さ」の最大。count が 0 以下なら t）
  * @throws {Error} 未知の種類のとき
  */
-function jumpTroops(name, roster, kind, count, fromX, fromY, t, moveMs, staggerMs, maxMs, jitterMs, spread) {
+function jumpTroops(name, roster, kind, count, bodies, fromX, fromY, t, moveMs, staggerMs, maxMs, jitterMs, spread) {
   const campName = CAMP_OF[kind];
   if (campName === undefined) throw new Error(`${name}: 未知の種類 ${kind}`);
   const camp = roster.layout.camps[campName];
@@ -276,6 +287,10 @@ function jumpTroops(name, roster, kind, count, fromX, fromY, t, moveMs, staggerM
     const unit = createTroopUnit(kind, index, home.x, home.y, start, 0);
     unit.x = fromX;
     unit.y = fromY === null ? home.y : fromY;
+    if (bodies !== null) {
+      unit.points = bodies[i].points;
+      if (bodies[i].wounded) unit.woundAt = start;
+    }
     addTroopLeg(unit, start, home.x, home.y, ms);
     roster.units.push(unit);
     list.push(unit);
@@ -286,27 +301,31 @@ function jumpTroops(name, roster, kind, count, fromX, fromY, t, moveMs, staggerM
 }
 
 /**
- * 敵の側の兵を count 体、画面の外・口（fromX, fromY）から陣地の家へ跳ねながら動かして足す。
+ * 敵の側の兵を体の並び bodies の数だけ、画面の外・口（fromX, fromY）から陣地の家へ跳ねながら動かして足す。
+ * 体ごとのポイントを持たせ、始めから傷ついた体は現れる時刻に傷ついた姿にする。
  * @param {TroopRoster} roster 名簿
  * @param {string} kind 種類（enemy・enemyGuard・flame）
- * @param {number} count 人数（0 以下なら何もしない）
+ * @param {Array<{points: number, wounded: boolean}>} bodies 体ごとのポイントと始めから傷ついているか（前から。空なら何もしない）
  * @param {number} fromX 出る位置の x
  * @param {number|null} fromY 出る位置の足元の y（null なら兵ごとの家の y）
  * @param {number} t 出始める時刻（ms）
  * @param {number} moveMs 家へ動く時間（ms）
- * @returns {number} 全員が家に着く時刻（ms。count が 0 以下なら t）
+ * @returns {number} 全員が家に着く時刻（ms。bodies が空なら t）
  * @throws {Error} 未知の種類のとき
  */
-export function enterTroops(roster, kind, count, fromX, fromY, t, moveMs) {
+export function enterTroops(roster, kind, bodies, fromX, fromY, t, moveMs) {
   const { moveStaggerMs, moveStaggerMaxMs } = BATTLE_ANIM;
-  return jumpTroops('enterTroops', roster, kind, count, fromX, fromY, t, moveMs, moveStaggerMs, moveStaggerMaxMs, 0, 0);
+  return jumpTroops(
+    'enterTroops', roster, kind, bodies.length, bodies, fromX, fromY, t, moveMs,
+    moveStaggerMs, moveStaggerMaxMs, 0, 0,
+  );
 }
 
 /**
  * 種類の兵を、決まった足元の位置に時刻 t から置く。渡した順を前からの並びにする（並べ替えない。陣地は使わない）。
  * @param {TroopRoster} roster 名簿
  * @param {string} kind 種類
- * @param {Array<{x: number, y: number, size?: number}>} points 足元の位置と描く大きさ（前から）
+ * @param {Array<{x: number, y: number, size?: number, points?: number, wounded?: boolean}>} points 足元の位置・描く大きさ・体のポイント（既定 1）・始めから傷ついているか（真なら現れる時刻 t に傷つく）（前から）
  * @param {number} t 現れる時刻（ms）
  * @returns {void}
  */
@@ -317,6 +336,8 @@ export function placeTroops(roster, kind, points, t) {
     const p = points[k];
     const unit = createTroopUnit(kind, first + k, p.x, p.y, t, 0);
     unit.size = p.size ?? 0;
+    unit.points = p.points ?? 1;
+    if (p.wounded === true) unit.woundAt = t;
     roster.units.push(unit);
     list.push(unit);
   }
@@ -344,75 +365,102 @@ export function popTroops(roster, kind, times) {
 }
 
 /**
- * kind の前から count 体と partnerKind の前から同じ数が1対1の組になり、kind が相手の手前へ進んで着いた時刻に2体とも終わる。
+ * kind の前から並んだ兵が、partnerKind の前から並んだ兵と count ポイントぶんだけ消し合う（`matchPoints` の組を当たる順に）。
+ * k 組目で、進む側の兵が相手の手前へ進んで着いた時刻に落ち、相手はその組のポイントだけ減る（0 になれば落ち、残れば傷つく）。
+ * 1体1ポイントなら count 組の1対1で、2体とも着いた時刻に終わる。
  * @param {TroopRoster} roster 名簿
  * @param {string} kind 進む側の種類
  * @param {string} partnerKind 相手の種類
- * @param {number} count 組の数
+ * @param {number} count 当てるポイントの量
  * @param {number} t 段の始め（ms）
  * @param {number} moveMs 進む時間（ms）
  * @param {string} [pace] 遅れの決め方（`'move'`＝移動の遅れ、`'hit'`＝敵に当たる間隔。省くと `'move'`）
  * @returns {number[]} 着く時刻の昇順の配列（行き先の y は相手の y）
- * @throws {Error} どちらかの兵が足りないとき、または pace が未知のとき
+ * @throws {Error} どちらかのポイントが足りないとき、pace が未知のとき、進む側の兵が2つ以上の組を持つとき（自軍の兵の複数のポイントは後の Phase）
  */
 export function chargePairs(roster, kind, partnerKind, count, t, moveMs, pace = 'move') {
-  const m = Math.max(0, count);
+  const m0 = Math.max(0, count);
   const squad = activeOf(roster, kind);
   const partners = activeOf(roster, partnerKind);
-  if (m > squad.length || m > partners.length) {
-    throw new Error(
-      `chargePairs: 組の数 ${m} に対して兵が足りません（${kind}=${squad.length}, ${partnerKind}=${partners.length}）`,
-    );
-  }
+  const pairs = matchPoints(
+    squad.map((u) => u.points),
+    partners.map((u) => u.points),
+    m0,
+  );
+  const m = pairs.length;
+  const used = new Set();
   const arrivals = [];
   for (let k = 0; k < m; k++) {
-    const unit = squad[k];
-    const partner = partners[k];
+    const pair = pairs[k];
+    if (used.has(pair.a)) {
+      throw new Error(`chargePairs: 進む側の兵が2つ以上の組を持つ場合は未対応です（${kind}）`);
+    }
+    used.add(pair.a);
+    const unit = squad[pair.a];
+    const partner = partners[pair.b];
     const side = partner.x >= unit.x ? 1 : -1;
     const start = Math.max(t + chargeDelay(pace, k, m), unit.freeAt);
     addTroopLeg(unit, start, partner.x - side * roster.layout.contactGap, partner.y, moveMs);
     setTroopEnd(unit, troopHitEnd(kind), unit.freeAt, roster.layout.fallOutY);
-    setTroopEnd(partner, troopHitEnd(partnerKind), Math.max(unit.freeAt, partner.freeAt), roster.layout.fallOutY);
+    spendTroopPoints(partner, pair.points, Math.max(unit.freeAt, partner.freeAt), roster.layout.fallOutY);
     arrivals.push(unit.freeAt);
   }
   return arrivals.sort((a, b) => a - b);
 }
 
 /**
- * 行進の段。kind の前から k 番目（k < pairs）は partnerKind の前から k 番目と組になり、
- * 相手が前へ踏み出した位置の手前まで進む。組でない兵は家から advanceX だけ進む。
+ * 行進の段。kind と partnerKind の前から並んだ兵が、pairs ポイントぶん（`matchPoints`）消し合う組になる。
+ * 進む側の k 体目に組があれば、最初の組の相手が（まだ踏み出していなければ）前へ踏み出し、自分はその手前まで進む。
+ * 2つ目以降の組の相手は、最初の相手の踏み出した位置へ同じ開始と長さで進む（すでに踏み出した相手は動かさない）。
+ * 組は名簿の `contacts` に足す（相打ちの段が読む）。組でない兵は家から advanceX だけ進む。1体1ポイントなら pairs 組の1対1。
  * @param {TroopRoster} roster 名簿
  * @param {{ kind: string, partnerKind: string, pairs: number, dir: number, advanceX: number, t: number }} spec
- *   kind＝進む側、partnerKind＝相手、pairs＝組の数、dir＝進む向き（右 1・左 -1）、advanceX＝組でない兵が進む距離、t＝段の始め
+ *   kind＝進む側、partnerKind＝相手、pairs＝消し合うポイントの量（1体1ポイントなら組の数）、dir＝進む向き（右 1・左 -1）、advanceX＝組でない兵が進む距離、t＝段の始め
  * @returns {number} 段の長さ（全員の「遅れ＋長さ」の最大。兵がいなければ marchMs。ms）
- * @throws {Error} 組の数に対して兵が足りないとき
+ * @throws {Error} 量に対してポイントが足りないとき
  */
 export function marchSquad(roster, spec) {
   const { kind, partnerKind, pairs, dir, advanceX, t } = spec;
   const { marchMs, moveStaggerMs, moveStaggerMaxMs, moveJitterMs, speedSpread } = BATTLE_ANIM;
   const squad = activeOf(roster, kind);
   const partners = activeOf(roster, partnerKind);
-  if (pairs > squad.length || pairs > partners.length) {
-    throw new Error(
-      `marchSquad: 組の数 ${pairs} に対して兵が足りません（${kind}=${squad.length}, ${partnerKind}=${partners.length}）`,
-    );
-  }
+  const matched = matchPoints(
+    squad.map((u) => u.points),
+    partners.map((u) => u.points),
+    Math.max(0, pairs),
+  );
   const n = squad.length;
   const delays = launchDelays(squad, moveStaggerMs, moveStaggerMaxMs, moveJitterMs);
+  /** 踏み出した相手 → 踏み出した位置の x */
+  const stepped = new Map();
   let span = marchMs;
   for (let k = 0; k < n; k++) {
     const unit = squad[k];
     const delay = delays[k];
     const ms = legMs(unit.kind, unit.index, marchMs, speedSpread);
-    if (k < pairs) {
-      const partner = partners[k];
-      unit.partner = partner;
-      partner.partner = unit;
-      const partnerX = partner.x - dir * roster.layout.blockStepX;
-      const partnerStart = Math.max(t + delay, partner.freeAt);
-      addTroopLeg(partner, partnerStart, partnerX, partner.y, ms);
+    const mine = matched.filter((p) => p.a === k);
+    if (mine.length > 0) {
+      let firstX = 0;
+      let firstY = 0;
+      mine.forEach((pair, j) => {
+        const partner = partners[pair.b];
+        let partnerX;
+        if (stepped.has(partner)) {
+          partnerX = stepped.get(partner);
+        } else {
+          partnerX = j === 0 ? partner.x - dir * roster.layout.blockStepX : firstX;
+          const partnerStart = Math.max(t + delay, partner.freeAt);
+          addTroopLeg(partner, partnerStart, partnerX, partner.y, ms);
+          stepped.set(partner, partnerX);
+        }
+        if (j === 0) {
+          firstX = partnerX;
+          firstY = partner.y;
+        }
+        roster.contacts.push({ unit, partner, points: pair.points });
+      });
       const start = Math.max(t + delay, unit.freeAt);
-      addTroopLeg(unit, start, partnerX - dir * roster.layout.contactGap, partner.y, ms);
+      addTroopLeg(unit, start, firstX - dir * roster.layout.contactGap, firstY, ms);
     } else {
       const start = Math.max(t + delay, unit.freeAt);
       addTroopLeg(unit, start, unit.homeX + dir * advanceX, unit.y, ms);
@@ -423,26 +471,33 @@ export function marchSquad(roster, spec) {
 }
 
 /**
- * 相打ちの段。kind のうち相手のいる兵を前から amount 組、前から遅らせて2体とも跳ねて落ちさせる。
+ * 相打ちの段。名簿の `contacts` のうち進む側の種類が kind の組（両方とも終わっていないもの）を前から、ポイントの合計が amount になるまで選び、
+ * 前から遅らせて両方のポイントを組のぶん減らす（0 になれば跳ねて落ち、残れば傷ついた姿で残る）。選んだ組は `contacts` から除く。
  * @param {TroopRoster} roster 名簿
- * @param {string} kind 種類
- * @param {number} amount 相打ちの組の数
+ * @param {string} kind 進む側の種類
+ * @param {number} amount 相打ちで消し合うポイントの量（1体1ポイントなら組の数）
  * @param {number} t 段の始め（ms）
  * @returns {number} 遅れの広がり（ms）
  */
 export function clashPairs(roster, kind, amount, t) {
   const { fallStaggerMs, fallStaggerMaxMs } = BATTLE_ANIM;
-  const chosen = activeOf(roster, kind)
-    .filter((u) => u.partner !== null && u.partner.end === null)
-    .slice(0, Math.max(0, amount));
+  const chosen = [];
+  let sum = 0;
+  for (const contact of roster.contacts) {
+    if (sum >= amount) break;
+    if (contact.unit.kind !== kind || contact.unit.end !== null || contact.partner.end !== null) continue;
+    chosen.push(contact);
+    sum += contact.points;
+  }
   const m = chosen.length;
   for (let k = 0; k < m; k++) {
-    const unit = chosen[k];
-    const partner = unit.partner;
+    const { unit, partner, points } = chosen[k];
     const time = t + fallDelay(k, m);
-    setTroopEnd(unit, troopHitEnd(unit.kind), Math.max(time, unit.freeAt), roster.layout.fallOutY);
-    setTroopEnd(partner, troopHitEnd(partner.kind), Math.max(time, partner.freeAt), roster.layout.fallOutY);
+    spendTroopPoints(unit, points, Math.max(time, unit.freeAt), roster.layout.fallOutY);
+    spendTroopPoints(partner, points, Math.max(time, partner.freeAt), roster.layout.fallOutY);
   }
+  const done = new Set(chosen);
+  roster.contacts = roster.contacts.filter((c) => !done.has(c));
   return spreadOf(m, fallStaggerMs, fallStaggerMaxMs);
 }
 
