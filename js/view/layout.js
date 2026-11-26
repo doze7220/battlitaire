@@ -1,5 +1,5 @@
 /**
- * 責務: 盤面の画面配置（戦闘の段の兵の陣地・敵の頭の上の予告の札・敵ごとの当たる位置・炎の出る位置・画面の外の x・城の打撃の範囲・人数の表示・城と敵の絵の矩形・群れの敵の群れの並び（種類ごとの大きさと範囲は hordePlaces.js の表）・敵を倒したときの案内・最上部のゲージ・行動のゲージの帯とラベルを含む）を一手に持ち、座標から「何に当たるか」を求める。
+ * 責務: 盤面の画面配置（戦闘の段の兵の陣地・敵の頭の上の予告の札・敵ごとの当たる位置・炎の出る位置・画面の外の x・城の打撃の範囲・人数の表示・城と敵の絵の矩形・群れの敵の群れの並び（種類ごとの大きさと範囲は hordePlaces.js の表）・敵を倒したときの案内（配置は defeatLayout.js に任せる）・最上部のゲージ・行動のゲージの帯とラベルを含む）を一手に持ち、座標から「何に当たるか」を求める。
  * タイトル画面・遊び方の画面・結果の表示（決着）の配置と当たりも持つ。ルール層は import せず、数の情報は引数で受け取る。状態は変えない。絵の縦横比は spriteView.js から得る。絵の敵の配置の組み立ては enemyFigures.js に任せる。
  */
 
@@ -8,6 +8,7 @@ import { campSlot } from './campSlots.js';
 import { createEnemyFigures } from './enemyFigures.js';
 import { createHordePlaces } from './hordePlaces.js';
 import { handSlotRects } from './handLayout.js';
+import { createDefeatLayout } from './defeatLayout.js';
 
 /**
  * 矩形。
@@ -121,7 +122,7 @@ import { handSlotRects } from './handLayout.js';
  * @property {IntentBadgeLayout} intentBadge 予告の札の大きさと数え下ろしの文字の配置
  * @property {TroopLayout} troops 兵の配置
  * @property {{ box: Rect, iconSize: number, items: Array<{ iconX: number, iconY: number, textX: number, textY: number }> }} troopCounter 人数の表示の配置（枠・アイコンの大きさ・攻撃・防御・修理の順の各項目のアイコン中心と文字の左端・中心 y）
- * @property {{ x: number, titleY: number, hintY: number, maxW: number }} defeat 敵を倒したときの案内の位置（段の中央の x、「〜を倒した！」・「タップで次へ」の y、文字の最大の幅）
+ * @property {import('./defeatLayout.js').DefeatLayout} defeat 敵を倒したときの案内の配置（「〜を倒した！」・内訳の格子・合計・「タップで次へ」の位置。`defeatLayout.js` の `createDefeatLayout`）
  * @property {function(number, Rect): Rect[]} shieldRects シールドマーク count 個の矩形（body の矩形の中の格子。最後の行は中央にそろえる）
  * @property {Object<string, import('./hordePlaces.js').HordePlace>} hordePlaces 群れの敵の種類の識別子 → 体の大きさと並ぶ場所（凍結。焼き付けの大きさに troopView.js が読む）
  * @property {function(string, number): Array<{ x: number, footY: number, size: number }>} hordeSlots 群れの敵（識別子）の兵 count 体の並び（番号の順。x は中心、footY は足元の y、size はその敵の体の大きさ。その敵の群れの足元の範囲の中の R2 列。表にない識別子は Error）
@@ -360,10 +361,6 @@ const TROOP_COUNTER_PAD_X = 6;
 const TROOP_COUNTER_TEXT_GAP = 4;
 /** 人数の表示の項目の数（攻撃・防御・修理） */
 const TROOP_COUNTER_ITEMS = 3;
-/** 敵を倒したときの「〜を倒した！」の y の、段の高さに対する割合 */
-const DEFEAT_TITLE_RATIO = 0.3;
-/** 敵を倒したときの「タップで次へ」の y の、段の高さに対する割合 */
-const DEFEAT_HINT_RATIO = 0.7;
 /** シールドマークの格子の1行の最大の個数 */
 const SHIELD_COLS = 5;
 /** シールドマークの大きさの、格子の1マスに対する割合 */
@@ -733,12 +730,7 @@ function createBattleLayout(width, coinBlockCount) {
     intentBadge,
     troops,
     troopCounter,
-    defeat: {
-      x: area.x + area.w / 2,
-      titleY: area.y + area.h * DEFEAT_TITLE_RATIO,
-      hintY: area.y + area.h * DEFEAT_HINT_RATIO,
-      maxW: area.w - SIDE_MARGIN * 2,
-    },
+    defeat: createDefeatLayout(area, SIDE_MARGIN),
     shieldRects,
     hordePlaces,
     hordeSlots,

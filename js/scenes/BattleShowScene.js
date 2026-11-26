@@ -1,6 +1,6 @@
 /**
  * 責務: 攻防の演出のシーン。結果を anim に渡して時間を進め、決着後・敵を倒した後のタップだけを受けること（演出の途中のタップでは何もしない）。
- * 終わったら（敵が生きていれば）次のフェーズへ進めて（ターンの始まりを中断データに保存して）戻る／敵を倒したときはタップで3択を始めて（3択の段階を保存して）3択の画面を積む／決着ならタイトルへ切り替え、負けの結果が出たとき中断データを消し、見た目の値を view に渡して描き、背面の盤面のシーンへ札が燃える段の盤面の見た目を答えること。
+ * 終わったら（敵が生きていれば）次のフェーズへ進めて（ターンの始まりを中断データに保存して）戻る／敵を倒したときは内訳が出そろった後のタップで3択を始めて（3択の段階を保存して）3択の画面を積む／決着ならタイトルへ切り替え、負けの結果が出たとき中断データを消し、見た目の値を view に渡して描き、背面の盤面のシーンへ札が燃える段の盤面の見た目を答えること。
  * 攻防のきっかけ・決着と敵の撃破の表示で効果音を鳴らし（soundCues.js）、HP が 0 になった瞬間に BGM を止めること（bgmCues.js）。設定の演出の速さで時間を進めること。
  */
 import { Engine, Scene } from 'oz';
@@ -11,7 +11,9 @@ import { battleSpeedRate } from './settingsStore.js';
 import { buildBattleSteps } from '../anim/battleSteps.js';
 import { buildBattleTimeline } from '../anim/battleTimeline.js';
 import { BattleDirector } from '../anim/battleDirector.js';
+import { DefeatTally } from '../anim/defeatTally.js';
 import { drawBattleShow } from '../view/battleShowView.js';
+import { defeatScoreLines } from '../view/scoreText.js';
 import { drawResult } from '../view/resultView.js';
 import { drawActionGaugeLabel } from '../view/actionGaugeView.js';
 
@@ -58,6 +60,8 @@ export class BattleShowScene extends Scene {
     this.waitingElites = waitingElites;
     /** @type {BattleDirector|null} 演出全体の管理（init で作る） */
     this.director = null;
+    /** @type {DefeatTally|null} 敵を倒したときの内訳が順に出る動き（敵を倒したときだけ init で作る） */
+    this.tally = null;
     /** @type {boolean} 決着（負け）・敵を倒したときの効果音を鳴らし済みか（音を鳴らす・中断データを消すのを1回に限るためだけに使い、演出の進み方には使わない） */
     this.outcomeSePlayed = false;
     /** @type {boolean} この攻防で HP が 0 になって BGM を止め済みか（止めるのを1回に限るためだけに使う） */
@@ -79,6 +83,7 @@ export class BattleShowScene extends Scene {
       result: this.result,
       before: this.before,
     });
+    this.tally = this.result.defeat !== null ? new DefeatTally(defeatScoreLines(this.result.defeat.score).length) : null;
   }
 
   /**
@@ -122,7 +127,7 @@ export class BattleShowScene extends Scene {
   }
 
   /**
-   * 演出の時計に dt に倍率（speedRate）を掛けた時間を足し（ヒットストップ・音のきっかけ・BGM を止める時刻を含む演出の全体が同じ割合で速くなる。攻防の結果は変わらない）、その間に起きた攻防のきっかけの効果音を鳴らし、HP が 0 になったら BGM を止め、演出が終わったとき（決着・敵を倒したとき、1回だけ）に負けの音（敵を倒したときは敵を倒した音）を鳴らし、負けの結果が出ていれば中断データを消す。決着も敵の撃破もしていなければ間の後に次のフェーズへ進めて戻る。
+   * 演出の時計に dt に倍率（speedRate）を掛けた時間を足し（ヒットストップ・音のきっかけ・BGM を止める時刻を含む演出の全体が同じ割合で速くなる。攻防の結果は変わらない）、演出が終わった後だけ敵を倒したときの内訳の動きを同じ時間で進め、その間に起きた攻防のきっかけの効果音を鳴らし、HP が 0 になったら BGM を止め、演出が終わったとき（決着・敵を倒したとき、1回だけ）に負けの音（敵を倒したときは敵を倒した音）を鳴らし、負けの結果が出ていれば中断データを消す。決着も敵の撃破もしていなければ間の後に次のフェーズへ進めて戻る。
    * @param {number} dt 1ティックの長さ（ミリ秒）
    * @returns {void}
    */
@@ -132,6 +137,7 @@ export class BattleShowScene extends Scene {
       playBattleCueSe(type, this.before.enemyTypeId, this.result.enemyAction.variant);
     }
     this.stopBgmOnKnockout();
+    if (this.tally !== null && this.director.isFinished()) this.tally.update(dt * this.speedRate);
     if (this.director.isFinished() && !this.outcomeSePlayed) {
       this.outcomeSePlayed = true;
       playOutcomeSe(this.result.outcome, this.result.defeat);
@@ -143,7 +149,7 @@ export class BattleShowScene extends Scene {
   }
 
   /**
-   * 押したとき（'down'）だけ反応する。終わっていれば決着のときタイトルへ、敵を倒したときは3択の画面へ（goToUpgradeChoice）、終わっていなければ何もしない（早送り・スキップはない）。
+   * 押したとき（'down'）だけ反応する。終わっていれば決着のときタイトルへ、敵を倒したときは内訳が出そろった後だけ3択の画面へ（goToUpgradeChoice）、終わっていなければ・内訳が出そろう前は何もしない（早送り・スキップはない）。
    * @param {{ type: string, x: number, y: number }} pointer ポインタ入力
    * @returns {void}
    */
@@ -152,7 +158,7 @@ export class BattleShowScene extends Scene {
     if (!this.director.isFinished()) return;
     if (this.game.isOver()) {
       Engine.changeScene(this.createTitle());
-    } else if (this.result.defeat !== null && this.game.canBeginUpgradeChoice()) {
+    } else if (this.result.defeat !== null && this.tally.isComplete() && this.game.canBeginUpgradeChoice()) {
       this.goToUpgradeChoice();
     }
   }
@@ -166,7 +172,7 @@ export class BattleShowScene extends Scene {
   draw(ctx, layer) {
     if (layer !== this.layer) return;
     const look = this.director.view();
-    drawBattleShow(ctx, this.layout.battle, this.game, this.result, look);
+    drawBattleShow(ctx, this.layout.battle, this.game, this.result, look, this.tally === null ? null : this.tally.look());
     drawActionGaugeLabel(ctx, this.layout.actionGauge, this.game.actionUpgradeStatus());
     if (look.finished && this.result.outcome !== null) {
       drawResult(ctx, this.layout.result, this.result.outcome, this.game.gameStats());
