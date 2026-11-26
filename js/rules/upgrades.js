@@ -84,7 +84,7 @@ export function takenUpgradeList(config, state) {
 
 /**
  * 「強化」タブに出す行（一覧の順。回数 1 以上で、効き方の `status` の `shown` が真の種類だけ）。
- * @param {{ config: Object, upgrades: UpgradeState, castle: { hp: number, maxHp: number } }} game ゲーム
+ * @param {{ config: Object, upgrades: UpgradeState, castle: { hp: number, maxHp: number }, eliteStatus: () => Object }} game ゲーム（`eliteStatus` は精鋭の強化の `status` が読む）
  * @returns {UpgradeRow[]} 行の並び
  */
 export function takenUpgradeRows(game) {

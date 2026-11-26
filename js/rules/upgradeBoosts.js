@@ -1,5 +1,5 @@
 /**
- * 責務: 取った強化から、札の +◯・放つ計算の足し分・ターンの始まりの行動の足し分（発動の抽選を含む）・手札の枠の数を求める（ルール層）。
+ * 責務: 取った強化から、札の +◯・放つ計算の足し分・ターンの始まりの行動の足し分（発動の抽選を含む）・手札の枠の数・精鋭の確率と能力を求める（ルール層）。
  * 種類ごとの分岐は効き方の表に任せ、ここは表の口を引いて足すだけ。乱数は渡されたものだけを使う。
  */
 
@@ -104,6 +104,58 @@ export function turnUpgradeActions(config, state, battleActionBonus, random) {
   let chanceActions = 0;
   if (percent > 0 && random() < percent / 100) chanceActions = actions;
   return { battleActions: battleActionBonus, chanceActions };
+}
+
+/**
+ * ゲージ1つぶんの精鋭の状態。
+ * @typedef {Object} EliteStatus
+ * @property {number} percent 精鋭になる確率の百分率（全種類の `eliteChance` のそのゲージの合計）。
+ * @property {number} power 精鋭の能力（`config.eliteBasePower` + 全種類の `elitePower` のそのゲージの合計）。
+ * @property {number} points 精鋭1体のポイント（兵1人 = 1 ポイントに能力を足した 1 + power）。
+ * @property {boolean} capped 確率が 0 より大きく、そのゲージの確率が 0 より大きい種類がすべて上限に着いているか。
+ * @property {boolean} raised 能力が初めの値より大きいか（能力の強化を取っているか）。
+ */
+
+/**
+ * ゲージごとの精鋭の確率・能力・1体のポイント（全種類の `eliteChance`・`elitePower` の合計）。
+ * @param {{ gauges: readonly string[], eliteBasePower: number, upgrades: Object }} config ルールの設定
+ * @param {import('./upgrades.js').UpgradeState} state 取った強化の状態
+ * @returns {Object<string, EliteStatus>} ゲージ → 精鋭の状態（`config.gauges` の全キー）
+ */
+export function eliteStatusOf(config, state) {
+  const percent = {};
+  const power = {};
+  const capped = {};
+  for (const gauge of config.gauges) {
+    percent[gauge] = 0;
+    power[gauge] = config.eliteBasePower;
+    capped[gauge] = true;
+  }
+  for (const id of upgradeIds(config)) {
+    const spec = upgradeSpecOf(config, id);
+    const effect = effectOf(spec);
+    const taken = upgradeTakenOf(state, id);
+    const chances = effect.eliteChance(spec, taken);
+    for (const gauge of Object.keys(chances)) {
+      if (chances[gauge] > 0) {
+        percent[gauge] += chances[gauge];
+        if (!effect.isCapped(spec, taken)) capped[gauge] = false;
+      }
+    }
+    const powers = effect.elitePower(spec, taken);
+    for (const gauge of Object.keys(powers)) power[gauge] += powers[gauge];
+  }
+  const result = {};
+  for (const gauge of config.gauges) {
+    result[gauge] = {
+      percent: percent[gauge],
+      power: power[gauge],
+      points: 1 + power[gauge],
+      capped: percent[gauge] > 0 && capped[gauge],
+      raised: power[gauge] > config.eliteBasePower,
+    };
+  }
+  return result;
 }
 
 /**

@@ -106,15 +106,16 @@
  * @property {string} slot 属する枠の識別子（`upgradeSlots` のキー）。
  * @property {number} weight 枠の中で選ばれる重み（0 以上。0 なら出ない）。
  * @property {string} effect 効き方の種類（`upgradeEffects.js` の `UPGRADE_EFFECTS` のキー）。
- * @property {Readonly<AmountRangeSpec>} [range] 3択が出たときに抽選する量の幅（'castleMaxHp'・'actionChance'。後者は発動率の百分率の幅）。
- * @property {string} [gauge] ターンの頭に足すゲージの識別子（'autoTroop' のみ）。
- * @property {number} [amount] 取った1回あたりの量（'autoTroop'・'cardSuit'・'cardRank'・'allSuitsBoost'・'comboBoost'・'battleActions'・'handSlot' が使う）。
+ * @property {Readonly<AmountRangeSpec>} [range] 3択が出たときに抽選する量の幅（'castleMaxHp'・'actionChance'・'eliteChance'。後ろ2つは確率の百分率の幅）。
+ * @property {string} [gauge] 効くゲージの識別子（'autoTroop'＝ターンの頭に足すゲージ、'eliteChance'・'elitePower'＝精鋭になるゲージ）。
+ * @property {number} [amount] 取った1回あたりの量（'autoTroop'・'cardSuit'・'cardRank'・'allSuitsBoost'・'comboBoost'・'battleActions'・'handSlot'・'elitePower' が使う）。
  * @property {string} [after] この強化の種類が上限に着いた後だけ出す（`upgrades` のキー）。
+ * @property {string} [requires] この強化の種類を1回以上取っているときだけ出す（`upgrades` のキー）。
  * @property {string} [suit] 札の +◯ を足すスート（'cardSuit' のみ）。
  * @property {number} [rank] 札の +◯ を足す数字（'cardRank' のみ）。
  * @property {number} [maxCount] 取れる回数の上限（'allSuitsBoost'・'comboBoost'・'handSlot' のみ）。
  * @property {number} [previewCards] 選択肢の説明に出す束の枚数（'comboBoost' のみ）。
- * @property {number} [maxPercent] 発動率の上限の百分率（'actionChance' のみ）。
+ * @property {number} [maxPercent] 発動率・精鋭の確率の上限の百分率（'actionChance'・'eliteChance'）。
  * @property {number} [actions] 発動で増える行動の数（'actionChance' のみ）。
  */
 
@@ -143,6 +144,7 @@
  * @property {Readonly<Object<string, number>>} upgradeSlots 3択の枠の識別子から枠の重みへの対応（書いた順が枠の並び）。
  * @property {number} upgradeChoiceCount 3択の候補の数。
  * @property {number} castleRepairPercent 城の修理で戻す、最大 HP に対する百分率（整数。量は切り捨て）。
+ * @property {number} eliteBasePower 精鋭の能力の初めの値（精鋭1体のポイント = 1 + 能力）。
  * @property {Readonly<Object<string, Readonly<UpgradeSpec>>>} upgrades 強化の種類の識別子から設定への対応（書いた順が一覧の並び）。
  */
 
@@ -294,6 +296,7 @@ export const RULES = Object.freeze({
   upgradeSlots: Object.freeze({ castle: 1, troop: 1, card: 1, special: 0.5 }),
   upgradeChoiceCount: 3,
   castleRepairPercent: 30,
+  eliteBasePower: 1,
   upgrades: Object.freeze({
     castleMaxHp: Object.freeze({
       slot: 'castle',
@@ -304,6 +307,54 @@ export const RULES = Object.freeze({
     autoSword: Object.freeze({ slot: 'castle', weight: 2, effect: 'autoTroop', gauge: 'attack', amount: 1 }),
     autoShield: Object.freeze({ slot: 'castle', weight: 2, effect: 'autoTroop', gauge: 'defense', amount: 1 }),
     autoHammer: Object.freeze({ slot: 'castle', weight: 2, effect: 'autoTroop', gauge: 'heal', amount: 1 }),
+    eliteSword: Object.freeze({
+      slot: 'troop',
+      weight: 2,
+      effect: 'eliteChance',
+      gauge: 'attack',
+      range: Object.freeze({ min: 5, max: 10 }),
+      maxPercent: 50,
+    }),
+    eliteSwordPower: Object.freeze({
+      slot: 'troop',
+      weight: 1,
+      effect: 'elitePower',
+      gauge: 'attack',
+      amount: 1,
+      requires: 'eliteSword',
+    }),
+    eliteShield: Object.freeze({
+      slot: 'troop',
+      weight: 2,
+      effect: 'eliteChance',
+      gauge: 'defense',
+      range: Object.freeze({ min: 5, max: 10 }),
+      maxPercent: 50,
+    }),
+    eliteShieldPower: Object.freeze({
+      slot: 'troop',
+      weight: 1,
+      effect: 'elitePower',
+      gauge: 'defense',
+      amount: 1,
+      requires: 'eliteShield',
+    }),
+    eliteHammer: Object.freeze({
+      slot: 'troop',
+      weight: 2,
+      effect: 'eliteChance',
+      gauge: 'heal',
+      range: Object.freeze({ min: 5, max: 10 }),
+      maxPercent: 50,
+    }),
+    eliteHammerPower: Object.freeze({
+      slot: 'troop',
+      weight: 1,
+      effect: 'elitePower',
+      gauge: 'heal',
+      amount: 1,
+      requires: 'eliteHammer',
+    }),
     swordCards: Object.freeze({ slot: 'card', weight: 0.5, effect: 'cardSuit', suit: 'sword', amount: 1 }),
     shieldCards: Object.freeze({ slot: 'card', weight: 0.5, effect: 'cardSuit', suit: 'shield', amount: 1 }),
     hammerCards: Object.freeze({ slot: 'card', weight: 0.5, effect: 'cardSuit', suit: 'potion', amount: 1 }),

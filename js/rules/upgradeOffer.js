@@ -1,5 +1,5 @@
 /**
- * 3択の候補の抽選（枠 → 枠の中の強化 → 足りなければ埋める → 値。設定の `after` の強化が上限の後だけ出す）と、候補の形の確かめ（ルール層。渡された乱数だけを使う）。
+ * 3択の候補の抽選（枠 → 枠の中の強化 → 足りなければ埋める → 値。設定の `after` の強化が上限の後・`requires` の強化を1回以上取った後だけ出す）と、候補の形の確かめ（ルール層。渡された乱数だけを使う）。
  */
 
 import { effectOf } from './upgradeEffects.js';
@@ -37,7 +37,7 @@ export function pickWeighted(weights, random) {
 }
 
 /**
- * 3択の候補を抽選する。乱数の順: 枠（1つにつき1回）→ 枠の中の強化（1つにつき1回）→ 足りなければ埋める（1つにつき1回）→ 値（効き方の `roll`）。
+ * 3択の候補を抽選する（出せる強化は、重み > 0・`canOffer` が真・`after` があればその強化が上限・`requires` があればその強化を1回以上取っている）。乱数の順: 枠（1つにつき1回）→ 枠の中の強化（1つにつき1回）→ 足りなければ埋める（1つにつき1回）→ 値（効き方の `roll`）。
  * @param {{ upgrades: Object, upgradeSlots: Object<string, number>, upgradeChoiceCount: number }} config ルールの設定
  * @param {import('./upgrades.js').UpgradeState} state 取った強化の状態
  * @param {() => number} random 0以上1未満を返す乱数の関数
@@ -48,6 +48,7 @@ export function drawUpgradeChoices(config, state, random) {
   const offerable = upgradeIds(config).filter((id) => {
     const spec = upgradeSpecOf(config, id);
     if (spec.weight <= 0 || !effectOf(spec).canOffer(spec, upgradeTakenOf(state, id))) return false;
+    if (spec.requires !== undefined && upgradeTakenOf(state, spec.requires).count <= 0) return false;
     return spec.after === undefined || isUpgradeCapped(config, state, spec.after);
   });
   const slots = Object.keys(config.upgradeSlots).filter(

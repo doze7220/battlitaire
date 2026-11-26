@@ -77,6 +77,40 @@ function suitCardsText(suitName) {
 }
 
 /**
+ * 精鋭の確率の強化の文字を作る。
+ * @param {string} suitName スートの名前（「剣」など）
+ * @returns {Readonly<UpgradeTextSpec>} 文字の定義
+ */
+function eliteChanceText(suitName) {
+  const name = `${suitName}の精鋭`;
+  return Object.freeze({
+    name: `${name}の確率`,
+    choice: (value, preview) => ({
+      title: `${name} +${value}%`,
+      detail: `${suitName}の兵が精鋭になる確率 ${preview.before}% → ${preview.after}%`,
+    }),
+    taken: (row) => `${name} ${row.value}%・能力 +${row.limit}`,
+  });
+}
+
+/**
+ * 精鋭の能力の強化の文字を作る。
+ * @param {string} suitName スートの名前（「剣」など）
+ * @returns {Readonly<UpgradeTextSpec>} 文字の定義
+ */
+function elitePowerText(suitName) {
+  const name = `${suitName}の精鋭`;
+  return Object.freeze({
+    name: `${name}の能力`,
+    choice: (value, preview) => ({
+      title: `${name}の能力 +${value}`,
+      detail: `${name} ${preview.before}ポイント → ${preview.after}ポイント`,
+    }),
+    taken: (row) => `${name}の能力 +${row.value}`,
+  });
+}
+
+/**
  * 数字の札の強化の文字を作る。
  * @param {number} rank 数字
  * @returns {Readonly<UpgradeTextSpec>} 文字の定義
@@ -109,6 +143,12 @@ export const UPGRADE_TEXTS = Object.freeze({
   autoSword: autoTroopText('毎ターン 剣の兵'),
   autoShield: autoTroopText('毎ターン 盾の兵'),
   autoHammer: autoTroopText('毎ターン ハンマーの兵'),
+  eliteSword: eliteChanceText('剣'),
+  eliteSwordPower: elitePowerText('剣'),
+  eliteShield: eliteChanceText('盾'),
+  eliteShieldPower: elitePowerText('盾'),
+  eliteHammer: eliteChanceText('ハンマー'),
+  eliteHammerPower: elitePowerText('ハンマー'),
   swordCards: suitCardsText('剣'),
   shieldCards: suitCardsText('盾'),
   hammerCards: suitCardsText('ハンマー'),

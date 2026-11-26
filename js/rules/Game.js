@@ -1,7 +1,7 @@
 /**
  * 責務: ゲーム全体の状態（山札・捨て札・列・手札・ゲージ・行動回数・フェーズと段階・城・敵）の保持と、
  * 問い合わせ・操作（置く・捨てる・放つ・手札に入れる・手札から置く・束を移す・攻防・次のフェーズ）の提供。
- * ステージの番号・今の敵・結果の集計・取った強化と3択の段階・この戦闘の間の行動の足し分を持ち、放つ計算とターンの始まりの行動に強化の足し分を渡す。攻防では札の燃やしを反映する。操作は「何が起きたか」を返す。
+ * ステージの番号・今の敵・結果の集計・取った強化と3択の段階・この戦闘の間の行動の足し分・ゲージごとの精鋭の数と上振れを持ち、放つ計算とターンの始まりの行動に強化の足し分を渡す。攻防では札の燃やしを反映する。操作は「何が起きたか」を返す。
  */
 
 import { RULES } from './config.js';
@@ -9,7 +9,8 @@ import { createDecks, takeTop, refillEmptyDecks } from './piles.js';
 import { createColumns, placeableColumnIndices, runStartIndex } from './columns.js';
 import { createHand, isEmptySlot, hasCardInSlot } from './hand.js';
 import { computeRelease } from './release.js';
-import { cardBonusOf, releaseBoostOf, actionChanceOf, turnUpgradeActions } from './upgradeBoosts.js';
+import { cardBonusOf, releaseBoostOf, actionChanceOf, turnUpgradeActions, eliteStatusOf } from './upgradeBoosts.js';
+import { createEliteState } from './elites.js';
 import { createCastle, createEnemy } from './combatants.js';
 import {
   planBehaviorAction,
@@ -114,6 +115,8 @@ export class Game {
     /** @type {Object<string, number>} ゲージ（`config.gauges` の順） */
     this.gauges = {};
     for (const gauge of config.gauges) this.gauges[gauge] = 0;
+    /** @type {import('./elites.js').EliteState} ゲージごとの精鋭の数と上振れ（ターンの頭にゲージと一緒に 0 に戻る） */
+    this.elites = createEliteState(config);
     /** @type {number} 基本の行動回数 */
     this.actionsMax = config.baseActions;
     /** @type {number} 残りの行動回数 */
@@ -448,6 +451,22 @@ export class Game {
   }
 
   /**
+   * ゲージごとの精鋭の確率・能力・1体のポイント（取った強化から。状態は変えない）。
+   * @returns {Object<string, import('./upgradeBoosts.js').EliteStatus>} ゲージ → 精鋭の状態
+   */
+  eliteStatus() {
+    return eliteStatusOf(this.config, this.upgrades);
+  }
+
+  /**
+   * ゲージごとの精鋭の数と上振れ（写し。書き換えてもゲームの状態に影響しない）。
+   * @returns {import('./elites.js').EliteState} ゲージ → `{ count, extra }`
+   */
+  eliteBoost() {
+    return structuredClone(this.elites);
+  }
+
+  /**
    * 札の +◯（取った強化から求める。札そのものは書き換えない。山札・手札・列・捨て札のどこにある札でも同じ）。
    * @param {{ suit: string, rank: number }} card 札
    * @returns {number} 札の +◯
@@ -694,6 +713,7 @@ export class Game {
     const start = computePhaseStart(this.gauges, this.config);
     this.phase += 1;
     this.gauges = start.gauges;
+    this.elites = createEliteState(this.config);
     const autoTroops = this.autoTroopGains();
     for (const gauge of Object.keys(autoTroops)) {
       this.gauges[gauge] = (this.gauges[gauge] ?? 0) + autoTroops[gauge];

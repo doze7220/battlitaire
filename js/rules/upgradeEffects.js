@@ -1,5 +1,5 @@
 /**
- * 強化の「効き方の種類」ごとの表（出せるか・上限・値の抽選・DEBUG の値・取る・外す・足し分・札の +◯・発動率・手札の枠・取る前と後の値・「強化」タブの値）。
+ * 強化の「効き方の種類」ごとの表（出せるか・上限・値の抽選・DEBUG の値・取る・外す・足し分・札の +◯・発動率・手札の枠・精鋭の確率と能力・取る前と後の値・「強化」タブの値）。
  * 強化の種類の識別子では分岐せず、設定の `effect` でこの表を引く（ルール層。渡された乱数だけを使う）。
  */
 
@@ -48,6 +48,7 @@ import { growHand, shrinkHand } from './hand.js';
  * @property {Array} hand 手札（枠の並び）。
  * @property {Array} discard 捨て札。
  * @property {number} battleActionBonus この戦闘の間の行動の足し分。
+ * @property {() => Object<string, import('./upgradeBoosts.js').EliteStatus>} eliteStatus ゲージごとの精鋭の確率・能力・ポイントの問い合わせ（状態は変えない）。
  */
 
 /**
@@ -66,6 +67,8 @@ import { growHand, shrinkHand } from './hand.js';
  * @property {(spec: Object, taken: UpgradeTaken) => number} allSuitsExtra 4スートそろいの足し分。
  * @property {(spec: Object, taken: UpgradeTaken) => ChanceActions} actionChance ターンの始まりの行動の発動率と増える数。
  * @property {(spec: Object, taken: UpgradeTaken) => number} handSlots 手札の枠の足し分。
+ * @property {(spec: Object, taken: UpgradeTaken) => Object<string, number>} eliteChance 精鋭になる確率の百分率（ゲージ → 百分率）。
+ * @property {(spec: Object, taken: UpgradeTaken) => Object<string, number>} elitePower 精鋭の能力の足し分（ゲージ → 量）。
  * @property {(game: UpgradeTarget, spec: Object, taken: UpgradeTaken) => UpgradeStatus} status 「強化」タブの行に出すか・値。
  * @property {(game: UpgradeTarget, spec: Object, taken: UpgradeTaken, value: number) => UpgradePreview} preview 取る前と後の値（状態は変えない）。
  */
@@ -86,6 +89,8 @@ export const EFFECT_DEFAULTS = Object.freeze({
   allSuitsExtra: () => 0,
   actionChance: () => ({ percent: 0, actions: 0 }),
   handSlots: () => 0,
+  eliteChance: () => ({}),
+  elitePower: () => ({}),
   status: (game, spec, taken) => ({ shown: true, value: taken.amount, limit: 0 }),
 });
 
@@ -186,6 +191,40 @@ export const UPGRADE_EFFECTS = Object.freeze({
       after: taken.amount + value,
       actions: spec.actions,
     }),
+  }),
+  /**
+   * 精鋭の確率（放った兵が精鋭になる確率。ゲージごと）。取った記録の `amount` がそのまま確率の百分率になる。
+   * `preview`・`status` は自分の行の取った記録と、ゲームの合計（`eliteStatus()`）を読む（同じゲージの確率の行・能力の行は1つずつの前提）。
+   */
+  eliteChance: Object.freeze({
+    ...EFFECT_DEFAULTS,
+    canOffer: (spec, taken) => taken.amount < spec.maxPercent,
+    isCapped: (spec, taken) => taken.amount >= spec.maxPercent,
+    roll: (spec, random, taken) => Math.min(rollAmount(spec.range, random), spec.maxPercent - taken.amount),
+    fixedValue: (spec, taken) => Math.min(spec.range.min, spec.maxPercent - taken.amount),
+    eliteChance: (spec, taken) => ({ [spec.gauge]: taken.amount }),
+    preview: (game, spec, taken, value) => ({ before: taken.amount, after: taken.amount + value }),
+    status: (game, spec, taken) => ({
+      shown: true,
+      value: taken.amount,
+      limit: game.eliteStatus()[spec.gauge].power,
+    }),
+  }),
+  /**
+   * 精鋭の能力（精鋭1体のポイントに足す量。ゲージごと。上限なし）。乱数は呼ばない。
+   * `preview` はゲームの合計（`eliteStatus()`）から精鋭1体のポイントの前後を求める（同じゲージの確率の行・能力の行は1つずつの前提）。
+   * 「強化」タブの行は確率の行に能力を並べるので、この行は出さない。
+   */
+  elitePower: Object.freeze({
+    ...EFFECT_DEFAULTS,
+    roll: (spec) => spec.amount,
+    fixedValue: (spec) => spec.amount,
+    elitePower: (spec, taken) => ({ [spec.gauge]: taken.amount }),
+    preview: (game, spec, taken, value) => {
+      const before = game.eliteStatus()[spec.gauge].points;
+      return { before, after: before + value };
+    },
+    status: () => ({ shown: false, value: 0, limit: 0 }),
   }),
   /** 次の戦闘の間の行動（敵を倒すまで毎ターン行動が増える。重ねて取っても足し分は増えない）。 */
   battleActions: Object.freeze({
