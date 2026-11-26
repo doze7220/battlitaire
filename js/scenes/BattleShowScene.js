@@ -1,10 +1,11 @@
 /**
  * 責務: 攻防の演出のシーン。結果を anim に渡して時間を進め、決着後・敵を倒した後のタップだけを受けること（演出の途中のタップでは何もしない）。
- * 終わったら（敵が生きていれば）次のフェーズへ進めて（ターンの始まりを中断データに保存して）戻る／敵を倒したときは内訳が出そろった後のタップで3択を始めて（3択の段階を保存して）3択の画面を積む／決着ならタイトルへ切り替え、負けの結果が出たとき中断データを消し、見た目の値を view に渡して描き、背面の盤面のシーンへ札が燃える段の盤面の見た目を答えること。
+ * 終わったら（敵が生きていれば）次のフェーズへ進めて（ターンの始まりを中断データに保存して）戻る／敵を倒したときは内訳が出そろった後のタップで3択を始めて（3択の段階を保存して）3択の画面を積む／決着ならタイトルへ切り替え、負けの結果が出たとき中断データを消してベストを記録し（bestStore.js）、見た目の値を view に渡して描き、背面の盤面のシーンへ札が燃える段の盤面の見た目を答えること。
  * 攻防のきっかけ・決着と敵の撃破の表示で効果音を鳴らし（soundCues.js）、HP が 0 になった瞬間に BGM を止めること（bgmCues.js）。設定の演出の速さで時間を進めること。
  */
 import { Engine, Scene } from 'oz';
 import { saveSuspend, clearSuspend } from './suspendStore.js';
+import { recordBestScores } from './bestStore.js';
 import { playBattleCueSe, playOutcomeSe } from './soundCues.js';
 import { stopBgmOnKnockout } from './bgmCues.js';
 import { battleSpeedRate } from './settingsStore.js';
@@ -68,10 +69,12 @@ export class BattleShowScene extends Scene {
     this.bgmStopped = false;
     /** @type {number} 演出の時計に足す時間の倍率（設定の演出の速さ。init で攻防ごとに1回読む） */
     this.speedRate = 1;
+    /** @type {{ today: { score: number, isNew: boolean }, best: { score: number, isNew: boolean } }|null} 負けの結果で記録したベスト（負けるまで・デバッグは null） */
+    this.bests = null;
   }
 
   /**
-   * 演出の管理を作る（シーンの操作はしない）。待っていた兵の数（自動兵士の印のある数・待っていた精鋭を含む）を時間割へ渡し、設定の演出の速さの倍率を1回読む（次の攻防から効く。演出の途中ではメニューを開けない）。
+   * 演出の管理を作る（シーンの操作はしない）。待っていた兵の数（自動兵士の印のある数・待っていた精鋭を含む）を時間割へ渡し、設定の演出の速さの倍率を1回読む（次の攻防から効く。演出の途中ではメニューを開けない）。敵を倒したときだけ内訳の動き（DefeatTally）を作る。
    * @returns {void}
    */
   init() {
@@ -127,7 +130,7 @@ export class BattleShowScene extends Scene {
   }
 
   /**
-   * 演出の時計に dt に倍率（speedRate）を掛けた時間を足し（ヒットストップ・音のきっかけ・BGM を止める時刻を含む演出の全体が同じ割合で速くなる。攻防の結果は変わらない）、演出が終わった後だけ敵を倒したときの内訳の動きを同じ時間で進め、その間に起きた攻防のきっかけの効果音を鳴らし、HP が 0 になったら BGM を止め、演出が終わったとき（決着・敵を倒したとき、1回だけ）に負けの音（敵を倒したときは敵を倒した音）を鳴らし、負けの結果が出ていれば中断データを消す。決着も敵の撃破もしていなければ間の後に次のフェーズへ進めて戻る。
+   * 演出の時計に dt に倍率（speedRate）を掛けた時間を足し（ヒットストップ・音のきっかけ・BGM を止める時刻を含む演出の全体が同じ割合で速くなる。攻防の結果は変わらない）、演出が終わった後だけ敵を倒したときの内訳の動きを同じ時間で進め、その間に起きた攻防のきっかけの効果音を鳴らし、HP が 0 になったら BGM を止め、演出が終わったとき（決着・敵を倒したとき、1回だけ）に負けの音（敵を倒したときは敵を倒した音）を鳴らし、負けの結果が出ていれば中断データを消してベストを記録する（bestStore.js。デバッグでは記録しない）。決着も敵の撃破もしていなければ間の後に次のフェーズへ進めて戻る。
    * @param {number} dt 1ティックの長さ（ミリ秒）
    * @returns {void}
    */
@@ -141,7 +144,10 @@ export class BattleShowScene extends Scene {
     if (this.director.isFinished() && !this.outcomeSePlayed) {
       this.outcomeSePlayed = true;
       playOutcomeSe(this.result.outcome, this.result.defeat);
-      if (this.result.outcome !== null) clearSuspend();
+      if (this.result.outcome !== null) {
+        clearSuspend();
+        this.bests = recordBestScores(this.game.seed, this.game.gameStats().score);
+      }
     }
     if (this.result.outcome === null && this.result.defeat === null && this.director.isReadyToLeave() && this.game.canStartNextPhase()) {
       this.goToNextPhase();
