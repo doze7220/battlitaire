@@ -51,12 +51,12 @@
 /**
  * 敵の行動の決まりの設定。
  * @typedef {Object} EnemyBehaviorSpec
- * @property {'steady'|'cycle'|'inhale'|'buildup'|'either'} type 行動の決まりの種類（'steady'＝毎ターン攻撃、'cycle'＝周期の攻撃、'inhale'＝吸い込んでからブレス、'buildup'＝溜めて大攻撃、'either'＝攻撃か防御のどちらか）。
+ * @property {'steady'|'cycle'|'inhale'|'buildup'|'either'|'brood'} type 行動の決まりの種類（'steady'＝毎ターン攻撃、'cycle'＝周期の攻撃、'inhale'＝吸い込んでからブレス、'buildup'＝溜めて大攻撃、'either'＝攻撃か防御のどちらか、'brood'＝親と子の局面ごとの行動）。
  * @property {Readonly<ClawSpec>} [claw] 爪の攻撃（'inhale' のみ）。
  * @property {Readonly<BreathSpec>} [breath] ブレスの攻撃と燃やす札（'inhale' のみ）。
  * @property {number} [inhaleChance] 直前の予告が吸い込む・ブレスでないとき、フェーズごとに吸い込むを予告する確率（0〜1。'inhale' のみ）。
  * @property {number} [cycleLength] 1周期のフェーズ数。最後のフェーズで攻撃、ほかは振りかぶり（'cycle' のみ。1以上の整数）。
- * @property {Readonly<AmountRangeSpec>} [attackRange] 周期の最後のフェーズの攻撃の量の幅（'cycle'）、または毎ターンの・ふつうの攻撃の量の幅（'steady'・'buildup'・'either'）。
+ * @property {Readonly<AmountRangeSpec>} [attackRange] 周期の最後のフェーズの攻撃の量の幅（'cycle'）、または毎ターンの・ふつうの攻撃の量の幅（'steady'・'buildup'・'either'）、子の攻撃の量の幅（'brood'）。
  * @property {Readonly<AmountRangeSpec>} [heavyRange] 大攻撃の量の幅（'buildup' のみ）。
  * @property {number} [chargeChance] 溜めていないターンに溜めるを予告する確率（0〜1。'buildup' のみ）。
  * @property {number} [chargeTurns] 溜めのターン数（1以上の整数。溜めてから大攻撃までのターン数。'buildup' のみ）。
@@ -65,6 +65,18 @@
  * @property {number} [bigGuardChance] 防御だけの行動のうち、大防御にする確率（0〜1。'either' のみ）。
  * @property {Readonly<AmountRangeSpec>} [bigGuardRange] 大防御の防御の量の幅（加算の前。'either' のみ）。
  * @property {Readonly<AttackHealSpec>} [attackHeal] 攻撃の直後の回復（任意。書かなければ回復しない）。
+ * @property {number} [protectChance] 子がいる間、毎ターン「子どもたちを守る」を予告する確率（0〜1。'brood' のみ）。
+ * @property {Readonly<AmountRangeSpec>} [protectRange] 守るの防御の量の幅（加算の前。'brood' のみ）。
+ * @property {Readonly<AmountRangeSpec>} [rushRange] 怒った親の突進の量の幅（'brood' のみ）。
+ * @property {number} [rageChance] 怒りを溜めるを予告する確率（0〜1。'brood' のみ）。
+ * @property {Readonly<AmountRangeSpec>} [bigRushRange] 大突進の量の幅（'brood' のみ）。
+ */
+
+/**
+ * 親と子を持つ敵の設定。
+ * @typedef {Object} EnemyBroodSpec
+ * @property {number} childPercent 子の HP の割合（0〜100 の整数。子 = floor(最大 HP × childPercent / 100)、親は残り）。
+ * @property {Readonly<Object<string, ReadonlyArray<'parent'|'child'>>>} hitOrder 予告の kind から、剣の当たる順への対応。`default` は必須。
  */
 
 /**
@@ -76,6 +88,8 @@
  * @property {number} [unitPoints] 1体が受け持つポイント（1 以上の整数。書かなければ 1。HP・攻撃・防御の量はポイントで書き、この倍数にする）。
  * @property {Readonly<EnemyDefenseSpec>} [defense] 防御（ターンごとの張る確率と量の幅）。行動と別に防御を抽選する敵だけが持つ。
  * @property {Readonly<EnemyBehaviorSpec>} behavior 行動の決まり。
+ * @property {string} [motion] 並びの組の鍵（任意。書かなければ behavior.type）。
+ * @property {Readonly<EnemyBroodSpec>} [brood] 親と子を持つ敵の設定（任意。書かなければ親子でない）。
  */
 
 /**

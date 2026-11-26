@@ -275,7 +275,7 @@ boar: Object.freeze({
 ※ 共通の作業（どのタスクでも行う）: 追加・変更した関数・型・定数・表の行の JSDoc と、ファイル先頭の責務（3行以内。新しいファイルは必ず書く）の記載漏れ・古い説明の残りがないことを確かめる。変更した .js の構文チェック（`node --input-type=module --check < <ファイル>`）。本 RES の詳細作業内容を記入する（確かめの結果を含む）。開発資料に影響が出ることが分かったら、資料本体は直さず『開発資料の更新予定』欄に追記する。確かめは2章「要件5」の要領（一時スクリプトはスクラッチに置き、終わったら消す。`git archive c4d8924` を変更前として比べる。切り替え前の親子の確かめはスクラッチの写しの設定・表で行う）。
 ※ 区切りの順は2章「区切りの順」のとおり。どのタスクの終わりでも起動とプレイは壊れない（タスク11の終わりまでは今の猪のまま遊べる）。
 
-*   [ ] タスク1: ルール層の親子の仕組み（1）— HP の分け方・局面・敵の状態の親と子の HP（猪の設定はまだ今のまま）
+*   [x] タスク1: ルール層の親子の仕組み（1）— HP の分け方・局面・敵の状態の親と子の HP（猪の設定はまだ今のまま）
     *   **対象ファイル** :
         *   `./js/rules/enemyParts.js` : 新規（`ENEMY_SITUATIONS`・`partMaxHps`・`createEnemyParts`・`enemySituationOf`・型 `EnemyParts`・先頭の責務。後のタスクの関数はまだ書かない）
         *   `./js/rules/config.js` : 更新（型だけ。猪の行はまだ変えない）
@@ -420,7 +420,15 @@ boar: Object.freeze({
 
 ### タスク1: ルール層の親子の仕組み（1）— HP の分け方・局面・敵の状態の親と子の HP（猪の設定はまだ今のまま）
 *   **作業内容** :
-    *   （未記入）
+    *   `js/rules/enemyParts.js` を新規作成（先頭の責務・型 `EnemyParts`・`ENEMY_SITUATIONS`・`partMaxHps`・`createEnemyParts`・`enemySituationOf`。何も import しない。`parts` が null/undefined は親子でない扱い）。
+    *   `js/rules/config.js`: 型のみ（`EnemyBehaviorSpec.type` に `'brood'`・項目 `protectChance`/`protectRange`/`rushRange`/`rageChance`/`bigRushRange`・`attackRange` の説明・`EnemyBroodSpec`・`EnemySpec.motion`/`brood`）。猪の行は未変更。
+    *   （監査の修正）`enemyParts.js` の先頭の責務をファイル全体の範囲に、`createEnemy` の `@returns` に `parts`、`EnemyAction.variant` の説明に守る・突進・怒りを溜める・大突進を書き足した。3ファイルの構文チェックを再実施して OK。
+    *   `js/rules/combatants.js`: `Enemy.parts`、`EnemyAction.variant` に `protect`/`rush`/`rage`/`bigRush`、`createEnemy` が `createEnemyParts(spec, maxHp)` を入れる。
+    *   確かめ: 変更した3ファイルの構文チェック OK。(1a)(1b) ステージ 1・2・6・11・16・30・100・500 で `partMaxHps`・`createEnemyParts`・`createEnemy`（写しでなく、一時スクリプトで `RULES.enemies.boar` に `brood` だけ足した spec を渡した。behavior は buildup のまま）が、子 = floor(最大 HP/2)・親 = 残り・合計 = 最大 HP で、見込み（1 = 22/22、30 = 84/83、100 = 268/268）と一致。`createEnemyParts` は brood なしで null。`enemySituationOf` の全場合（null・undefined・together・enraged・young・両方 0 = null）OK。(2) `RULES` のままの8種の `createEnemy` は `parts: null`（ステージ 30）。
+    *   確かめ(2)の後半・(3)（監査の指摘で実施。一時スクリプトはスクラッチに置き、終わって消した。変更前は `git archive c4d8924 js` をスクラッチへ展開して使った）:
+        *   (2) 前半: 8種（goblins・ogres・wolf・boar・skeletons・slime・giant・dragon）× ステージ 1・2・6・11・16・30・100・500 の 64 通りで、変更前と変更後の `createEnemy` の結果が `parts` を除いて完全に同じ（JSON 比較）、変更後の `parts` はすべて `null`。
+        *   (2) 後半: 変更前と変更後の `Game` を同じ乱数の状態・同じ日付の種から作り、同じ操作（置く・捨てる・手札に取る・手札から置く・放つ・攻防・次のフェーズ・3択の開始・3択の選択（強化か修復））を両方へ同時に行って、毎手の戻り値と状態全体（乱数の状態・予告・3択の候補を含む。敵の `parts` だけ除く）を JSON で比べた。放つ頻度を変えた3通り（放つ 0.7・0.9・まったく放たない）× 各30ゲーム = 90 ゲーム、47,377 手、敵を倒した回数 254、3択の選択 254、全ゲームが負けまで（90 回）、最大ステージ 10。すべて一致。予告の種類は attack（爪・ブレス・大攻撃・ふつう）・windup（吸い込む・溜める・ふつう）・guard（ふつう・大防御）を通った。
+        *   (3) 代用の `oz`（`Engine`・`Scene`・`Assets`・`Storage`・`CanvasCache`・`Ui`・`Sound` の最小の代わり）と、`oz` と `assets/` だけ解く `module.register` のローダー、`document`・`location` の代わりで、`js/main.js` の import が成功し、`js/` 配下の 168 ファイルすべても個別に読み込めた（失敗 0）。
 
 ### タスク2: ルール層の親子の仕組み（2）— 行動の決まり `brood` と、予告に局面を渡すこと
 *   **作業内容** :

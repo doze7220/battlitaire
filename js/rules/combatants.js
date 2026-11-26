@@ -3,6 +3,7 @@
  */
 
 import { createBehaviorState } from './enemyBehaviors.js';
+import { createEnemyParts } from './enemyParts.js';
 import { grownMaxHp } from './stageBonus.js';
 import { unitPointsOf } from './unitPoints.js';
 
@@ -12,7 +13,7 @@ import { unitPointsOf } from './unitPoints.js';
  * @property {'attack'|'windup'|'guard'} kind 行動の種類（攻撃・振りかぶり（行動しない。量は 0）・防御だけ（攻撃しない。量は 0。防御の量は `guard`））
  * @property {number} amount 行動の量（攻撃なら攻撃の値、振りかぶり・防御だけなら 0。防御の量・ステージの加算は含まない＝加算の前）。行動の決まりが設定の幅から抽選した値
  * @property {number} [guard] 防御だけの行動が持つ、加算の前の防御の量（任意。予告にするとき `createIntent` が防御に変えて取り除くので、予告には残らない）
- * @property {'claw'|'breath'|'inhale'|'charge'|'heavy'|'bigGuard'} [variant] 行動の中の種類（任意。攻撃の爪・ブレス・大攻撃、振りかぶりの吸い込む・溜める、防御だけの大防御。表示の違いだけで、城へのダメージ・行動の扱いは種類で変わらない）
+ * @property {'claw'|'breath'|'inhale'|'charge'|'heavy'|'bigGuard'|'protect'|'rush'|'rage'|'bigRush'} [variant] 行動の中の種類（任意。攻撃の爪・ブレス・大攻撃、振りかぶりの吸い込む・溜める、防御だけの大防御、親子の敵の守る（防御だけ）・突進・怒りを溜める（振りかぶり）・大突進（攻撃）。表示の違いだけで、城へのダメージ・行動の扱いは種類で変わらない）
  * @property {{ min: number, max: number }} [burn] 行動に付く列の札を燃やす効果の枚数の範囲（任意）
  * @property {boolean} [sureHeal] デバッグで「攻撃して回復」を指定した予告だけが持つ（任意）。攻撃の直後の回復が必ず当たる
  */
@@ -40,6 +41,7 @@ import { unitPointsOf } from './unitPoints.js';
  * @property {number} hp 現在の HP
  * @property {number} maxHp 最大 HP
  * @property {EnemyIntent|null} intent 次の行動の予告（未決定なら null）
+ * @property {import('./enemyParts.js').EnemyParts|null} parts 親と子の HP（親子でない敵は null。親子の敵は hp === parts.parent + parts.child を保つ）
  * @property {object} behaviorState 行動の決まりの状態（steady・either では {}、cycle では { countdown }、inhale では { lastVariant }、buildup では { turnsToHeavy, chargeTurns }）
  */
 
@@ -57,7 +59,7 @@ export function createCastle(config) {
  * @param {string} typeId 敵の種類の識別子
  * @param {import('./config.js').EnemySpec} spec 敵の種類の設定
  * @param {import('./stageBonus.js').StageBonus} bonus ステージの加算量（最大 HP に効く。最大 HP は敵の1体のポイントの倍数に切り捨てる）
- * @returns {Enemy} HP が加算後の最大で、予告が null、決まりの状態が初期値の敵
+ * @returns {Enemy} HP が加算後の最大で、予告が null、決まりの状態が初期値、`parts` が親と子の最大 HP（親子でない敵は null）の敵
  */
 export function createEnemy(typeId, spec, bonus) {
   const maxHp = grownMaxHp(spec.maxHp, bonus, unitPointsOf(spec));
@@ -68,5 +70,6 @@ export function createEnemy(typeId, spec, bonus) {
     maxHp,
     intent: null,
     behaviorState: createBehaviorState(spec.behavior),
+    parts: createEnemyParts(spec, maxHp),
   };
 }
