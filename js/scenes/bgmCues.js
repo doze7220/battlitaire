@@ -1,20 +1,20 @@
 /**
- * 責務: タイトル・ステージの BGM を流し、「はじめる」と HP が 0 になった瞬間に止め、BGM の音量を Sound に渡す（Sound.playBgm・stopBgm・bgmVolume を触るのはここだけ）。
+ * 責務: タイトル・戦闘（ふだん・激昂）の BGM を流し、「はじめる」と HP が 0 になった瞬間に止め、BGM の音量を Sound に渡す（Sound.playBgm・stopBgm・bgmVolume を触るのはここだけ）。
  * シーンから呼ばれる音の補助モジュール（Scene を継承しない）。状態は持たず、ルールの判定はしない。
  */
 import { Sound } from 'oz';
-import { STAGE_BGM, BGM_TIMING } from '../audio/soundConfig.js';
+import { BATTLE_BGM, BGM_TIMING } from '../audio/soundConfig.js';
 
 /** タイトルの曲の名前（`BGM_FILES` の名前）。 @type {string} */
 export const TITLE_BGM = 'title';
 
 /**
- * 敵の種類の識別子から、ステージの曲の名前を引く（純粋関数）。
- * @param {string} typeId 敵の種類の識別子（`game.enemy.typeId`）
- * @returns {string|null} 曲の名前。表にない種類なら null
+ * 敵が激昂しているかから、戦闘の曲の名前を引く（純粋関数）。
+ * @param {boolean} enraged 激昂しているか（`game.enemyRage().enraged`）
+ * @returns {string} 曲の名前（`BGM_FILES` の名前）
  */
-export function stageBgmName(typeId) {
-  return Object.prototype.hasOwnProperty.call(STAGE_BGM, typeId) ? STAGE_BGM[typeId] : null;
+export function battleBgmName(enraged) {
+  return BATTLE_BGM[enraged ? 'enraged' : 'normal'];
 }
 
 /**
@@ -34,14 +34,21 @@ export function stopTitleBgm() {
 }
 
 /**
- * 敵の種類に対応するステージの曲を頭から流す。対応する曲がなければ何もしない。
- * @param {string} typeId 敵の種類の識別子（`game.enemy.typeId`）
+ * 激昂の状態に合う戦闘の曲を流す（ステージの始まり・再開・敵の入れ替え）。同じ曲が流れていれば何もしない（エンジンの決まり）。
+ * @param {boolean} enraged 激昂しているか（`game.enemyRage().enraged`）
  * @returns {void}
  */
-export function playStageBgm(typeId) {
-  const name = stageBgmName(typeId);
-  if (name === null) return;
-  Sound.playBgm(name, { fadeMs: BGM_TIMING.stageFadeInMs });
+export function playBattleBgm(enraged) {
+  Sound.playBgm(battleBgmName(enraged), { fadeMs: BGM_TIMING.stageFadeInMs });
+}
+
+/**
+ * 激昂の状態に合う戦闘の曲へ合わせる（ターンの始まり・DEBUG）。同じ曲が流れていれば何もせず、別の曲ならクロスフェードする。
+ * @param {boolean} enraged 激昂しているか（`game.enemyRage().enraged`）
+ * @returns {void}
+ */
+export function matchBattleBgm(enraged) {
+  Sound.playBgm(battleBgmName(enraged), { fadeMs: BGM_TIMING.rageFadeMs });
 }
 
 /**

@@ -1,5 +1,5 @@
 /**
- * 責務: 効果音と BGM の名前とパスの一覧・SE と BGM の音量の初期値・BGM のフェードと待ち時間・敵の種類 → ステージの曲の表・連鎖の音程の調整値を1か所に凍結して持つ。
+ * 責務: 効果音と BGM の名前とパスの一覧・SE と BGM の音量の初期値・BGM のフェードと待ち時間・激昂していないとき・しているときの戦闘の曲の表・連鎖の音程の調整値を1か所に凍結して持つ。
  * 値だけを持ち、oz も js/ のほかのファイルも import しない。音を鳴らさない。
  */
 
@@ -40,7 +40,7 @@ export const SOUND_FILES = Object.freeze({
 export const BGM_FILES = Object.freeze({
   title: './assets/bgm/title.mp3',
   stage: './assets/bgm/stage.mp3',
-  dragon: './assets/bgm/dragon.mp3',
+  rage: './assets/bgm/dragon.mp3',
 });
 
 /**
@@ -56,20 +56,12 @@ export const SE_VOLUME = 0.7;
 export const BGM_VOLUME = 0.5;
 
 /**
- * 敵の種類の識別子 → ステージの曲の名前（`BGM_FILES` の名前）。
- * 識別子はルール層の値（`game.enemy.typeId`）を文字として書いたもので、`js/rules/` は import しない。
- * @type {Readonly<Record<string, string>>}
+ * 戦闘の曲の名前（`BGM_FILES` の名前）。敵の種類によらず同じ。
+ * - normal: 敵が激昂していないとき
+ * - enraged: 敵が激昂しているとき
+ * @type {Readonly<{normal: string, enraged: string}>}
  */
-export const STAGE_BGM = Object.freeze({
-  goblins: 'stage',
-  ogres: 'stage',
-  wolf: 'stage',
-  boar: 'stage',
-  skeletons: 'stage',
-  slime: 'stage',
-  giant: 'stage',
-  dragon: 'dragon',
-});
+export const BATTLE_BGM = Object.freeze({ normal: 'stage', enraged: 'rage' });
 
 /**
  * 敵の種類の識別子 → 攻防の当たりの音の再生速度 rate（1 で元の高さ、小さいほど低く長い）。表にない敵は 1。試遊で決め直す。
@@ -86,14 +78,16 @@ export const ENEMY_HIT_RATE = Object.freeze({
  * - startFadeOutMs: 「はじめる」でタイトルの曲を止めるフェードアウト
  * - startToStageMs: スタートの音を鳴らしてから最初のステージの曲を始めるまでの待ち時間（スタートの音の長さ 約 1.2 秒に合わせる）
  * - stageFadeInMs: ステージの曲のフェードイン（0 で頭からすぐ）
+ * - rageFadeMs: 激昂の曲とふだんの曲を切り替えるクロスフェードの長さ
  * - knockoutFadeOutMs: HP が 0 になった瞬間に BGM を止めるフェードアウト
- * @type {Readonly<{titleFadeInMs: number, startFadeOutMs: number, startToStageMs: number, stageFadeInMs: number, knockoutFadeOutMs: number}>}
+ * @type {Readonly<{titleFadeInMs: number, startFadeOutMs: number, startToStageMs: number, stageFadeInMs: number, rageFadeMs: number, knockoutFadeOutMs: number}>}
  */
 export const BGM_TIMING = Object.freeze({
   titleFadeInMs: 0,
   startFadeOutMs: 300,
   startToStageMs: 1200,
   stageFadeInMs: 0,
+  rageFadeMs: 1000,
   knockoutFadeOutMs: 300,
 });
 
