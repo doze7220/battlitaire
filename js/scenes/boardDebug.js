@@ -1,5 +1,5 @@
 /**
- * 責務: 盤面のデバッグの口。ルール層のデバッグ用の操作（ルールの値を含む）を呼び、段取りの間の兵の数・ステージの曲・
+ * 責務: 盤面のデバッグの口。ルール層のデバッグ用の操作（ルールの値を含む）を呼び、段取りの間の兵の数・戦闘の曲・
  * ステージの始まりの印を合わせ、DEBUG タブが読む値を答える（Scene を継承しない）。
  */
 import {
@@ -104,19 +104,19 @@ export class BoardDebug {
   }
 
   /**
-   * ルールの値を指定した値にする。見た目は描くときにルール層を読んで合うので、anim・段階の管理の口は呼ばない。
+   * ルールの値を指定した値にする。見た目は描くときにルール層を読んで合うので anim は呼ばず、曲だけ段階の管理の口（`matchRageBgm`）で合わせる（変わったときだけ）。
    * @param {string} id 項目の識別子
    * @param {number} value 新しい値
    */
   setRuleValue(id, value) {
-    setRuleValue(this.game, id, value);
+    if (setRuleValue(this.game, id, value)) this.flow.matchRageBgm(this.game);
   }
 
   /**
-   * ルールの値をすべて `RULES` の値に戻す。
+   * ルールの値をすべて `RULES` の値に戻す。戻したときは、曲を今の激昂の状態に合わせる。
    */
   resetRuleValues() {
-    resetRuleValues(this.game);
+    if (resetRuleValues(this.game)) this.flow.matchRageBgm(this.game);
   }
 
   /**
@@ -233,7 +233,7 @@ export class BoardDebug {
   }
 
   /**
-   * 敵を入れ替える。入れ替わったら、ステージの始まりを出さずにステージの曲を流す。
+   * 敵を入れ替える。入れ替わったら、ステージの始まりを出さずに戦闘の曲を流す。
    * @param {string} typeId 敵の種類の識別子
    */
   switchEnemy(typeId) {
@@ -241,7 +241,7 @@ export class BoardDebug {
   }
 
   /**
-   * ステージを移る。移ったら、ステージの始まりを出さずにステージの曲を流す（敵の入れ替えと同じ）。
+   * ステージを移る。移ったら、ステージの始まりを出さずに戦闘の曲を流す（敵の入れ替えと同じ）。
    * @param {number} delta 移る数（負なら戻る。1 より前には戻れない）
    */
   moveStage(delta) {
@@ -259,11 +259,11 @@ export class BoardDebug {
   }
 
   /**
-   * 今の戦闘のターンの番号を指定した値にする。見た目は描くときにルール層を読んで合うので、anim・段階の管理の口は呼ばない。
+   * 今の戦闘のターンの番号を指定した値にする。見た目は描くときにルール層を読んで合うので anim は呼ばず、曲だけ段階の管理の口（`matchRageBgm`）で合わせる（変わったときだけ）。
    * @param {number} turn 新しい番号（1 以上の整数）
    */
   setBattleTurn(turn) {
-    setBattleTurn(this.game, turn);
+    if (setBattleTurn(this.game, turn)) this.flow.matchRageBgm(this.game);
   }
 
   /**

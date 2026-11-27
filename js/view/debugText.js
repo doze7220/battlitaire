@@ -97,6 +97,8 @@ export const RULE_ITEM_TEXT = Object.freeze({
   splitPercent: '子スライムが生まれる割合',
   riseStar3: '★3 の上がる量',
   riseStar2: '★2 の上がる量',
+  rageFromTurn: '激昂の始まるターン',
+  rageStepPercent: '激昂の上がる量',
 });
 
 /**
@@ -106,6 +108,7 @@ export const RULE_ITEM_TEXT = Object.freeze({
 export const RULE_GROUP_TEXT = Object.freeze({
   castle: '城',
   stageStars: '★の抽選',
+  rage: '激昂',
 });
 
 /**

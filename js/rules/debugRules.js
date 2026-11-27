@@ -6,6 +6,8 @@
 import { RULES } from './config.js';
 import { RULE_ITEMS, ruleItemById } from './debugRuleItems.js';
 import { fitPartsToMax } from './enemyParts.js';
+import { refreshIntent } from './enemyIntent.js';
+import { enemySpecOf } from './enemyTypes.js';
 import { castleMaxHpBonus } from './upgrades.js';
 import { grownMaxHp } from './stageBonus.js';
 import { unitPointsOf } from './unitPoints.js';
@@ -57,6 +59,8 @@ const VALIDATORS = Object.freeze({
   chance: (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1,
   percent: (v) => Number.isInteger(v) && v >= 0 && v <= 100,
   risePercent: (v) => Number.isInteger(v) && v >= 0 && v <= 100,
+  rageTurn: (v) => Number.isInteger(v) && v >= 1,
+  rageStep: (v) => Number.isInteger(v) && v >= 0,
 });
 
 /**
@@ -71,7 +75,7 @@ function isValidValue(kind, value) {
 }
 
 /**
- * すぐ効く値を、城・今の敵の状態に効かせる（城の最大 HP は強化で増えた分を足す。敵の最大 HP は今のステージの加算後。今の HP は上げず、超えるときだけ下げる。親と子を持つ敵は、親と子の HP を新しい最大に合わせ、HP は合計にする）。
+ * すぐ効く値を、城・今の敵の状態に効かせる（激昂の値は今の予告の攻撃の量を数え直す（乱数は呼ばない）。城の最大 HP は強化で増えた分を足す。敵の最大 HP は今のステージの加算後。今の HP は上げず、超えるときだけ下げる。親と子を持つ敵は、親と子の HP を新しい最大に合わせ、HP は合計にする）。
  * @param {import('./Game.js').Game} game ゲーム
  * @param {import('./debugRuleItems.js').RuleItem} item 項目
  * @returns {void}
@@ -83,6 +87,13 @@ function applyNow(game, item) {
     const maxHp = value + castleMaxHpBonus(game.config, game.upgrades);
     game.castle.maxHp = maxHp;
     if (game.castle.hp > maxHp) game.castle.hp = maxHp;
+    return;
+  }
+  if (item.kind === 'rageTurn' || item.kind === 'rageStep') {
+    if (game.enemy.intent) {
+      game.enemy.intent = refreshIntent(
+        enemySpecOf(game.config, game.enemy.typeId), game.enemy.intent, game.battleTurn, game.config.rage);
+    }
     return;
   }
   if (item.group !== game.enemy.typeId) return;
@@ -103,16 +114,16 @@ function applyNow(game, item) {
  * 組が敵の種類の組か（設定の敵の表に識別子があるか）。
  * @param {any} config ルールの設定
  * @param {string} group 組の識別子
- * @returns {boolean} 敵の組なら true（城・★の抽選は false）
+ * @returns {boolean} 敵の組なら true（城・★の抽選・激昂は false）
  */
 function isEnemyGroup(config, group) {
   return Object.prototype.hasOwnProperty.call(config.enemies, group);
 }
 
 /**
- * 組の並びを答える（城 → ★の抽選 → 敵の順）。
+ * 組の並びを答える（城 → ★の抽選 → 激昂 → 敵の順）。
  * @param {any} config ルールの設定（写し）
- * @returns {{ group: string, enemyName: string|null, itemIds: string[] }[]} 組の並び（`enemyName` は敵の組だけ名前、城・★の抽選は null）
+ * @returns {{ group: string, enemyName: string|null, itemIds: string[] }[]} 組の並び（`enemyName` は敵の組だけ名前、城・★の抽選・激昂は null）
  */
 export function ruleGroups(config) {
   const groups = [];

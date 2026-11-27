@@ -8,7 +8,7 @@ import { DEBUG_TEXT, ruleItemText, ruleGroupText, percentText, wholePercentText 
 /**
  * ルールの値の種類ごとのスライダーの範囲と刻み。
  * DEBUG タブのスライダーの範囲で、ルールの値ではない。試遊で決め直す値。
- * `config.js` の値を範囲の外にしたら見直す（敵の最大 HP は刻み 2。奇数の値にしたら見直す）。
+ * `config.js` の値を範囲の外にしたら見直す（敵の最大 HP は刻み 2。奇数の値にしたら見直す。激昂の上がる量は刻み 10 で、表示の倍率が小数第1位に収まる）。
  * @type {Readonly<Record<string, Readonly<{ min: number, max: number, step: number }>>>}
  */
 export const RULE_SLIDERS = Object.freeze({
@@ -19,6 +19,8 @@ export const RULE_SLIDERS = Object.freeze({
   chance: Object.freeze({ min: 0, max: 1, step: 0.05 }),
   percent: Object.freeze({ min: 0, max: 100, step: 5 }),
   risePercent: Object.freeze({ min: 0, max: 50, step: 1 }),
+  rageTurn: Object.freeze({ min: 1, max: 30, step: 1 }),
+  rageStep: Object.freeze({ min: 0, max: 100, step: 10 }),
   cycleLength: Object.freeze({ min: 1, max: 8, step: 1 }),
   chargeTurns: Object.freeze({ min: 1, max: 5, step: 1 }),
   burn: Object.freeze({ min: 0, max: 10, step: 1 }),
@@ -32,6 +34,7 @@ const RULE_FORMATS = Object.freeze({
   chance: percentText,
   percent: wholePercentText,
   risePercent: wholePercentText,
+  rageStep: wholePercentText,
 });
 
 /**

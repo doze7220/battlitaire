@@ -21,10 +21,10 @@ export const TROOP_SLIDER = Object.freeze({ min: 0, max: 99, step: 1 });
 
 /**
  * 戦闘のターンの番号のスライダーの範囲。DEBUG タブのスライダーの範囲で、ルールの値ではない。
- * 疲弊の始まり（21・26 ターン目）を試せる範囲。ふつうに 31 ターン目以降へ進んだときは、つまみが端に描かれ数字は値のまま出る。
+ * 激昂（始まるターンのスライダーの上限 30 まで動かしても、10 ターン先まで試せる範囲）。41 ターン目以降へ進んだときは、つまみが端に描かれ数字は値のまま出る。
  * @type {Readonly<{ min: number, max: number, step: number }>}
  */
-export const TURN_SLIDER = Object.freeze({ min: 1, max: 30, step: 1 });
+export const TURN_SLIDER = Object.freeze({ min: 1, max: 40, step: 1 });
 
 /**
  * 「1 にする」ボタンの HP の値。

@@ -1,5 +1,5 @@
 /**
- * 責務: DEBUG タブで変えられるルールの値の項目の表（RULE_ITEMS）を、`RULES` の形から城・★の抽選と敵の種類・行動の決まりの種類・分裂（子を持つ敵）ごとに組み立てて持つ。
+ * 責務: DEBUG タブで変えられるルールの値の項目の表（RULE_ITEMS）を、`RULES` の形から城・★の抽選・激昂と敵の種類・行動の決まりの種類・分裂（子を持つ敵）ごとに組み立てて持つ。
  * 状態を持たない純粋な表と引く関数（ルール層）。
  */
 
@@ -11,8 +11,8 @@ import { unitPointsOf } from './unitPoints.js';
  * DEBUG タブで変えられるルールの値の項目。
  * @typedef {Object} RuleItem
  * @property {string} id 識別子（例 'castle.maxHp'、'goblins.attack.min'）。
- * @property {string} group 組（'castle'・'stageStars'（★の抽選）か敵の種類の識別子）。
- * @property {string} kind 値の種類（'castleMaxHp'|'enemyMaxHp'|'defense'|'amount'|'chance'|'percent'|'risePercent'|'cycleLength'|'burn'|'chargeTurns'。'percent' は 0〜100 の整数の百分率、'risePercent' は★の抽選の1ステージごとに上がる確率の量（0〜100 の整数の百分率））。
+ * @property {string} group 組（'castle'・'stageStars'（★の抽選）・'rage'（激昂）か敵の種類の識別子）。
+ * @property {string} kind 値の種類（'castleMaxHp'|'enemyMaxHp'|'defense'|'amount'|'chance'|'percent'|'risePercent'|'rageTurn'|'rageStep'|'cycleLength'|'burn'|'chargeTurns'。'percent' は 0〜100 の整数の百分率、'risePercent' は★の抽選の1ステージごとに上がる確率の量（0〜100 の整数の百分率）、'rageTurn' は激昂の始まる戦闘のターン（1 以上の整数）、'rageStep' は激昂の1ターンごとに上がる倍率の量（0 以上の整数の百分率））。
  * @property {string} name 項目の名前の識別子（DEBUG タブが文字を引く）。
  * @property {string} timing 今の敵（城・★の抽選）のときに効く時期（'now'|'nextIntent'|'nextCycle'|'nextCharge'|'nextBattle'|'nextStage'）。
  * @property {string|null} pairId 最小と最大の組の相手の id（組でなければ null）。
@@ -177,7 +177,20 @@ function stageStarItems(rules) {
 }
 
 /**
- * 設定から項目の表を組み立てる（城 → ★の抽選 → 設定に書いた順の敵）。
+ * 激昂の項目（始まるターンと、1ターンごとに上がる倍率の量）を作る。どちらもすぐ効く（今の予告の攻撃の量を数え直す）。
+ * @returns {Readonly<RuleItem>[]} [始まるターン, 上がる量]
+ */
+function rageItems() {
+  return [
+    item('rage.fromTurn', 'rage', 'rageTurn', 'rageFromTurn', 'now', null, null,
+      (c) => c.rage.fromTurn, (c, v) => { c.rage.fromTurn = v; }),
+    item('rage.stepPercent', 'rage', 'rageStep', 'rageStepPercent', 'now', null, null,
+      (c) => c.rage.stepPercent, (c, v) => { c.rage.stepPercent = v; }),
+  ];
+}
+
+/**
+ * 設定から項目の表を組み立てる（城 → ★の抽選 → 激昂 → 設定に書いた順の敵）。
  * @param {any} rules ルールの調整値
  * @returns {readonly Readonly<RuleItem>[]} 項目の並び
  * @throws {Error} 知らない行動の決まりの種類のとき
@@ -187,6 +200,7 @@ function buildItems(rules) {
     item('castle.maxHp', 'castle', 'castleMaxHp', 'maxHp', 'now', null, null,
       (c) => c.castleMaxHp, (c, v) => { c.castleMaxHp = v; }),
     ...stageStarItems(rules),
+    ...rageItems(),
   ];
   for (const typeId of enemyTypeIds(rules)) {
     const behavior = rules.enemies[typeId].behavior;
@@ -205,7 +219,7 @@ function buildItems(rules) {
 }
 
 /**
- * 変えられるルールの値の項目の並び（凍結。城 → ★の抽選 → 敵の順）。
+ * 変えられるルールの値の項目の並び（凍結。城 → ★の抽選 → 激昂 → 敵の順）。
  * @type {readonly Readonly<RuleItem>[]}
  */
 export const RULE_ITEMS = Object.freeze(buildItems(RULES));
