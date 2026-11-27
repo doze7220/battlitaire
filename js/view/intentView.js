@@ -1,13 +1,14 @@
 /**
- * 責務: 敵の頭の上の予告の札（攻撃の側・防御の側の絵と量の数字・ブレス・大攻撃・大突進の目立たせ、量のない行動の「怒り」の文字。右端からはみ出さない）と、攻撃の札の横の子の絵と数の札、その下の数え下ろしの文字の描画。
+ * 責務: 敵の頭の上の予告の札（攻撃の側・防御の側の絵と量の数字・ブレス・大攻撃・大突進の目立たせ、量のない行動の「怒り」の文字。右端からはみ出さない）と、攻撃の札の右に並べる子の絵と数の札・列の印の札（「混乱」。渦巻きの絵と文字）、その下の数え下ろしの文字の描画。
  * 予告の種類 → 絵の表を持つ。状態は変えず、ルール層・anim は実行時に import しない。
  */
 
 import { roundRectPath } from './cardView.js';
-import { intentAmountText, intentBadgeLabel, intentDefenseText, intentMinionText, unknownIntentText, countdownText } from './battleText.js';
+import { intentAmountText, intentBadgeLabel, intentDefenseText, intentMinionText, markLabelText, unknownIntentText, countdownText } from './battleText.js';
 import { intentParts } from './intentParts.js';
 import { INTENT_IDS, drawIntentIcon, drawSpriteCentered } from './spriteView.js';
 import { minionSkinOf } from './minionSkins.js';
+import { markLookOf, drawMarkIcon } from './markLooks.js';
 import { bodyScale, scaledIntentY } from './figureScale.js';
 
 /**
@@ -142,7 +143,38 @@ function drawMinionBadge(ctx, badge, typeId, amount, left, top, w) {
 }
 
 /**
- * 敵の頭の上の予告の札と、その下の数え下ろしを描く。子を持つ敵の予告（minions が 0 より大きい）は、攻撃の札の右に間 badge.minionGap を空けて子の札をもう1枚並べ、2枚の合計の幅で中心を揃える（右端を越えるときは左へ寄せる。数え下ろしは攻撃の札の下）。引数は読むだけで書き換えない。
+ * 列の印の札（印の種類の札の色・渦巻きの絵・印の名前の文字）を1枚描く。表にない印の種類は、ふつうの札の色で絵は「？」。
+ * ctx の設定は内部で save／restore に囲む。
+ * @param {CanvasRenderingContext2D} ctx 描画先
+ * @param {import('./layout.js').IntentBadgeLayout} badge 予告の札の大きさ
+ * @param {string} kind 印の種類
+ * @param {string} label 印の名前の文字
+ * @param {number} left 札の左端の x
+ * @param {number} top 札の上端の y
+ * @param {number} w 札の幅
+ * @returns {void}
+ */
+function drawMarkBadge(ctx, badge, kind, label, left, top, w) {
+  const look = markLookOf(kind);
+  const cy = top + badge.h / 2;
+  ctx.save();
+  roundRectPath(ctx, left, top, w, badge.h, BADGE_CORNER);
+  ctx.fillStyle = look !== null ? look.badgeFill : BADGE_FILL;
+  ctx.fill();
+  ctx.lineWidth = BADGE_STROKE_WIDTH;
+  ctx.strokeStyle = look !== null ? look.badgeStroke : BADGE_STROKE;
+  ctx.stroke();
+  ctx.restore();
+  drawMarkIcon(ctx, kind, left + badge.padX + badge.iconW / 2, cy, badge.iconW);
+  ctx.save();
+  drawOutlinedText(ctx, label, left + badge.padX + badge.iconW + badge.gap, cy, {
+    font: BADGE_LABEL_FONT, align: 'left', color: AMOUNT_COLOR, outlineWidth: AMOUNT_OUTLINE_WIDTH,
+  });
+  ctx.restore();
+}
+
+/**
+ * 敵の頭の上の予告の札と、その下の数え下ろしを描く。右に足す札（子の札、その右に列の印の札）は、攻撃の札の右に間 badge.minionGap を空けて順に並べ、全部の合計の幅で中心を揃える（右端を越えるときは左へ寄せる。数え下ろしは攻撃の札の下）。引数は読むだけで書き換えない。
  * enemy.intent が null、または enemy.hp が 0 以下なら何も描かない（数え下ろしも）。
  * entrance が null でなく visible が偽なら何も描かず、dx が 0 でなければ右へずらして描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
@@ -198,14 +230,23 @@ export function drawEnemyIntent(ctx, battleLayout, enemy, countdown, entrance) {
     side.labelW = ctx.measureText(side.label).width;
     w += badge.gap + side.labelW;
   }
-  let minionAmount = null;
-  let minionW = 0;
+  /** 攻撃・防御の札の右に足す札（左から子の札、印の札）。w は札の幅、draw は左端の x を受けて描く。 */
+  const extras = [];
   if (parts.minions) {
-    minionAmount = intentMinionText(action);
+    const minionAmount = intentMinionText(action);
     ctx.font = AMOUNT_FONT;
-    minionW = badge.padX * 2 + badge.iconW + badge.gap + ctx.measureText(minionAmount).width;
+    const minionW = badge.padX * 2 + badge.iconW + badge.gap + ctx.measureText(minionAmount).width;
+    extras.push({ w: minionW, draw: (x) => drawMinionBadge(ctx, badge, enemy.typeId, minionAmount, x, spotY, minionW) });
   }
-  const totalW = minionAmount === null ? w : w + badge.minionGap + minionW;
+  if (parts.mark) {
+    const markKind = action.mark.kind;
+    const markLabel = markLabelText(markKind);
+    ctx.font = BADGE_LABEL_FONT;
+    const markW = badge.padX * 2 + badge.iconW + badge.gap + ctx.measureText(markLabel).width;
+    extras.push({ w: markW, draw: (x) => drawMarkBadge(ctx, badge, markKind, markLabel, x, spotY, markW) });
+  }
+  let totalW = w;
+  for (const extra of extras) totalW += badge.minionGap + extra.w;
   const left = Math.min(spot.x - totalW / 2, area.x + area.w - badge.edge - totalW);
   const cy = spotY + badge.h / 2;
 
@@ -249,8 +290,10 @@ export function drawEnemyIntent(ctx, battleLayout, enemy, countdown, entrance) {
     cursor += badge.sideGap;
   }
 
-  if (minionAmount !== null) {
-    drawMinionBadge(ctx, badge, enemy.typeId, minionAmount, left + w + badge.minionGap, spotY, minionW);
+  let extraLeft = left + w;
+  for (const extra of extras) {
+    extra.draw(extraLeft + badge.minionGap);
+    extraLeft += badge.minionGap + extra.w;
   }
 
   if (countdown !== null) {

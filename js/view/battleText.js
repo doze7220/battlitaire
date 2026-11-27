@@ -1,6 +1,6 @@
 /**
  * 責務: 敵の行動（爪・吸い込む・ブレス・溜める・大攻撃・突進・怒りを溜める・大突進の種類と防御と子の数を含む）・予告の量の数字・子の数の数字・量の代わりの文字（怒り）・表にない予告の印・決着・敵を倒したときの案内・敵の名前とレベル・激昂の倍率・数え下ろし・回復の量・当たりのダメージの数字・放った区切りの式・4スートそろいの文字を、画面に出す文字に直す。
- * 列の印をひとりでに放つときの呼び（「混乱！」）も文字に直す。計算はせず、量をそのまま文字にする。ルール層は実行時に import しない。
+ * 列の印の名前（「混乱」。予告の札と始まりの文字の頭）と、ひとりでに放つときの呼び（「混乱！」）も文字に直す。計算はせず、量をそのまま文字にする。ルール層は実行時に import しない。
  */
 
 import { intentParts } from './intentParts.js';
@@ -77,6 +77,17 @@ export const MARK_CALL_LABELS = Object.freeze({
   confuse: '混乱！',
 });
 
+/**
+ * 列の印の種類 → 予告の札・始まりの文字に出す印の名前の対応表（表にない種類は「？」）。
+ * @type {Readonly<Record<string, string>>}
+ */
+export const MARK_LABELS = Object.freeze({
+  confuse: '混乱',
+});
+
+/** 始まりの文字の頭に付ける印の名前と本体をつなぐ文字 */
+const MARK_SEPARATOR = ' ＋ ';
+
 /** 敵を倒したときの、タップで次へ進む案内の文字 */
 const DEFEAT_HINT_TEXT = 'タップで次へ';
 
@@ -93,6 +104,15 @@ const UNKNOWN_ACTION_LABEL = '？';
  */
 export function markCallText(kind) {
   return Object.prototype.hasOwnProperty.call(MARK_CALL_LABELS, kind) ? MARK_CALL_LABELS[kind] : UNKNOWN_ACTION_LABEL;
+}
+
+/**
+ * 列の印の種類を、予告の札・始まりの文字に出す印の名前（「混乱」）にする。
+ * @param {string} kind 印の種類
+ * @returns {string} 印の名前。表にない種類は「？」
+ */
+export function markLabelText(kind) {
+  return Object.prototype.hasOwnProperty.call(MARK_LABELS, kind) ? MARK_LABELS[kind] : UNKNOWN_ACTION_LABEL;
 }
 
 /**
@@ -143,9 +163,10 @@ export function defeatHintText() {
 /**
  * 敵の予告を「攻撃 3 ／ 防御 2」「攻撃 4 +子スライム 8」のような文字にする。出す側は intentParts で決め、片方だけならその文字だけ。
  * 子の側が出るときは、攻撃の側（出さないときは空）の後ろに半角の空白をはさんで「+子の名前 数」を続ける。
+ * 列の印があるときは、全体の頭に「混乱 ＋ 」のように印の名前と「 ＋ 」を付ける（「混乱 ＋ 大攻撃 9」「混乱 ＋ 防御 9」）。
  * @param {import('../rules/combatants.js').EnemyIntent} action 敵の予告
  * @param {string|null} [typeId=null] 敵の種類の識別子（子の名前を MINION_LABELS で引く。null・表にない種類は「？」）
- * @returns {string} 攻撃の側（表示名と量。variant が表にあればその表示名。「爪 10」「吸い込む」「ブレス 25」「振りかぶり」。種類が未知なら「？」）に子の側（「+子スライム 8」）を空白で続けたものと、防御の側（「防御 量」）を ` ／ ` でつないだ文字
+ * @returns {string} （列の印があれば頭に「印の名前 ＋ 」）攻撃の側（表示名と量。variant が表にあればその表示名。「爪 10」「吸い込む」「ブレス 25」「振りかぶり」。種類が未知なら「？」）に子の側（「+子スライム 8」）を空白で続けたものと、防御の側（「防御 量」）を ` ／ ` でつないだ文字
  */
 export function enemyActionText(action, typeId = null) {
   const parts = intentParts(action);
@@ -154,7 +175,8 @@ export function enemyActionText(action, typeId = null) {
   if (parts.attack) texts.push(minionText === null ? attackSideText(action) : `${attackSideText(action)} ${minionText}`);
   else if (minionText !== null) texts.push(minionText);
   if (parts.defense) texts.push(`${ACTION_LABELS.defend} ${intentDefenseText(action)}`);
-  return texts.join(SIDE_SEPARATOR);
+  const body = texts.join(SIDE_SEPARATOR);
+  return parts.mark ? `${markLabelText(action.mark.kind)}${MARK_SEPARATOR}${body}` : body;
 }
 
 /**
