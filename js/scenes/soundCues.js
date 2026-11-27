@@ -1,5 +1,5 @@
 /**
- * 責務: 段取り・連鎖・準備終了・BATTLE!・スタート・敵の攻撃の始まり・攻防・決着・敵を倒したときの効果音を決め Sound.playSe で鳴らすこと、効果音の音量を Sound に渡すこと。
+ * 責務: 段取り・連鎖・ひとりでに放つ・準備終了・BATTLE!・スタート・敵の攻撃の始まり・攻防・決着・敵を倒したときの効果音を決め Sound.playSe で鳴らすこと、効果音の音量を Sound に渡すこと。
  * 音量の確かめの音も鳴らす。
  * シーンから呼ばれる音の補助モジュール（Scene を継承しない）。ルールの判定はしない。
  */
@@ -87,6 +87,14 @@ export function planningSeName(prevSelection, step) {
 export function playPlanningSe(prevSelection, step) {
   const name = planningSeName(prevSelection, step);
   if (name !== null) Sound.playSe(name);
+}
+
+/**
+ * ひとりでに放つとき（印の列の束）の音を鳴らす（自分で放つのと同じ音）。
+ * @returns {void}
+ */
+export function playMarkReleaseSe() {
+  Sound.playSe(PLANNING_SE.release);
 }
 
 /**

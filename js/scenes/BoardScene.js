@@ -1,6 +1,6 @@
 /**
  * 責務: 盤面のシーン。入力を受けてルール層の操作を呼び、選択の状態を持ち（扱いは boardSelection.js）、view を呼んで盤面と合図を描くこと。
- * 操作の結果を anim に渡して時間を進め、段階の管理（boardFlow.js）を進めて、TURN の表示で自動兵士を陣地に現し、BATTLE! が終わったら攻防に入り待っていた兵の数（自動兵士の印の数・待っている精鋭を含む）を演出のシーンへ渡し、新しいゲームの始まりを中断データに保存し、中断データがあればそのターンの始まりへ戻して始めること。
+ * 操作の結果を anim に渡して時間を進め、行動を使い切った後に印の列の束をひとりでに放たせ、段階の管理（boardFlow.js）を進めて、TURN の表示で自動兵士を陣地に現し、BATTLE! が終わったら攻防に入り待っていた兵の数（自動兵士の印の数・待っている精鋭を含む）を演出のシーンへ渡し、新しいゲームの始まりを中断データに保存し、中断データがあればそのターンの始まりへ戻して始めること。
  * 3択の段階なら3択の画面を積み、操作・連鎖のきっかけで効果音を鳴らし（soundCues.js）、積んだ演出のシーンから札が燃える段の盤面を読んで描き、TURN の区画でメニューの窓を積み、兵の焼き付けを init で作り destroy で手放すこと。「DEBUG MODE」のレイヤーも描く（debugModeLayer.js）。
  */
 import { Engine, Scene } from 'oz';
@@ -19,7 +19,7 @@ import { EnemyIdle } from '../anim/enemyIdle.js';
 import { releaseGeometry } from '../view/releaseLayout.js';
 import { snapshotBoard, buildPlanningMotion } from '../anim/planningMotion.js';
 import { applyTap, boardUiFor } from './boardSelection.js';
-import { playPlanningSe, playChainSe } from './soundCues.js';
+import { playPlanningSe, playChainSe, playMarkReleaseSe } from './soundCues.js';
 import { BoardFlow } from './boardFlow.js';
 import { createBannerLayout } from '../view/bannerLayout.js';
 import { drawBanner } from '../view/bannerView.js';
@@ -132,7 +132,7 @@ export class BoardScene extends Scene {
   /**
    * 動きの時計に dt（ミリ秒）を足して進める（dt はエンジンが渡した値をそのまま足し、倍率は掛けない。ルール層の状態は変えない）。
    * 放つ演出の時計も進め、進めた直後に、その間に玉に変わった札の序数ごとに連鎖の効果音を鳴らす。
-   * 最後に、札の移動・山札のめくれ・玉に変わる前の札・玉・兵が全部止まっているかを段階の管理（BoardFlow.update）に渡して進め、'battle'（BATTLE! が終わった）と返されたら攻防に入り（startBattle）、'turn'（TURN の表示を出した）と返されたら自動兵士を陣地に現す（ReleaseShow.landAuto。量はルール層の autoTroopGains）。
+   * 最後に、札の移動・山札のめくれ・玉に変わる前の札・玉・兵が全部止まっているかを段階の管理（BoardFlow.update）に渡して進め、'battle'（BATTLE! が終わった）と返されたら攻防に入り（startBattle）、'turn'（TURN の表示を出した）と返されたら自動兵士を陣地に現し（ReleaseShow.landAuto。量はルール層の autoTroopGains）、'mark'（ひとりでに放つ）と返されたら releaseMarked を呼ぶ。
    * 頭で `this.battleShow` を外し（update は最前面のときだけ呼ばれるので、攻防の演出のシーンが外れた後になる）、ゲームが3択の段階（再開・DEBUG の「3択を出す」）なら3択の画面を積んで戻る。
    * @param {number} dt 1ティックの長さ（ミリ秒）
    * @returns {void}
@@ -151,6 +151,44 @@ export class BoardScene extends Scene {
     const flowEvent = this.flow.update(dt, this.game, boardIdle);
     if (flowEvent === 'battle') this.startBattle();
     else if (flowEvent === 'turn') this.releaseShow.landAuto(this.game.autoTroopGains());
+    else if (flowEvent === 'mark') this.releaseMarked();
+  }
+
+  /**
+   * ひとりでに放つ（段階の管理が 'mark' を返したとき）。ルール層の releaseMarked を呼び、放った束を自分で放つのと同じ音・動き・放つ演出で見せる。空振り（放つ束がない）なら何も見せない。
+   * @returns {void}
+   */
+  releaseMarked() {
+    const before = snapshotBoard(this.game);
+    const result = this.game.releaseMarked();
+    if (result === null || result.release === null) return;
+    this.lastResult = result.release;
+    playMarkReleaseSe();
+    this.showPlanningResult(result.release, before);
+  }
+
+  /**
+   * 段取りの操作の結果を、盤面の動き（札の移動・めくれ・詰め直し）と、放つ結果なら放つ演出へ渡す（タップと、ひとりでに放つの共通）。
+   * @param {import('../rules/planningResults.js').PlanningResult} result 操作の結果
+   * @param {import('../anim/planningMotion.js').BoardSnapshot} before 操作の前の盤面の写し
+   * @returns {void}
+   */
+  showPlanningResult(result, before) {
+    const game = this.game;
+    this.animator.start(buildPlanningMotion(result, before, snapshotBoard(game), this.layout));
+    if (result.type === 'release') {
+      this.releaseShow.start(
+        result,
+        releaseGeometry(
+          this.layout,
+          result.columnIndex,
+          result.cards.length,
+          result.segments.map((s) => s.gauge),
+          game.config.muscleConversion.gauge,
+          result.allSuits === null ? [] : result.allSuits.parts.map((p) => p.gauge),
+        ),
+      );
+    }
   }
 
   /**
@@ -221,20 +259,7 @@ export class BoardScene extends Scene {
     playPlanningSe(prevSelection, step);
     if (step.result !== null) {
       this.lastResult = step.result;
-      this.animator.start(buildPlanningMotion(step.result, before, snapshotBoard(game), this.layout));
-      if (step.result.type === 'release') {
-        this.releaseShow.start(
-          step.result,
-          releaseGeometry(
-            this.layout,
-            step.result.columnIndex,
-            step.result.cards.length,
-            step.result.segments.map((s) => s.gauge),
-            game.config.muscleConversion.gauge,
-            step.result.allSuits === null ? [] : step.result.allSuits.parts.map((p) => p.gauge),
-          ),
-        );
-      }
+      this.showPlanningResult(step.result, before);
     }
   }
 

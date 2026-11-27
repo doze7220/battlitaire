@@ -1,5 +1,5 @@
 /**
- * 責務: 盤面のシーンの区切りの段階（スタートの待ち → ステージの始まり → フェーズの始まり → 段取り → 準備終了 → BATTLE!）を管理する。
+ * 責務: 盤面のシーンの区切りの段階（スタートの待ち → ステージの始まり → フェーズの始まり → 段取り → ひとりでに放つ → 準備終了 → BATTLE!）を管理する。
  * ルール層の問い合わせを読み、戦闘の曲（ふだん・激昂。デバッグで入れ替わった敵の曲を含む）・準備終了・BATTLE! の音を鳴らし、BannerShow を進める。中断データから戻した盤面（TURN 2 以降・3択の段階）の始まり方も決める。3択の間は盤面を触らせず、メニューを開かせない。ルールの操作は呼ばない（Scene を継承しない）。
  */
 import { BannerShow } from '../anim/bannerShow.js';
@@ -69,11 +69,12 @@ export class BoardFlow {
    * 2. 合図が出ている → 何もしない。
    * 3. ステージの始まりをまだ出していないステージの番号 → スタートの待ちが残っていれば待ち、0 なら戦闘の曲とステージの始まりを同時に始める。
    * 4. フェーズの始まりをまだ出していない → スタートの待ちが残っていれば待ち（ふつうの流れでは 3 で 0 になっているので待たない。再開の盤面だけここで待つ）、0 なら（再開の曲の約束があれば曲を鳴らし、なければ激昂の状態に合う曲へ合わせて）フェーズの始まりを出し、'turn' を返す（呼ぶ側が自動兵士を陣地に現す）。
-   * 5. 段取りが止まっていて攻防を計算できる → 準備終了を出し、音を鳴らす。
+   * 5. 段取りが止まっていて、ひとりでに放つ印が残っている → 'mark' を返す（呼ぶ側が印の列の束を放つ。準備終了の前。ルールの操作は呼ばない）。
+   * 6. 段取りが止まっていて攻防を計算できる → 準備終了を出し、音を鳴らす。
    * @param {number} dt 経過時間（ミリ秒）
-   * @param {{stageNumber: number, phase: number, enemyRage: function(): {enraged: boolean}, canResolveBattle: function(): boolean}} game ルール層の状態（読むだけ）
+   * @param {{stageNumber: number, phase: number, enemyRage: function(): {enraged: boolean}, canResolveBattle: function(): boolean, canReleaseMarked: function(): boolean}} game ルール層の状態（読むだけ）
    * @param {boolean} boardIdle 札・玉・兵の動きが全部止まっているか
-   * @returns {'battle'|'turn'|null} BATTLE! が終わって攻防に入る時なら 'battle'、フェーズの始まり（TURN）を出した update なら 'turn'、ほかは null
+   * @returns {'battle'|'turn'|'mark'|null} BATTLE! が終わって攻防に入る時なら 'battle'、フェーズの始まり（TURN）を出した update なら 'turn'、ひとりでに放つ時なら 'mark'、ほかは null
    */
   update(dt, game, boardIdle) {
     this.banner.update(dt);
@@ -104,6 +105,7 @@ export class BoardFlow {
       this.banner.showPhase();
       return 'turn';
     }
+    if (boardIdle && game.canReleaseMarked()) return 'mark';
     if (boardIdle && game.canResolveBattle()) {
       this.banner.showReady();
       playReadySe();
