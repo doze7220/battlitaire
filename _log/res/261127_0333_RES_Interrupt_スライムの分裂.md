@@ -413,7 +413,7 @@ export function createMinionPlaces({ groundY, fieldH, figures }) { … }
         *   2章「要件2」の中断データのとおりに書く。関数・型に JSDoc。`suspendData.js` に敵の種類で分岐する if を書かない（形の確かめは `enemySplit.js`）。
         *   確かめ: (1) `RULES` のままで、ターンの始まり・3択の段階で保存して戻し、同じ操作で同じ結果（乱数の状態・`minions` 0 まで）。(2) スクラッチの写しの設定（要件1の行）で、子がいるターン・いないターン・3択の段階を保存して戻し、同じ操作で同じ結果（子の数・予告の `minions` まで）。(3) 版 7 のデータ・形違いの `minions`（2章「要件5」の中断データの並び）は `readSuspendData` が `null` を返し、例外を投げない。(4) 代用の `oz` のローダーで `js/main.js` から辿るモジュールがすべて読み込める。
         *   共通の作業。
-*   [ ] タスク4: 子のスプライトと表と配置 — スプライトのコピー・子の絵の表・子の大きさと待つ場所・兵の見た目と焼き付け
+*   [x] タスク4: 子のスプライトと表と配置 — スプライトのコピー・子の絵の表・子の大きさと待つ場所・兵の見た目と焼き付け
     *   **対象ファイル** :
         *   `./assets/sprites/unit_slime_child.js` : 新規（`unit_slime.js` のコピー。先頭の説明の1行目だけ直す）
         *   `./js/view/spriteView.js` : 更新（import・`SPRITE_IDS.slimeChild`・`SPRITE_TABLE` の行・型）
@@ -525,7 +525,16 @@ export function createMinionPlaces({ groundY, fieldH, figures }) { … }
 
 ### タスク4: 子のスプライトと表と配置 — スプライトのコピー・子の絵の表・子の大きさと待つ場所・兵の見た目と焼き付け
 *   **作業内容** :
-    *   （未記入）
+    *   `assets/sprites/unit_slime_child.js` を `unit_slime.js` からコピー（先頭の説明の1行目だけ「子スライムの仮のスプライト（…）」に）。`spriteView.js` に import・`SPRITE_IDS.slimeChild`（型にも）・`SPRITE_TABLE` の行（スライムと同じ範囲）。`minionSkins.js`（`MINION_SKINS.slime`・`minionSkinOf`）・`minionPlaces.js`（`MINION_PLACES.slime`・`HATCH_RISE`・`createMinionPlaces`）を新規。`layout.js` に `minionPlaces`・`minionSlots`・`troopsFor` の子の陣地（`camps.minion`）と大きさ（`kindSizes.minion`・`minionBorn`）・型・先頭の責務。`troopView.js` に `TROOP_LOOKS.minion`・`minionBorn`・型 `TroopLook.minion`・`drawTroop` の引き方（`minionSkinOf`。識別子の if なし）・`createTroopBakes` の子の焼き付け・先頭の責務。
+    *   確かめ（スクラッチの一時スクリプト。`git archive 6f09332` の展開を変更前として比較。代用の `oz`（`CanvasCache` は記録するだけ）のローダー）:
+        *   (1) `unit_slime_child.js` は `unit_slime.js` と `diff` で2行目（説明の1行目）だけ違う。
+        *   (2) `minionSlots('slime', n)`（n = 1・10・150）はすべて待つ場所 `{x 440, y 205, w 70, h 130}` の中・size 24・i 番目は n によらず同じ。n = 0 は空、`'goblins'` で Error。`troopsFor('slime')` は `camps.minion`（待つ場所と同じ）・`kindSizes` `{minion: 24, minionBorn: 24}` を持ち、ほかを除くと変更前と同じ。ほかの7種（と表にない識別子）の `troopsFor` は変更前と JSON が一致。`createLayout` の戦闘の段のほかの項目（`area`・`castle`・`enemyFigures`・`intentBadge`・`troops`・`hordePlaces` など）も変更前と一致。`hatch` = `{x: 620, y: 333}`（スライムの絵の矩形 x 544.75〜695.25 の中央・足元 335 の 2px 上）。
+        *   重なりの見積もり（実際の値）: 子の体の範囲は x 428〜522・y 181〜335。スライムの絵の左端 544.75 との間は **22.75px**（見積もり約 20）、防御の陣地（x 300〜400）の兵の体の右端 412 との間は **16px**（見積もり約 16）。予告の札（中心 x 620・上端 y 141・高さ 44。縮むと下がる）との重なりは見積もりどおり、2枚の札の左下が子の群れの右上に重なりうる（タスク6で札を足したときに目視。5章の計画時点の記述のとおり）。
+        *   (3) 焼き付けなし・ありの両方で、`drawTroop` を全ての既存の種類（8）× 敵の識別子（6）× 傷・自動・精鋭の5通りで呼んだ代用の `ctx` の呼び出しの並びが変更前と完全に一致。焼き付けは 27 → 28 枚で、増えた1枚だけが `slimeChild`（24px。範囲 x ±13.16・y −22.73〜−1.27。ほかの27枚の範囲は変更前と一致）。`drawTroop(…, 'minion', …, 'slime')` は焼き付けを貼り、焼き付けなしでは `drawTroopFigure(…, 'slimeChild', …)` と同じ呼び出し（103 呼び出し）。`slimeChild` の絵は `slime` の絵と同じ呼び出し。`minionBorn` も同じ焼き付け。`enemyTypeId` を省いても Error なし（既定の体）。
+        *   (4) `js/` の全 172 モジュールのうち 171 が読み込めた（`js/main.js` だけ読み込みで `document` に触れて止まる。置き物の `oz` のためで、読み込みの失敗ではない）。タスク4の変更は画面側の表・配置・`drawTroop` の分岐だけで、どの敵も `minions` が 0・`minion` の兵が名簿に出ないので、今のスライムの見た目は変わらない（上の (2)(3) の一致が根拠）。`BoardScene` の `init`〜`update`〜`draw` の通し実行は、代用の `Ui` 等が大きいため行っていない（タスク9・各画面タスクの確かめで行う）。
+        *   構文チェック: `spriteView.js`・`minionSkins.js`・`minionPlaces.js`・`layout.js`・`troopView.js`・`unit_slime_child.js` ともエラーなし。
+    *   監査の指摘による説明の修正: `layout.js` の `troopsFor` の説明（関数・`BattleLayout` の型）と `TroopLayout.camps` の型（任意の `minion`）、`troopView.js` の `drawTroop` の `enemyTypeId` の説明（子の種類の既定は `slimeChild` の体）を直した（コードの動きは変えていない）。
+    *   開発資料: 追記の必要なし（『開発資料の更新予定』の 1章・2章の予定のとおり）。
 
 ### タスク5: 演出の子の仕組み — 待っていた子・襲う段・生まれる段（ほかの敵の時間割が変わらないことを確かめる）
 *   **作業内容** :
@@ -560,3 +569,4 @@ export function createMinionPlaces({ groundY, fieldH, figures }) { … }
 * （計画時点の要確認）DEBUG のルールの値の項目名は REQ の言葉のまま「子スライムが生まれる割合」にした（項目名の表は敵ごとに引くので、子を持つ敵を足すときに名前を見直す）。
 * （タスク1）敵の `typeId` の識別子は `goblins`・`ogres`・`skeletons` など複数形がある（確かめの切り替えで注意）。`Game.resolveBattle` は子を持たない敵では予告の `minions` が無いので `?? 0`、`split` は `?? null` で渡す。タスク3より前に再開した盤面の敵は `minions` が無いことがあり、`intentOf` も `?? 0` で読む。
 * （タスク3）`js/rules/enemySplit.js` は LF、`suspendData.js` は CRLF の改行（元のまま）。`isEnemyMinionsShape` は予告が `minions` を持つ敵に対し、予告の `minions` が無い場合も通す（タスク1・2 の間に保存されたデータの形はそもそも版 7 で捨てられる）。
+* （タスク4）`layout.js`・`troopView.js` は CRLF、`spriteView.js` ・新規ファイルは LF の改行（元のまま）。`unit_slime_child.js` は `unit_slime.js` と同じ改行の混在（CRLF と LF）をそのままコピーした。焼き付けは `TROOP_LOOKS.minion`・`MINION_SKINS.slime` とも焼き付けの識別子 `slimeChild`・大きさ 24 で1枚を共有する（`minionPlaces.slime.size` を `troops.size`（24）と変えると、`TROOP_LOOKS` の分の 24px も別に焼かれる）。作業用のスクラッチ（`before/` の展開・一時スクリプト）は削除をシステムに止められたため、スクラッチのフォルダに残っている（リポジトリの外）。

@@ -1,5 +1,5 @@
 /**
- * 責務: 状態は変えず、兵（攻撃・防御・修理の兵、敵兵・敵の守り・HP の群れの兵・シールド・炎）を1体ずつ描き、城・敵の絵の足元の y で奥・手前に分けて描くこと。
+ * 責務: 状態は変えず、兵（攻撃・防御・修理の兵、敵兵・敵の守り・HP の群れの兵・子（子スライム）・シールド・炎）を1体ずつ描き、城・敵の絵の足元の y で奥・手前に分けて描くこと。
  * 見た目と大きさごとの焼き付けの一覧を作り、焼き付けがあればそれで描く（描き分けは drawTroop の1か所。自動兵士は薄いオレンジの体・精鋭は青い体）。ルール層・anim は実行時に import しない。
  */
 
@@ -8,6 +8,7 @@ import { gaugeSprite } from './suitStyle.js';
 import { openTroopBakes, findTroopBake } from './troopBakes.js';
 import { ELITE_BODY_COLOR } from './eliteStyle.js';
 import { HORDE_SKINS, hordeSkinOf } from './hordeSkins.js';
+import { MINION_SKINS, minionSkinOf } from './minionSkins.js';
 
 /** 持ち物の大きさの、体の直径に対する割合。 */
 const ITEM_SIZE_RATIO = 0.7;
@@ -31,12 +32,14 @@ const AUTO_FILL_RATIO = 0.84;
  * @property {string|null} item 持ち物の絵
  * @property {string} bake 焼き付けの識別子（同じ見た目の種類は1枚を共有する）
  * @property {boolean} [horde] 群れの敵の兵の種類か（真なら drawTroop の enemyTypeId の群れの絵で描く。この項目の体・持ち物は絵を引けないときの既定）
+ * @property {boolean} [minion] 子（次のターンに持ち越す攻撃のユニット）の兵の種類か（真なら drawTroop の enemyTypeId の子の絵で描く。この項目の体は絵を引けないときの既定）
  * @property {boolean} [eliteTint] 精鋭の青い姿を持つか（真の見た目だけ、drawTroop の elite が効く。自軍の兵）
  * @property {boolean} [autoTint] 自動兵士の薄いオレンジの姿を持つか（真の見た目だけ、drawTroop の auto が効く。自軍の兵）
  */
 
 /**
  * 兵の種類 → 見た目の表。自軍は白い丸に剣・盾・ハンマー、敵の側（enemy・enemyGuard・goblin＝HP の群れ）は群れの敵の絵（持ち物なし。既定はゴブリンの緑の丸。敵の種類ごとの絵は hordeSkins.js）、
+ * minion・minionBorn は子を持つ敵の子（待っている・襲う子と、その攻防で生まれた子。敵の種類ごとの絵は minionSkins.js）、
  * shield はシールドを張る絵の敵（巨人・ドラゴン・スライム）のシールド（盾の絵）、flame はブレスの炎（炎の絵）。
  * @type {Readonly<Object<string, TroopLook>>}
  */
@@ -47,6 +50,8 @@ const TROOP_LOOKS = Object.freeze({
   enemy: Object.freeze({ body: SPRITE_IDS.goblin, item: null, bake: 'goblin', horde: true }),
   enemyGuard: Object.freeze({ body: SPRITE_IDS.goblin, item: null, bake: 'goblin', horde: true }),
   goblin: Object.freeze({ body: SPRITE_IDS.goblin, item: null, bake: 'goblin', horde: true }),
+  minion: Object.freeze({ body: SPRITE_IDS.slimeChild, item: null, bake: 'slimeChild', minion: true }),
+  minionBorn: Object.freeze({ body: SPRITE_IDS.slimeChild, item: null, bake: 'slimeChild', minion: true }),
   shield: Object.freeze({ body: SPRITE_IDS.shield, item: null, bake: 'shield' }),
   flame: Object.freeze({ body: SPRITE_IDS.fire, item: null, bake: 'flame' }),
 });
@@ -186,6 +191,7 @@ function bakeSizes(bake, battleLayout) {
 /**
  * 兵の焼き付けの入れ物を作る。見た目（兵の種類の表と群れの敵の絵の表。焼き付けの識別子）ごとに、大きさごとに1枚、足元を原点に今の大きさ・傾き 0・伸び縮み 1 で描いた絵を焼き付ける。
  * 群れの敵の絵は、その敵の種類の体の大きさ（hordePlaces）でも焼き付け、傷ついた絵（`:wounded`。傷の傾きを含む）も1枚ずつ焼き付ける。
+ * 子の絵（minionSkins）は、その敵の種類の子の大きさ（minionPlaces）で1枚焼き付ける（子は傷つかないので傷ついた絵はなし）。
  * 自軍の兵（autoTint の見た目）は、自動兵士の薄いオレンジの絵（`:auto`）も配置の兵の大きさで1枚ずつ焼き付ける。
  * 自軍の兵（eliteTint の見た目）は、精鋭の青い絵（`:elite`）も同じく1枚ずつ焼き付ける（傷ついた精鋭は直接描く）。
  * 盤面のシーンの init から呼び、戻り値を destroy で dispose() する（Engine.start の後に呼ぶ）。
@@ -238,6 +244,11 @@ export function createTroopBakes(battleLayout) {
     add(HORDE_SKINS[typeId], place.size, false);
     add(HORDE_SKINS[typeId], place.size, true);
   }
+  for (const typeId of Object.keys(MINION_SKINS)) {
+    const place = battleLayout.minionPlaces[typeId];
+    if (place === undefined) throw new Error(`子の大きさと待つ場所の行がありません: ${typeId}`);
+    add(MINION_SKINS[typeId], place.size, false);
+  }
   for (const look of Object.values(TROOP_LOOKS)) {
     if (look.autoTint !== true) continue;
     for (const size of bakeSizes(look.bake, battleLayout)) add(look, size, false, true);
@@ -253,7 +264,7 @@ export function createTroopBakes(battleLayout) {
  * 兵1体を描く。位置・大きさは引数で受ける（兵1体ごとにオブジェクトを作らないため）。
  * 焼き付けがあれば（findTroopBake）その画像を足元を軸に傾け・伸ばして貼り、なければスプライトを直接描く（描き分けはここ1か所。見た目は同じ）。
  * @param {CanvasRenderingContext2D} ctx 描画先
- * @param {string} kind 兵の種類（'attack'・'defense'・'heal'・'enemy'・'enemyGuard'・'goblin'・'shield'・'flame'）
+ * @param {string} kind 兵の種類（'attack'・'defense'・'heal'・'enemy'・'enemyGuard'・'goblin'・'minion'・'minionBorn'・'shield'・'flame'）
  * @param {number} x 足元の中心 x
  * @param {number} footY 足元の y
  * @param {number} size 体の直径
@@ -261,7 +272,7 @@ export function createTroopBakes(battleLayout) {
  * @param {number} alpha 濃さ（0〜1）
  * @param {number} scaleX 横の伸び縮み（1 で元の大きさ。足元が軸）
  * @param {number} scaleY 縦の伸び縮み（1 で元の大きさ。足元が軸）
- * @param {string|null} [enemyTypeId=null] 敵の種類の識別子（群れの敵の兵の種類 enemy・enemyGuard・goblin だけが見る。null・表にない種類は既定のゴブリンの絵。ほかの種類は見ない）
+ * @param {string|null} [enemyTypeId=null] 敵の種類の識別子（群れの敵の兵の種類 enemy・enemyGuard・goblin と子の種類 minion・minionBorn だけが見る。null・表にない種類は、群れの敵の兵なら既定のゴブリンの絵、子の種類なら既定の `slimeChild` の体。ほかの種類は見ない）
  * @param {boolean} [wounded=false] 傷ついた姿で描くか（傾いて暗い。焼き付けがあればそれを貼る。傾き tilt は傷の傾きに重ねる）
  * @param {boolean} [auto=false] 自動兵士の薄いオレンジの姿で描くか（autoTint の見た目で、wounded が偽のときだけ効く。焼き付けがあればそれを貼る）
  * @param {boolean} [elite=false] 精鋭の青い姿で描くか（eliteTint の見た目で効く。auto が立てば自動兵士が先。焼き付けがあれば貼る。wounded が真のときは傷ついた姿に青い塗りを重ねて直接描く）
@@ -273,6 +284,9 @@ export function drawTroop(ctx, kind, x, footY, size, tilt, alpha, scaleX, scaleY
   if (look === undefined) throw new Error(`未知の兵の種類: ${kind}`);
   if (look.horde === true) {
     const skin = hordeSkinOf(enemyTypeId);
+    if (skin !== null) look = skin;
+  } else if (look.minion === true) {
+    const skin = minionSkinOf(enemyTypeId);
     if (skin !== null) look = skin;
   }
   const tinted = auto && !wounded && look.autoTint === true;

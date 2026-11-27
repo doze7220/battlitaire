@@ -1,12 +1,13 @@
 /**
  * 責務: 盤面の画面配置（戦闘の段の兵の陣地・敵の頭の上の予告の札・敵ごとの当たる位置・炎の出る位置・画面の外の x・城の打撃の範囲・人数の表示・城と敵の絵の矩形・群れの敵の群れの並び（種類ごとの大きさと範囲は hordePlaces.js の表）・敵を倒したときの案内（配置は defeatLayout.js に任せる）・最上部のゲージ・行動のゲージの帯とラベルを含む）を一手に持ち、座標から「何に当たるか」を求める。
- * タイトル画面・遊び方の画面の配置と当たりも持つ。ルール層は import せず、数の情報は引数で受け取る。状態は変えない。絵の縦横比は spriteView.js から得る。絵の敵の配置の組み立ては enemyFigures.js に任せる。
+ * 子を持つ敵の子の待つ場所（種類ごとの大きさと範囲は minionPlaces.js の表）も持つ。タイトル画面・遊び方の画面の配置と当たりも持つ。ルール層は import せず、数の情報は引数で受け取る。状態は変えない。絵の縦横比は spriteView.js から得る。絵の敵の配置の組み立ては enemyFigures.js に任せる。
  */
 
 import { INTENT_CELL, SPRITE_IDS, spriteFitRect } from './spriteView.js';
 import { campSlot } from './campSlots.js';
 import { createEnemyFigures } from './enemyFigures.js';
 import { createHordePlaces } from './hordePlaces.js';
+import { MINION_PLACES, createMinionPlaces } from './minionPlaces.js';
 import { handSlotRects } from './handLayout.js';
 import { createDefeatLayout } from './defeatLayout.js';
 
@@ -77,7 +78,7 @@ import { createDefeatLayout } from './defeatLayout.js';
  * 戦闘の段での兵の配置。陣地は兵の足元の中心が入る矩形で、兵1体の大きさ・当たる位置・落ちて消える y を持つ。
  * @typedef {Object} TroopLayout
  * @property {number} size 兵の大きさ（直径）
- * @property {{ attack: Rect, defense: Rect, heal: Rect, enemy: Rect, enemyGuard: Rect, flame: Rect }} camps 役割ごとの陣地（enemy＝群れの敵の攻撃の兵、enemyGuard＝群れの敵の守りの兵、flame＝ブレスの炎）
+ * @property {{ attack: Rect, defense: Rect, heal: Rect, enemy: Rect, enemyGuard: Rect, flame: Rect, minion?: Rect }} camps 役割ごとの陣地（enemy＝群れの敵の攻撃の兵、enemyGuard＝群れの敵の守りの兵、flame＝ブレスの炎。minion＝子の待つ場所で、子を持つ敵との攻防だけ）
  * @property {number} blockStepX 相打ちの相手が前へ踏み出す距離
  * @property {number} contactGap 相打ちでぶつかる2体の間隔（大きな体の敵は、体の大きさの差の半分だけ広げる）
  * @property {number} attackAdvanceX 相打ちの相手のいない攻撃の兵が進む距離
@@ -91,7 +92,7 @@ import { createDefeatLayout } from './defeatLayout.js';
  * @property {Rect} castleHitArea 城の打撃のヒットマークを出す範囲（城の絵の矩形の内側）
  * @property {number} castleEntryX 修理の兵・帰る兵が城に入って消える位置の x（城の中心）
  * @property {number} fallOutY 落ちる兵の足元がこれより下に来たら消える y（描く大きさが `size` より大きい兵は、その差だけ下へ延ばす）
- * @property {Object<string, number>} kindSizes 兵の種類 → 描く大きさ（直径。表にない種類・標準は空で、配置の兵の大きさのまま）
+ * @property {Object<string, number>} kindSizes 兵の種類 → 描く大きさ（直径。表にない種類・標準は空で、配置の兵の大きさのまま。子を持つ敵との攻防だけ minion・minionBorn）
  */
 
 /**
@@ -126,7 +127,9 @@ import { createDefeatLayout } from './defeatLayout.js';
  * @property {function(number, Rect): Rect[]} shieldRects シールドマーク count 個の矩形（body の矩形の中の格子。最後の行は中央にそろえる）
  * @property {Object<string, import('./hordePlaces.js').HordePlace>} hordePlaces 群れの敵の種類の識別子 → 体の大きさと並ぶ場所（凍結。焼き付けの大きさに troopView.js が読む）
  * @property {function(string, number): Array<{ x: number, footY: number, size: number }>} hordeSlots 群れの敵（識別子）の兵 count 体の並び（番号の順。x は中心、footY は足元の y、size はその敵の体の大きさ。その敵の群れの足元の範囲の中の R2 列。表にない識別子は Error）
- * @property {function(string): TroopLayout} troopsFor その敵（識別子）との攻防で使う兵の配置（群れの配置を持たない敵・標準の敵は `troops` そのもの）
+ * @property {Object<string, import('./minionPlaces.js').MinionPlace>} minionPlaces 子を持つ敵の種類の識別子 → 子の大きさと待つ場所・生まれ出る位置（凍結。焼き付けの大きさに troopView.js が読む）
+ * @property {function(string, number): Array<{ x: number, footY: number, size: number }>} minionSlots 子を持つ敵（識別子）の子 count 匹の並び（番号の順。x は中心、footY は足元の y、size は子の大きさ。待つ場所の中の R2 列で、番号だけで決まり数によらない。count が 0 以下なら空。表にない識別子は Error）
+ * @property {function(string): TroopLayout} troopsFor その敵（識別子）との攻防で使う兵の配置（群れの配置も子の陣地も持たない敵・標準の敵は `troops` そのもの。子を持つ敵は子の陣地 `camps.minion` と大きさを足した写し）
  */
 
 /**
@@ -675,8 +678,42 @@ function createBattleLayout(width, coinBlockCount) {
     return slots;
   }
 
+  /** 子を持つ敵の種類ごとの子の大きさと待つ場所・生まれ出る位置 */
+  const minionPlaces = createMinionPlaces({ groundY, fieldH: FIELD_H, figures: enemyFigures });
+  for (const typeId of Object.keys(MINION_PLACES)) {
+    const place = minionPlaces[typeId];
+    const base = Object.prototype.hasOwnProperty.call(troopsByType, typeId) ? troopsByType[typeId] : troops;
+    troopsByType[typeId] = Object.freeze({
+      ...base,
+      camps: Object.freeze({ ...base.camps, minion: place.area }),
+      kindSizes: Object.freeze({ ...base.kindSizes, minion: place.size, minionBorn: place.size }),
+    });
+  }
+
   /**
-   * その敵との攻防で使う兵の配置を返す（群れの配置を持たない敵と標準の敵は `troops` そのもの）。
+   * 子を持つ敵の子の並びを求める。i 番目の位置は i だけで決まり、数 count によらない
+   * （待つ場所の中を、味方の兵と同じ R2 列（campSlot。乱数なし）でばらけさせる）。
+   * @param {string} typeId 敵の種類の識別子（`MINION_PLACES` にあるもの）
+   * @param {number} count 子の数
+   * @returns {Array<{ x: number, footY: number, size: number }>} 番号の順の各子（count が 0 以下なら空）
+   * @throws {Error} 表にない識別子のとき
+   */
+  function minionSlots(typeId, count) {
+    if (!Object.prototype.hasOwnProperty.call(minionPlaces, typeId)) {
+      throw new Error(`minionSlots: 子の配置を持たない敵 ${typeId}`);
+    }
+    const place = minionPlaces[typeId];
+    if (count <= 0) return [];
+    const slots = [];
+    for (let i = 0; i < count; i++) {
+      const p = campSlot(place.area, i);
+      slots.push({ x: p.x, footY: p.y, size: place.size });
+    }
+    return slots;
+  }
+
+  /**
+   * その敵との攻防で使う兵の配置を返す（群れの配置も子の陣地も持たない敵と標準の敵は `troops` そのもの。子を持つ敵は子の陣地 `camps.minion` と大きさ `kindSizes` を足した写し）。
    * @param {string} typeId 敵の種類の識別子
    * @returns {TroopLayout} 兵の配置
    */
@@ -700,6 +737,8 @@ function createBattleLayout(width, coinBlockCount) {
     shieldRects,
     hordePlaces,
     hordeSlots,
+    minionPlaces,
+    minionSlots,
     troopsFor,
   };
 }
