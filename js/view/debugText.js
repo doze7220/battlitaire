@@ -47,11 +47,13 @@ export const DEBUG_TEXT = Object.freeze({
 
 /**
  * 先の並びの一覧の1行を文字にする。今のステージの行は先頭に印「▶」を付ける。
- * @param {{ stageNumber: number, star: number, name: string, current: boolean }} row 1行の中身
- * @returns {string} 例「▶ 12　★1　ゴブリンの軍勢」
+ * くじ袋の決まりの★の行は末尾に袋の位置を足す。
+ * @param {{ stageNumber: number, star: number, name: string, current: boolean, bag: { number: number, slot: number } | null }} row 1行の中身
+ * @returns {string} 例「▶ 12　★1　ゴブリンの軍勢」「▶ 5　★2　巨人　袋1の1番目」
  */
 export function lineupRowText(row) {
-  return `${row.current ? DEBUG_TEXT.lineupCurrent : DEBUG_TEXT.lineupOther} ${row.stageNumber}　★${row.star}　${row.name}`;
+  const base = `${row.current ? DEBUG_TEXT.lineupCurrent : DEBUG_TEXT.lineupOther} ${row.stageNumber}　★${row.star}　${row.name}`;
+  return row.bag ? `${base}　袋${row.bag.number}の${row.bag.slot}番目` : base;
 }
 
 /**
