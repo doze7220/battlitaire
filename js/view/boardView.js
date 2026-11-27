@@ -1,6 +1,6 @@
 /**
  * 責務: 盤面全体の描画の取りまとめ（背景・戦闘の段（段取りの間の兵を渡す）・人数の表示・最上部のゲージ・行動のゲージの帯とラベル・山札・捨て札・列・手札・放つボタンの部品を配置に従って順に呼び、玉に変わる前の札・動いているカード・玉と式を手前に描く）。
- * 札が燃える段は、渡された見た目の値で列・捨て札の枚数・明滅と札の上の炎・飛ぶ札を差し替える。状態は読むだけで変えず、ルールの判定は行わない。
+ * 札が燃える段は、渡された見た目の値で列・捨て札の枚数・明滅と札の上の炎・飛ぶ札を差し替える。印の列の染め・印・「混乱！」も描く。状態は読むだけで変えず、ルールの判定は行わない。
  */
 
 import { drawCardFace, drawCardTint } from './cardView.js';
@@ -13,6 +13,7 @@ import { drawActionGauge, drawActionGaugeLabel } from './actionGaugeView.js';
 import { drawTroopCounter, ROLE_ORDER } from './troopCountView.js';
 import { SPRITE_IDS, drawSpriteCentered } from './spriteView.js';
 import { drawReleaseCards, drawReleaseOrbs } from './orbView.js';
+import { drawColumnMarkTint, drawColumnMarkIcon, drawMarkCall } from './columnMarkView.js';
 
 /** 盤面全体の背景の色。 */
 const BACKGROUND_COLOR = '#1f3a2e';
@@ -80,7 +81,7 @@ function topGaugeValues(game, release) {
 }
 
 /**
- * 盤面全体を描く（背景 → 戦闘の段（奥の兵・城・敵・手前の兵・予告の順） → 人数の表示（3択の間は描かない） → 最上部のゲージ → 行動のゲージの帯 → 行動のゲージのラベル → 山札・捨て札 → 列と放つボタン → 燃える札の明滅 → 玉に変わる前の札 → 手札 → 動いているカード（燃えて飛ぶ札を含む） → 玉と式の順）。札には game.cardBonus の値（札の +◯）を、行動のゲージのラベルには game.actionUpgradeStatus() の値（右の強化の表示）を、山札には game.eliteStatus() の値（左下の精鋭の角の表示。スートのゲージごとの状態）を渡して描く。game は読むだけで、何も書き換えない。
+ * 盤面全体を描く（背景 → 戦闘の段（奥の兵・城・敵・手前の兵・予告の順） → 人数の表示（3択の間は描かない） → 最上部のゲージ → 行動のゲージの帯 → 行動のゲージのラベル → 山札・捨て札 → 列と放つボタン → 燃える札の明滅 → 玉に変わる前の札 → 手札 → 動いているカード（燃えて飛ぶ札を含む） → 玉と式 → 「混乱！」の順）。印の列（game.columnMark()。済んでいない印だけ）は、列の染めを札の奥に、印を放つボタンの手前に描く。札には game.cardBonus の値（札の +◯）を、行動のゲージのラベルには game.actionUpgradeStatus() の値（右の強化の表示）を、山札には game.eliteStatus() の値（左下の精鋭の角の表示。スートのゲージごとの状態）を渡して描く。game は読むだけで、何も書き換えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').Layout} layout 画面の配置
  * @param {import('../rules/Game.js').Game} game ゲームの状態（読み取り専用）
@@ -90,9 +91,10 @@ function topGaugeValues(game, release) {
  * @param {import('../anim/burnTrack.js').BurnBoardLook|null} [burn] 札が燃える段の盤面の見た目（なければ null でルール層の盤面をそのまま描く）
  * @param {import('../anim/enemyIdle.js').EnemyIdleLook|null} [idle] 段取りの間の敵の待機の伸び縮みの見た目（戦闘の段へ渡す。なければ null）
  * @param {import('../anim/enemyEntrance.js').EnemyEntranceLook|null} [entrance] 段取りの間の敵の入りの見た目（見えるか・横のずれ。戦闘の段へ渡す。なければ null）
+ * @param {import('../anim/markCallShow.js').MarkCallLook|null} [markCall] 「混乱！」の見た目の値（なければ null で描かない）
  * @returns {void}
  */
-export function drawBoard(ctx, layout, game, ui, anim, release, burn = null, idle = null, entrance = null) {
+export function drawBoard(ctx, layout, game, ui, anim, release, burn = null, idle = null, entrance = null, markCall = null) {
   ctx.save();
   ctx.fillStyle = BACKGROUND_COLOR;
   ctx.fillRect(0, 0, layout.screen.width, layout.screen.height);
@@ -119,12 +121,16 @@ export function drawBoard(ctx, layout, game, ui, anim, release, burn = null, idl
   }
   drawDiscard(ctx, layout.discard, game.discard.length, anim.discardPending + (burn === null ? 0 : burn.discardPending));
 
+  const mark = game.columnMark();
   for (let c = 0; c < layout.columns.length; c++) {
+    const marked = mark !== null && mark.column === c;
+    if (marked) drawColumnMarkTint(ctx, layout.columns[c], mark.kind);
     const runFrom = ui.selectedRun !== null && ui.selectedRun.column === c ? ui.selectedRun.from : null;
     const cards = burn === null ? game.columns[c] : burn.columns[c];
     drawColumn(ctx, layout.columns[c], cards, ui.placeableColumns.includes(c), runFrom, anim.hiddenCardIds,
       burn === null ? (anim.columnYs.get(c) ?? null) : null, bonusOf);
     drawReleaseButton(ctx, layout.releaseButtons[c], ui.releasable[c]);
+    if (marked) drawColumnMarkIcon(ctx, layout.columns[c], layout.releaseButtons[c], mark.kind);
   }
   if (burn !== null && burn.flash !== null) {
     const r = burn.flash.rect;
@@ -144,4 +150,5 @@ export function drawBoard(ctx, layout, game, ui, anim, release, burn = null, idl
     }
   }
   drawReleaseOrbs(ctx, release);
+  if (markCall !== null) drawMarkCall(ctx, layout.columns[markCall.column], markCall);
 }

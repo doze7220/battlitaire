@@ -1,6 +1,6 @@
 /**
  * 責務: 敵の行動（爪・吸い込む・ブレス・溜める・大攻撃・突進・怒りを溜める・大突進の種類と防御と子の数を含む）・予告の量の数字・子の数の数字・量の代わりの文字（怒り）・表にない予告の印・決着・敵を倒したときの案内・敵の名前とレベル・激昂の倍率・数え下ろし・回復の量・当たりのダメージの数字・放った区切りの式・4スートそろいの文字を、画面に出す文字に直す。
- * 計算はせず、量をそのまま文字にする。ルール層は実行時に import しない。
+ * 列の印をひとりでに放つときの呼び（「混乱！」）も文字に直す。計算はせず、量をそのまま文字にする。ルール層は実行時に import しない。
  */
 
 import { intentParts } from './intentParts.js';
@@ -69,6 +69,14 @@ export const MINION_LABELS = Object.freeze({
   slime: '子スライム',
 });
 
+/**
+ * 列の印の種類 → ひとりでに放つときの呼びの文字の対応表（表にない種類は「？」）。
+ * @type {Readonly<Record<string, string>>}
+ */
+export const MARK_CALL_LABELS = Object.freeze({
+  confuse: '混乱！',
+});
+
 /** 敵を倒したときの、タップで次へ進む案内の文字 */
 const DEFEAT_HINT_TEXT = 'タップで次へ';
 
@@ -77,6 +85,15 @@ const DAMAGE_POP_PREFIX = '-';
 
 /** 未知の行動の種類の表示名 */
 const UNKNOWN_ACTION_LABEL = '？';
+
+/**
+ * 列の印の種類を、ひとりでに放つときの呼びの文字（「混乱！」）にする。
+ * @param {string} kind 印の種類
+ * @returns {string} 呼びの文字。表にない種類は「？」
+ */
+export function markCallText(kind) {
+  return Object.prototype.hasOwnProperty.call(MARK_CALL_LABELS, kind) ? MARK_CALL_LABELS[kind] : UNKNOWN_ACTION_LABEL;
+}
 
 /**
  * 決着を表示文字にする。

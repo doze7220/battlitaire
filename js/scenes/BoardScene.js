@@ -16,6 +16,7 @@ import { drawBoard } from '../view/boardView.js';
 import { BoardAnimator } from '../anim/boardAnimator.js';
 import { ReleaseShow } from '../anim/releaseShow.js';
 import { EnemyIdle } from '../anim/enemyIdle.js';
+import { MarkCallShow } from '../anim/markCallShow.js';
 import { releaseGeometry } from '../view/releaseLayout.js';
 import { snapshotBoard, buildPlanningMotion } from '../anim/planningMotion.js';
 import { applyTap, boardUiFor } from './boardSelection.js';
@@ -78,6 +79,8 @@ export class BoardScene extends Scene {
     this.releaseShow = null;
     /** @type {EnemyIdle|null} 段取りの間の敵の待機の動き（群れの敵・絵の敵の伸び縮み。init で作る） */
     this.enemyIdle = null;
+    /** @type {MarkCallShow|null} 「混乱！」の文字の時計（init で作る） */
+    this.markCall = null;
     /** @type {import('../view/bannerLayout.js').BannerLayout|null} 合図の配置（init で作る） */
     this.bannerLayout = null;
     /** @type {BoardFlow|null} 盤面の段階の管理（スタートの待ち・ステージとフェーズの始まり・準備終了・BATTLE!。init で作る） */
@@ -112,6 +115,7 @@ export class BoardScene extends Scene {
     this.battleShow = null;
     this.releaseShow = new ReleaseShow(this.layout.battle.troops);
     this.enemyIdle = new EnemyIdle();
+    this.markCall = new MarkCallShow();
     this.bannerLayout = createBannerLayout(this.layout);
     this.flow = new BoardFlow(this.bannerLayout.enemyEntryDX);
     if (this.suspend !== null) this.flow.resumeFrom(this.game);
@@ -131,7 +135,7 @@ export class BoardScene extends Scene {
 
   /**
    * 動きの時計に dt（ミリ秒）を足して進める（dt はエンジンが渡した値をそのまま足し、倍率は掛けない。ルール層の状態は変えない）。
-   * 放つ演出の時計も進め、進めた直後に、その間に玉に変わった札の序数ごとに連鎖の効果音を鳴らす。
+   * 放つ演出の時計・「混乱！」の時計も進め（「混乱！」が消えるまで準備終了を待つ）、進めた直後に、その間に玉に変わった札の序数ごとに連鎖の効果音を鳴らす。
    * 最後に、札の移動・山札のめくれ・玉に変わる前の札・玉・兵が全部止まっているかを段階の管理（BoardFlow.update）に渡して進め、'battle'（BATTLE! が終わった）と返されたら攻防に入り（startBattle）、'turn'（TURN の表示を出した）と返されたら自動兵士を陣地に現し（ReleaseShow.landAuto。量はルール層の autoTroopGains）、'mark'（ひとりでに放つ）と返されたら releaseMarked を呼ぶ。
    * 頭で `this.battleShow` を外し（update は最前面のときだけ呼ばれるので、攻防の演出のシーンが外れた後になる）、ゲームが3択の段階（再開・DEBUG の「3択を出す」）なら3択の画面を積んで戻る。
    * @param {number} dt 1ティックの長さ（ミリ秒）
@@ -145,9 +149,10 @@ export class BoardScene extends Scene {
     }
     this.animator.update(dt);
     this.releaseShow.update(dt);
+    this.markCall.update(dt);
     this.enemyIdle.update(dt, this.game.enemy.typeId, bodyCount(hordeHpOf(this.game.enemy), this.game.enemyUnitPoints()));
     for (const ordinal of this.releaseShow.chainCuesInLastUpdate()) playChainSe(ordinal);
-    const boardIdle = !this.animator.isBusy() && !this.releaseShow.isBusy();
+    const boardIdle = !this.animator.isBusy() && !this.releaseShow.isBusy() && !this.markCall.isBusy();
     const flowEvent = this.flow.update(dt, this.game, boardIdle);
     if (flowEvent === 'battle') this.startBattle();
     else if (flowEvent === 'turn') this.releaseShow.landAuto(this.game.autoTroopGains());
@@ -155,7 +160,7 @@ export class BoardScene extends Scene {
   }
 
   /**
-   * ひとりでに放つ（段階の管理が 'mark' を返したとき）。ルール層の releaseMarked を呼び、放った束を自分で放つのと同じ音・動き・放つ演出で見せる。空振り（放つ束がない）なら何も見せない。
+   * ひとりでに放つ（段階の管理が 'mark' を返したとき）。ルール層の releaseMarked を呼び、放った束を自分で放つのと同じ音・動き・放つ演出で見せ、その列の上に「混乱！」の時計を始める。空振り（放つ束がない）なら何も見せない。
    * @returns {void}
    */
   releaseMarked() {
@@ -164,6 +169,7 @@ export class BoardScene extends Scene {
     if (result === null || result.release === null) return;
     this.lastResult = result.release;
     playMarkReleaseSe();
+    this.markCall.start(result.kind, result.columnIndex);
     this.showPlanningResult(result.release, before);
   }
 
@@ -267,7 +273,7 @@ export class BoardScene extends Scene {
    * ルール層の問い合わせと anim の見た目の値から盤面を描く（状態は変えない）。
    * 攻防の演出のシーンを積んでいれば、その `boardLook()`（燃える段の盤面の見た目。なければ null）を読んで `drawBoard` に渡す。
    * 人数の表示には、フェーズの始まりを出すまで（自動兵士がまだ現れていない間）だけ、自動兵士の量を引く値（autoTroopGains）を放つ演出の見た目へ渡す。
-   * 盤面の最後に、段階の管理の敵の入りの見た目を渡し、その上に合図（準備終了・BATTLE!・フェーズ・ステージの始まり）を描く。
+   * 盤面の最後に、段階の管理の敵の入りの見た目と「混乱！」の見た目を渡し、その上に合図（準備終了・BATTLE!・フェーズ・ステージの始まり）を描く。
    * 頭で「DEBUG MODE」のレイヤーも描く（debugModeLayer.js）。
    * @param {CanvasRenderingContext2D} ctx 描画先
    * @param {string} layer レイヤー名
@@ -278,7 +284,7 @@ export class BoardScene extends Scene {
     if (layer !== this.layer) return;
     const game = this.game;
     const burn = this.battleShow === null ? null : this.battleShow.boardLook();
-    drawBoard(ctx, this.layout, game, boardUiFor(game, this.selection), this.animator.view(), this.releaseShow.view(game.gauges, this.flow.isTurnStartPending(game) ? game.autoTroopGains() : null, game.eliteBoost()), burn, this.enemyIdle.look(), this.flow.entranceLook(game));
+    drawBoard(ctx, this.layout, game, boardUiFor(game, this.selection), this.animator.view(), this.releaseShow.view(game.gauges, this.flow.isTurnStartPending(game) ? game.autoTroopGains() : null, game.eliteBoost()), burn, this.enemyIdle.look(), this.flow.entranceLook(game), this.markCall.look());
     drawBanner(ctx, this.bannerLayout, this.flow.bannerLook(), {
       turn: game.battleTurn,
       stageNumber: game.stageNumber,

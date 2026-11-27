@@ -1,10 +1,10 @@
 /**
  * 演出の時間の設定（カードの移動・めくれ・めくれの待ち・長い列の詰め直し・放つときの玉（玉に変わる・
- * 上る・合体・式・飛ぶ・弾ける）・4スートそろいの文字と玉・金貨の数字が増える時間）を1か所に凍結して持つ。演出の時間の数値は、ほかのファイルに書かない。
+ * 上る・合体・式・飛ぶ・弾ける）・4スートそろいの文字と玉・金貨の数字が増える時間・「混乱！」の文字の時間と出始めの倍率）を1か所に凍結して持つ。演出の時間の数値は、ほかのファイルに書かない。
  */
 
 /**
- * 演出の時間の設定。単位はすべてミリ秒。
+ * 演出の時間の設定。時間の単位はミリ秒（`markCallPopScale` だけは倍率）。
  * @typedef {Object} AnimTiming
  * @property {number} cardMoveMs カード1枚が動く時間（ms）。試遊で決め直す。
  * @property {number} deckFlipMs 山札のめくれの時間（ms）。試遊で決め直す。
@@ -24,6 +24,10 @@
  * @property {number} allSuitsFlyStaggerMs 4スートそろいの玉が飛び始めるずらしの間隔（ms）。試遊で決め直す。
  * @property {number} allSuitsLabelMs 4スートそろいの文字を出している全体の時間（ms）。試遊で決め直す。
  * @property {number} allSuitsFadeMs 4スートそろいの文字が消える（濃さ 1→0）時間（ms。出している時間の終わりの部分）。試遊で決め直す。
+ * @property {number} markCallMs 「混乱！」の文字を出している全体の時間（ms）。試遊で決め直す。
+ * @property {number} markCallPopMs 「混乱！」の文字が出始めの倍率から 1 へ縮む時間（ms）。試遊で決め直す。
+ * @property {number} markCallFadeMs 「混乱！」の文字が消える（濃さ 1→0）時間（ms。出している時間の終わりの部分）。試遊で決め直す。
+ * @property {number} markCallPopScale 「混乱！」の文字の出始めの倍率（時間ではなく倍率）。試遊で決め直す。
  */
 
 /**
@@ -49,4 +53,8 @@ export const ANIM_TIMING = Object.freeze({
   allSuitsFlyStaggerMs: 80,
   allSuitsLabelMs: 900,
   allSuitsFadeMs: 200,
+  markCallMs: 900,
+  markCallPopMs: 150,
+  markCallFadeMs: 250,
+  markCallPopScale: 1.4,
 });
