@@ -1,9 +1,15 @@
 /**
- * 責務: 敵の行動（爪・吸い込む・ブレス・溜める・大攻撃・突進・怒りを溜める・大突進の種類と防御と子の数を含む）・予告の量の数字・子の数の数字・量の代わりの文字（怒り）・表にない予告の印・決着・敵を倒したときの案内・敵の名前とレベル・数え下ろし・回復の量・当たりのダメージの数字・放った区切りの式・4スートそろいの文字を、画面に出す文字に直す。
+ * 責務: 敵の行動（爪・吸い込む・ブレス・溜める・大攻撃・突進・怒りを溜める・大突進の種類と防御と子の数を含む）・予告の量の数字・子の数の数字・量の代わりの文字（怒り）・表にない予告の印・決着・敵を倒したときの案内・敵の名前とレベル・激昂の倍率・数え下ろし・回復の量・当たりのダメージの数字・放った区切りの式・4スートそろいの文字を、画面に出す文字に直す。
  * 計算はせず、量をそのまま文字にする。ルール層は実行時に import しない。
  */
 
 import { intentParts } from './intentParts.js';
+
+/**
+ * 激昂の表示の文字の部品（名前・印）。
+ * @type {Readonly<{ name: string, mark: string }>}
+ */
+const RAGE_LABEL = Object.freeze({ name: '激昂', mark: '⚔' });
 
 /** 予告の攻撃の側と防御の側をつなぐ文字 */
 const SIDE_SEPARATOR = ' ／ ';
@@ -98,6 +104,15 @@ export function defeatText(enemyName) {
  */
 export function enemyLabelText(name, level) {
   return `${name} Lv${level}`;
+}
+
+/**
+ * 激昂の倍率（百分率の整数）を「激昂 ⚔×1.2」のような文字にする。小数第1位まで（第2位以下は切り捨て）。整数の割り算だけで作る。
+ * @param {number} percent 倍率（百分率の整数。120 は 1.2 倍）
+ * @returns {string} 「激昂 ⚔×倍率」（120 → 「激昂 ⚔×1.2」、200 → 「激昂 ⚔×2.0」）
+ */
+export function rageLabelText(percent) {
+  return `${RAGE_LABEL.name} ${RAGE_LABEL.mark}×${Math.floor(percent / 100)}.${Math.floor((percent % 100) / 10)}`;
 }
 
 /**

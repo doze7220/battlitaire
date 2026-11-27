@@ -18,7 +18,7 @@ import { enemyAttackShow, enemyDefenseShow, hasChargeShow, isHeavyAttack } from 
  * @property {string} enemyTypeId 攻防をする敵の種類の識別子
  * @property {number} enemyMinions 攻防の前に待っていた子の数（`game.enemy.minions`。子を持たない敵は 0。省かれた古い状態は 0）
  * @property {number} enemyUnit 攻防をする敵の1体のポイント（1 以上の整数。群れ・攻撃・守りの体の割り振りに使う）
- * @property {number} enemyDefense そのターンの敵の防御の量（疲弊の後。攻防の前の予告の `defense` の写し。絵を持つ敵のシールドの数）
+ * @property {number} enemyDefense そのターンの敵の防御の量（加算の後。攻防の前の予告の `defense` の写し。絵を持つ敵のシールドの数）
  * @property {number} attack 攻防の前の攻撃ゲージの値（攻撃の兵のポイントの合計 = 人数 + 精鋭の上振れ）
  * @property {number} defense 攻防の前の防御ゲージの値（防御の兵のポイントの合計 = 人数 + 精鋭の上振れ）
  * @property {number} heal 攻防の前の修理ゲージの値（修理の兵のポイントの合計 = 人数 + 精鋭の上振れ）

@@ -1,6 +1,6 @@
 /**
- * 責務: 敵の防御の量（張るかと量の抽選・疲弊での減り）と疲弊しているかの計算。
- * 渡された乱数だけを使う純粋な関数（ルール層）。疲弊で減らした量を求めるのはこのファイルだけ。予告の組み立ては enemyIntent.js。
+ * 責務: 敵の防御の量（張るかと量の抽選）の計算。
+ * 渡された乱数だけを使う純粋な関数（ルール層）。予告の組み立ては enemyIntent.js。
  */
 
 import { rollAmount } from './enemyBehaviors.js';
@@ -16,40 +16,4 @@ export function rollDefense(spec, random, unit = 1) {
   const guards = random() < spec.chance;
   const amount = rollAmount(spec.range, random, unit);
   return guards ? amount : null;
-}
-
-/**
- * 戦闘のターン数に当たる疲弊の段を探す（fromTurn <= battleTurn の最後の段）。
- * @param {number} battleTurn 戦闘のターン数（1 から）
- * @param {ReadonlyArray<{ fromTurn: number, defenseRate: number }>} fatigue 疲弊の段（fromTurn の昇順）
- * @returns {{ fromTurn: number, defenseRate: number }|null} 当たる段。なければ null
- */
-function fatigueStageOf(battleTurn, fatigue) {
-  let found = null;
-  for (const stage of fatigue) {
-    if (stage.fromTurn <= battleTurn) found = stage;
-  }
-  return found;
-}
-
-/**
- * 疲弊を掛けた後の防御の量を求める（疲弊で減らす式はここ1か所）。
- * @param {number} base 疲弊の前の防御の量
- * @param {number} battleTurn 戦闘のターン数（1 から）
- * @param {ReadonlyArray<{ fromTurn: number, defenseRate: number }>} fatigue 疲弊の段
- * @returns {number} 疲弊後の防御の量（当たる段がなければ base のまま）
- */
-export function fatiguedDefense(base, battleTurn, fatigue) {
-  const stage = fatigueStageOf(battleTurn, fatigue);
-  return stage === null ? base : Math.floor(base * stage.defenseRate);
-}
-
-/**
- * 疲弊しているか（当たる段があるか）。
- * @param {number} battleTurn 戦闘のターン数（1 から）
- * @param {ReadonlyArray<{ fromTurn: number, defenseRate: number }>} fatigue 疲弊の段
- * @returns {boolean} 疲弊していれば true
- */
-export function isFatigued(battleTurn, fatigue) {
-  return fatigueStageOf(battleTurn, fatigue) !== null;
 }

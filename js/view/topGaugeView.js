@@ -1,10 +1,10 @@
 /**
- * 責務: 画面の最上部のゲージ（城と敵の HP・敵の名前とレベルと「疲弊」・「TURN」の区画と戦闘ごとのターン番号・金貨）を描く。
+ * 責務: 画面の最上部のゲージ（城と敵の HP・敵の名前とレベルと「激昂」・「TURN」の区画と戦闘ごとのターン番号・金貨）を描く。
  * 状態は変えず、値は呼ぶ側から受け取る。ルール層・anim は実行時に import しない。
  */
 
 import { roundRectPath } from './cardView.js';
-import { enemyLabelText } from './battleText.js';
+import { enemyLabelText, rageLabelText } from './battleText.js';
 
 /**
  * 最上部のゲージの描画に渡す値。
@@ -13,7 +13,7 @@ import { enemyLabelText } from './battleText.js';
  * @property {{ hp: number, maxHp: number }} castle 城の HP（表示値）と最大 HP
  * @property {{ name: string, hp: number, maxHp: number }} enemy 敵の名前と HP（表示値）と最大 HP
  * @property {number} level 敵のレベル（ステージの番号。名前に「Lv」を付けて描く）
- * @property {boolean} fatigued 敵が疲弊しているか
+ * @property {{ enraged: boolean, percent: number }} rage 敵の激昂（ルール層の RageStatus と同じ形。enraged のとき percent は倍率の百分率の整数）
  * @property {number} coins 金貨の表示値
  * @property {{ per: number, maxBonus: number }} coinConversion 金貨の換算（満タン = per。1 ブロック＝金貨 1 枚）
  */
@@ -53,14 +53,12 @@ const PHASE_LABEL_FONT = 'bold 16px sans-serif';
 /** @type {string} フェーズの番号のフォント。 */
 const PHASE_VALUE_FONT = 'bold 30px sans-serif';
 
-/** @type {string} 敵の名前・「疲弊」のフォント。 */
+/** @type {string} 敵の名前・「激昂」のフォント。 */
 const ENEMY_LABEL_FONT = 'bold 20px sans-serif';
-/** @type {number} 敵の名前・「疲弊」の縁取りの線の太さ。 */
+/** @type {number} 敵の名前・「激昂」の縁取りの線の太さ。 */
 const ENEMY_LABEL_STROKE_WIDTH = 5;
-/** @type {string} 敵が疲弊しているときに出す文字。 */
-const FATIGUE_LABEL = '疲弊';
-/** @type {string} 「疲弊」の文字の色（試遊で決め直す）。 */
-const FATIGUE_COLOR = '#ff7a4d';
+/** @type {string} 「激昂」の文字の色（試遊で決め直す）。 */
+const RAGE_COLOR = '#ff7a4d';
 
 /** @type {string} 金貨のゲージの左のラベルの文字。 */
 const COIN_LABEL = 'GOLD';
@@ -241,7 +239,7 @@ function drawTurnBox(ctx, box) {
 }
 
 /**
- * 画面の最上部のゲージ（城と敵の HP・HP の数字・敵の名前とレベルと「疲弊」・「TURN」の区画と戦闘ごとのターン番号・金貨）を描く。状態は変えない。
+ * 画面の最上部のゲージ（城と敵の HP・HP の数字・敵の名前とレベルと「激昂」・「TURN」の区画と戦闘ごとのターン番号・金貨）を描く。状態は変えない。
  * @param {CanvasRenderingContext2D} ctx 描画先
  * @param {import('./layout.js').TopGaugeLayout} topLayout 最上部のゲージの配置
  * @param {TopGaugeValues} values 表示する値
@@ -260,10 +258,10 @@ export function drawTopGauges(ctx, topLayout, values) {
     ctx, enemyLabelText(values.enemy.name, values.level), topLayout.enemyName.x, topLayout.enemyName.y, 'left', ENEMY_LABEL_FONT,
     TEXT_COLOR, ENEMY_LABEL_STROKE_WIDTH, topLayout.enemyName.maxW,
   );
-  if (values.fatigued) {
+  if (values.rage.enraged) {
     drawOutlinedText(
-      ctx, FATIGUE_LABEL, topLayout.fatigue.x, topLayout.fatigue.y, 'right', ENEMY_LABEL_FONT,
-      FATIGUE_COLOR, ENEMY_LABEL_STROKE_WIDTH,
+      ctx, rageLabelText(values.rage.percent), topLayout.rage.x, topLayout.rage.y, 'right', ENEMY_LABEL_FONT,
+      RAGE_COLOR, ENEMY_LABEL_STROKE_WIDTH,
     );
   }
   drawOutlinedText(ctx, String(values.turn), topLayout.phaseValue.x, topLayout.phaseValue.y, 'center', PHASE_VALUE_FONT);

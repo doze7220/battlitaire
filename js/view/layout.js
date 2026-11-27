@@ -41,14 +41,14 @@ import { createDefeatLayout } from './defeatLayout.js';
  */
 
 /**
- * 画面の最上部のゲージ（城と敵の HP・敵の名前と「疲弊」・戦闘ごとの TURN の番号・金貨）の配置。
+ * 画面の最上部のゲージ（城と敵の HP・敵の名前と「激昂」・戦闘ごとの TURN の番号・金貨）の配置。
  * @typedef {Object} TopGaugeLayout
  * @property {Rect} castleBar 城の HP ゲージ（右端が根元）
  * @property {Rect} enemyBar 敵の HP ゲージ（左端が根元）
  * @property {{ x: number, y: number }} castleValue 城の HP の数字の左端・中心 y
  * @property {{ x: number, y: number }} enemyValue 敵の HP の数字の右端・中心 y
  * @property {{ x: number, y: number, maxW: number }} enemyName 敵の名前とレベルの左端・中心 y・最大の幅（敵の HP ゲージの下）
- * @property {{ x: number, y: number }} fatigue 「疲弊」の右端・中心 y（敵の HP ゲージの下）
+ * @property {{ x: number, y: number }} rage 「激昂」の文字の右端・中心 y（敵の HP ゲージの下）
  * @property {{ x: number, y: number }} phaseLabel 「PHASE」の中心
  * @property {{ x: number, y: number }} phaseValue 戦闘ごとの TURN の番号の中心
  * @property {Rect} turnBox 「TURN」と番号を囲む区画の見た目の矩形（中央にそろえる）
@@ -205,7 +205,7 @@ const HP_GAUGE_H = 20;
 const TOP_GAUGE_CENTER_W = 100;
 /** HP の数字の、ゲージの外側の端から内側への距離。試遊で決め直す。 */
 const HP_VALUE_INSET = 8;
-/** 敵の名前・「疲弊」の行の中心 y（敵の HP ゲージの下）。試遊で決め直す。 */
+/** 敵の名前・「激昂」の行の中心 y（敵の HP ゲージの下）。試遊で決め直す。 */
 const ENEMY_LABEL_Y = 44;
 /** 敵の名前の最大の幅。試遊で決め直す。 */
 const ENEMY_NAME_MAX_W = 220;
@@ -498,7 +498,7 @@ function createTopGaugeLayout(width, coinBlockCount) {
     castleValue: { x: castleBar.x + HP_VALUE_INSET, y: castleBar.y + castleBar.h / 2 },
     enemyValue: { x: enemyBar.x + enemyBar.w - HP_VALUE_INSET, y: enemyBar.y + enemyBar.h / 2 },
     enemyName: { x: enemyBar.x, y: ENEMY_LABEL_Y, maxW: ENEMY_NAME_MAX_W },
-    fatigue: { x: enemyBar.x + enemyBar.w, y: ENEMY_LABEL_Y },
+    rage: { x: enemyBar.x + enemyBar.w, y: ENEMY_LABEL_Y },
     phaseLabel: { x: width / 2, y: PHASE_LABEL_Y },
     phaseValue: { x: width / 2, y: PHASE_VALUE_Y },
     turnBox: { x: (width - TURN_BOX_W) / 2, y: TURN_BOX_Y, w: TURN_BOX_W, h: TURN_BOX_H },

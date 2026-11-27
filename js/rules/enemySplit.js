@@ -5,7 +5,7 @@
 
 /**
  * 与えたダメージから、生まれる子の数を求める。
- * 式は `Math.floor((dealt * percent + 99) / 100)`（整数だけの切り上げ。浮動小数の誤差を避ける）。上限・ステージの加算・疲弊はない。
+ * 式は `Math.floor((dealt * percent + 99) / 100)`（整数だけの切り上げ。浮動小数の誤差を避ける）。上限・ステージの加算・激昂の倍率はない。
  * 例（30%）: 0 → 0、1 → 1、3 → 1、4 → 2、10 → 3、11 → 4。
  * @param {{ percent: number }|null|undefined} split 分裂の設定（`null`・`undefined` は子を持たない）
  * @param {number} dealt その攻防で敵の HP が実際に減った量（`enemyDamage` の量。残りの HP で頭打ちの値）

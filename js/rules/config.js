@@ -1,4 +1,4 @@
-/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・1体のポイント（任意）・防御（張る確率と量の幅）・行動の決まり（毎ターン攻撃と防御・毎ターン攻撃だけ（防御しない）・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率）・溜めてからの大攻撃・攻撃か防御のどちらか・親と子（猪の親子。子の攻撃・守る・突進・怒りを溜める・大突進）。親と子の HP の分け方と当たる順 `brood`・分裂（子が生まれる割合）`split`・並びの組の鍵 `motion` も敵の設定に持つ）と攻撃・防御の量の幅）、敵の★とステージの★の抽選の決まり（上がる量・戻る★・最初の1体）、ステージごとの敵の加算量（章ごと）、力こぶの換算、疲弊（長引いた敵の防御の減り方）、4スートそろいの加算量、3択の強化の枠・候補の数・城の修理の割合・強化の種類ごとの設定（城・カード・特別の強化）、点の項目の設定）を1か所に集める設定ファイル。 */
+/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・1体のポイント（任意）・防御（張る確率と量の幅）・行動の決まり（毎ターン攻撃と防御・毎ターン攻撃だけ（防御しない）・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率）・溜めてからの大攻撃・攻撃か防御のどちらか・親と子（猪の親子。子の攻撃・守る・突進・怒りを溜める・大突進）。親と子の HP の分け方と当たる順 `brood`・分裂（子が生まれる割合）`split`・並びの組の鍵 `motion` も敵の設定に持つ）と攻撃・防御の量の幅）、敵の★とステージの★の抽選の決まり（上がる量・戻る★・最初の1体）、ステージごとの敵の加算量（章ごと）、力こぶの換算、激昂（長引いた戦闘で敵の攻撃が上がる倍率）、4スートそろいの加算量、3択の強化の枠・候補の数・城の修理の割合・強化の種類ごとの設定（城・カード・特別の強化）、点の項目の設定）を1か所に集める設定ファイル。 */
 
 /**
  * 行動の量の幅（予告を決めるたびに、この中から整数を1つ抽選する）。
@@ -12,13 +12,6 @@
  * @typedef {Object} EnemyDefenseSpec
  * @property {number} chance 防御を張る確率（0〜1）。
  * @property {Readonly<AmountRangeSpec>} range 防御の量の幅。
- */
-
-/**
- * 疲弊の段（戦闘のターン数が fromTurn 以上のとき、防御の量に defenseRate を掛けて切り捨てる）。
- * @typedef {Object} FatigueStage
- * @property {number} fromTurn この段が効き始める戦闘のターン数（1 から）。
- * @property {number} defenseRate 防御の量に掛ける率（0〜1）。
  */
 
 /**
@@ -188,7 +181,6 @@
  * @property {Readonly<StageGrowthSpec>} stageGrowth ステージが進むごとの敵の HP・攻撃・防御の加算量（章ごと）。
  * @property {readonly string[]} keptGauges フェーズをまたいで値を残すゲージの識別子。
  * @property {Readonly<{gauge: string, per: number, maxBonus: number}>} muscleConversion 力こぶの換算。gauge のゲージが per ごとに行動回数 +1、最大 maxBonus。
- * @property {readonly Readonly<FatigueStage>[]} fatigue 疲弊の段（fromTurn の昇順）。
  * @property {Readonly<RageSpec>} rage 激昂（長引いた戦闘で敵の攻撃の量に倍率がかかる決まり）。
  * @property {Readonly<Object<string, number>>} upgradeSlots 3択の枠の識別子から枠の重みへの対応（書いた順が枠の並び）。
  * @property {number} upgradeChoiceCount 3択の候補の数。
@@ -347,10 +339,6 @@ export const RULES = Object.freeze({
   }),
   keptGauges: Object.freeze(['muscle']),
   muscleConversion: Object.freeze({ gauge: 'muscle', per: 5, maxBonus: 2 }),
-  fatigue: Object.freeze([
-    Object.freeze({ fromTurn: 21, defenseRate: 0.5 }),
-    Object.freeze({ fromTurn: 26, defenseRate: 0 }),
-  ]),
   rage: Object.freeze({ fromTurn: 16, stepPercent: 20 }),
   upgradeSlots: Object.freeze({ castle: 1, troop: 1, card: 1, special: 0.5 }),
   upgradeChoiceCount: 3,

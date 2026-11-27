@@ -13,7 +13,7 @@ import { minionBirths, minionShares } from './enemySplit.js';
  * @property {number} attack 攻撃ゲージの値
  * @property {number} defense 防御ゲージの値
  * @property {number} heal 回復ゲージの値
- * @property {{ kind: 'attack'|'windup'|'guard', amount: number, defense: number }} enemyAction 敵の行動（予告の写し。amount は攻撃の量（振りかぶり・防御だけは 0）、defense はそのターンの防御の量（疲弊の後））
+ * @property {{ kind: 'attack'|'windup'|'guard', amount: number, defense: number }} enemyAction 敵の行動（予告の写し。amount は攻撃の量（振りかぶり・防御だけは 0）、defense はそのターンの防御の量（加算の後））
  * @property {number} castleHp 攻防の前の城の HP
  * @property {number} castleMaxHp 城の最大 HP
  * @property {number} enemyHp 攻防の前の敵の HP

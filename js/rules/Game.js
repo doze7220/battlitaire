@@ -23,7 +23,6 @@ import { enemySituationOf, battlePartsOf } from './enemyParts.js';
 import { enemyTypeIdOfStage } from './stageOrder.js';
 import { computeBattle } from './battle.js';
 import { intentWithMinions } from './enemySplit.js';
-import { isFatigued } from './enemyDefense.js';
 import { createIntent } from './enemyIntent.js';
 import { rageStatusOf } from './enemyRage.js';
 import { stageBonusOf } from './stageBonus.js';
@@ -229,14 +228,6 @@ export class Game {
    */
   enemyRage() {
     return rageStatusOf(this.config.rage, this.battleTurn);
-  }
-
-  /**
-   * いまの敵が疲弊しているか。
-   * @returns {boolean} 疲弊していれば true
-   */
-  isEnemyFatigued() {
-    return isFatigued(this.battleTurn, this.config.fatigue);
   }
 
   /**
