@@ -20,11 +20,11 @@ import { unitPointsOf } from './unitPoints.js';
 
 /**
  * 敵の予告（行動にステージの加算と防御の量を足したもの）。
- * amount は攻撃の値にステージの加算を足した後の量（振りかぶり・吸い込む・防御だけは 0）、
- * baseDefense は抽選した（防御だけの行動では行動が持つ）防御の量にステージの加算を足した後の量（疲弊の前。張らない・隙のターンは 0）、
- * defense は疲弊を掛けた後の防御の量（予告・シールド・攻防が読むのはこれだけ）。
+ * amount は攻撃の値にステージの加算を足した後の量に激昂の倍率をかけた最後の量（振りかぶり・吸い込む・防御だけは 0。予告・攻防が読むのはこれだけ）、
+ * baseAmount は加算の後・倍率の前の量（DEBUG でターンの番号・激昂の値を変えたとき amount を数え直す元になるだけ）、
+ * defense は抽選した（防御だけの行動では行動が持つ）防御の量にステージの加算を足した後の防御の量（激昂の倍率はかけない。張らない・隙のターンは 0。予告・シールド・攻防が読むのはこれだけ）。
  * 子を持つ敵（設定に `split` がある）の予告だけ、このターンのふつうの攻撃に上乗せして襲う子の数 `minions` を持つ（任意）。
- * @typedef {EnemyAction & { baseDefense: number, defense: number, minions?: number }} EnemyIntent
+ * @typedef {EnemyAction & { baseAmount: number, defense: number, minions?: number }} EnemyIntent
  */
 
 /**

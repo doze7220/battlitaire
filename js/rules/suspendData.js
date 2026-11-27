@@ -25,9 +25,10 @@ import { handSizeOf } from './upgradeBoosts.js';
  * 6: スコア（結果の記録の形の変更）と戦闘の記録 `battleRecord` を足したとき 5 から上げた。
  * 7: 敵の親と子の HP `parts` を足したとき 6 から上げた。
  * 8: 敵の子の数 `minions` と予告の `minions` を足したとき 7 から上げた。
+ * 9: 予告の疲弊の前の防御 `baseDefense` をなくし、激昂の倍率の前の攻撃の量 `baseAmount` を足したとき 8 から上げた。
  * @type {number}
  */
-export const SUSPEND_VERSION = 8;
+export const SUSPEND_VERSION = 9;
 
 /**
  * 中断データ（ターンの始まり、または3択の段階の状態。`null`・真偽値・文字列・数・配列・プレーンなオブジェクトだけでできている）。
@@ -111,12 +112,12 @@ const INTENT_KINDS = Object.freeze(['attack', 'windup', 'guard']);
 /**
  * 予告の形が正しいか。
  * @param {unknown} value 調べる値
- * @returns {boolean} `kind` が 'attack'・'windup'・'guard'、`amount`・`baseDefense`・`defense` が 0 以上の整数、`variant` は無いか文字列、`burn` は無いか 0 ≤ min ≤ max の整数、`minions` は無いか 0 以上の整数なら true
+ * @returns {boolean} `kind` が 'attack'・'windup'・'guard'、`amount`・`baseAmount`・`defense` が 0 以上の整数、`variant` は無いか文字列、`burn` は無いか 0 ≤ min ≤ max の整数、`minions` は無いか 0 以上の整数なら true
  */
 function isIntentShape(value) {
   if (!isPlain(value)) return false;
   if (!INTENT_KINDS.includes(value.kind)) return false;
-  if (!isIntFrom(value.amount, 0) || !isIntFrom(value.baseDefense, 0) || !isIntFrom(value.defense, 0)) return false;
+  if (!isIntFrom(value.amount, 0) || !isIntFrom(value.baseAmount, 0) || !isIntFrom(value.defense, 0)) return false;
   if (value.variant !== undefined && typeof value.variant !== 'string') return false;
   if (value.minions !== undefined && !isIntFrom(value.minions, 0)) return false;
   if (value.burn !== undefined) {

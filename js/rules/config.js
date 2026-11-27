@@ -22,6 +22,14 @@
  */
 
 /**
+ * 激昂の設定（戦闘のターンが fromTurn 以上のとき、予告の攻撃の量に倍率をかける）。
+ * 倍率（百分率）= 100 + stepPercent × (戦闘のターン − fromTurn + 1)。
+ * @typedef {Object} RageSpec
+ * @property {number} fromTurn 激昂が始まる戦闘のターン数（1 以上の整数）。
+ * @property {number} stepPercent 激昂の1ターンごとに上がる倍率の量（百分率の整数。0 以上）。
+ */
+
+/**
  * 攻撃の直後の回復の設定。
  * @typedef {Object} AttackHealSpec
  * @property {number} chance 回復する確率（0〜1）。
@@ -181,6 +189,7 @@
  * @property {readonly string[]} keptGauges フェーズをまたいで値を残すゲージの識別子。
  * @property {Readonly<{gauge: string, per: number, maxBonus: number}>} muscleConversion 力こぶの換算。gauge のゲージが per ごとに行動回数 +1、最大 maxBonus。
  * @property {readonly Readonly<FatigueStage>[]} fatigue 疲弊の段（fromTurn の昇順）。
+ * @property {Readonly<RageSpec>} rage 激昂（長引いた戦闘で敵の攻撃の量に倍率がかかる決まり）。
  * @property {Readonly<Object<string, number>>} upgradeSlots 3択の枠の識別子から枠の重みへの対応（書いた順が枠の並び）。
  * @property {number} upgradeChoiceCount 3択の候補の数。
  * @property {number} castleRepairPercent 城の修理で戻す、最大 HP に対する百分率（整数。量は切り捨て）。
@@ -342,6 +351,7 @@ export const RULES = Object.freeze({
     Object.freeze({ fromTurn: 21, defenseRate: 0.5 }),
     Object.freeze({ fromTurn: 26, defenseRate: 0 }),
   ]),
+  rage: Object.freeze({ fromTurn: 16, stepPercent: 20 }),
   upgradeSlots: Object.freeze({ castle: 1, troop: 1, card: 1, special: 0.5 }),
   upgradeChoiceCount: 3,
   castleRepairPercent: 30,

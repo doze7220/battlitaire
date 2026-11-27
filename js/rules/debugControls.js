@@ -91,7 +91,7 @@ export function moveStage(game, delta) {
 }
 
 /**
- * 戦闘のターンの番号を指定した値にし、今の予告の防御の量を数え直す（乱数は呼ばない）。
+ * 戦闘のターンの番号を指定した値にし、今の予告の攻撃の量を激昂の倍率で数え直す（乱数は呼ばない。元の番号に戻すと元の量）。
  * 段取り中で、1 以上の整数で、今の番号と違うときだけ。通しの番号・行動の回数・盤面・集計は触らない。
  * @param {import('./Game.js').Game} game ゲーム
  * @param {number} turn 新しい番号（1 以上の整数）
@@ -103,7 +103,7 @@ export function setBattleTurn(game, turn) {
   if (game.battleTurn === turn) return false;
   game.battleTurn = turn;
   if (game.enemy.intent) {
-    game.enemy.intent = refreshIntent(game.enemy.intent, turn, game.config.fatigue);
+    game.enemy.intent = refreshIntent(enemySpecOf(game.config, game.enemy.typeId), game.enemy.intent, turn, game.config.rage);
   }
   return true;
 }

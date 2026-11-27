@@ -25,6 +25,7 @@ import { computeBattle } from './battle.js';
 import { intentWithMinions } from './enemySplit.js';
 import { isFatigued } from './enemyDefense.js';
 import { createIntent } from './enemyIntent.js';
+import { rageStatusOf } from './enemyRage.js';
 import { stageBonusOf } from './stageBonus.js';
 import { unitPointsOf } from './unitPoints.js';
 import { computePhaseStart } from './phase.js';
@@ -212,14 +213,22 @@ export class Game {
   }
 
   /**
-   * 行動から、今の敵の予告（ステージの加算・防御の量・疲弊を付けたもの）を作る（行動が防御の量を持たず、敵が防御の設定を持ち、隙でないときだけ、防御の抽選で乱数を2回呼ぶ）。
+   * 行動から、今の敵の予告（ステージの加算・防御の量・激昂の倍率をかけたもの）を作る（行動が防御の量を持たず、敵が防御の設定を持ち、隙でないときだけ、防御の抽選で乱数を2回呼ぶ）。
    * @param {import('./combatants.js').EnemyAction} action 行動の決まりが決めた行動
    * @returns {import('./combatants.js').EnemyIntent} 新しい予告
    */
   intentOf(action) {
     const spec = enemySpecOf(this.config, this.enemy.typeId);
-    const intent = createIntent(spec, action, this.stageBonus(), this.battleTurn, this.config.fatigue, this.random);
+    const intent = createIntent(spec, action, this.stageBonus(), this.battleTurn, this.config.rage, this.random);
     return intentWithMinions(spec, intent, this.enemy.minions ?? 0);
+  }
+
+  /**
+   * いまの敵の激昂の状態（戦闘のターンと設定から決まる。乱数は呼ばず状態も変えない）。
+   * @returns {import('./enemyRage.js').RageStatus} 激昂しているか・倍率（百分率の整数）。毎回新しいオブジェクト
+   */
+  enemyRage() {
+    return rageStatusOf(this.config.rage, this.battleTurn);
   }
 
   /**
