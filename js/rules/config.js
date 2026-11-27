@@ -113,7 +113,6 @@
  * @typedef {Object} StageStarsSpec
  * @property {number} base どの抽選にも外れたステージの★。
  * @property {readonly Readonly<StarDrawSpec>[]} draws ★の抽選の並び（書いた順に抽選する）。
- * @property {readonly Readonly<{of: number, star: number}>[]} multiples 倍数ごとの★（今の並びの決まり。タスク2で消す）。
  */
 
 /**
@@ -326,10 +325,6 @@ export const RULES = Object.freeze({
     draws: Object.freeze([
       Object.freeze({ star: 3, risePercent: 8, resetBy: Object.freeze([3]), first: 'dragon' }),
       Object.freeze({ star: 2, risePercent: 30, resetBy: Object.freeze([3, 2]), first: 'giant' }),
-    ]),
-    multiples: Object.freeze([
-      Object.freeze({ of: 10, star: 3 }),
-      Object.freeze({ of: 5, star: 2 }),
     ]),
   }),
   stageGrowth: Object.freeze({
