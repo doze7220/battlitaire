@@ -56,6 +56,7 @@ const VALIDATORS = Object.freeze({
   burn: (v) => Number.isInteger(v) && v >= 0,
   chance: (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1,
   percent: (v) => Number.isInteger(v) && v >= 0 && v <= 100,
+  risePercent: (v) => Number.isInteger(v) && v >= 0 && v <= 100,
 });
 
 /**
@@ -99,9 +100,19 @@ function applyNow(game, item) {
 }
 
 /**
- * 組の並びを答える（城 → 敵の順）。
+ * 組が敵の種類の組か（設定の敵の表に識別子があるか）。
+ * @param {any} config ルールの設定
+ * @param {string} group 組の識別子
+ * @returns {boolean} 敵の組なら true（城・★の抽選は false）
+ */
+function isEnemyGroup(config, group) {
+  return Object.prototype.hasOwnProperty.call(config.enemies, group);
+}
+
+/**
+ * 組の並びを答える（城 → ★の抽選 → 敵の順）。
  * @param {any} config ルールの設定（写し）
- * @returns {{ group: string, enemyName: string|null, itemIds: string[] }[]} 組の並び
+ * @returns {{ group: string, enemyName: string|null, itemIds: string[] }[]} 組の並び（`enemyName` は敵の組だけ名前、城・★の抽選は null）
  */
 export function ruleGroups(config) {
   const groups = [];
@@ -110,7 +121,7 @@ export function ruleGroups(config) {
     if (!g) {
       g = {
         group: it.group,
-        enemyName: it.group === 'castle' ? null : config.enemies[it.group].name,
+        enemyName: isEnemyGroup(config, it.group) ? config.enemies[it.group].name : null,
         itemIds: [],
       };
       groups.push(g);
@@ -145,12 +156,12 @@ export function ruleValue(game, id) {
  * 項目がいつから効くかを答える。
  * @param {import('./Game.js').Game} game ゲーム
  * @param {string} id 項目の識別子
- * @returns {string|null} 'now'|'nextIntent'|'nextCycle'|'nextCharge'|'nextBattle'|'onAppear'。知らない id は null
+ * @returns {string|null} 'now'|'nextIntent'|'nextCycle'|'nextCharge'|'nextBattle'|'nextStage'|'onAppear'。知らない id は null（'onAppear' は今の敵でない敵の組の項目だけ）
  */
 export function ruleTiming(game, id) {
   const it = ruleItemById(id);
   if (!it) return null;
-  if (it.group !== 'castle' && it.group !== game.enemy.typeId) return 'onAppear';
+  if (isEnemyGroup(game.config, it.group) && it.group !== game.enemy.typeId) return 'onAppear';
   return it.timing;
 }
 

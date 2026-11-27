@@ -3,7 +3,7 @@
  * スライダーの範囲の表を持つ。ルール層は import せず、値の変更は debug の操作の口でだけ行う。
  */
 import { debugRuleLayout } from '../view/debugLayout.js';
-import { DEBUG_TEXT, ruleItemText, percentText, wholePercentText } from '../view/debugText.js';
+import { DEBUG_TEXT, ruleItemText, ruleGroupText, percentText, wholePercentText } from '../view/debugText.js';
 
 /**
  * ルールの値の種類ごとのスライダーの範囲と刻み。
@@ -18,6 +18,7 @@ export const RULE_SLIDERS = Object.freeze({
   amount: Object.freeze({ min: 0, max: 50, step: 1 }),
   chance: Object.freeze({ min: 0, max: 1, step: 0.05 }),
   percent: Object.freeze({ min: 0, max: 100, step: 5 }),
+  risePercent: Object.freeze({ min: 0, max: 50, step: 1 }),
   cycleLength: Object.freeze({ min: 1, max: 8, step: 1 }),
   chargeTurns: Object.freeze({ min: 1, max: 5, step: 1 }),
   burn: Object.freeze({ min: 0, max: 10, step: 1 }),
@@ -30,6 +31,7 @@ export const RULE_SLIDERS = Object.freeze({
 const RULE_FORMATS = Object.freeze({
   chance: percentText,
   percent: wholePercentText,
+  risePercent: wholePercentText,
 });
 
 /**
@@ -96,7 +98,7 @@ export function addRuleSliders(area, debug, ruleTop) {
     const placed = layout.groups[i];
     area.addValue({
       ...placed.heading,
-      label: group.enemyName === null ? DEBUG_TEXT.rulesCastle : group.enemyName,
+      label: group.enemyName ?? ruleGroupText(group.group),
       read: () => '',
     });
     group.itemIds.forEach((id, j) => addRuleSlider(area, debug, id, placed.sliders[j]));

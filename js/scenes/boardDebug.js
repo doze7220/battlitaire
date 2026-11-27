@@ -68,8 +68,8 @@ export class BoardDebug {
   }
 
   /**
-   * ルールの値の組の並び（城・敵の種類ごと）。
-   * @returns {{ group: string, enemyName: string|null, itemIds: string[] }[]} 組の識別子・敵の名前（城は null）・項目の識別子
+   * ルールの値の組の並び（城・★の抽選・敵の種類ごと）。
+   * @returns {{ group: string, enemyName: string|null, itemIds: string[] }[]} 組の識別子・敵の名前（敵でない組（城・★の抽選）は null）・項目の識別子
    */
   ruleGroups() {
     return ruleGroups(this.game.config);

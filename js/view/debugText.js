@@ -1,6 +1,6 @@
 /**
  * 責務: DEBUG タブの文字を凍結した定数で持ち、ステージを移るボタン・次の行動の選択肢・HP・FPS・
- * 強化のボタン・子スライムのボタン・ルールの値の項目名・効く時期・百分率を文字にする。何も import しない。
+ * 強化のボタン・子スライムのボタン・ルールの値の項目名・組の見出し・効く時期・百分率を文字にする。何も import しない。
  */
 
 /**
@@ -13,7 +13,7 @@
  *   childToZero: string, parentToZero: string, minionClear: string,
  *   upgrades: string, upgradeOffer: string, upgradeClear: string,
  *   fpsVisible: string, fps: string, bakedDrawing: string,
- *   rulesCastle: string, rulesReset: string
+ *   rulesReset: string
  * }>}
  */
 export const DEBUG_TEXT = Object.freeze({
@@ -39,7 +39,6 @@ export const DEBUG_TEXT = Object.freeze({
   fpsVisible: 'FPS を表示',
   fps: 'FPS',
   bakedDrawing: '焼き付けで描く',
-  rulesCastle: '城',
   rulesReset: 'ルールの値を元に戻す',
 });
 
@@ -84,7 +83,27 @@ export const RULE_ITEM_TEXT = Object.freeze({
   bigRushMin: '大突進の量 最小',
   bigRushMax: '大突進の量 最大',
   splitPercent: '子スライムが生まれる割合',
+  riseStar3: '★3 の上がる量',
+  riseStar2: '★2 の上がる量',
 });
+
+/**
+ * ルールの値の組（敵でない組）の見出しの識別子から文字を引く表（凍結）。敵の組は敵の名前を使う。
+ * @type {Readonly<Record<string, string>>}
+ */
+export const RULE_GROUP_TEXT = Object.freeze({
+  castle: '城',
+  stageStars: '★の抽選',
+});
+
+/**
+ * 敵でない組の見出しの文字にする。
+ * @param {string} group 組の識別子
+ * @returns {string} 表にあればその文字、なければ識別子そのもの
+ */
+export function ruleGroupText(group) {
+  return RULE_GROUP_TEXT[group] ?? group;
+}
 
 /**
  * ルールの値が効く時期の識別子から文字を引く表（凍結）。
@@ -96,6 +115,7 @@ export const RULE_TIMING_TEXT = Object.freeze({
   nextCycle: '次の周期から',
   nextCharge: '次の溜めから',
   nextBattle: '次の攻防から',
+  nextStage: '次のステージから',
   onAppear: '出てきたときから',
 });
 
