@@ -31,6 +31,7 @@ import {
   setRuleValue,
   resetRuleValues,
 } from '../rules/debugRules.js';
+import { stageLineupRow } from '../rules/debugLineup.js';
 
 /**
  * DEBUG タブの口が使う盤面の部品。メニューを開いている間は盤面の `update` が止まって攻防に入らないので、
@@ -157,6 +158,15 @@ export class BoardDebug {
    */
   stageNumber() {
     return this.game.stageNumber;
+  }
+
+  /**
+   * 先の並びの一覧の1行（ルール層を呼ぶだけ。状態は変えない）。
+   * @param {number} offset 今のステージからの先の数（0 が今のステージ）
+   * @returns {import('../rules/debugLineup.js').LineupRow} 1行の中身
+   */
+  stageLineupRow(offset) {
+    return stageLineupRow(this.game, offset);
   }
 
   /**

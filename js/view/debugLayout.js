@@ -58,8 +58,16 @@ const HEAL_Y = DEFENSE_Y + SLIDER_H + GAP;
 const STAGE_LABEL_Y = HEAL_Y + SLIDER_H + GAP;
 /** ステージを移るボタンの y（表示のすぐ下）。 */
 const STAGE_BUTTONS_Y = STAGE_LABEL_Y + LABEL_H;
-/** 敵の見出しの y。 */
-const ENEMY_LABEL_Y = STAGE_BUTTONS_Y + BUTTON_H + GAP;
+/** 先の並びの一覧の行の数。試遊で決め直す値。 @type {number} */
+const LINEUP_ROWS = 20;
+/** 先の並びの一覧の1行の高さ（行の間は空けない）。試遊で決め直す値。 @type {number} */
+const LINEUP_ROW_H = 56;
+/** 先の並びの一覧の見出しの y（ステージを移るボタンの下）。 */
+const LINEUP_LABEL_Y = STAGE_BUTTONS_Y + BUTTON_H + GAP;
+/** 先の並びの一覧の最初の行の y（見出しのすぐ下）。 */
+const LINEUP_ROWS_Y = LINEUP_LABEL_Y + LABEL_H;
+/** 敵の見出しの y（一覧の下）。 */
+const ENEMY_LABEL_Y = LINEUP_ROWS_Y + LINEUP_ROWS * LINEUP_ROW_H + GAP;
 /** 敵の選択肢の列の y（見出しのすぐ下）。 */
 const ENEMY_CHOICES_Y = ENEMY_LABEL_Y + LABEL_H;
 /** 敵の選択肢の1段に並べる数。試遊で決め直す値。 @type {number} */
@@ -73,12 +81,15 @@ const ENEMY_COLS = 2;
  * `upgradeAddButtons`（強化の種類ごとの「取る」。1段に `UPGRADE_COLS` 個ずつ。今は1つずつで幅は全幅）は敵の HP の下。
  * `enemyPartButtons`（子を 0 にする・親を 0 にする。半分の幅2つ）は敵の HP の「1 にする」「満タンにする」の下、
  * `enemyMinionButtons`（子スライム +5・子スライムを 0 にする。半分の幅2つ）はその下で、強化以降は2段ぶん下がる。
+ * `lineupLabel`・`lineupRows`（`LINEUP_ROWS` 行・行の間は空けない・全幅）はステージを移るボタンの下の先の並びの一覧で、
+ * 敵の見出し以降はその分だけ下がる。
  * `ruleTop` はルールの値の並びの始まりの y。
  * @typedef {Readonly<{
  *   area: Readonly<{ x: number, y: number, width: number, height: number }>,
  *   troopNote: object,
  *   troopSliders: Readonly<{ attack: object, defense: object, heal: object }>,
  *   stageLabel: object, stageButtons: ReadonlyArray<object>,
+ *   lineupLabel: object, lineupRows: ReadonlyArray<object>,
  *   enemyLabel: object,
  *   enemyRows: ReadonlyArray<Readonly<{ rect: object, from: number, to: number }>>,
  *   intentLabel: object, intentChoices: object,
@@ -165,6 +176,10 @@ export function createDebugLayout(enemyCount, upgradeCount) {
     stageLabel: rect(STAGE_LABEL_Y, LABEL_H),
     stageButtons: Object.freeze(
       [0, 1, 2, 3].map((i) => rect(STAGE_BUTTONS_Y, BUTTON_H, i * (QUARTER_W + BUTTON_GAP), QUARTER_W)),
+    ),
+    lineupLabel: rect(LINEUP_LABEL_Y, LABEL_H),
+    lineupRows: Object.freeze(
+      Array.from({ length: LINEUP_ROWS }, (_, i) => rect(LINEUP_ROWS_Y + i * LINEUP_ROW_H, LINEUP_ROW_H)),
     ),
     enemyLabel: rect(ENEMY_LABEL_Y, LABEL_H),
     enemyRows: Object.freeze(enemyRows),

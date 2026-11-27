@@ -1,11 +1,11 @@
 /**
  * 責務: DEBUG タブ（MenuTab）を作り、領域の部品を盤面のデバッグの口（BoardDebug）と FPS の表示につなぐ。
- * 強化の段・FPS の下に焼き付けで描くかのチェックボックス（troopBakes.js の設定）とルールの値の並びを足す。ルール層は import しない。
+ * ステージのボタンの下に先の並びの一覧、強化の段・FPS の下に焼き付けで描くかのチェックボックス（troopBakes.js の設定）とルールの値の並びを足す。ルール層は import しない。
  */
 import { Engine } from 'oz';
 import { addRuleSliders } from './debugRuleSliders.js';
 import { createDebugLayout, DEBUG_FPS_POSITION } from '../view/debugLayout.js';
-import { DEBUG_TEXT, intentChoiceText, hpText, fpsText, stageStepText, upgradeAddText, minionAddText } from '../view/debugText.js';
+import { DEBUG_TEXT, lineupRowText, intentChoiceText, hpText, fpsText, stageStepText, upgradeAddText, minionAddText } from '../view/debugText.js';
 import { upgradeTextOf } from '../view/upgradeText.js';
 import { troopBakesEnabled, setTroopBakesEnabled } from '../view/troopBakes.js';
 
@@ -118,6 +118,11 @@ function buildDebugTab(debug, tab, close) {
       label: stageStepText(delta),
       onPress: () => debug.moveStage(delta),
     });
+  });
+
+  area.addValue({ ...layout.lineupLabel, label: DEBUG_TEXT.lineup, read: () => '' });
+  layout.lineupRows.forEach((r, i) => {
+    area.addValue({ ...r, label: () => lineupRowText(debug.stageLineupRow(i)), read: () => '' });
   });
 
   area.addValue({ ...layout.enemyLabel, label: DEBUG_TEXT.enemy, read: () => '' });

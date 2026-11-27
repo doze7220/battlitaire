@@ -1,6 +1,6 @@
 /**
  * 責務: DEBUG タブの文字を凍結した定数で持ち、ステージを移るボタン・次の行動の選択肢・HP・FPS・
- * 強化のボタン・子スライムのボタン・ルールの値の項目名・組の見出し・効く時期・百分率を文字にする。何も import しない。
+ * 強化のボタン・子スライムのボタン・先の並びの一覧の1行・ルールの値の項目名・組の見出し・効く時期・百分率を文字にする。何も import しない。
  */
 
 /**
@@ -13,7 +13,7 @@
  *   childToZero: string, parentToZero: string, minionClear: string,
  *   upgrades: string, upgradeOffer: string, upgradeClear: string,
  *   fpsVisible: string, fps: string, bakedDrawing: string,
- *   rulesReset: string
+ *   rulesReset: string, lineup: string, lineupCurrent: string, lineupOther: string
  * }>}
  */
 export const DEBUG_TEXT = Object.freeze({
@@ -40,7 +40,19 @@ export const DEBUG_TEXT = Object.freeze({
   fps: 'FPS',
   bakedDrawing: '焼き付けで描く',
   rulesReset: 'ルールの値を元に戻す',
+  lineup: 'この先の並び',
+  lineupCurrent: '▶',
+  lineupOther: '　',
 });
+
+/**
+ * 先の並びの一覧の1行を文字にする。今のステージの行は先頭に印「▶」を付ける。
+ * @param {{ stageNumber: number, star: number, name: string, current: boolean }} row 1行の中身
+ * @returns {string} 例「▶ 12　★1　ゴブリンの軍勢」
+ */
+export function lineupRowText(row) {
+  return `${row.current ? DEBUG_TEXT.lineupCurrent : DEBUG_TEXT.lineupOther} ${row.stageNumber}　★${row.star}　${row.name}`;
+}
 
 /**
  * ルールの値の項目名の識別子（RuleItem.name）から文字を引く表（凍結）。
