@@ -384,7 +384,7 @@ export function createMinionPlaces({ groundY, fieldH, figures }) { … }
 ※ 共通の作業（どのタスクでも行う）: 追加・変更した関数・型・定数・表の行の JSDoc と、ファイル先頭の責務（3行以内。新しいファイルは必ず書く）の記載漏れ・古い説明の残りがないことを確かめる。変更した .js の構文チェック（`node --input-type=module --check < <ファイル>`）。本 RES の詳細作業内容を記入する（確かめの結果を含む）。開発資料に影響が出ることが分かったら、資料本体は直さず『開発資料の更新予定』欄に追記する。確かめは2章「要件5」の要領（一時スクリプトはスクラッチに置き、終わったら消す。`git archive 6f09332` を変更前として比べる。切り替え前のスライムの確かめはスクラッチの写しの設定で行う）。
 ※ 区切りの順は2章「区切りの順」のとおり。どのタスクの終わりでも起動とプレイは壊れない（タスク6の終わりまでは今のスライムのまま遊べる）。
 
-*   [ ] タスク1: ルール層の子の仕組み — 子の数・予告への上乗せ・攻防の計算（スライムの設定はまだ今のまま）
+*   [x] タスク1: ルール層の子の仕組み — 子の数・予告への上乗せ・攻防の計算（スライムの設定はまだ今のまま）
     *   **対象ファイル** :
         *   `./js/rules/enemySplit.js` : 新規（`minionBirths`・`minionShares`・`intentWithMinions`・先頭の責務。`isEnemyMinionsShape` はタスク3）
         *   `./js/rules/config.js` : 更新（型 `EnemySplitSpec`・`EnemySpec.split` と先頭の説明だけ。スライムの行はまだ変えない）
@@ -493,7 +493,15 @@ export function createMinionPlaces({ groundY, fieldH, figures }) { … }
 
 ### タスク1: ルール層の子の仕組み — 子の数・予告への上乗せ・攻防の計算（スライムの設定はまだ今のまま）
 *   **作業内容** :
-    *   （未記入）
+    *   `js/rules/enemySplit.js` を新規作成（`minionBirths`・`minionShares`・`intentWithMinions`。何も import しない。`isEnemyMinionsShape` はタスク3）。`config.js` に型 `EnemySplitSpec`・`EnemySpec.split` と先頭の説明（スライムの行は未変更）。`combatants.js` に `Enemy.minions`・`EnemyIntent.minions`（任意）・`createEnemy` の `minions: 0`。`battle.js` に入力 `minions`・`split`、出来事 `minionAttack`・`minionSpawn`・`block`／`castleDamage` の `minions`、結果 `minions`（城が落ちた攻防・倒した攻防は 0）。`Game.js` は `intentOf`（`intentWithMinions(spec, intent, this.enemy.minions ?? 0)`）と `resolveBattle` の入力2項目・`this.enemy.minions = calc.minions` の呼ぶ行だけ。
+    *   確かめ（スクラッチの一時スクリプト。終わって削除済み）:
+        *   (1) `minionBirths`（30%）が d = 0・1・3・4・10・11 で 0・1・1・2・3・4。`split` が null・undefined・割合 0・100・dealt 負も式のとおり。`minionShares` は子 0・盾 < 子・盾 = 子・盾 > 子・盾 0・城の HP で頭打ちの場合が期待どおり。
+        *   (2) `computeBattle`: `minions`・`split` を省いた入力 1008 通り（攻撃・防御・城 HP・敵 HP・敵の防御）で、変更前（`git archive 6f09332`）と出来事・結果（`minions` 除く）が一致し、結果の `minions` は 0。子あり各場合（盾なし・少・同・多・盾 0・城 HP の頭打ち・lose・倒す・HP−1 で止まる（生まれる 12）・割合 0／100）で出来事の並び（`minionAttack` は敵の攻撃の直後、`minionSpawn` は `enemyDamage` の直後）・`block.minions`／`castleDamage.minions`・結果 `minions` が要件2のとおり。子 0〜9 × 盾 0〜14 × 城 HP 3／50 で `block`・`castleDamage` の合計が今の式と同じ。
+        *   (3) スクラッチの写し（スライムの行に `split: { percent: 30 }` だけ足す）の `Game`: `switchEnemy(game, 'slime')` 直後は `enemy.minions` 0・予告 `minions` 0。攻撃 10 の攻防で生まれた数 3 → 次のターンの予告 `minions` 3 → その攻防で `minionAttack` が 3・攻防後 `enemy.minions` 0。攻撃 8 で 3（切り上げ）。倒した攻防・城が落ちた攻防で 0。敵が替わる（`goblins`）と `minions` 0・予告に `minions` なし。`enemy.minions` が undefined でも予告は 0。
+        *   (4) `RULES` のまま、変更前と並べたランダムなゲーム（60 シード・毎手の状態と結果を比較・計 24000 状態・3択の選択 54 回）で、`minions` を除く状態（敵・城・乱数の状態・ゲージ・スコアの記録・3択の候補）・操作の戻りが一致。
+        *   (5) `js/rules/` の 39 モジュールがすべて読み込める（ルール層は `oz` を import しない。`js/main.js` から辿る画面側は今回のタスクで変えていない）。
+        *   構文チェック: `battle.js`・`Game.js`・`enemySplit.js`・`config.js`・`combatants.js` ともエラーなし。
+    *   開発資料: 2章の予定（敵の状態・予告の `minions`・攻防の出来事・`enemySplit.js`）は既に『開発資料の更新予定』にある内容で、追記の必要なし。
 
 ### タスク2: ルール層の行動の決まり「毎ターン攻撃だけ」（`assault`）— 表の行だけ（どの敵もまだ使わない）
 *   **作業内容** :
@@ -538,3 +546,4 @@ export function createMinionPlaces({ groundY, fieldH, figures }) { … }
 * （計画時点の要確認）攻撃の量が3桁の後半のステージで子も3桁のとき、2枚になった予告の札の左下が子の群れの右上と約 10×40px 重なる見込み（2章「要件3」の見積もり）。テストプレイ9で目視してほしい。
 * （計画時点の要確認）子が襲う攻防では、攻防のきっかけ「敵の攻撃の始まり」（`battleCues.js`）が最初の子の相打ちの段の始めになる。スライムは攻撃の始まりの音を持たないので今は何も変わらないが、攻撃の始まりの音を持つ敵に子を持たせるときは見直す。
 * （計画時点の要確認）DEBUG のルールの値の項目名は REQ の言葉のまま「子スライムが生まれる割合」にした（項目名の表は敵ごとに引くので、子を持つ敵を足すときに名前を見直す）。
+* （タスク1）敵の `typeId` の識別子は `goblins`・`ogres`・`skeletons` など複数形がある（確かめの切り替えで注意）。`Game.resolveBattle` は子を持たない敵では予告の `minions` が無いので `?? 0`、`split` は `?? null` で渡す。タスク3より前に再開した盤面の敵は `minions` が無いことがあり、`intentOf` も `?? 0` で読む。

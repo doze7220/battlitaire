@@ -1,7 +1,7 @@
 /**
  * 責務: ゲーム全体の状態（山札・捨て札・列・手札・ゲージ・行動回数・フェーズと段階・城・敵）の保持と、
  * 問い合わせ・操作（置く・捨てる・放つ・手札に入れる・手札から置く・束を移す・攻防・次のフェーズ）の提供。
- * ステージの番号・今の敵・今の戦闘の記録とスコア（結果の記録）・取った強化と3択の段階・この戦闘の間の行動の足し分・ゲージごとの精鋭の数と上振れを持ち（親子の敵は親と子の局面を予告に、親と子の HP を攻防に渡す）、放つ計算とターンの始まりの行動に強化の足し分を渡す。攻防では札の燃やしを反映する。操作は「何が起きたか」を返す。
+ * ステージの番号・今の敵・今の戦闘の記録とスコア（結果の記録）・取った強化と3択の段階・この戦闘の間の行動の足し分・ゲージごとの精鋭の数と上振れを持ち（親子の敵は親と子の局面を予告に、親と子の HP を攻防に渡し、子を持つ敵は子の数を予告と攻防に渡す）、放つ計算とターンの始まりの行動に強化の足し分を渡す。攻防では札の燃やしを反映する。操作は「何が起きたか」を返す。
  */
 
 import { RULES } from './config.js';
@@ -22,6 +22,7 @@ import { enemySpecOf } from './enemyTypes.js';
 import { enemySituationOf, battlePartsOf } from './enemyParts.js';
 import { enemyTypeIdOfStage } from './stageOrder.js';
 import { computeBattle } from './battle.js';
+import { intentWithMinions } from './enemySplit.js';
 import { isFatigued } from './enemyDefense.js';
 import { createIntent } from './enemyIntent.js';
 import { stageBonusOf } from './stageBonus.js';
@@ -216,14 +217,9 @@ export class Game {
    * @returns {import('./combatants.js').EnemyIntent} 新しい予告
    */
   intentOf(action) {
-    return createIntent(
-      enemySpecOf(this.config, this.enemy.typeId),
-      action,
-      this.stageBonus(),
-      this.battleTurn,
-      this.config.fatigue,
-      this.random,
-    );
+    const spec = enemySpecOf(this.config, this.enemy.typeId);
+    const intent = createIntent(spec, action, this.stageBonus(), this.battleTurn, this.config.fatigue, this.random);
+    return intentWithMinions(spec, intent, this.enemy.minions ?? 0);
   }
 
   /**
@@ -632,10 +628,13 @@ export class Game {
       enemyHeal,
       burns,
       enemyParts: battlePartsOf(spec, this.enemy.parts, enemyAction.kind),
+      minions: enemyAction.minions ?? 0,
+      split: spec.split ?? null,
     });
     this.castle.hp = calc.castleHp;
     this.enemy.hp = calc.enemyHp;
     this.enemy.parts = calc.enemyParts;
+    this.enemy.minions = calc.minions;
     this.stats = tallyBattle(this.stats, calc.events, attack);
     this.battleRecord = recordBattle(this.battleRecord, calc.events);
     let defeat = null;

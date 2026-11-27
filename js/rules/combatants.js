@@ -23,7 +23,8 @@ import { unitPointsOf } from './unitPoints.js';
  * amount は攻撃の値にステージの加算を足した後の量（振りかぶり・吸い込む・防御だけは 0）、
  * baseDefense は抽選した（防御だけの行動では行動が持つ）防御の量にステージの加算を足した後の量（疲弊の前。張らない・隙のターンは 0）、
  * defense は疲弊を掛けた後の防御の量（予告・シールド・攻防が読むのはこれだけ）。
- * @typedef {EnemyAction & { baseDefense: number, defense: number }} EnemyIntent
+ * 子を持つ敵（設定に `split` がある）の予告だけ、このターンのふつうの攻撃に上乗せして襲う子の数 `minions` を持つ（任意）。
+ * @typedef {EnemyAction & { baseDefense: number, defense: number, minions?: number }} EnemyIntent
  */
 
 /**
@@ -42,6 +43,7 @@ import { unitPointsOf } from './unitPoints.js';
  * @property {number} maxHp 最大 HP
  * @property {EnemyIntent|null} intent 次の行動の予告（未決定なら null）
  * @property {import('./enemyParts.js').EnemyParts|null} parts 親と子の HP（親子でない敵は null。親子の敵は hp === parts.parent + parts.child を保つ）
+ * @property {number} minions 次のターンに襲う待っている子の数（0 以上の整数。子を持たない敵はいつも 0）
  * @property {object} behaviorState 行動の決まりの状態（steady・either では {}、cycle では { countdown }、inhale では { lastVariant }、buildup では { turnsToHeavy, chargeTurns }）
  */
 
@@ -59,7 +61,7 @@ export function createCastle(config) {
  * @param {string} typeId 敵の種類の識別子
  * @param {import('./config.js').EnemySpec} spec 敵の種類の設定
  * @param {import('./stageBonus.js').StageBonus} bonus ステージの加算量（最大 HP に効く。最大 HP は敵の1体のポイントの倍数に切り捨てる）
- * @returns {Enemy} HP が加算後の最大で、予告が null、決まりの状態が初期値、`parts` が親と子の最大 HP（親子でない敵は null）の敵
+ * @returns {Enemy} HP が加算後の最大で、予告が null、決まりの状態が初期値、`parts` が親と子の最大 HP（親子でない敵は null）、`minions` が 0 の敵
  */
 export function createEnemy(typeId, spec, bonus) {
   const maxHp = grownMaxHp(spec.maxHp, bonus, unitPointsOf(spec));
@@ -71,5 +73,6 @@ export function createEnemy(typeId, spec, bonus) {
     intent: null,
     behaviorState: createBehaviorState(spec.behavior),
     parts: createEnemyParts(spec, maxHp),
+    minions: 0,
   };
 }
