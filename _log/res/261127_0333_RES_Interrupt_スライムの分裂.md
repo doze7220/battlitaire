@@ -480,7 +480,7 @@ export function createMinionPlaces({ groundY, fieldH, figures }) { … }
         *   2章「要件5」の確かめを作業ツリーの最新の `js/` でまとめて行い、結果（数値・体の数）を詳細作業内容に書く。不具合が見つかったら直さずに懸念事項に書き、どのタスクの直しかを示す。
         *   発注者に依頼するテストプレイ（REQ の【テストプレイで確かめること】1〜11）の一覧を詳細作業内容に写し、目視が要る所（子の群れ・札の重なり・生まれる動き・子の大きさ）を挙げる。
         *   共通の作業（RES の記入）。
-*   [ ] タスク10: 開発資料の更新（固定タスク）
+*   [x] タスク10: 開発資料の更新（固定タスク）
     *   **対象ファイル** :
         *   `./PROJECT_ARCHITECTURE.md` : 更新
     *   **作業内容** :
@@ -618,7 +618,8 @@ export function createMinionPlaces({ groundY, fieldH, figures }) { … }
 
 ### タスク10: 開発資料の更新（固定タスク）
 *   **作業内容** :
-    *   （未記入）
+    *   `PROJECT_ARCHITECTURE.md` だけを更新した（コードは変えていない。`_doc/`・`README.md` は触っていない）。2章『開発資料の更新予定』の各項を反映: (1) 1章: スプライトの決まり・一覧に `unit_slime_child.js`、戦闘の段に子スライムの待つ場所（x 440〜510・y 205〜335）と予告の札の2枚目（子の札）、防御だけの予告を骸骨だけに。(2) 2章「敵」: 子の数 `minions`・予告の `minions`、行動の決まりを7種類に（`assault` の項を足し、`either` は骸骨だけ）、並びの組の説明（スライムは `motion: 'either'`）、隙の説明、攻防の出来事（`minionAttack`・`minionSpawn`・`minions`）、設定（`split`・DEBUG 64 個）、新しい項「次のターンに持ち越す攻撃のユニット（子）を持つ敵」。(3) 2章「敵の種類を足すときに書き足す所」に、子を持つ敵を足すとき（設定の `split`・`MINION_SKINS`・`MINION_PLACES`・`MINION_LABELS`・`ENEMY_FIGURES` の絵の行・スプライト・`HORDE_SKINS` には足さない）。(4) 2章「中断データ」: 版 8・敵の `minions`・`isEnemyMinionsShape`。(5) 3章: DEBUG（子スライムのボタン・分裂の割合・スライムの次の行動は攻撃だけ・64 個）、1フェーズの流れ（予告・ターンの始まりの文字・子の見せ方・シールドを張る絵の敵からスライムを外す）。(6) 4章の表: 新しい行 `enemySplit.js`・`minionSkins.js`・`minionPlaces.js`・`minionShow.js`、既存の行の追記（config・debugRuleItems（64 個）・debugRules・suspendData（版 8）・combatants・enemyBehaviors・debugIntents・debugControls・battle・Game・battleAnimConfig・battleSteps・battleTimeline・troopRoster・troopMotion・troopJitter・spriteView・layout・troopView・enemyView・intentParts・intentView・battleText・bannerView・BoardScene・debugText・debugLayout・debugTab・debugRuleSliders・boardDebug）。
+    *   確かめ: 一時スクリプト（スクラッチ）で置換の回数を確かめながら更新した（置換は各1回）。更新後に「69 個」「今は 7」「6種類」「骸骨・スライム（`either`・防御だけ）」の古い記述が残っていないことを検索で確かめた（残る「骸骨・スライム」はどちらも今も正しい記述）。
 
 ## 5. 懸念事項・要確認ポイント
 * （計画時点の要確認）盤面の盾の兵に当たる順は「子スライムが先、スライムの攻撃が後」に決めた（2章「要件2」）。合計の相殺・城の被害は順によらず同じで、見せ方（子が待つ場所から先に行進し、その後スライムが駆け寄る）と合う。逆の順がよければ `enemySplit.js` の `minionShares` と `minionAttackSteps` の段の置き場所を替える。
@@ -638,3 +639,4 @@ export function createMinionPlaces({ groundY, fieldH, figures }) { … }
 * （タスク7）スライムは `behavior.type: 'assault'` に変わったので、DEBUG のルールの値の項目からスライムの防御・大防御の項目（`either` の項目）がなくなる（タスク8の前の時点でスライムの項目は 最大 HP・攻撃の量 最小／最大 の3つ）。ほかの敵のルールの値は変わらない。
 * （タスク8）DEBUG のファイルはすべて CRLF（元のまま）。割合のスライダーの項目名「子スライムが生まれる割合（次の攻防から）」は 20 字で、既存の最長より長く、文字の縮みが目安 0.6 に近い見込み（見積もりのみ）。DEBUG タブを開いて項目名が読めるか目視してほしい（縮みすぎなら項目名を短くする）。子スライムのボタンは子を持たない敵でも出て、押しても何も起きない（「子を 0 にする」と同じ扱い）。割合を 0 にした攻防では子が生まれず、100 では与えたダメージと同数が生まれる。次のターンの予告の子の数は攻防の後のルールの計算で決まり、割合を変えても今の予告は変わらない（次の攻防から効く）。`MINION_STEP`（5）は試遊で決め直す値。
 * （タスク9）通しの確かめでは不具合は見つからなかった。体の数は、ステージ 30 の最大の攻防で 289 体（目安 500 体以内）、ステージ 100 は最大の攻防 928 体・攻撃 500 の放ちで 647 体と目安を超える（子だけなら 294 体以内。自軍の攻撃の兵が多く、今の作りでも自軍の兵だけで同様に増える）。重いと感じたら `minionPlaces.js` の大きさか、体の描き方の見直しを検討する。確かめは代用の `ctx`・`oz` なので、実際の速さ・見た目はテストプレイで確かめてほしい。
+* （タスク10）`PROJECT_ARCHITECTURE.md` の長い行を部分置換した（LF のまま。git の警告「LF will be replaced by CRLF」は設定によるもの）。3章の2か所（`minionAttack` 以外の細かい演出の段の並び）と `js/main.js`・`debugIntents` 以外の表の行は、書き足しの粒度を今の資料の書き方に合わせて最小にした。`troopView.js` の `drawTroopSwarm` の `enemyTypeId` の説明（タスク5・6の指摘）は資料の対象外なので今のまま。
