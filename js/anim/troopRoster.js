@@ -47,6 +47,7 @@ import { matchPoints, spendFromFront } from './pointMatch.js';
 
 /**
  * 種類 → 陣地（`layout.camps` の項目名）の表。敵の側の種類もそれぞれ別の陣地を持つ。
+ * 子は待っている・襲う子（minion）と、その攻防で生まれた子（minionBorn。番号を 0 から数えるために分ける）が同じ陣地 minion を使う（陣地は子を持つ敵の配置だけにある）。
  * @type {Readonly<Record<string, string>>}
  */
 const CAMP_OF = Object.freeze({
@@ -56,6 +57,8 @@ const CAMP_OF = Object.freeze({
   enemy: 'enemy',
   enemyGuard: 'enemyGuard',
   flame: 'flame',
+  minion: 'minion',
+  minionBorn: 'minion',
 });
 
 /**
@@ -221,7 +224,7 @@ export function createTroopRoster(troopLayout) {
 /**
  * 種類の兵を count 体、陣地の家に置く（現れる時刻と濃くなる時間を記録する）。
  * @param {TroopRoster} roster 名簿
- * @param {string} kind 種類（attack・defense・heal・enemy・enemyGuard）
+ * @param {string} kind 種類（attack・defense・heal・enemy・enemyGuard・flame・minion・minionBorn。陣地は CAMP_OF の表）
  * @param {number} count 人数（0 以上の整数）
  * @param {number} t 現れ始める時刻（ms）
  * @param {number} appearMs 濃くなる時間（ms。0 ならすぐ）
@@ -303,7 +306,7 @@ export function removeTroops(roster, kind, count) {
  * 段取りの間に、種類の兵を count 体、陣地の中心（fromX, fromY）から家へ跳ばせて足す。
  * 兵は t（に1体ごとの遅れとずれ）から、ずれた長さで家へ 1本の脚で動く。家の番号は、その種類のすでにいる兵の続き。
  * @param {TroopRoster} roster 名簿
- * @param {string} kind 種類（attack・defense・heal・enemy・enemyGuard）
+ * @param {string} kind 種類（attack・defense・heal・enemy・enemyGuard・flame・minion・minionBorn。陣地は CAMP_OF の表）
  * @param {number} count 人数（0 以下なら何もしない）
  * @param {number} fromX 飛び出す位置の x
  * @param {number} fromY 飛び出す位置の足元の y
@@ -404,7 +407,7 @@ function jumpTroops(name, roster, kind, count, bodies, fromX, fromY, t, moveMs, 
  * 敵の側の兵を体の並び bodies の数だけ、画面の外・口（fromX, fromY）から陣地の家へ跳ねながら動かして足す。
  * 体ごとのポイントを持たせ、始めから傷ついた体は現れる時刻に傷ついた姿にする。
  * @param {TroopRoster} roster 名簿
- * @param {string} kind 種類（enemy・enemyGuard・flame）
+ * @param {string} kind 種類（enemy・enemyGuard・flame・minionBorn。陣地は CAMP_OF の表）
  * @param {Array<{points: number, wounded: boolean}>} bodies 体ごとのポイントと始めから傷ついているか（前から。空なら何もしない）
  * @param {number} fromX 出る位置の x
  * @param {number|null} fromY 出る位置の足元の y（null なら兵ごとの家の y）

@@ -17,7 +17,8 @@ const SPEED_STEP = 0.41421356237309515;
 
 /**
  * ずれを入れる種類 → 列の始めのずらし。同じ番号の違う種類の兵がそろわないようにする。
- * 表にない種類（goblin・shield・flame・figure）にはずれを入れない。
+ * 表にない種類（goblin・shield・flame・figure・minionBorn）にはずれを入れない。
+ * minion（襲う子）は enemy（ゴブリンの攻撃の兵）と同じ値（スライムとの攻防には enemy の兵が出ないので、並びはそろわない）。
  * @type {Readonly<Record<string, number>>}
  */
 const KIND_PHASES = Object.freeze({
@@ -26,6 +27,7 @@ const KIND_PHASES = Object.freeze({
   heal: 0.4,
   enemy: 0.6,
   enemyGuard: 0.8,
+  minion: 0.6,
 });
 
 /**

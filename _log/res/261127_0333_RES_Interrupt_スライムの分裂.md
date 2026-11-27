@@ -425,7 +425,7 @@ export function createMinionPlaces({ groundY, fieldH, figures }) { … }
         *   2章「要件3」の子スライムのスプライト・子の絵の表・子の大きさと待つ場所・配置・兵の見た目と焼き付けのとおりに書く。スプライトのコピーは中身を変えない（説明の1行目以外）。各関数・型・定数・表の行に JSDoc（試遊で決め直す値の印）。
         *   確かめ: (1) `unit_slime_child.js` が `unit_slime.js` と1行目の説明だけ違う（差分を取って確かめる）。(2) 作業ツリーの配置で、`minionSlots('slime', n)`（n = 1・10・150）がすべて待つ場所の範囲の中・番号だけで決まる（n によらず i 番目が同じ）・表にない識別子で Error。`troopsFor('slime')` が `camps.minion`・`kindSizes.minion`・`minionBorn` を持ち、ほかの7種の `troopsFor` が変更前と同じ値。`hatch` がスライムの絵の足元の中央。2章「要件3」の重なりの見積もりを実際の値で求め直す（スライムの絵・防御の陣地・予告の札の位置との間）。(3) 代用の `ctx` で、`drawTroop(ctx, 'minion', …, 'slime')` が子スライムの絵を描き、焼き付けの一覧に `slimeChild`（24px）が1つ入る。ほかの兵の描く呼び出しの並びが変更前と同じ。(4) 2章「要件5」の起動とプレイが壊れないことの確かめ（今のスライムのまま見た目が変わらないこと）。
         *   共通の作業。
-*   [ ] タスク5: 演出の子の仕組み — 待っていた子・襲う段・生まれる段（ほかの敵の時間割が変わらないことを確かめる）
+*   [x] タスク5: 演出の子の仕組み — 待っていた子・襲う段・生まれる段（ほかの敵の時間割が変わらないことを確かめる）
     *   **対象ファイル** :
         *   `./js/anim/minionShow.js` : 新規（`minionAttackSteps`・`placeWaitingMinions`・`checkWaitingMinions`・`marchMinions`・`hatchMinions`・先頭の責務）
         *   `./js/anim/battleSteps.js` : 更新（`BattleSnapshot.enemyMinions`・`snapshotBattle`・`buildBattleSteps`・`EVENT_TO_STEP`・`BattleStep` の型）
@@ -538,7 +538,15 @@ export function createMinionPlaces({ groundY, fieldH, figures }) { … }
 
 ### タスク5: 演出の子の仕組み — 待っていた子・襲う段・生まれる段（ほかの敵の時間割が変わらないことを確かめる）
 *   **作業内容** :
-    *   （未記入）
+    *   `js/anim/minionShow.js` を新規作成（`minionAttackSteps`・`placeWaitingMinions`・`checkWaitingMinions`・`marchMinions`・`hatchMinions`。view は import しない）。`battleSteps.js` に `BattleSnapshot.enemyMinions`（`snapshotBattle` は `game.enemy.minions ?? 0`）・型（段の種類 `minionMarch`・`minionSpawn`、`kind` の `'minion'`）・`EVENT_TO_STEP.minionSpawn`・敵の攻撃の段の後の `steps.push(...minionAttackSteps(events))`。`blockPairs` と `block`／`castleDamage` の段の量は「量 − 子の分（`minions ?? 0`）」が 0 より大きいときだけ作る。`battleTimeline.js` は import・`createEnemyBody` の後の `placeWaitingMinions`／`checkWaitingMinions` の2行・`STEP_BUILDERS` の2行・先頭の責務。`troopRoster.js` の `CAMP_OF`（`minion`・`minionBorn` とも陣地 `minion`）、`troopMotion.js` の `KNOCK_DIRS`（2行とも 1）と型 `TroopKind`、`troopJitter.js` の `KIND_PHASES.minion: 0.6`（説明の「表にない種類」に `minionBorn`）、`battleAnimConfig.js` の `minionHatchMs: 450`（型にも）。`ENEMY_RUNNERS`・`troopBreath.js`・音・当たりの記録の表は変えていない。
+    *   確かめ（スクラッチの一時スクリプト。終わって削除済み。変更前は `git archive 6f09332` の展開、切り替え前のスライムはスクラッチの写し（スライムの行を `assault`・`split: { percent: 30 }` にした `js/`）。代用 `oz` のローダー）:
+        *   (1) 写しの `Game` で `switchEnemy(game, 'slime')`、ステージ 1・30・100 × 子 0・1・3・8・40 × 盾 0〜50（精鋭あり・なし）× 攻撃 0〜200 × 城の HP 通常・12・3・1 × スライムの攻撃 2・3・5 の 10800 通りで、`buildBattleSteps`・`buildBattleTimeline` が Error なく通り、次がすべて合った。段の並び（子の行進 → 相打ち → 城への当たり → スライムの駆け寄り・打撃 → 自軍の突撃 → 敵の HP → 生まれる → 修理）・量（`block.minions`・`castleDamage.minions`・スライムの打撃は「量 − 子の分」）。駆け寄りが子の段の前に入らないこと。`minion` 全員が終わり方を持つこと。相打ちの段で落ちた子の数が `block.minions`、城の当たりの段で消えた子の数が「子 − 相打ち」で、その段の城の HP の変化の合計が `castleDamage.minions`。城と敵の HP の変化の最終値が結果と同じこと。生まれた子（`minionBorn`）が演出の終わりに `minionSlots('slime', 生まれた数)` の位置に立ち（大きさ 24・終わり方なし）、倒した攻防・城が落ちた攻防では生まれないこと。別の走査で、生まれる 91 件・城が落ちる 240 件・倒す 189 件の場合も Error なし。個別の段の時刻の並びも目で確かめた（例: 子 8・盾 3・攻撃 10 で、子の行進 0〜1085・相打ち 1235〜・城への当たり 1815〜・駆け寄り 2615〜・打撃・戻り・自軍の突撃・敵の HP・生まれる 7297〜7771・修理）。待っていた数と段の食い違い（写しの数が行進の量と違う・行進の段がない・子の段だけが無い）と、子の陣地のない配置で Error になった。
+        *   (2) 変更前（`before`）と作業ツリーを同じ乱数の状態から並べ、7種（ゴブリン・オーガ・オオカミ・猪・骸骨・巨人・ドラゴン）と今のスライム（`RULES`）で、ステージ 1・30 × 攻撃 0〜200（精鋭あり・なし）× 防御 0〜30 × 修理 0・6 × 城の HP 通常・6 × 敵の HP 通常・3 × シード 3 通りの 11040 通り（猪の敵の HP 指定の 480 通りは変更前も後も同じ Error なので除く）で、段の並び・時間割（段の時刻・きっかけ・名簿の脚と終わり方・HP の変化・当たりの記録・ヒットマーク・終わりの時刻・人数の表示値）・結果・乱数の状態・敵・城が JSON で完全に一致（写しの `enemyMinions` と敵の `minions` は除く）。
+        *   (3) `BattleDirector` を倍率 1（dt 8）と速い倍率 2（dt 16）で進め、きっかけの種類の並び（子の相打ち `block`・`enemyAttackStart`・子の城への当たり `castleHit`・…）が同じで、きっかけが来る壁の時計が倍率 2 で約半分（誤差 16ms 以内）。子の当たりでヒットストップが作られる（当たり 25・止まり 17）。
+        *   (4) `js/` の全 173 モジュールのうち 172 が読み込める（`js/main.js` だけ読み込みで `document` に触れて止まる。置き物の `oz` のためで、読み込みの失敗ではない）。`BoardScene` の通し実行は行っていない（代用の `Ui` 等が大きいため。タスク9で行う）。今のスライムのまま（`minions` が 0・出来事に子なし）の時間割が (2) のとおり変わらないことを根拠とした。
+        *   構文チェック: `minionShow.js`・`battleSteps.js`・`battleTimeline.js`・`troopRoster.js`・`troopMotion.js`・`troopJitter.js`・`battleAnimConfig.js` ともエラーなし。既存ファイルの改行（CRLF／LF）は元のまま。
+        *   監査の指摘による説明の修正: `troopRoster.js` の `spawnTroops`・`landTroops`・`enterTroops` の `@param kind` の種類の並びに `minion`・`minionBorn` などを足し、陣地は `CAMP_OF` の表と書いた（説明だけ。構文チェックはエラーなし）。
+    *   開発資料: 追記の必要なし（『開発資料の更新予定』の 3章・演出の予定のとおり）。
 
 ### タスク6: 見た目 — 段取りの間の子の群れ・予告の札・ターンの始まりの文字
 *   **作業内容** :
@@ -570,3 +578,5 @@ export function createMinionPlaces({ groundY, fieldH, figures }) { … }
 * （タスク1）敵の `typeId` の識別子は `goblins`・`ogres`・`skeletons` など複数形がある（確かめの切り替えで注意）。`Game.resolveBattle` は子を持たない敵では予告の `minions` が無いので `?? 0`、`split` は `?? null` で渡す。タスク3より前に再開した盤面の敵は `minions` が無いことがあり、`intentOf` も `?? 0` で読む。
 * （タスク3）`js/rules/enemySplit.js` は LF、`suspendData.js` は CRLF の改行（元のまま）。`isEnemyMinionsShape` は予告が `minions` を持つ敵に対し、予告の `minions` が無い場合も通す（タスク1・2 の間に保存されたデータの形はそもそも版 7 で捨てられる）。
 * （タスク4）`layout.js`・`troopView.js` は CRLF、`spriteView.js` ・新規ファイルは LF の改行（元のまま）。`unit_slime_child.js` は `unit_slime.js` と同じ改行の混在（CRLF と LF）をそのままコピーした。焼き付けは `TROOP_LOOKS.minion`・`MINION_SKINS.slime` とも焼き付けの識別子 `slimeChild`・大きさ 24 で1枚を共有する（`minionPlaces.slime.size` を `troops.size`（24）と変えると、`TROOP_LOOKS` の分の 24px も別に焼かれる）。作業用のスクラッチ（`before/` の展開・一時スクリプト）は削除をシステムに止められたため、スクラッチのフォルダに残っている（リポジトリの外）。
+* （タスク5）`js/anim/minionShow.js` は LF の新規ファイル（既存の `js/anim/` の .js は CRLF のまま編集）。`checkWaitingMinions` は、写しの待っていた子の数と `minionMarch` の量が違うと Error にする。`snapshotBattle` が必ず `enemyMinions` を入れるので、`buildBattleTimeline` を写しを手で作って呼ぶ場合は `enemyMinions` を省けない（省くと Error）。子の相打ち・城の当たりは今の段（`block`・`castleHit`）の `kind: 'minion'` で、敵の攻撃の始まりのきっかけ `enemyAttackStart` は最初の子の相打ち（なければ城の当たり）の段の始めになる（5章 計画時点の指摘のとおり。スライムは攻撃の始まりの音を持たないので音は変わらない）。`minionHatchMs`（450）・`KIND_PHASES.minion`（0.6）は試遊で決め直す値。
+* （気づいた点・タスク5）`js/view/troopView.js` の `drawTroopSwarm` の `enemyTypeId` の説明（353 行目付近）「群れの敵の兵の絵を選ぶ」は、子（`minion`・`minionBorn`）の絵も選ぶようになったが、タスク5の対象ファイルではないので直していない（`drawTroop` の説明はタスク4で直し済み）。次に `troopView.js` を変えるタスク（タスク6以降）で説明を直してほしい。

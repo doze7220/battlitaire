@@ -1,6 +1,6 @@
 /**
  * 段の並びから、段の時刻（同時に始める段を含む）・兵の名簿・敵の体・ヒットマーク・当たりの記録・HP の変化・浮き出し・燃える札・音のきっかけの時刻を組み立てて時間割にする。
- * きっかけの時刻の式はここだけにある。描画も状態の変更も行わない。待っていた自軍の兵の引き継ぎも行う。
+ * きっかけの時刻の式はここだけにある。描画も状態の変更も行わない。待っていた自軍の兵・子の引き継ぎも行う。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
@@ -30,6 +30,7 @@ import { createEnemyBody, defeatEnemyBody, enemyBodyEnd, hitEnemyBody, hitEnemyS
 import { createHitMarkList, hitMarksEnd } from './hitMarks.js';
 import { createImpactLog, recordStepImpacts, watchStep } from './impactLog.js';
 import { battleFxEnd } from './battleFx.js';
+import { checkWaitingMinions, hatchMinions, marchMinions, placeWaitingMinions } from './minionShow.js';
 
 /**
  * 時刻つきの段。BattleStep に start・end（ms）と、音のきっかけの時刻 cueTimes（絶対時刻 ms。なければ空）を足したもの。
@@ -401,6 +402,8 @@ function addDashBack(state, step, t) {
 const STEP_BUILDERS = {
   form: addForm,
   enemyMarch: addEnemyMarch,
+  minionMarch: (state, step, t) => marchMinions(state.roster, step, t, enemyPace(state.typeId).moveScale),
+  minionSpawn: (state, step, t) => hatchMinions(state.roster, state.boardLayout.battle, state.typeId, step.amount, t),
   block: (state, step, t) => addClash(state, step.kind ?? 'enemy', step.amount, t),
   castleHit: addCastleHit,
   strikeBlock: addStrikeBlock,
@@ -468,6 +471,8 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout, wai
     waitingTotal += waiting[kind];
   }
   state.body = createEnemyBody(state.roster, boardLayout.battle, before.enemyTypeId, before.enemyHp, before.enemyDefense, before.enemyMaxHp, before.enemyUnit, before.enemyParts);
+  placeWaitingMinions(state.roster, before.enemyMinions);
+  checkWaitingMinions(steps, before.enemyMinions);
   /** @type {TimedStep[]} */
   const timed = [];
   let t = 0;

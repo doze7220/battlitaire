@@ -7,8 +7,8 @@ import { BATTLE_ANIM } from './battleAnimConfig.js';
 
 /**
  * 兵の種類。自軍はゲージの識別子（attack・defense・heal）、敵の側は enemy・enemyGuard、goblin＝群れの敵の HP の群れ、
- * shield＝絵の敵のシールド、flame＝ブレスの炎、figure＝絵の敵の絵（倒れる動きだけに使い、名簿には入れない）。
- * @typedef {'attack'|'defense'|'heal'|'enemy'|'enemyGuard'|'goblin'|'shield'|'flame'|'figure'} TroopKind
+ * shield＝絵の敵のシールド、flame＝ブレスの炎、minion＝待っている・襲う子、minionBorn＝その攻防で生まれた子、figure＝絵の敵の絵（倒れる動きだけに使い、名簿には入れない）。
+ * @typedef {'attack'|'defense'|'heal'|'enemy'|'enemyGuard'|'goblin'|'shield'|'flame'|'figure'|'minion'|'minionBorn'} TroopKind
  */
 
 /**
@@ -40,6 +40,8 @@ const KNOCK_DIRS = Object.freeze({
   enemy: 1,
   enemyGuard: 1,
   goblin: 1,
+  minion: 1,
+  minionBorn: 1,
 });
 
 /**

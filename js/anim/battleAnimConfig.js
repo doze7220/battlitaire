@@ -10,6 +10,7 @@
  * @property {number} marchMs 敵兵・攻撃の兵が、相打ちの相手の前（相手のいない兵は進む先）まで1体ずつ進む時間（ms。前から出る遅れは別）。試遊で決め直す。
  * @property {number} clashMs 相打ちの段で、最後の組が跳ねて落ち始めてから段が終わるまでの間（ms）。試遊で決め直す。
  * @property {number} hitMoveMs 残った兵が城・敵に当たる位置まで1体ずつ移動する時間（ms。着いた兵から跳ねて落ちる）。試遊で決め直す。
+ * @property {number} minionHatchMs 生まれた子が、敵の絵の足元から待つ場所の家へ跳ぶ時間（ms。前から出る遅れは別）。試遊で決め直す。
  * @property {number} hpMs HP の表示が変わる時間の下限（ms。兵が当たる・城に入る間が長ければそちらに合わせる）。試遊で決め直す。
  * @property {number} fadeMs 敵の回復の量の浮き出しが薄れて消える時間（ms）。試遊で決め直す。
  * @property {number} stepGapMs 段と段の間（ms）。試遊で決め直す。
@@ -92,6 +93,7 @@ export const BATTLE_ANIM = Object.freeze({
   marchMs: 700,
   clashMs: 400,
   hitMoveMs: 350,
+  minionHatchMs: 450,
   hpMs: 300,
   fadeMs: 250,
   stepGapMs: 150,

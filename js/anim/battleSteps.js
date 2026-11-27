@@ -1,10 +1,11 @@
 /**
  * 攻防の前の値の写しと、攻防の出来事の並びから演出の段の並びを組み立てる。
- * 敵の攻撃の段は敵ごとの見せ方の表から作り、札が燃える段は敵の攻撃と同時に始める。大きな一撃の印とための段も付ける。
+ * 敵の攻撃の段は敵ごとの見せ方の表から作り、札が燃える段は敵の攻撃と同時に始める。大きな一撃の印・ための段・子の段（子の段は minionShow.js）も付ける。
  * ルールの判定や計算はせず、描画も状態の変更も行わない。
  */
 
 import { insertDashSteps } from './dashSteps.js';
+import { minionAttackSteps } from './minionShow.js';
 import { enemyAttackShow, enemyDefenseShow, hasChargeShow, isHeavyAttack } from './enemyShows.js';
 
 /**
@@ -15,6 +16,7 @@ import { enemyAttackShow, enemyDefenseShow, hasChargeShow, isHeavyAttack } from 
  * @property {{parent: number, child: number}|null} enemyParts 攻防の前の敵の親と子の HP の写し（`game.enemy.parts`。親子でない敵は null）
  * @property {number} enemyMaxHp 敵の最大 HP（絵の体の大きさ（縮み）を求める）
  * @property {string} enemyTypeId 攻防をする敵の種類の識別子
+ * @property {number} enemyMinions 攻防の前に待っていた子の数（`game.enemy.minions`。子を持たない敵は 0。省かれた古い状態は 0）
  * @property {number} enemyUnit 攻防をする敵の1体のポイント（1 以上の整数。群れ・攻撃・守りの体の割り振りに使う）
  * @property {number} enemyDefense そのターンの敵の防御の量（疲弊の後。攻防の前の予告の `defense` の写し。絵を持つ敵のシールドの数）
  * @property {number} attack 攻防の前の攻撃ゲージの値（攻撃の兵のポイントの合計 = 人数 + 精鋭の上振れ）
@@ -27,14 +29,14 @@ import { enemyAttackShow, enemyDefenseShow, hasChargeShow, isHeavyAttack } from 
 /**
  * 演出の1段。
  * @typedef {Object} BattleStep
- * @property {'form'|'enemyMarch'|'block'|'castleHit'|'strikeBlock'|'strikeCastle'|'march'|'enemyBlock'|'shieldBlock'|'enemyHit'|'heal'|'enemyHeal'|'burn'|'charge'|'dash'|'dashBack'} type 段の種類
+ * @property {'form'|'enemyMarch'|'minionMarch'|'block'|'castleHit'|'strikeBlock'|'strikeCastle'|'march'|'enemyBlock'|'shieldBlock'|'enemyHit'|'minionSpawn'|'heal'|'enemyHeal'|'burn'|'charge'|'dash'|'dashBack'} type 段の種類
  * @property {'parent'|'child'} [part] `enemyHit` のみ: 当たる先（出来事 `enemyDamage` に `parts` があるときだけ付く）
- * @property {number} amount 量（`form`・`charge` は 0、`burn` は燃える枚数）
+ * @property {number} amount 量（`form`・`charge` は 0、`burn` は燃える枚数、`minionMarch` は襲う子の数、`minionSpawn` は生まれた子の数）
  * @property {boolean} [heavy] 敵の攻撃の段（`enemyMarch`・`block`・`castleHit`・`strikeBlock`・`strikeCastle`）のみ: 大きな一撃なら true（そうでなければ付けない）
  * @property {Array<{columnIndex: number, cardIndex: number, card: *}>} [burns] `burn` のみ: 燃える札の並び（燃える順）
  * @property {number} [enemyGuards] `form` のみ: 現れる敵の守りの数
- * @property {number} [pairs] `enemyMarch` のみ: 防御の兵と相打ちで消し合うポイントの量（`block` の量。1体1ポイントなら組の数。なければ 0）。`march` のみ: 敵の守りと相打ちで消し合うポイントの量（`enemyBlock` の量。なければ 0）
- * @property {'enemy'|'flame'} [kind] `enemyMarch`・`block`・`castleHit` のみ: 敵の側の兵の種類
+ * @property {number} [pairs] `enemyMarch` のみ: 防御の兵と相打ちで消し合うポイントの量（`block` の量から子の分を引いたもの。1体1ポイントなら組の数。なければ 0）。`minionMarch` のみ: 盾の兵と相打ちになる子の数（`block.minions`）。`march` のみ: 敵の守りと相打ちで消し合うポイントの量（`enemyBlock` の量。なければ 0）
+ * @property {'enemy'|'flame'|'minion'} [kind] `enemyMarch`・`block`・`castleHit` のみ: 敵の側の兵の種類（'minion' は子の相打ち・城への当たり）
  * @property {'offscreen'|'mouth'} [from] `enemyMarch` のみ: 敵の側の兵の出る場所
  * @property {'defense'|'castle'} [to] `dash` のみ: 絵が駆け寄る行き先（防御の兵の前・城の前）
  * @property {string} [style] `dash`・`dashBack` のみ: 駆け寄りの見せ方の名前（`DASH_STYLES` の項目名）
@@ -47,6 +49,7 @@ const MARCH_BEFORE = new Set(['enemyBlock', 'enemyDamage', 'heal']);
 /** 出来事の種類から、量をそのまま持つ段の種類への対応。 */
 const EVENT_TO_STEP = {
   enemyDamage: 'enemyHit',
+  minionSpawn: 'minionSpawn',
   heal: 'heal',
   enemyHeal: 'enemyHeal',
 };
@@ -63,6 +66,7 @@ export function snapshotBattle(game) {
     enemyParts: game.enemy.parts ? { parent: game.enemy.parts.parent, child: game.enemy.parts.child } : null,
     enemyMaxHp: game.enemy.maxHp,
     enemyTypeId: game.enemy.typeId,
+    enemyMinions: game.enemy.minions ?? 0,
     enemyUnit: game.enemyUnitPoints(),
     enemyDefense: game.enemy.intent === null ? 0 : game.enemy.intent.defense,
     attack: game.gauges.attack ?? 0,
@@ -101,7 +105,7 @@ export function buildBattleSteps(result, before) {
   }
   const blockEvent = events.find((e) => e.type === 'block');
   const enemyBlockEvent = events.find((e) => e.type === 'enemyBlock');
-  const blockPairs = blockEvent ? blockEvent.amount : 0;
+  const blockPairs = blockEvent ? blockEvent.amount - (blockEvent.minions ?? 0) : 0;
   const enemyBlockPairs = defenseShow.unit !== null && enemyBlockEvent ? enemyBlockEvent.amount : 0;
   const burnEvent = events.find((e) => e.type === 'cardBurn' && e.amount > 0);
   let burnPlaced = false;
@@ -114,6 +118,7 @@ export function buildBattleSteps(result, before) {
       steps.push({ type: 'enemyMarch', amount: enemyAttack.amount, pairs: blockPairs, kind: show.unit, from: show.from, ...heavyMark });
     }
   }
+  steps.push(...minionAttackSteps(events));
 
   let marchDone = before.attack <= 0;
   let stoppedByLose = false;
@@ -132,13 +137,16 @@ export function buildBattleSteps(result, before) {
       }
       continue;
     }
-    if (event.amount > 0 && (event.type === 'block' || event.type === 'castleDamage')) {
-      const type = event.type === 'block' ? show.blockStep : show.castleStep;
-      steps.push(
-        show.unit !== null
-          ? { type, amount: event.amount, kind: show.unit, ...heavyMark }
-          : { type, amount: event.amount, ...heavyMark },
-      );
+    if (event.type === 'block' || event.type === 'castleDamage') {
+      const own = event.amount - (event.minions ?? 0);
+      if (own > 0) {
+        const type = event.type === 'block' ? show.blockStep : show.castleStep;
+        steps.push(
+          show.unit !== null
+            ? { type, amount: own, kind: show.unit, ...heavyMark }
+            : { type, amount: own, ...heavyMark },
+        );
+      }
       continue;
     }
     if (event.type === 'enemyBlock') {
