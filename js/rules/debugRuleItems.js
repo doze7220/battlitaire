@@ -1,5 +1,5 @@
 /**
- * 責務: DEBUG タブで変えられるルールの値の項目の表（RULE_ITEMS）を、`RULES` の形から城と敵の種類・行動の決まりの種類ごとに組み立てて持つ。
+ * 責務: DEBUG タブで変えられるルールの値の項目の表（RULE_ITEMS）を、`RULES` の形から城と敵の種類・行動の決まりの種類・分裂（子を持つ敵）ごとに組み立てて持つ。
  * 状態を持たない純粋な表と引く関数（ルール層）。
  */
 
@@ -12,7 +12,7 @@ import { unitPointsOf } from './unitPoints.js';
  * @typedef {Object} RuleItem
  * @property {string} id 識別子（例 'castle.maxHp'、'goblins.attack.min'）。
  * @property {string} group 組（'castle' か敵の種類の識別子）。
- * @property {string} kind 値の種類（'castleMaxHp'|'enemyMaxHp'|'defense'|'amount'|'chance'|'cycleLength'|'burn'|'chargeTurns'）。
+ * @property {string} kind 値の種類（'castleMaxHp'|'enemyMaxHp'|'defense'|'amount'|'chance'|'percent'|'cycleLength'|'burn'|'chargeTurns'。'percent' は 0〜100 の整数の百分率）。
  * @property {string} name 項目の名前の識別子（DEBUG タブが文字を引く）。
  * @property {string} timing 今の敵（城）のときに効く時期（'now'|'nextIntent'|'nextCycle'|'nextCharge'|'nextBattle'）。
  * @property {string|null} pairId 最小と最大の組の相手の id（組でなければ null）。
@@ -150,6 +150,21 @@ function defenseItems(typeId, spec, unit) {
 }
 
 /**
+ * 敵の分裂の項目（子が生まれる割合）を作る。分裂を持つ敵（`split` を持つ敵）だけ。
+ * @param {string} typeId 敵の種類の識別子
+ * @param {any} spec 敵の設定
+ * @returns {Readonly<RuleItem>[]} [割合]（0〜100 の整数。次の攻防から効く）。`split` を持たない敵は空
+ */
+function splitItems(typeId, spec) {
+  if (!spec.split) return [];
+  return [
+    item(`${typeId}.split.percent`, typeId, 'percent', 'splitPercent', 'nextBattle', null, null,
+      (c) => c.enemies[typeId].split.percent,
+      (c, v) => { c.enemies[typeId].split.percent = v; }),
+  ];
+}
+
+/**
  * 設定から項目の表を組み立てる（城 → 設定に書いた順の敵）。
  * @param {any} rules ルールの調整値
  * @returns {readonly Readonly<RuleItem>[]} 項目の並び
@@ -169,6 +184,7 @@ function buildItems(rules) {
       item(`${typeId}.maxHp`, typeId, 'enemyMaxHp', rules.enemies[typeId].brood ? 'maxHpTotal' : 'maxHp', 'now', null, null,
         (c) => c.enemies[typeId].maxHp, (c, v) => { c.enemies[typeId].maxHp = v; }, unit),
       ...build(typeId, behavior, unit),
+      ...splitItems(typeId, rules.enemies[typeId]),
       ...defenseItems(typeId, rules.enemies[typeId], unit),
     );
   }

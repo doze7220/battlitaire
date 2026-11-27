@@ -1,5 +1,5 @@
 /**
- * 責務: DEBUG タブから呼ばれる、ゲームの状態を書き換えるデバッグ用の操作（兵のゲージ・ステージを移る・敵の切り替え・次の行動の指定・戦闘のターンの番号・城と敵の HP（親子の敵は親と子の HP も）・親と子の HP を 0 にする・強化の取る（上限で止まる）・すべて外す・3択を出す）と問い合わせ。
+ * 責務: DEBUG タブから呼ばれる、ゲームの状態を書き換えるデバッグ用の操作（兵のゲージ・ステージを移る・敵の切り替え・次の行動の指定・戦闘のターンの番号・城と敵の HP（親子の敵は親と子の HP も）・親と子の HP を 0 にする・待っている子の数を足す／0 にする（子を持つ敵）・強化の取る（上限で止まる）・すべて外す・3択を出す）と問い合わせ。
  * 段取り中だけ効き、行動の回数は使わない（ルール層）。
  */
 
@@ -7,6 +7,7 @@ import { enemyTypeIds, enemySpecOf } from './enemyTypes.js';
 import { refreshIntent } from './enemyIntent.js';
 import { intentChoiceIds, planChosenIntent, chosenIntentOf } from './debugIntents.js';
 import { ENEMY_SITUATIONS, enemySituationOf, partsWithTotal, zeroPart } from './enemyParts.js';
+import { intentWithMinions } from './enemySplit.js';
 import { clearEliteOf } from './elites.js';
 import { upgradeIds, takeUpgrade, clearUpgrades, fixedUpgradeValue, isUpgradeCapped, takenUpgradeList } from './upgrades.js';
 
@@ -246,6 +247,52 @@ export function zeroEnemyChild(game) {
 export function zeroEnemyParent(game) {
   if (!zeroEnemyPart(game, 'parent')) return false;
   if (!intentChoiceIdsOf(game).includes(currentIntentChoice(game))) game.planIntent();
+  return true;
+}
+
+/**
+ * 待っている子の数を書き換え、今の予告の子の数も合わせる共通の処理（段取り中で、子を持つ敵のときだけ呼ぶ）。
+ * @param {import('./Game.js').Game} game ゲーム
+ * @param {any} spec 今の敵の設定
+ * @param {number} minions 新しい子の数
+ * @returns {void}
+ */
+function setEnemyMinions(game, spec, minions) {
+  const { enemy } = game;
+  enemy.minions = minions;
+  if (enemy.intent) enemy.intent = intentWithMinions(spec, enemy.intent, minions);
+}
+
+/**
+ * 待っている子（次のターンに襲う子スライム）を count 匹足す。予告の子の数も合わせる。
+ * 段取り中で、count が 1 以上の整数で、敵が子を持ち（設定に `split` がある）、敵の HP が 0 より大きいときだけ。
+ * 行動の回数・乱数・HP は触らない。
+ * @param {import('./Game.js').Game} game ゲーム
+ * @param {number} count 足す数（1 以上の整数）
+ * @returns {boolean} 足したら true（条件外・子を持たない敵なら false）
+ */
+export function addEnemyMinions(game, count) {
+  if (!isPlanning(game)) return false;
+  if (!Number.isInteger(count) || count < 1) return false;
+  const spec = enemySpecOf(game.config, game.enemy.typeId);
+  if (!spec.split) return false;
+  if (!(game.enemy.hp > 0)) return false;
+  setEnemyMinions(game, spec, (game.enemy.minions ?? 0) + count);
+  return true;
+}
+
+/**
+ * 待っている子を 0 匹にする。予告の子の数も合わせる。
+ * 段取り中で、敵が子を持ち、子が 1 匹以上いるときだけ。行動の回数・乱数・HP は触らない。
+ * @param {import('./Game.js').Game} game ゲーム
+ * @returns {boolean} 0 にしたら true（条件外・子を持たない敵・もう 0 なら false）
+ */
+export function clearEnemyMinions(game) {
+  if (!isPlanning(game)) return false;
+  const spec = enemySpecOf(game.config, game.enemy.typeId);
+  if (!spec.split) return false;
+  if (!(game.enemy.minions > 0)) return false;
+  setEnemyMinions(game, spec, 0);
   return true;
 }
 

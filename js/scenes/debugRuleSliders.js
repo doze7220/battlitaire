@@ -3,7 +3,7 @@
  * スライダーの範囲の表を持つ。ルール層は import せず、値の変更は debug の操作の口でだけ行う。
  */
 import { debugRuleLayout } from '../view/debugLayout.js';
-import { DEBUG_TEXT, ruleItemText, percentText } from '../view/debugText.js';
+import { DEBUG_TEXT, ruleItemText, percentText, wholePercentText } from '../view/debugText.js';
 
 /**
  * ルールの値の種類ごとのスライダーの範囲と刻み。
@@ -17,9 +17,19 @@ export const RULE_SLIDERS = Object.freeze({
   defense: Object.freeze({ min: 0, max: 20, step: 1 }),
   amount: Object.freeze({ min: 0, max: 50, step: 1 }),
   chance: Object.freeze({ min: 0, max: 1, step: 0.05 }),
+  percent: Object.freeze({ min: 0, max: 100, step: 5 }),
   cycleLength: Object.freeze({ min: 1, max: 8, step: 1 }),
   chargeTurns: Object.freeze({ min: 1, max: 5, step: 1 }),
   burn: Object.freeze({ min: 0, max: 10, step: 1 }),
+});
+
+/**
+ * ルールの値の種類ごとの、スライダーの値の文字の付け方（表にない種類は `Ui` の既定の文字）。
+ * @type {Readonly<Record<string, (v: number) => string>>}
+ */
+const RULE_FORMATS = Object.freeze({
+  chance: percentText,
+  percent: wholePercentText,
 });
 
 /**
@@ -61,7 +71,8 @@ function addRuleSlider(area, debug, id, rect) {
     read: () => debug.ruleValue(id),
     write: (v) => debug.setRuleValue(id, v),
   };
-  if (info.kind === 'chance') spec.format = percentText;
+  const format = RULE_FORMATS[info.kind];
+  if (format) spec.format = format;
   area.addSlider(spec);
 }
 

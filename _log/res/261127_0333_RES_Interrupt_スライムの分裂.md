@@ -459,7 +459,7 @@ export function createMinionPlaces({ groundY, fieldH, figures }) { … }
         *   2章「要件1」のスライムの行のとおりに書く。`ENEMY_SHOWS.slime`・`ENEMY_FIGURES.slime`・`STAGE_BGM`・`ENEMY_ATTACK_SE`・`enemyPortrait.js` は変えないことを確かめる。説明の敵の一覧（「骸骨・スライム」の `either` など）を今の形に合わせる。
         *   確かめ: 2章「要件5」のうち、予告（ステージ 1・30・100 で多数のターン）・攻防の場合分け・攻防の時間割（精鋭を含む）・中断データ・描く体の数（ステージ 30・100）を作業ツリーの `RULES` で行う。★1の並び（10 年分の日付の種 × ステージ 1〜500）が変更前と同じ。ほかの7種の予告・攻防・時間割・見た目が変更前と同じ。スライムの段取りの間にシールドマークが出ない。2章「要件5」の起動とプレイが壊れないことの確かめ（`switchEnemy` でスライムにして数ターン・倒すまで・城が落ちるまで）。
         *   共通の作業。
-*   [ ] タスク8: DEBUG タブ — スライムのルールの値（分裂の割合）・子スライムの数のボタン
+*   [x] タスク8: DEBUG タブ — スライムのルールの値（分裂の割合）・子スライムの数のボタン
     *   **対象ファイル** :
         *   `./js/rules/debugRuleItems.js` : 更新（`splitItems`・組み立てに足す・`RuleItem.kind` の説明）
         *   `./js/rules/debugRules.js` : 更新（`VALIDATORS.percent`）
@@ -578,7 +578,15 @@ export function createMinionPlaces({ groundY, fieldH, figures }) { … }
 
 ### タスク8: DEBUG タブ — スライムのルールの値（分裂の割合）・子スライムの数のボタン
 *   **作業内容** :
-    *   （未記入）
+    *   要件4のとおりに書いた。`debugRuleItems.js`: `splitItems(typeId, spec)`（`spec.split` があれば `${typeId}.split.percent`・種類 `percent`・名前 `splitPercent`・時期 `nextBattle` の1項目）を行動の項目の後・防御の項目の前に足し、`RuleItem.kind` の説明と先頭の責務に追記。`debugRules.js`: `VALIDATORS.percent`（0〜100 の整数）。`debugControls.js`: `addEnemyMinions(game, count)`・`clearEnemyMinions(game)`（共通の内部関数 `setEnemyMinions` で `enemy.minions` と予告の `minions`（`intentWithMinions`。予告がなければ予告は触らない）を合わせる。敵の識別子の if なし。`split` の有無で判定）と import・先頭の責務。`debugRuleSliders.js`: `RULE_SLIDERS.percent`（0〜100・刻み 5）・表 `RULE_FORMATS`（`chance` → `percentText`、`percent` → `wholePercentText`）。`debugText.js`: `DEBUG_TEXT.minionClear`（型にも）・`RULE_ITEM_TEXT.splitPercent`・`wholePercentText`・`minionAddText`・先頭の責務。`debugLayout.js`: `enemyMinionButtons`（`add`・`clear`。「子を 0 にする」「親を 0 にする」の段の下・半分の幅2つ）、強化の見出し以降は2段ぶん下がる説明に直し、型に追記。`debugTab.js`: 定数 `MINION_STEP = 5`・2つのボタン・import。`boardDebug.js`: 口 `addEnemyMinions(count)`・`clearEnemyMinions()`・import。
+    *   確かめ（スクラッチの一時スクリプト `t8.mjs`・`t8b.mjs`。リポジトリの外。代用の `oz`（`Ui` の部品を記録する代わりに、`createDebugTab(debug).build` に渡す `addScroll` の領域が部品の仕様を記録する置き物）のローダーで実行）:
+        *   (1) `RULE_ITEMS` は **64 個**（城 1・スライム 4・ほか 59）。スライムの項目は `slime.maxHp`（最大 HP・すぐ）・`slime.attack.min`／`max`（攻撃の量 最小／最大・次の予告から）・`slime.split.percent`（子スライムが生まれる割合・次の攻防から）の4つで、ほかの敵の項目の数は変更前の 63−3＝60（城を含む）と同じ（`splitItems` は `split` を持つ敵だけ項目を足す）。割合のスライダーは 0〜100・刻み 5・値の文字「30%」。`setRuleValue` は 0・50・100 を受け、101・12.5・−5 は断る。割合を 0・5・30・50・100 に変えて 10 ダメージの攻防を行うと、生まれる子が 0・1・3・5・10 匹（`minionBirths` と同じ）。「ルールの値を元に戻す」で 70 → 30 に戻る。`ruleTiming` は `nextBattle`。
+        *   (2) DEBUG タブを組み立てて操作: 「子スライム +5」を押すと `enemy.minions` と予告の `minions` が 0 → 5 → 10 に増え、「子スライムを 0 にする」で両方 0。足す数が 0・1.5・−1 のとき、子を持たない敵（goblins）のとき、段取り中でないとき、敵の HP が 0 のときは何も起きず（戻りが false・`minions` 0・goblins の予告に `minions` が付かない）、「子スライムを 0 にする」も子 0・子を持たない敵・段取り中でないときは何も起きない。HP・行動の回数は変わらない。スライムの次の行動の選択肢の枠は「攻撃」「－」「－」（枠の数 3）。スライムの組の見出し・項目名・効く時期の文字が日本語で出る。DEBUG タブの全 133 個の部品の矩形に重なりなし。y は「子を 0 にする・親を 0 にする」1872、「子スライム +5・子スライムを 0 にする」1976（幅 282・高さ 88・x 0 と 298）、強化の見出し 2080（変更前は 1976）、3択 2152。
+        *   (3) ボタンの文字の見積もり: ボタンの幅 282（半分の幅）、標準の文字 36 で、「子スライム +5」は約 230（全角 5 字＋半角）、「子スライムを 0 にする」は約 360（全角 9 字＋半角）。枠に収まらないとき `Ui` は文字を横に縮める（余白を含め収まる幅を 258〜282 とすると縮みは約 0.7〜0.78）で、目安 0.6 を下回らない。スライダーの項目名「子スライムが生まれる割合（次の攻防から）」は全角 20 字で約 720、幅 580 の文字の段（右に値の文字）に収めるため縮みは約 0.65〜0.75 の見込みで、既存の最長の項目名（18 字の「攻撃後に回復する確率（次の攻防から）」など）より 2 字長く、0.6 に近い（懸念事項に書いた）。実際の縮みは `Ui` の描画を見ないと分からないので見積もり。
+        *   (4) 起動とプレイ: 代用の `oz` のローダーで `js/main.js` を含む `js/` の全 173 モジュールがすべて読み込めた。`BoardScene` を `init` → 400 回 `update` → `switchEnemy` でスライム（ほか goblins・boar も）にして、子 0・8・3 匹の予告にしたうえで行動を使い切り「準備終了」のタップ → BATTLE! → `BattleShowScene` を `init` → 3000 回 `update`（25 回に 1 回 `draw`）→ 次のフェーズを繰り返し、Error なく進み（スライム 8 攻防で城が落ちるまで・goblins 23 攻防・boar 40 攻防）、`save`/`restore` が全部釣り合った。
+        *   構文チェック: 変更した 8 ファイルともエラーなし。改行は CRLF のまま（差分は変更行だけ）。
+        *   説明の確かめ: 追加・変更した関数・型・定数の JSDoc と、先頭の責務（`debugRuleItems.js`・`debugControls.js`・`debugText.js`）、`createDebugLayout` の型の説明（「強化以降は1段ぶん下がる」を「2段ぶん」に直した）に古い説明の残りがないことを目で見て確かめた（`debugRules.js`・`debugRuleSliders.js`・`debugTab.js`・`boardDebug.js` の先頭の責務は今の内容で足りる）。
+    *   開発資料: 追記の必要なし（『開発資料の更新予定』の DEBUG の予定のとおり。ルールの値 69 個 → 64 個・子スライムのボタン）。
 
 ### タスク9: 通しの確かめ（要件5）
 *   **作業内容** :
@@ -604,3 +612,4 @@ export function createMinionPlaces({ groundY, fieldH, figures }) { … }
 * （タスク6）`js/view/*`・`BoardScene.js` は CRLF（元のまま）。`intentParts` の `minions` は予告の `minions` が 0 でも `false`（`intentWithMinions` は子を持つ敵の予告に `minions: 0` を付けるが札は出ない）。子の札の絵は攻撃の札の `iconW`（40）の長い方の辺に合わせた子スライムのスプライト、数は攻撃の量と同じ 30px の太字。目視してほしい点: 子の群れの待つ場所と予告の札の左下の重なり（5章の計画時点の見込み。攻撃 3・子 150 で札の左端が x 529、攻撃 999・子 1234 では左端 x 482 で、子の群れの右上（x 〜522・y 〜181）と重なりうる）、子の札の絵の見え方、`INTENT_MINION_GAP_X`（6）の間。`enemyActionText` は攻撃の側を出さず子の側だけ出る予告（今は起きない）では子の文字だけにしている。
 * （タスク7）子の体の数の目安（500 体）は、ステージ 100 で自軍の攻撃の兵を多く放ったときに超える（確かめ (6)。最大 928 体）。体の大半は自軍の兵で、今回の子（襲う子・生まれる子）だけなら最大 294 体。重いときは `minionPlaces.js` の大きさや、体の描き方の見直しを検討する。
 * （タスク7）スライムは `behavior.type: 'assault'` に変わったので、DEBUG のルールの値の項目からスライムの防御・大防御の項目（`either` の項目）がなくなる（タスク8の前の時点でスライムの項目は 最大 HP・攻撃の量 最小／最大 の3つ）。ほかの敵のルールの値は変わらない。
+* （タスク8）DEBUG のファイルはすべて CRLF（元のまま）。割合のスライダーの項目名「子スライムが生まれる割合（次の攻防から）」は 20 字で、既存の最長より長く、文字の縮みが目安 0.6 に近い見込み（見積もりのみ）。DEBUG タブを開いて項目名が読めるか目視してほしい（縮みすぎなら項目名を短くする）。子スライムのボタンは子を持たない敵でも出て、押しても何も起きない（「子を 0 にする」と同じ扱い）。割合を 0 にした攻防では子が生まれず、100 では与えたダメージと同数が生まれる。次のターンの予告の子の数は攻防の後のルールの計算で決まり、割合を変えても今の予告は変わらない（次の攻防から効く）。`MINION_STEP`（5）は試遊で決め直す値。

@@ -5,7 +5,7 @@
 import { Engine } from 'oz';
 import { addRuleSliders } from './debugRuleSliders.js';
 import { createDebugLayout, DEBUG_FPS_POSITION } from '../view/debugLayout.js';
-import { DEBUG_TEXT, intentChoiceText, hpText, fpsText, stageStepText, upgradeAddText } from '../view/debugText.js';
+import { DEBUG_TEXT, intentChoiceText, hpText, fpsText, stageStepText, upgradeAddText, minionAddText } from '../view/debugText.js';
 import { upgradeTextOf } from '../view/upgradeText.js';
 import { troopBakesEnabled, setTroopBakesEnabled } from '../view/troopBakes.js';
 
@@ -37,6 +37,12 @@ export const HP_LOW = 1;
  * @type {readonly number[]}
  */
 const STAGE_STEPS = Object.freeze([-5, -1, 1, 5]);
+
+/**
+ * 「子スライム +5」ボタン1回で足す子の数。DEBUG タブのボタンで、ルールの値ではない。試遊で決め直す値。
+ * @type {number}
+ */
+const MINION_STEP = 5;
 
 /** 兵のスライダーを足す種類の並び（`createDebugLayout` の `troopSliders` の項目の順）。 */
 const TROOP_KINDS = Object.freeze(['attack', 'defense', 'heal']);
@@ -173,6 +179,16 @@ function buildDebugTab(debug, tab, close) {
     ...layout.enemyPartButtons.parent,
     label: DEBUG_TEXT.parentToZero,
     onPress: () => debug.zeroEnemyParent(),
+  });
+  area.addButton({
+    ...layout.enemyMinionButtons.add,
+    label: minionAddText(MINION_STEP),
+    onPress: () => debug.addEnemyMinions(MINION_STEP),
+  });
+  area.addButton({
+    ...layout.enemyMinionButtons.clear,
+    label: DEBUG_TEXT.minionClear,
+    onPress: () => debug.clearEnemyMinions(),
   });
 
   area.addValue({ ...layout.upgradeLabel, label: DEBUG_TEXT.upgrades, read: () => '' });

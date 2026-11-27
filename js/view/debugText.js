@@ -1,6 +1,6 @@
 /**
  * 責務: DEBUG タブの文字を凍結した定数で持ち、ステージを移るボタン・次の行動の選択肢・HP・FPS・
- * 強化のボタン・ルールの値の項目名・効く時期・百分率を文字にする。何も import しない。
+ * 強化のボタン・子スライムのボタン・ルールの値の項目名・効く時期・百分率を文字にする。何も import しない。
  */
 
 /**
@@ -10,7 +10,7 @@
  *   troops: Readonly<{ attack: string, defense: string, heal: string }>,
  *   stage: string, enemy: string, intent: string, noChoice: string, battleTurn: string,
  *   castleHp: string, enemyHp: string, hpToOne: string, hpToFull: string,
- *   childToZero: string, parentToZero: string,
+ *   childToZero: string, parentToZero: string, minionClear: string,
  *   upgrades: string, upgradeOffer: string, upgradeClear: string,
  *   fpsVisible: string, fps: string, bakedDrawing: string,
  *   rulesCastle: string, rulesReset: string
@@ -32,6 +32,7 @@ export const DEBUG_TEXT = Object.freeze({
   hpToFull: '満タンにする',
   childToZero: '子を 0 にする',
   parentToZero: '親を 0 にする',
+  minionClear: '子スライムを 0 にする',
   upgrades: '強化',
   upgradeOffer: '3択を出す',
   upgradeClear: '強化をすべて外す',
@@ -82,6 +83,7 @@ export const RULE_ITEM_TEXT = Object.freeze({
   rageChance: '怒りを溜める確率',
   bigRushMin: '大突進の量 最小',
   bigRushMax: '大突進の量 最大',
+  splitPercent: '子スライムが生まれる割合',
 });
 
 /**
@@ -114,6 +116,15 @@ export function ruleItemText(name, timing) {
  */
 export function percentText(v) {
   return `${Math.round(v * 100)}%`;
+}
+
+/**
+ * 0〜100 の整数の値を百分率の文字にする。
+ * @param {number} v 値（0〜100 の整数）
+ * @returns {string} 例「30%」
+ */
+export function wholePercentText(v) {
+  return `${v}%`;
 }
 
 /**
@@ -174,6 +185,15 @@ export function stageStepText(delta) {
  */
 export function fpsText(v) {
   return v === null ? '--' : String(v);
+}
+
+/**
+ * 「子スライム +n」ボタンの文字にする。
+ * @param {number} n 1回で足す子の数
+ * @returns {string} 例「子スライム +5」
+ */
+export function minionAddText(n) {
+  return `子スライム +${n}`;
 }
 
 /**

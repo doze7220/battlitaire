@@ -15,6 +15,8 @@ import {
   setEnemyHp,
   zeroEnemyChild,
   zeroEnemyParent,
+  addEnemyMinions,
+  clearEnemyMinions,
   setBattleTurn,
   upgradeChoices,
   addUpgrade,
@@ -283,6 +285,21 @@ export class BoardDebug {
    */
   zeroEnemyParent() {
     zeroEnemyParent(this.game);
+  }
+
+  /**
+   * 敵の待っている子を count 匹足す（予告の子の数も合う）。子を持たない敵・段取り中でないときは何もしない。見た目は描くときにルール層を読んで合う。
+   * @param {number} count 足す数（1 以上の整数）
+   */
+  addEnemyMinions(count) {
+    addEnemyMinions(this.game, count);
+  }
+
+  /**
+   * 敵の待っている子を 0 匹にする（予告の子の数も合う）。子を持たない敵・子がいないときは何もしない。
+   */
+  clearEnemyMinions() {
+    clearEnemyMinions(this.game);
   }
 
   /**

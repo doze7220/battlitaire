@@ -71,7 +71,8 @@ const ENEMY_COLS = 2;
  * `enemyRows` は敵の切り替えの段（上から順）で、`from`〜`to`（`to` は含まない）がその段に並ぶ敵の番号の範囲。
  * 最後の段が `ENEMY_COLS` に満たないときは、その数ぶんの幅にする。`upgradeLabel`・`upgradeButtons`（3択を出す・すべて外す）・
  * `upgradeAddButtons`（強化の種類ごとの「取る」。1段に `UPGRADE_COLS` 個ずつ。今は1つずつで幅は全幅）は敵の HP の下。
- * `enemyPartButtons`（子を 0 にする・親を 0 にする。半分の幅2つ）は敵の HP の「1 にする」「満タンにする」の下で、強化以降は1段ぶん下がる。
+ * `enemyPartButtons`（子を 0 にする・親を 0 にする。半分の幅2つ）は敵の HP の「1 にする」「満タンにする」の下、
+ * `enemyMinionButtons`（子スライム +5・子スライムを 0 にする。半分の幅2つ）はその下で、強化以降は2段ぶん下がる。
  * `ruleTop` はルールの値の並びの始まりの y。
  * @typedef {Readonly<{
  *   area: Readonly<{ x: number, y: number, width: number, height: number }>,
@@ -84,6 +85,7 @@ const ENEMY_COLS = 2;
  *   battleTurn: object, castleHp: object, castleButtons: Readonly<{ one: object, full: object }>,
  *   enemyHp: object, enemyButtons: Readonly<{ one: object, full: object }>,
  *   enemyPartButtons: Readonly<{ child: object, parent: object }>,
+ *   enemyMinionButtons: Readonly<{ add: object, clear: object }>,
  *   upgradeLabel: object, upgradeButtons: Readonly<{ offer: object, clear: object }>,
  *   upgradeAddButtons: ReadonlyArray<object>,
  *   fpsCheckbox: object, fpsValue: object, bakeCheckbox: object,
@@ -127,8 +129,10 @@ export function createDebugLayout(enemyCount, upgradeCount) {
   const enemyButtonsY = enemyHpY + LABEL_H;
   /** 子を 0 にする・親を 0 にするボタンの y（敵の HP のボタンの下）。 */
   const enemyPartButtonsY = enemyButtonsY + BUTTON_H + GAP;
+  /** 子スライムを足す・子スライムを 0 にするボタンの y（子を 0 にする・親を 0 にするの下）。 */
+  const enemyMinionButtonsY = enemyPartButtonsY + BUTTON_H + GAP;
   /** 強化の見出しの y。 */
-  const upgradeLabelY = enemyPartButtonsY + BUTTON_H + GAP;
+  const upgradeLabelY = enemyMinionButtonsY + BUTTON_H + GAP;
   /** 3択を出す・すべて外すボタンの y（見出しのすぐ下）。 */
   const upgradeButtonsY = upgradeLabelY + LABEL_H;
   /** 強化の「取る」ボタンの最初の段の y。 */
@@ -180,6 +184,10 @@ export function createDebugLayout(enemyCount, upgradeCount) {
     enemyPartButtons: Object.freeze({
       child: rect(enemyPartButtonsY, BUTTON_H, 0, HALF_W),
       parent: rect(enemyPartButtonsY, BUTTON_H, HALF_W + BUTTON_GAP, HALF_W),
+    }),
+    enemyMinionButtons: Object.freeze({
+      add: rect(enemyMinionButtonsY, BUTTON_H, 0, HALF_W),
+      clear: rect(enemyMinionButtonsY, BUTTON_H, HALF_W + BUTTON_GAP, HALF_W),
     }),
     upgradeLabel: rect(upgradeLabelY, LABEL_H),
     upgradeButtons: Object.freeze({

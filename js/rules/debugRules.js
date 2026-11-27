@@ -55,6 +55,7 @@ const VALIDATORS = Object.freeze({
   amount: (v) => Number.isInteger(v) && v >= 0,
   burn: (v) => Number.isInteger(v) && v >= 0,
   chance: (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1,
+  percent: (v) => Number.isInteger(v) && v >= 0 && v <= 100,
 });
 
 /**
