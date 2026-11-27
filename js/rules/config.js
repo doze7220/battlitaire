@@ -109,13 +109,15 @@
  * @property {number} star 当たったときのステージの★。
  * @property {number} risePercent 1ステージごとに上がる確率の量（百分率の整数）。
  * @property {readonly number[]} resetBy この抽選の確率を 0% に戻す★の並び（その★が出たステージの次が 0%）。
- * @property {string} [first] その★で最初に出る敵の種類の識別子（任意。使うのは敵の並びを決める側）。
+ * @property {string} [first] その★で最初に出る敵の種類の識別子（任意。使うのは敵の並びを決める側。くじ袋では最初の袋の先頭）。
+ * @property {string} order その★の敵の並びの決まりの名前（'motion'＝動きの組・'bag'＝くじ袋。stageOrder.js の表で引く）。
  */
 
 /**
  * ステージの★の抽選の決まり（draws を書いた順に抽選し、最初に当たった★にする。どれも外れたら base）。
  * @typedef {Object} StageStarsSpec
  * @property {number} base どの抽選にも外れたステージの★。
+ * @property {string} baseOrder base の★の敵の並びの決まりの名前（'motion'・'bag'）。
  * @property {readonly Readonly<StarDrawSpec>[]} draws ★の抽選の並び（書いた順に抽選する）。
  */
 
@@ -341,9 +343,10 @@ export const RULES = Object.freeze({
   }),
   stageStars: Object.freeze({
     base: 1,
+    baseOrder: 'motion',
     draws: Object.freeze([
-      Object.freeze({ star: 3, risePercent: 8, resetBy: Object.freeze([3]), first: 'dragon' }),
-      Object.freeze({ star: 2, risePercent: 30, resetBy: Object.freeze([3, 2]), first: 'giant' }),
+      Object.freeze({ star: 3, risePercent: 8, resetBy: Object.freeze([3]), first: 'dragon', order: 'bag' }),
+      Object.freeze({ star: 2, risePercent: 30, resetBy: Object.freeze([3, 2]), first: 'giant', order: 'bag' }),
     ]),
   }),
   stageGrowth: Object.freeze({
