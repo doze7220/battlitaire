@@ -110,6 +110,14 @@ export const ENEMY_SHOWS = Object.freeze({
     dents: false,
     pace: 'normal',
   }),
+  mushroom: Object.freeze({
+    body: 'figure',
+    attacks: Object.freeze({ default: 'dashBounce' }),
+    heavy: Object.freeze(['heavy']),
+    charge: Object.freeze([]),
+    dents: false,
+    pace: 'normal',
+  }),
   giant: Object.freeze({
     body: 'figure',
     attacks: Object.freeze({ default: 'strike' }),
