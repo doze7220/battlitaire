@@ -376,11 +376,11 @@ export function isBehaviorState(behavior, state) {
  * 次の行動を決める。引数の状態は書き換えず、新しい状態を返す。
  * 乱数の使い方は決まりごと（steady: 攻撃の量。assault: 攻撃の量。cycle: 攻撃のフェーズだけ量。inhale: ブレス・爪は量、それ以外は吸い込むの抽選→外れなら爪の量。
  * buildup: 溜めていないターンは溜める抽選1回（外れれば量1回が続く）・溜めの続きは0回・大攻撃は量1回・大攻撃の次は量1回。
- * either: 攻撃の抽選1回→当たれば量1回、外れれば大防御の抽選1回→量1回）。
+ * either: 攻撃の抽選1回→当たれば量1回、外れれば大防御の抽選1回→量1回。
+ * brood: 局面ごと（together: 毎ターン2回。enraged: 溜めの抽選のターンは溜める1回・突進2回、大突進1回、大突進の次の突進1回。young: 1回））。
  * @param {{ type: string }} behavior 行動の決まりの設定
  * @param {object} state いまの決まりの状態
  * @param {() => number} random 0以上1未満を返す乱数の関数
- * brood: 局面ごと（together: 毎ターン2回。enraged: 溜めの抽選のターンは溜める1回・突進2回、大突進1回、大突進の次の突進1回。young: 1回）。
  * @param {number} [unit] 1体のポイント（量の抽選の刻み。既定 1。乱数を呼ぶ順・回数は変わらない）
  * @param {'together'|'enraged'|'young'|null} [situation] 親子の敵の局面（`brood` だけが読む。ほかの決まりは無視する。既定 null）
  * @returns {{ action: import('./combatants.js').EnemyAction, state: object }} 次の行動と、次の決まりの状態

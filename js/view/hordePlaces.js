@@ -23,6 +23,7 @@
 /**
  * 敵の種類の識別子 → 大きさと並ぶ場所の行（群れで描く敵だけが持つ。`HORDE_SKINS` と同じ識別子をそろえる）。
  * null は標準（`layout.js` の `TROOP_SIZE`・`HORDE_AREA_X`・`TROOP_CAMPS_X` の `enemy`・`enemyGuard` のまま）。試遊で決め直す値。
+ * 今の表: ゴブリン（goblins）・骸骨（skeletons）は標準（null）、猪の親子の子（うり坊。boar）・オーガ（ogres）は個別の行。
  * @type {Readonly<Record<string, Readonly<HordePlaceDef>|null>>}
  */
 export const HORDE_PLACES = Object.freeze({

@@ -49,15 +49,15 @@ const BADGE_FILL = 'rgba(20, 24, 36, 0.75)';
 const BADGE_STROKE = 'rgba(255, 255, 255, 0.7)';
 /** ふつうの札の縁の太さ。 */
 const BADGE_STROKE_WIDTH = 2;
-/** 目立たせる札（ブレス・大攻撃）の塗りの色。 */
+/** `EMPHASIZED_VARIANTS` の札（ブレス・大攻撃・大突進）の塗りの色。 */
 const EMPHASIS_FILL = 'rgba(170, 20, 20, 0.92)';
-/** 目立たせる札（ブレス・大攻撃）の縁の色。 */
+/** `EMPHASIZED_VARIANTS` の札（ブレス・大攻撃・大突進）の縁の色。 */
 const EMPHASIS_STROKE = '#ffe45c';
-/** 目立たせる札（ブレス・大攻撃）の縁の太さ。 */
+/** `EMPHASIZED_VARIANTS` の札（ブレス・大攻撃・大突進）の縁の太さ。 */
 const EMPHASIS_STROKE_WIDTH = 3;
 /** 量の数字の芯の色（ふつう）。 */
 const AMOUNT_COLOR = '#ffffff';
-/** 量の数字の芯の色（目立たせる札）。 */
+/** 量の数字の芯の色（`EMPHASIZED_VARIANTS` の札（ブレス・大攻撃・大突進））。 */
 const EMPHASIS_AMOUNT_COLOR = '#ffe45c';
 /** 量の数字・「？」のフォント。 */
 const AMOUNT_FONT = 'bold 30px sans-serif';

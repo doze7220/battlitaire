@@ -252,7 +252,7 @@ function collectEvents(watch) {
  * @param {StepWatch} watch `watchStep` の戻り値
  * @param {import('./battleSteps.js').BattleStep} step 組み立てた段
  * @param {number} index 段の番号
- * @param {string} bodyStyle 敵の体の見せ方（'horde'・'figure'）。今は使わない（呼び出し側の形を保つため受け取る）
+ * @param {string} bodyStyle 敵の体の見せ方（'horde'・'figure'・'brood'（猪の親子））。今は使わない（呼び出し側の形を保つため受け取る）
  * @returns {void}
  */
 export function recordStepImpacts(log, watch, step, index, bodyStyle) {

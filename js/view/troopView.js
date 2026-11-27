@@ -350,7 +350,7 @@ const OVER_FIGURE_KINDS = Object.freeze(new Set(['shield', 'flame']));
  * @param {number} size 兵の大きさ（直径。兵ごとの大きさが 0 のときに使う）
  * @param {'all'|'back'|'front'} [layer='all'] 描く層（'all' 全員・'back' 奥の兵だけ・'front' 手前の兵だけ）
  * @param {number} [depthY=0] 奥と手前の境目の y（城・敵の絵の足元の y。'all' では使わない）
- * @param {string|null} [enemyTypeId=null] 敵の種類の識別子（群れの敵の兵の絵を選ぶ。null は既定のゴブリンの絵）
+ * @param {string|null} [enemyTypeId=null] 敵の種類の識別子（群れの敵の兵の絵を選ぶ。null は既定のゴブリンの絵。子（`minion`・`minionBorn`）の兵では子の絵（`minionSkins.js`）も選ぶ）
  * @returns {void}
  * @throws {Error} 未知の layer のとき
  */
