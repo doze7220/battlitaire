@@ -1,5 +1,5 @@
 /**
- * 責務: 敵の行動（爪・吸い込む・ブレス・溜める・大攻撃・突進・怒りを溜める・大突進の種類と防御を含む）・予告の量の数字・量の代わりの文字（怒り）・表にない予告の印・決着・敵を倒したときの案内・敵の名前とレベル・数え下ろし・回復の量・当たりのダメージの数字・放った区切りの式・4スートそろいの文字を、画面に出す文字に直す。
+ * 責務: 敵の行動（爪・吸い込む・ブレス・溜める・大攻撃・突進・怒りを溜める・大突進の種類と防御と子の数を含む）・予告の量の数字・子の数の数字・量の代わりの文字（怒り）・表にない予告の印・決着・敵を倒したときの案内・敵の名前とレベル・数え下ろし・回復の量・当たりのダメージの数字・放った区切りの式・4スートそろいの文字を、画面に出す文字に直す。
  * 計算はせず、量をそのまま文字にする。ルール層は実行時に import しない。
  */
 
@@ -55,6 +55,14 @@ const BADGE_LABELS = Object.freeze({
  */
 const AMOUNTLESS_KINDS = new Set(['windup']);
 
+/**
+ * 敵の種類の識別子 → 子の名前の対応表（子を持つ敵だけ。表にない種類は「？」）。
+ * @type {Readonly<Record<string, string>>}
+ */
+export const MINION_LABELS = Object.freeze({
+  slime: '子スライム',
+});
+
 /** 敵を倒したときの、タップで次へ進む案内の文字 */
 const DEFEAT_HINT_TEXT = 'タップで次へ';
 
@@ -101,16 +109,38 @@ export function defeatHintText() {
 }
 
 /**
- * 敵の予告を「攻撃 3 ／ 防御 2」のような文字にする。出す側は intentParts で決め、片方だけならその文字だけ。
+ * 敵の予告を「攻撃 3 ／ 防御 2」「攻撃 4 +子スライム 8」のような文字にする。出す側は intentParts で決め、片方だけならその文字だけ。
+ * 子の側が出るときは、攻撃の側（出さないときは空）の後ろに半角の空白をはさんで「+子の名前 数」を続ける。
  * @param {import('../rules/combatants.js').EnemyIntent} action 敵の予告
- * @returns {string} 攻撃の側（表示名と量。variant が表にあればその表示名。「爪 10」「吸い込む」「ブレス 25」「振りかぶり」。種類が未知なら「？」）と防御の側（「防御 量」）を ` ／ ` でつないだ文字
+ * @param {string|null} [typeId=null] 敵の種類の識別子（子の名前を MINION_LABELS で引く。null・表にない種類は「？」）
+ * @returns {string} 攻撃の側（表示名と量。variant が表にあればその表示名。「爪 10」「吸い込む」「ブレス 25」「振りかぶり」。種類が未知なら「？」）に子の側（「+子スライム 8」）を空白で続けたものと、防御の側（「防御 量」）を ` ／ ` でつないだ文字
  */
-export function enemyActionText(action) {
+export function enemyActionText(action, typeId = null) {
   const parts = intentParts(action);
   const texts = [];
-  if (parts.attack) texts.push(attackSideText(action));
+  const minionText = parts.minions ? `+${minionLabelOf(typeId)} ${intentMinionText(action)}` : null;
+  if (parts.attack) texts.push(minionText === null ? attackSideText(action) : `${attackSideText(action)} ${minionText}`);
+  else if (minionText !== null) texts.push(minionText);
   if (parts.defense) texts.push(`${ACTION_LABELS.defend} ${intentDefenseText(action)}`);
   return texts.join(SIDE_SEPARATOR);
+}
+
+/**
+ * 敵の種類の子の名前を引く。
+ * @param {string|null} typeId 敵の種類の識別子
+ * @returns {string} MINION_LABELS の名前。null・表にない種類は「？」
+ */
+function minionLabelOf(typeId) {
+  return typeId !== null && Object.prototype.hasOwnProperty.call(MINION_LABELS, typeId) ? MINION_LABELS[typeId] : UNKNOWN_ACTION_LABEL;
+}
+
+/**
+ * 敵の予告の子の数を、予告の札と始まりの文字に出す数字の文字にする。
+ * @param {import('../rules/combatants.js').EnemyIntent} action 敵の予告（minions が数のとき）
+ * @returns {string} 子の数をそのまま文字にしたもの
+ */
+export function intentMinionText(action) {
+  return String(action.minions);
 }
 
 /**

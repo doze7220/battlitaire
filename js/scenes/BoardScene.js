@@ -258,6 +258,7 @@ export class BoardScene extends Scene {
       turn: game.battleTurn,
       stageNumber: game.stageNumber,
       enemyName: game.enemy.name,
+      enemyTypeId: game.enemy.typeId,
       intent: game.enemy.intent,
       countdown: game.attackCountdown(),
     });

@@ -1,12 +1,13 @@
 /**
- * 責務: 敵の頭の上の予告の札（攻撃の側・防御の側の絵と量の数字・ブレス・大攻撃・大突進の目立たせ、量のない行動の「怒り」の文字。右端からはみ出さない）と、その下の数え下ろしの文字の描画。
+ * 責務: 敵の頭の上の予告の札（攻撃の側・防御の側の絵と量の数字・ブレス・大攻撃・大突進の目立たせ、量のない行動の「怒り」の文字。右端からはみ出さない）と、攻撃の札の横の子の絵と数の札、その下の数え下ろしの文字の描画。
  * 予告の種類 → 絵の表を持つ。状態は変えず、ルール層・anim は実行時に import しない。
  */
 
 import { roundRectPath } from './cardView.js';
-import { intentAmountText, intentBadgeLabel, intentDefenseText, unknownIntentText, countdownText } from './battleText.js';
+import { intentAmountText, intentBadgeLabel, intentDefenseText, intentMinionText, unknownIntentText, countdownText } from './battleText.js';
 import { intentParts } from './intentParts.js';
-import { INTENT_IDS, drawIntentIcon } from './spriteView.js';
+import { INTENT_IDS, drawIntentIcon, drawSpriteCentered } from './spriteView.js';
+import { minionSkinOf } from './minionSkins.js';
 import { bodyScale, scaledIntentY } from './figureScale.js';
 
 /**
@@ -101,7 +102,47 @@ function drawOutlinedText(ctx, text, x, y, style) {
 }
 
 /**
- * 敵の頭の上の予告の札と、その下の数え下ろしを描く。引数は読むだけで書き換えない。
+ * 子の札（子の絵と数の札。ふつうの札の塗り・縁）を1枚描く。絵は敵の種類の子の絵（minionSkinOf）の体で、表にない種類は「？」。
+ * ctx の設定は内部で save／restore に囲む。
+ * @param {CanvasRenderingContext2D} ctx 描画先
+ * @param {import('./layout.js').IntentBadgeLayout} badge 予告の札の大きさ
+ * @param {string} typeId 敵の種類の識別子（子の絵を選ぶ）
+ * @param {string} amount 子の数の文字
+ * @param {number} left 札の左端の x
+ * @param {number} top 札の上端の y
+ * @param {number} w 札の幅
+ * @returns {void}
+ */
+function drawMinionBadge(ctx, badge, typeId, amount, left, top, w) {
+  const cy = top + badge.h / 2;
+  const iconCx = left + badge.padX + badge.iconW / 2;
+  ctx.save();
+  roundRectPath(ctx, left, top, w, badge.h, BADGE_CORNER);
+  ctx.fillStyle = BADGE_FILL;
+  ctx.fill();
+  ctx.lineWidth = BADGE_STROKE_WIDTH;
+  ctx.strokeStyle = BADGE_STROKE;
+  ctx.stroke();
+  ctx.restore();
+  const skin = minionSkinOf(typeId);
+  ctx.save();
+  if (skin !== null) {
+    drawSpriteCentered(ctx, skin.body, iconCx, cy, badge.iconW);
+  } else {
+    drawOutlinedText(ctx, unknownIntentText(), iconCx, cy, {
+      font: AMOUNT_FONT, align: 'center', color: AMOUNT_COLOR, outlineWidth: AMOUNT_OUTLINE_WIDTH,
+    });
+  }
+  ctx.restore();
+  ctx.save();
+  drawOutlinedText(ctx, amount, left + badge.padX + badge.iconW + badge.gap, cy, {
+    font: AMOUNT_FONT, align: 'left', color: AMOUNT_COLOR, outlineWidth: AMOUNT_OUTLINE_WIDTH,
+  });
+  ctx.restore();
+}
+
+/**
+ * 敵の頭の上の予告の札と、その下の数え下ろしを描く。子を持つ敵の予告（minions が 0 より大きい）は、攻撃の札の右に間 badge.minionGap を空けて子の札をもう1枚並べ、2枚の合計の幅で中心を揃える（右端を越えるときは左へ寄せる。数え下ろしは攻撃の札の下）。引数は読むだけで書き換えない。
  * enemy.intent が null、または enemy.hp が 0 以下なら何も描かない（数え下ろしも）。
  * entrance が null でなく visible が偽なら何も描かず、dx が 0 でなければ右へずらして描く。
  * @param {CanvasRenderingContext2D} ctx 描画先
@@ -157,7 +198,15 @@ export function drawEnemyIntent(ctx, battleLayout, enemy, countdown, entrance) {
     side.labelW = ctx.measureText(side.label).width;
     w += badge.gap + side.labelW;
   }
-  const left = Math.min(spot.x - w / 2, area.x + area.w - badge.edge - w);
+  let minionAmount = null;
+  let minionW = 0;
+  if (parts.minions) {
+    minionAmount = intentMinionText(action);
+    ctx.font = AMOUNT_FONT;
+    minionW = badge.padX * 2 + badge.iconW + badge.gap + ctx.measureText(minionAmount).width;
+  }
+  const totalW = minionAmount === null ? w : w + badge.minionGap + minionW;
+  const left = Math.min(spot.x - totalW / 2, area.x + area.w - badge.edge - totalW);
   const cy = spotY + badge.h / 2;
 
   ctx.save();
@@ -198,6 +247,10 @@ export function drawEnemyIntent(ctx, battleLayout, enemy, countdown, entrance) {
       cursor += badge.gap + side.labelW;
     }
     cursor += badge.sideGap;
+  }
+
+  if (minionAmount !== null) {
+    drawMinionBadge(ctx, badge, enemy.typeId, minionAmount, left + w + badge.minionGap, spotY, minionW);
   }
 
   if (countdown !== null) {

@@ -31,6 +31,7 @@ const ENEMY_NAME_STROKE_WIDTH = 12;
  * @property {number} turn いまの敵との戦闘で何ターン目か（1 から。始まりの演出の TURN N）
  * @property {number} stageNumber ステージの番号（1 から。何体目の敵か）
  * @property {string} enemyName 敵の名前（ステージの始まりに文字で描く）
+ * @property {string} enemyTypeId 敵の種類の識別子（予告の文字の子の名前を選ぶ）
  * @property {import('../rules/combatants.js').EnemyIntent|null} intent 敵の予告（なければ null）
  * @property {number|null} countdown 攻撃までの残りフェーズ数（数え下ろしがなければ null）
  */
@@ -106,7 +107,7 @@ function drawPhaseIntro(ctx, bannerLayout, look, values) {
   drawLogo(ctx, LOGO_IDS.phase, intro.x, intro.logoY, look.scale);
   drawDigits(ctx, values.turn, intro.x, intro.numberY, look.scale);
   if (values.intent !== null) {
-    drawOutlinedText(ctx, enemyActionText(values.intent), INTENT_FONT, intro.x, intro.textY, intro.maxW);
+    drawOutlinedText(ctx, enemyActionText(values.intent, values.enemyTypeId), INTENT_FONT, intro.x, intro.textY, intro.maxW);
   }
   if (values.countdown !== null) {
     drawOutlinedText(ctx, countdownText(values.countdown), COUNTDOWN_FONT, intro.x, intro.subTextY, intro.maxW);
