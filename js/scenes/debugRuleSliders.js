@@ -23,6 +23,7 @@ export const RULE_SLIDERS = Object.freeze({
   rageStep: Object.freeze({ min: 0, max: 100, step: 10 }),
   cycleLength: Object.freeze({ min: 1, max: 8, step: 1 }),
   chargeTurns: Object.freeze({ min: 1, max: 5, step: 1 }),
+  confuseTurns: Object.freeze({ min: 1, max: 6, step: 1 }),
   burn: Object.freeze({ min: 0, max: 10, step: 1 }),
 });
 

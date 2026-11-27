@@ -18,6 +18,8 @@ import {
   rushAction,
   rageAction,
   bigRushAction,
+  confusedAction,
+  rollAmount,
 } from './enemyBehaviors.js';
 
 /**
@@ -27,7 +29,7 @@ import {
  * - `chosen`: 今の予告に当たる識別子（当たるものがなければ null）
  * @type {Readonly<Object<string, {
  *   ids: (behavior: any, situation: string|null) => string[],
- *   plan: (behavior: any, id: string, random: () => number, unit: number) => { action: import('./combatants.js').EnemyAction, state: object },
+ *   plan: (behavior: any, id: string, random: () => number, unit: number, state: object|null) => { action: import('./combatants.js').EnemyAction, state: object },
  *   chosen: (behavior: any, intent: import('./combatants.js').EnemyAction) => string|null
  * }>>}
  */
@@ -144,6 +146,24 @@ const INTENT_TABLE = Object.freeze({
       return 'youngAttack';
     },
   }),
+  // 混乱の周期（毒キノコ）。「混乱＋…」は混乱したことにして次の混乱までの間隔を引き直す。「攻撃と防御」は今の決まりの状態（次の混乱までの残り）をそのまま残す
+  confuse: Object.freeze({
+    ids: () => ['attackDefend', 'confuseGuard', 'confuseHeavy'],
+    plan: (behavior, id, random, unit, state) => {
+      if (id === 'attackDefend') {
+        return { action: steadyAttackAction(behavior, random, unit), state: { untilConfuse: state.untilConfuse } };
+      }
+      let base;
+      if (id === 'confuseGuard') base = bigGuardAction(behavior, random, unit);
+      else if (id === 'confuseHeavy') base = heavyAction(behavior, random, unit);
+      else throw new Error(`unknown intent id: ${id}`);
+      return { action: confusedAction(base), state: { untilConfuse: rollAmount(behavior.confuseInterval, random) } };
+    },
+    chosen: (behavior, intent) => {
+      if (intent.mark === undefined) return 'attackDefend';
+      return intent.kind === 'guard' ? 'confuseGuard' : 'confuseHeavy';
+    },
+  }),
 });
 
 /**
@@ -176,11 +196,12 @@ export function intentChoiceIds(behavior, situation = null) {
  * @param {string} id 指定する行動の識別子
  * @param {() => number} random 0以上1未満を返す乱数の関数
  * @param {number} [unit] 1体のポイント（量の抽選の刻み。既定 1。1 では今と同じ値）
+ * @param {object|null} [state] 今の決まりの状態（`confuse` の「攻撃と防御」だけが読む。ほかは無視する。既定 null）
  * @returns {{ action: import('./combatants.js').EnemyAction, state: object }} 行動と、決まりの状態
  * @throws {Error} 未知の種類、または表にない識別子のとき
  */
-export function planChosenIntent(behavior, id, random, unit = 1) {
-  return lookupIntent(behavior).plan(behavior, id, random, unit);
+export function planChosenIntent(behavior, id, random, unit = 1, state = null) {
+  return lookupIntent(behavior).plan(behavior, id, random, unit, state);
 }
 
 /**

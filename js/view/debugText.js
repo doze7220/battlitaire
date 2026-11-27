@@ -94,6 +94,13 @@ export const RULE_ITEM_TEXT = Object.freeze({
   rageChance: '怒りを溜める確率',
   bigRushMin: '大突進の量 最小',
   bigRushMax: '大突進の量 最大',
+  strongAttackChance: '強い攻撃にする確率',
+  strongAttackMin: '強い攻撃の量 最小',
+  strongAttackMax: '強い攻撃の量 最大',
+  thickGuardMin: '厚い守りの量 最小',
+  thickGuardMax: '厚い守りの量 最大',
+  confuseIntervalMin: '混乱の間隔 最小',
+  confuseIntervalMax: '混乱の間隔 最大',
   splitPercent: '子スライムが生まれる割合',
   riseStar3: '★3 の上がる量',
   riseStar2: '★2 の上がる量',
@@ -129,6 +136,7 @@ export const RULE_TIMING_TEXT = Object.freeze({
   nextIntent: '次の予告から',
   nextCycle: '次の周期から',
   nextCharge: '次の溜めから',
+  nextConfuse: '次の混乱から',
   nextBattle: '次の攻防から',
   nextStage: '次のステージから',
   onAppear: '出てきたときから',
@@ -183,6 +191,8 @@ export const INTENT_CHOICE_TEXT = Object.freeze({
   rush: '突進',
   rage: '怒りを溜める',
   bigRush: '大突進',
+  confuseGuard: '混乱＋厚い守り',
+  confuseHeavy: '混乱＋強い攻撃',
 });
 
 /**

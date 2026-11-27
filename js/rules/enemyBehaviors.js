@@ -1,7 +1,9 @@
 /**
- * 責務: 敵の行動の決まり（毎ターン攻撃だけを含む。種類ごとの状態の初期値・状態の形の確かめ・次の行動の決め方・数え下ろし・隙かの問い合わせ）の表と呼び分け、
+ * 責務: 敵の行動の決まり（毎ターン攻撃だけ・混乱の周期を含む。種類ごとの状態の初期値・状態の形の確かめ・次の行動の決め方・数え下ろし・隙かの問い合わせ）の表と呼び分け、
  * 行動を作る小さな関数、行動の量の幅からの抽選、攻撃の直後の回復の抽選、親子の敵の局面ごとの行動。渡された乱数だけを使う純粋な関数（ルール層）。
  */
+
+import { CONFUSE_MARK } from './columnMarks.js';
 
 /**
  * 量の幅から、1体のポイント unit の倍数を1つ抽選する（幅の中の倍数から等確率）。`random()` は必ず1回呼ぶ。
@@ -165,6 +167,16 @@ export function rageAction() {
  */
 export function bigRushAction(behavior, random, unit = 1) {
   return { kind: 'attack', amount: rollAmount(behavior.bigRushRange, random, unit), variant: 'bigRush' };
+}
+
+/**
+ * 行動に混乱の印の求め（種類だけで列はまだない）を付けた新しい行動を返す（乱数は呼ばない）。
+ * 列は `Game.intentOf` が `withMarkColumn` で選ぶ。
+ * @param {import('./combatants.js').EnemyAction} action 元の行動（書き換えない）
+ * @returns {import('./combatants.js').EnemyAction} `mark: { kind: 'confuse' }` を足した新しい行動
+ */
+export function confusedAction(action) {
+  return { ...action, mark: { kind: CONFUSE_MARK } };
 }
 
 /**
@@ -334,6 +346,31 @@ const BEHAVIORS = Object.freeze({
     countdown: () => null,
     isOpening: (action) => action.kind !== 'guard',
   }),
+  /**
+   * 混乱の周期（毒キノコ）。状態 `untilConfuse` は、いま予告したターンから次の混乱のターンまでのターン数（0 なら次のターンの予告で混乱。null はその戦闘でまだ予告していない）。
+   * ふつうのターンは攻撃（防御は `createIntent` が抽選）。混乱のターンは強い攻撃（`heavy`）か厚い守り（`bigGuard`）に混乱の印の求めを付ける。
+   * 隙は強い攻撃のターンだけ。
+   */
+  confuse: Object.freeze({
+    initialState: () => ({ untilConfuse: null }),
+    isState: (state) =>
+      isPlainObject(state) &&
+      (state.untilConfuse === null || (Number.isInteger(state.untilConfuse) && state.untilConfuse >= 0)),
+    planNext: (behavior, state, random, unit) => {
+      const remaining = state.untilConfuse === null
+        ? rollAmount(behavior.firstConfuseTurn, random) - 1
+        : state.untilConfuse - 1;
+      if (remaining > 0) {
+        return { action: steadyAttackAction(behavior, random, unit), state: { untilConfuse: remaining } };
+      }
+      const base = random() < behavior.heavyChance
+        ? heavyAction(behavior, random, unit)
+        : bigGuardAction(behavior, random, unit);
+      return { action: confusedAction(base), state: { untilConfuse: rollAmount(behavior.confuseInterval, random) } };
+    },
+    countdown: () => null,
+    isOpening: (action) => action.variant === 'heavy',
+  }),
 });
 
 /**
@@ -362,6 +399,7 @@ export function createBehaviorState(behavior) {
  * 値が、その決まりの状態の形か（保存したデータの確かめ用。乱数は呼ばない）。
  * 決まりごと（steady・assault・either: プレーンなオブジェクト。cycle: `countdown` が 0 以上の整数。inhale: `lastVariant` が 'claw'・'inhale'・'breath'。
  * brood: `lastVariant` が null か 'protect'・'rush'・'rage'・'bigRush'。
+ * confuse: `untilConfuse` が null か 0 以上の整数。
  * buildup: `turnsToHeavy` が null か 0 以上の整数、`chargeTurns` が 0 以上の整数）。
  * @param {{ type: string }} behavior 行動の決まりの設定
  * @param {unknown} state 調べる値
@@ -377,7 +415,8 @@ export function isBehaviorState(behavior, state) {
  * 乱数の使い方は決まりごと（steady: 攻撃の量。assault: 攻撃の量。cycle: 攻撃のフェーズだけ量。inhale: ブレス・爪は量、それ以外は吸い込むの抽選→外れなら爪の量。
  * buildup: 溜めていないターンは溜める抽選1回（外れれば量1回が続く）・溜めの続きは0回・大攻撃は量1回・大攻撃の次は量1回。
  * either: 攻撃の抽選1回→当たれば量1回、外れれば大防御の抽選1回→量1回。
- * brood: 局面ごと（together: 毎ターン2回。enraged: 溜めの抽選のターンは溜める1回・突進2回、大突進1回、大突進の次の突進1回。young: 1回））。
+ * brood: 局面ごと（together: 毎ターン2回。enraged: 溜めの抽選のターンは溜める1回・突進2回、大突進1回、大突進の次の突進1回。young: 1回）。
+ * confuse: 戦闘の最初のターンは最初の混乱のターンの抽選1回→（ふつうなら）攻撃の量1回、ふつうのターンは攻撃の量1回、混乱のターンは強い攻撃か厚い守りかの抽選1回→量1回→次の混乱までの間隔1回。印の列の選び方は乱数を呼ばない）。
  * @param {{ type: string }} behavior 行動の決まりの設定
  * @param {object} state いまの決まりの状態
  * @param {() => number} random 0以上1未満を返す乱数の関数

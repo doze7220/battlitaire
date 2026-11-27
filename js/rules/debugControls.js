@@ -153,7 +153,7 @@ export function currentIntentChoice(game) {
 
 /**
  * 敵の次の行動を指定する。段取り中で、敵の HP が 0 より大きく、今の敵に指定できる識別子で、
- * 今の予告と違うときだけ、予告と決まりの状態を入れ替える（量の抽選は `game.random`）。
+ * 今の予告と違うときだけ、予告と決まりの状態を入れ替える（量の抽選は `game.random`。今の決まりの状態を `planChosenIntent` へ渡す）。
  * @param {import('./Game.js').Game} game ゲーム
  * @param {string} id 行動の識別子
  * @returns {boolean} 入れ替えたら true
@@ -163,7 +163,8 @@ export function chooseEnemyIntent(game, id) {
   if (!(game.enemy.hp > 0)) return false;
   if (!intentChoiceIdsOf(game).includes(id)) return false;
   if (currentIntentChoice(game) === id) return false;
-  const { action, state } = planChosenIntent(currentBehavior(game), id, game.random, game.enemyUnitPoints());
+  const { action, state } = planChosenIntent(
+    currentBehavior(game), id, game.random, game.enemyUnitPoints(), game.enemy.behaviorState);
   game.enemy.intent = game.intentOf(action);
   game.enemy.behaviorState = state;
   return true;

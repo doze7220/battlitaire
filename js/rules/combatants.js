@@ -46,7 +46,7 @@ import { unitPointsOf } from './unitPoints.js';
  * @property {EnemyIntent|null} intent 次の行動の予告（未決定なら null）
  * @property {import('./enemyParts.js').EnemyParts|null} parts 親と子の HP（親子でない敵は null。親子の敵は hp === parts.parent + parts.child を保つ）
  * @property {number} minions 次のターンに襲う待っている子の数（0 以上の整数。子を持たない敵はいつも 0）
- * @property {object} behaviorState 行動の決まりの状態（steady・either では {}、cycle では { countdown }、inhale では { lastVariant }、buildup では { turnsToHeavy, chargeTurns }）
+ * @property {object} behaviorState 行動の決まりの状態（steady・either では {}、cycle では { countdown }、inhale では { lastVariant }、buildup では { turnsToHeavy, chargeTurns }、confuse では { untilConfuse }）
  */
 
 /**
