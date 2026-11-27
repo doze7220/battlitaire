@@ -10,6 +10,7 @@ import { createDecks } from './piles.js';
 import { enemyTypeIds, enemySpecOf } from './enemyTypes.js';
 import { isBehaviorState } from './enemyBehaviors.js';
 import { isEnemyPartsShape } from './enemyParts.js';
+import { isEnemyMinionsShape } from './enemySplit.js';
 import { isGameStats } from './gameStats.js';
 import { isBattleRecord } from './battleRecord.js';
 import { isUpgradeState } from './upgrades.js';
@@ -23,9 +24,10 @@ import { handSizeOf } from './upgradeBoosts.js';
  * 5: 精鋭の状態 `elites` を足したとき 4 から上げた。
  * 6: スコア（結果の記録の形の変更）と戦闘の記録 `battleRecord` を足したとき 5 から上げた。
  * 7: 敵の親と子の HP `parts` を足したとき 6 から上げた。
+ * 8: 敵の子の数 `minions` と予告の `minions` を足したとき 7 から上げた。
  * @type {number}
  */
-export const SUSPEND_VERSION = 7;
+export const SUSPEND_VERSION = 8;
 
 /**
  * 中断データ（ターンの始まり、または3択の段階の状態。`null`・真偽値・文字列・数・配列・プレーンなオブジェクトだけでできている）。
@@ -47,7 +49,7 @@ export const SUSPEND_VERSION = 7;
  * @property {number} battleActionBonus この戦闘の間、毎ターン足す行動の数（3択の段階では 0）
  * @property {Object<string, number>} gauges ゲージの識別子 → 値
  * @property {{ hp: number, maxHp: number }} castle 城
- * @property {{ typeId: string, hp: number, maxHp: number, parts: import('./enemyParts.js').EnemyParts|null, intent: import('./combatants.js').EnemyIntent, behaviorState: object }} enemy 敵（名前は設定から引くので持たない。`parts` は親子の敵だけ値を持ち、合計が `hp`）
+ * @property {{ typeId: string, hp: number, maxHp: number, parts: import('./enemyParts.js').EnemyParts|null, minions: number, intent: import('./combatants.js').EnemyIntent, behaviorState: object }} enemy 敵（名前は設定から引くので持たない。`parts` は親子の敵だけ値を持ち、合計が `hp`。`minions` は待っている子の数で、子を持たない敵は 0）
  * @property {import('./gameStats.js').GameStats} stats 結果の記録（倒した数・総ターン数・スコア・項目ごとの合計と回数・倒した敵の並び・最大の一撃・一番長いコンボ）
  * @property {import('./battleRecord.js').BattleRecord} battleRecord 今の敵との戦闘の記録（使ったターン数・城が被害を受けたか・一番長い区切りの枚数。3択の段階では倒した敵の記録）
  * @property {import('./upgrades.js').UpgradeState} upgrades 取った強化
@@ -109,13 +111,14 @@ const INTENT_KINDS = Object.freeze(['attack', 'windup', 'guard']);
 /**
  * 予告の形が正しいか。
  * @param {unknown} value 調べる値
- * @returns {boolean} `kind` が 'attack'・'windup'・'guard'、`amount`・`baseDefense`・`defense` が 0 以上の整数、`variant` は無いか文字列、`burn` は無いか 0 ≤ min ≤ max の整数なら true
+ * @returns {boolean} `kind` が 'attack'・'windup'・'guard'、`amount`・`baseDefense`・`defense` が 0 以上の整数、`variant` は無いか文字列、`burn` は無いか 0 ≤ min ≤ max の整数、`minions` は無いか 0 以上の整数なら true
  */
 function isIntentShape(value) {
   if (!isPlain(value)) return false;
   if (!INTENT_KINDS.includes(value.kind)) return false;
   if (!isIntFrom(value.amount, 0) || !isIntFrom(value.baseDefense, 0) || !isIntFrom(value.defense, 0)) return false;
   if (value.variant !== undefined && typeof value.variant !== 'string') return false;
+  if (value.minions !== undefined && !isIntFrom(value.minions, 0)) return false;
   if (value.burn !== undefined) {
     const burn = value.burn;
     if (!isPlain(burn) || !isIntFrom(burn.min, 0) || !Number.isInteger(burn.max) || burn.max < burn.min) return false;
@@ -247,6 +250,7 @@ const FIELDS = Object.freeze({
         hp: game.enemy.hp,
         maxHp: game.enemy.maxHp,
         parts: game.enemy.parts,
+        minions: game.enemy.minions,
         intent: game.enemy.intent,
         behaviorState: game.enemy.behaviorState,
       }),
@@ -259,6 +263,7 @@ const FIELDS = Object.freeze({
       value.hp <= value.maxHp &&
       isEnemyPartsShape(enemySpecOf(config, value.typeId), value.parts, value.hp) &&
       isIntentShape(value.intent) &&
+      isEnemyMinionsShape(enemySpecOf(config, value.typeId), value.minions, value.intent) &&
       isBehaviorState(enemySpecOf(config, value.typeId).behavior, value.behaviorState),
     load: (game, value) => {
       const v = structuredClone(/** @type {any} */ (value));
@@ -268,6 +273,7 @@ const FIELDS = Object.freeze({
         hp: v.hp,
         maxHp: v.maxHp,
         parts: v.parts,
+        minions: v.minions,
         intent: v.intent,
         behaviorState: v.behaviorState,
       };

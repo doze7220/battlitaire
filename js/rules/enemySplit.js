@@ -1,5 +1,5 @@
 /**
- * 責務: 次のターンに持ち越す攻撃のユニット（子。スライムの子スライム）を持つ敵の純粋な計算（生まれる数・相殺と城の被害のうち子の分・予告への子の数の付け方）。
+ * 責務: 次のターンに持ち越す攻撃のユニット（子。スライムの子スライム）を持つ敵の純粋な計算（生まれる数・相殺と城の被害のうち子の分・予告への子の数の付け方・中断データの形の確かめ）。
  * 何も import しない（ルール層）。
  */
 
@@ -41,4 +41,21 @@ export function minionShares(minions, blocked, damage) {
 export function intentWithMinions(spec, intent, minions) {
   if (!spec.split) return intent;
   return { ...intent, minions: minions ?? 0 };
+}
+
+/**
+ * 中断データの敵の子の数と予告の `minions` の形が正しいか（どんな値でも例外を投げない）。
+ * 子を持たない敵は `minions === 0` かつ予告に `minions` がない。
+ * 子を持つ敵は `minions` が 0 以上の整数で、予告の `minions` は無いか 0 以上の整数（3択の段階では敵の値と違ってよいので等しさは見ない）。
+ * @param {{ split?: object }} spec 敵の種類の設定
+ * @param {unknown} minions 敵の子の数
+ * @param {unknown} intent 予告（プレーンなオブジェクトでなければ予告の項目は無いものとして見る）
+ * @returns {boolean} 形が合えば true
+ */
+export function isEnemyMinionsShape(spec, minions, intent) {
+  const intentMinions =
+    typeof intent === 'object' && intent !== null ? /** @type {{ minions?: unknown }} */ (intent).minions : undefined;
+  if (!spec.split) return minions === 0 && intentMinions === undefined;
+  const isCount = (/** @type {unknown} */ v) => Number.isInteger(v) && /** @type {number} */ (v) >= 0;
+  return isCount(minions) && (intentMinions === undefined || isCount(intentMinions));
 }

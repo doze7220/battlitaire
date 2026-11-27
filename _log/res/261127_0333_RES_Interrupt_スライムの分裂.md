@@ -405,7 +405,7 @@ export function createMinionPlaces({ groundY, fieldH, figures }) { … }
         *   2章「要件1」の `assault` の3つの表の行と型のとおりに書く。各行に JSDoc（乱数の回数・隙）。
         *   確かめ: (1) スクラッチの写しの設定（スライムの行を要件1の行に）で `planBehaviorAction` を多数呼び、毎回攻撃・量が 2〜3・`variant` なし・状態 `{}`・乱数1回。`isState`・`countdown`（null）・`isOpening`（真）。`createIntent` を通した予告の防御が 0 で防御の乱数を呼ばない。写しの `RULE_ITEMS` のスライムの項目が 最大 HP・攻撃の量 最小／最大 の3つ（分裂の割合はタスク8）で、`intentChoiceIds` が `['attack']`、`planChosenIntent`・`chosenIntentOf` が要件1のとおり。(2) `RULES` のままで、`RULE_ITEMS` が変更前と同じ（69 個）・ほかの決まりの予告・乱数の呼び出しが変更前と同じ。(3) 代用の `oz` のローダーで `js/main.js` から辿るモジュールがすべて読み込める。
         *   共通の作業。
-*   [ ] タスク3: 中断データ（版 8・子の数）
+*   [x] タスク3: 中断データ（版 8・子の数）
     *   **対象ファイル** :
         *   `./js/rules/enemySplit.js` : 更新（`isEnemyMinionsShape`）
         *   `./js/rules/suspendData.js` : 更新（`SUSPEND_VERSION` 8 と版の説明・`FIELDS.enemy`・`isIntentShape`・型）
@@ -514,7 +514,14 @@ export function createMinionPlaces({ groundY, fieldH, figures }) { … }
 
 ### タスク3: 中断データ（版 8・子の数）
 *   **作業内容** :
-    *   （未記入）
+    *   `enemySplit.js` に `isEnemyMinionsShape(spec, minions, intent)`（JSDoc 付き。先頭の責務に「中断データの形の確かめ」を足した）。`suspendData.js` は `SUSPEND_VERSION` 8（版の歴史に 8 を追記）、`FIELDS.enemy` の `save`／`check`（`isIntentShape` の後）／`load` に `minions`、`isIntentShape` に任意の `minions`（0 以上の整数）、`SuspendData.enemy` の型に `minions`。敵の種類で分岐する if は書いていない。
+    *   確かめ（スクラッチの一時スクリプト。終わって削除済み）:
+        *   (1) `RULES` のまま、40 シードのランダムなゲームでターンの始まり・3択の段階 943 か所（うち3択 58）を保存 → JSON を通す → `readSuspendData` → `restoreGame`。保存し直したデータが元と一致し、同じ操作列を元と戻したゲームに15手ずつ与えて、操作の戻り・乱数の状態・敵（`minions`・予告・HP）・城が一致。`minions` は全部 0。
+        *   (2) スクラッチの写しの設定（スライムの行に `split: { percent: 30 }`・`assault`）で同様に 565 か所（子がいる 312・予告の `minions` が 0 より大きい 336・3択 36）が一致（子の数・予告の `minions` まで）。
+        *   (3) 版 7 のデータ・`minions` の欠け・子を持たない敵の `minions` が 5／−1／0.5／"3"／null・子を持たない敵の予告に `minions`・子を持つ敵の `minions` が −1／0.5／"3"／null／undefined・予告の `minions` が −1／0.5／"3"／null・予告がオブジェクトでない、はすべて `readSuspendData` が `null`（例外なし）。子を持つ敵の予告の `minions` が無い・敵の値と違うデータは通る。
+        *   (4) 代用の `oz`（ローダーで `oz` を名前だけの置き物に、`assets/` を実ファイルに引く）で、`js/main.js` から辿る 167 モジュールを含む `js/` の全 169 モジュールが読み込めた（`main.js` 自身は読み込みで `Engine` の起動が `document` に触れて止まる。置き物のためで、読み込みの失敗ではない）。
+        *   構文チェック: `enemySplit.js`・`suspendData.js` ともエラーなし。
+    *   開発資料: 追記の必要なし（2章の予定にある中断データの版 8 の内容のとおり）。
 
 ### タスク4: 子のスプライトと表と配置 — スプライトのコピー・子の絵の表・子の大きさと待つ場所・兵の見た目と焼き付け
 *   **作業内容** :
@@ -552,3 +559,4 @@ export function createMinionPlaces({ groundY, fieldH, figures }) { … }
 * （計画時点の要確認）子が襲う攻防では、攻防のきっかけ「敵の攻撃の始まり」（`battleCues.js`）が最初の子の相打ちの段の始めになる。スライムは攻撃の始まりの音を持たないので今は何も変わらないが、攻撃の始まりの音を持つ敵に子を持たせるときは見直す。
 * （計画時点の要確認）DEBUG のルールの値の項目名は REQ の言葉のまま「子スライムが生まれる割合」にした（項目名の表は敵ごとに引くので、子を持つ敵を足すときに名前を見直す）。
 * （タスク1）敵の `typeId` の識別子は `goblins`・`ogres`・`skeletons` など複数形がある（確かめの切り替えで注意）。`Game.resolveBattle` は子を持たない敵では予告の `minions` が無いので `?? 0`、`split` は `?? null` で渡す。タスク3より前に再開した盤面の敵は `minions` が無いことがあり、`intentOf` も `?? 0` で読む。
+* （タスク3）`js/rules/enemySplit.js` は LF、`suspendData.js` は CRLF の改行（元のまま）。`isEnemyMinionsShape` は予告が `minions` を持つ敵に対し、予告の `minions` が無い場合も通す（タスク1・2 の間に保存されたデータの形はそもそも版 7 で捨てられる）。
