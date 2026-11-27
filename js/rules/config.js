@@ -1,4 +1,4 @@
-/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・1体のポイント（任意）・防御（張る確率と量の幅）・行動の決まり（毎ターン攻撃と防御・毎ターン攻撃だけ（防御しない）・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率）・溜めてからの大攻撃・攻撃か防御のどちらか・親と子（猪の親子。子の攻撃・守る・突進・怒りを溜める・大突進）。親と子の HP の分け方と当たる順 `brood`・分裂（子が生まれる割合）`split`・並びの組の鍵 `motion` も敵の設定に持つ）と攻撃・防御の量の幅）、敵の★とステージごとの★の決まり、ステージごとの敵の加算量（章ごと）、力こぶの換算、疲弊（長引いた敵の防御の減り方）、4スートそろいの加算量、3択の強化の枠・候補の数・城の修理の割合・強化の種類ごとの設定（城・カード・特別の強化）、点の項目の設定）を1か所に集める設定ファイル。 */
+/** ルールの調整値（スート・数字の範囲・数字の一周・列の数・手札の枠の数・行動回数・束の補正（足す量）の係数、城の数値、敵の種類ごとの数値（名前・最大 HP・1体のポイント（任意）・防御（張る確率と量の幅）・行動の決まり（毎ターン攻撃と防御・毎ターン攻撃だけ（防御しない）・周期の攻撃と攻撃の直後の回復・吸い込んでからのブレス（爪・ブレス・燃やす札の枚数・吸い込む確率）・溜めてからの大攻撃・攻撃か防御のどちらか・親と子（猪の親子。子の攻撃・守る・突進・怒りを溜める・大突進）。親と子の HP の分け方と当たる順 `brood`・分裂（子が生まれる割合）`split`・並びの組の鍵 `motion` も敵の設定に持つ）と攻撃・防御の量の幅）、敵の★とステージの★の抽選の決まり（上がる量・戻る★・最初の1体）、ステージごとの敵の加算量（章ごと）、力こぶの換算、疲弊（長引いた敵の防御の減り方）、4スートそろいの加算量、3択の強化の枠・候補の数・城の修理の割合・強化の種類ごとの設定（城・カード・特別の強化）、点の項目の設定）を1か所に集める設定ファイル。 */
 
 /**
  * 行動の量の幅（予告を決めるたびに、この中から整数を1つ抽選する）。
@@ -100,10 +100,20 @@
  */
 
 /**
- * ステージの★の決まり（上から順に、最初に割り切れた of の star。どれにも当たらなければ base）。
+ * ★の抽選1行分の決まり。ステージごとの当たる確率は、戻ってからのステージ数 × risePercent（百分率の整数。100 で頭打ち）。
+ * @typedef {Object} StarDrawSpec
+ * @property {number} star 当たったときのステージの★。
+ * @property {number} risePercent 1ステージごとに上がる確率の量（百分率の整数）。
+ * @property {readonly number[]} resetBy この抽選の確率を 0% に戻す★の並び（その★が出たステージの次が 0%）。
+ * @property {string} [first] その★で最初に出る敵の種類の識別子（任意。使うのは敵の並びを決める側）。
+ */
+
+/**
+ * ステージの★の抽選の決まり（draws を書いた順に抽選し、最初に当たった★にする。どれも外れたら base）。
  * @typedef {Object} StageStarsSpec
- * @property {number} base どの倍数にも当たらないステージの★。
- * @property {readonly Readonly<{of: number, star: number}>[]} multiples 倍数ごとの★（上から順に判定する）。
+ * @property {number} base どの抽選にも外れたステージの★。
+ * @property {readonly Readonly<StarDrawSpec>[]} draws ★の抽選の並び（書いた順に抽選する）。
+ * @property {readonly Readonly<{of: number, star: number}>[]} multiples 倍数ごとの★（今の並びの決まり。タスク2で消す）。
  */
 
 /**
@@ -167,7 +177,7 @@
  * @property {number} allSuitsBonus 放った列に suits のすべてのスートが1枚以上あるとき、それぞれのゲージに足す量（0 で効果なし）。
  * @property {number} castleMaxHp 城の最大 HP（ゲーム開始時の HP でもある）。
  * @property {Readonly<Object<string, Readonly<EnemySpec>>>} enemies 敵の種類の識別子から、敵の種類の設定への対応。
- * @property {Readonly<StageStarsSpec>} stageStars ステージの番号から★を決める設定。
+ * @property {Readonly<StageStarsSpec>} stageStars ステージの★の抽選の決まり。
  * @property {Readonly<StageGrowthSpec>} stageGrowth ステージが進むごとの敵の HP・攻撃・防御の加算量（章ごと）。
  * @property {readonly string[]} keptGauges フェーズをまたいで値を残すゲージの識別子。
  * @property {Readonly<{gauge: string, per: number, maxBonus: number}>} muscleConversion 力こぶの換算。gauge のゲージが per ごとに行動回数 +1、最大 maxBonus。
@@ -313,6 +323,10 @@ export const RULES = Object.freeze({
   }),
   stageStars: Object.freeze({
     base: 1,
+    draws: Object.freeze([
+      Object.freeze({ star: 3, risePercent: 8, resetBy: Object.freeze([3]), first: 'dragon' }),
+      Object.freeze({ star: 2, risePercent: 30, resetBy: Object.freeze([3, 2]), first: 'giant' }),
+    ]),
     multiples: Object.freeze([
       Object.freeze({ of: 10, star: 3 }),
       Object.freeze({ of: 5, star: 2 }),

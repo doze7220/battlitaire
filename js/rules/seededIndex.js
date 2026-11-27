@@ -2,13 +2,14 @@
 
 /**
  * 用途の鍵の表（混ぜ合わせの値であり、ルールの数値ではない）。用途ごとに別の列にするために混ぜる。
- * @type {Readonly<{member: number, last: number, first: number, middle: number}>}
+ * @type {Readonly<{member: number, last: number, first: number, middle: number, star: number}>}
  */
 export const STREAM = Object.freeze({
   member: 1,
   last: 2,
   first: 3,
   middle: 4,
+  star: 5,
 });
 
 /**
