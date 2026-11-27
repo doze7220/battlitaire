@@ -1,6 +1,6 @@
 /**
  * 責務: ゲーム全体の状態（山札・捨て札・列・手札・ゲージ・行動回数・フェーズと段階・城・敵）の保持と、
- * 問い合わせ・操作（置く・捨てる・放つ・手札に入れる・手札から置く・束を移す・攻防・次のフェーズ）の提供。
+ * 問い合わせ・操作（置く・捨てる・放つ・手札に入れる・手札から置く・束を移す・攻防・次のフェーズ）の提供。予告に列の印を付け、印の列の束をひとりでに放つ。
  * ステージの番号・今の敵・今の戦闘の記録とスコア（結果の記録）・取った強化と3択の段階・この戦闘の間の行動の足し分・ゲージごとの精鋭の数と上振れを持ち（親子の敵は親と子の局面を予告に、親と子の HP を攻防に渡し、子を持つ敵は子の数を予告と攻防に渡す）、放つ計算とターンの始まりの行動に強化の足し分を渡す。攻防では札の燃やしを反映する。操作は「何が起きたか」を返す。
  */
 
@@ -9,6 +9,7 @@ import { createDecks, takeTop, refillEmptyDecks } from './piles.js';
 import { createColumns, placeableColumnIndices, runStartIndex } from './columns.js';
 import { createHand, isEmptySlot, hasCardInSlot } from './hand.js';
 import { computeRelease } from './release.js';
+import { withMarkColumn, activeMark, settleMark, marksRelease } from './columnMarks.js';
 import { cardBonusOf, releaseBoostOf, actionChanceOf, turnUpgradeActions, eliteStatusOf } from './upgradeBoosts.js';
 import { createEliteState, drawElites, addElites } from './elites.js';
 import { createCastle, createEnemy } from './combatants.js';
@@ -213,13 +214,19 @@ export class Game {
 
   /**
    * 行動から、今の敵の予告（ステージの加算・防御の量・激昂の倍率をかけたもの）を作る（行動が防御の量を持たず、敵が防御の設定を持ち、隙でないときだけ、防御の抽選で乱数を2回呼ぶ）。
+   * 行動が印の求めを持てば、その時点の列から印の列を選んで予告の `mark`（列の印）にする（乱数は呼ばない）。
    * @param {import('./combatants.js').EnemyAction} action 行動の決まりが決めた行動
    * @returns {import('./combatants.js').EnemyIntent} 新しい予告
    */
   intentOf(action) {
     const spec = enemySpecOf(this.config, this.enemy.typeId);
     const intent = createIntent(spec, action, this.stageBonus(), this.battleTurn, this.config.rage, this.random);
-    return intentWithMinions(spec, intent, this.enemy.minions ?? 0);
+    return withMarkColumn(
+      intentWithMinions(spec, intent, this.enemy.minions ?? 0),
+      this.columns,
+      this.config,
+      releaseBoostOf(this.config, this.upgrades),
+    );
   }
 
   /**
@@ -367,11 +374,28 @@ export class Game {
   }
 
   /**
-   * 攻防に入れるか（段取り中で、行動回数が0）。
+   * 攻防に入れるか（段取り中で、行動回数が0で、ひとりでに放つ印が残っていない）。
    * @returns {boolean} 入れるなら `true`
    */
   canResolveBattle() {
-    return this.stage === 'planning' && this.isOutOfActions();
+    return this.stage === 'planning' && this.isOutOfActions() && !this.canReleaseMarked();
+  }
+
+  /**
+   * 今出ている列の印（まだ済んでいない印）。画面はこれだけを読む。
+   * @returns {{ kind: string, column: number }|null} 印の種類と列。なければ `null`
+   */
+  columnMark() {
+    return activeMark(this.enemy.intent);
+  }
+
+  /**
+   * 印の列の束をひとりでに放てるか（段取り中で、行動を使い切り、ひとりでに放つ印がまだ済んでいない）。
+   * @returns {boolean} 放てるなら `true`
+   */
+  canReleaseMarked() {
+    const mark = this.columnMark();
+    return this.stage === 'planning' && this.isOutOfActions() && mark !== null && marksRelease(mark.kind);
   }
 
   /**
@@ -497,14 +521,6 @@ export class Game {
   }
 
   /**
-   * 決着したか。
-   * @returns {boolean} 決着していれば `true`
-   */
-  isOver() {
-    return this.stage === 'over';
-  }
-
-  /**
    * 山札の一番上のカードを列に置く。条件を満たさなければ何もしない。
    * @param {number} d 山札の番号
    * @param {number} c 列の番号
@@ -586,6 +602,29 @@ export class Game {
    */
   release(c) {
     if (!this.canRelease(c)) return null;
+    return this.releaseColumn(c, true);
+  }
+
+  /**
+   * 印の列の束を、行動を使わずにひとりでに放つ（行動を使い切った後・攻防の前。印は済みになり、1ターンに1回）。
+   * 列が空なら何も放たない（空振り。印は済みになる）。放つ計算・精鋭の抽選・補充は自分で放つ `release` と同じ道。
+   * @returns {import('./planningResults.js').MarkReleaseResult|null} 結果。ひとりでに放てなければ `null`
+   */
+  releaseMarked() {
+    if (!this.canReleaseMarked()) return null;
+    const { kind, column } = this.columnMark();
+    this.enemy.intent = settleMark(this.enemy.intent);
+    const release = this.columns[column].length > 0 ? this.releaseColumn(column, false) : null;
+    return { type: 'markRelease', kind, columnIndex: column, release };
+  }
+
+  /**
+   * 列のカードをすべて放つ本体（条件は呼ぶ側が確かめる）。`spendAction` が偽なら行動を使わない（ほかは自分で放つのと同じ）。
+   * @param {number} c 列の番号
+   * @param {boolean} spendAction 行動を 1 使うか
+   * @returns {import('./planningResults.js').ReleaseResult} 結果（`actionsLeft` は操作後の値）
+   */
+  releaseColumn(c, spendAction) {
     const cards = this.columns[c].splice(0);
     const calc = computeRelease(cards, this.config, releaseBoostOf(this.config, this.upgrades));
     const { segments, gains, allSuits } = calc;
@@ -598,7 +637,7 @@ export class Game {
     }
     this.elites = addElites(this.elites, elites);
     this.discard.push(...cards);
-    this.actionsLeft -= 1;
+    if (spendAction) this.actionsLeft -= 1;
     const refills = refillEmptyDecks(this.decks, this.discard, this.random);
     return { type: 'release', columnIndex: c, cards, segments, gains, allSuits, elites, actionsLeft: this.actionsLeft, refills };
   }

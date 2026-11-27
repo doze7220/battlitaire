@@ -1,5 +1,5 @@
 /**
- * 責務: 段取りの操作（置く・捨てる・放つ・手札に入れる・手札から置く・束を移す）の結果の型定義だけを持つ。
+ * 責務: 段取りの操作（置く・捨てる・放つ・手札に入れる・手札から置く・束を移す・ひとりでに放つ）の結果の型定義だけを持つ。
  * 実行時の処理は持たない。
  */
 
@@ -71,7 +71,16 @@
  */
 
 /**
- * 段取りの操作の結果の和。
+ * 「ひとりでに放つ」操作の結果（行動を使い切った後、攻防の前に、印の列の束が行動を使わずに放たれる）。
+ * @typedef {Object} MarkReleaseResult
+ * @property {'markRelease'} type 操作の種類
+ * @property {string} kind 印の種類（`columnMarks.js` の MARK_KINDS のキー）
+ * @property {number} columnIndex 印の列の番号
+ * @property {ReleaseResult|null} release 放った結果（自分で放つのと同じ形。行動の数は変わらない）。列が空で空振りなら null
+ */
+
+/**
+ * 段取りの操作の結果の和（「ひとりでに放つ」はタップの操作ではないので入れない）。
  * @typedef {PlaceResult|DiscardResult|ReleaseResult|HoldResult|HandPlaceResult|MoveResult} PlanningResult
  */
 

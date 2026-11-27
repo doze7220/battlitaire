@@ -16,6 +16,7 @@ import { unitPointsOf } from './unitPoints.js';
  * @property {'claw'|'breath'|'inhale'|'charge'|'heavy'|'bigGuard'|'protect'|'rush'|'rage'|'bigRush'} [variant] 行動の中の種類（任意。攻撃の爪・ブレス・大攻撃、振りかぶりの吸い込む・溜める、防御だけの大防御、親子の敵の守る（防御だけ）・突進・怒りを溜める（振りかぶり）・大突進（攻撃）。表示の違いだけで、城へのダメージ・行動の扱いは種類で変わらない）
  * @property {{ min: number, max: number }} [burn] 行動に付く列の札を燃やす効果の枚数の範囲（任意）
  * @property {boolean} [sureHeal] デバッグで「攻撃して回復」を指定した予告だけが持つ（任意）。攻撃の直後の回復が必ず当たる
+ * @property {import('./columnMarks.js').MarkRequest} [mark] 行動が持つ印の求め（任意。種類だけで列はまだない）。行動の決まりが付け、`createIntent` が予告へ写し、`Game.intentOf` が `withMarkColumn` で列の印（`ColumnMark`）に置き換える
  */
 
 /**
@@ -24,7 +25,8 @@ import { unitPointsOf } from './unitPoints.js';
  * baseAmount は加算の後・倍率の前の量（DEBUG でターンの番号・激昂の値を変えたとき amount を数え直す元になるだけ）、
  * defense は抽選した（防御だけの行動では行動が持つ）防御の量にステージの加算を足した後の防御の量（激昂の倍率はかけない。張らない・隙のターンは 0。予告・シールド・攻防が読むのはこれだけ）。
  * 子を持つ敵（設定に `split` がある）の予告だけ、このターンのふつうの攻撃に上乗せして襲う子の数 `minions` を持つ（任意）。
- * @typedef {EnemyAction & { baseAmount: number, defense: number, minions?: number }} EnemyIntent
+ * 予告の `mark` は列の印（種類・列・済んだか）。行動の `mark`（印の求め）とは形が違い、`enemy.intent` に入る予告（`Game.intentOf` の戻り値）は必ずこちら。印を求めない行動・ほかの敵の予告は持たない。
+ * @typedef {Omit<EnemyAction, 'mark'> & { baseAmount: number, defense: number, minions?: number, mark?: import('./columnMarks.js').ColumnMark }} EnemyIntent
  */
 
 /**
