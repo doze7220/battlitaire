@@ -116,7 +116,7 @@
  */
 
 /**
- * 章ごとの、1ステージ進むごとの加算量。
+ * 章ごとの、1ステージ進むごとの加算量（形は章ごとに書ける。HP・防御は今は全章で同じ値、攻撃だけ章で違う）。
  * @typedef {Object} ChapterGrowth
  * @property {number} hpPercent 敵の最大 HP に足す百分率（整数。1ステージあたり）。
  * @property {number} attack 攻撃の値に足す量（0.01 刻み。1ステージあたり）。
@@ -330,10 +330,10 @@ export const RULES = Object.freeze({
   stageGrowth: Object.freeze({
     stagesPerChapter: 5,
     chapters: Object.freeze([
-      Object.freeze({ hpPercent: 5, attack: 0.5, defense: 0.25 }),
-      Object.freeze({ hpPercent: 7, attack: 0.75, defense: 0.25 }),
-      Object.freeze({ hpPercent: 9, attack: 1, defense: 0.5 }),
-      Object.freeze({ hpPercent: 12, attack: 1.25, defense: 0.5 }),
+      Object.freeze({ hpPercent: 2, attack: 0.5, defense: 0.25 }),
+      Object.freeze({ hpPercent: 2, attack: 0.75, defense: 0.25 }),
+      Object.freeze({ hpPercent: 2, attack: 1, defense: 0.25 }),
+      Object.freeze({ hpPercent: 2, attack: 1.25, defense: 0.25 }),
     ]),
   }),
   keptGauges: Object.freeze(['muscle']),
