@@ -1,6 +1,6 @@
 /**
  * 責務: 列の印（敵が予告で列に付ける印。予告の任意の項目 `mark`）の種類の表・印を付ける列の選び方・今出ている印・印を済みにすること・
- * ひとりでに放つ印かの判定（純粋関数。ルール層）。乱数は呼ばない。放つ計算は release.js の computeRelease をそのまま使う。
+ * ひとりでに放つ印かの判定・中断データの印の形の確かめ（純粋関数。ルール層）。乱数は呼ばない。放つ計算は release.js の computeRelease をそのまま使う。
  */
 
 import { computeRelease } from './release.js';
@@ -97,4 +97,25 @@ export function settleMark(intent) {
  */
 export function marksRelease(kind) {
   return Object.hasOwn(MARK_KINDS, kind) && MARK_KINDS[kind].releases === true;
+}
+
+/**
+ * 中断データの予告の `mark` の形が正しいか（どんな値でも例外を投げない）。
+ * @param {unknown} value 調べる値
+ * @param {number} columnCount 列の数
+ * @returns {boolean} プレーンなオブジェクトで、`kind` が `MARK_KINDS` のキー、`column` が 0 以上 columnCount 未満の整数、`settled` が真偽値なら true
+ */
+export function isColumnMarkShape(value, columnCount) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const proto = Object.getPrototypeOf(value);
+  if (proto !== Object.prototype && proto !== null) return false;
+  const mark = /** @type {Record<string, unknown>} */ (value);
+  return (
+    typeof mark.kind === 'string' &&
+    Object.hasOwn(MARK_KINDS, mark.kind) &&
+    Number.isInteger(mark.column) &&
+    /** @type {number} */ (mark.column) >= 0 &&
+    /** @type {number} */ (mark.column) < columnCount &&
+    typeof mark.settled === 'boolean'
+  );
 }

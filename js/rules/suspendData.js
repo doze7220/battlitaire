@@ -9,6 +9,7 @@ import { createRng, isRngState } from './rng.js';
 import { createDecks } from './piles.js';
 import { enemyTypeIds, enemySpecOf } from './enemyTypes.js';
 import { isBehaviorState } from './enemyBehaviors.js';
+import { isColumnMarkShape } from './columnMarks.js';
 import { isEnemyPartsShape } from './enemyParts.js';
 import { isEnemyMinionsShape } from './enemySplit.js';
 import { isGameStats } from './gameStats.js';
@@ -26,9 +27,10 @@ import { handSizeOf } from './upgradeBoosts.js';
  * 7: 敵の親と子の HP `parts` を足したとき 6 から上げた。
  * 8: 敵の子の数 `minions` と予告の `minions` を足したとき 7 から上げた。
  * 9: 予告の疲弊の前の防御 `baseDefense` をなくし、激昂の倍率の前の攻撃の量 `baseAmount` を足したとき 8 から上げた。
+ * 10: 予告に列の印 `mark`（毒キノコの混乱）を足したとき 9 から上げた。
  * @type {number}
  */
-export const SUSPEND_VERSION = 9;
+export const SUSPEND_VERSION = 10;
 
 /**
  * 中断データ（ターンの始まり、または3択の段階の状態。`null`・真偽値・文字列・数・配列・プレーンなオブジェクトだけでできている）。
@@ -112,14 +114,16 @@ const INTENT_KINDS = Object.freeze(['attack', 'windup', 'guard']);
 /**
  * 予告の形が正しいか。
  * @param {unknown} value 調べる値
- * @returns {boolean} `kind` が 'attack'・'windup'・'guard'、`amount`・`baseAmount`・`defense` が 0 以上の整数、`variant` は無いか文字列、`burn` は無いか 0 ≤ min ≤ max の整数、`minions` は無いか 0 以上の整数なら true
+ * @param {Readonly<import('./config.js').Rules>} config ルールの設定（印の列の範囲の確かめに列の数を使う）
+ * @returns {boolean} `kind` が 'attack'・'windup'・'guard'、`amount`・`baseAmount`・`defense` が 0 以上の整数、`variant` は無いか文字列、`burn` は無いか 0 ≤ min ≤ max の整数、`minions` は無いか 0 以上の整数、`mark` は無いか列の印の形（`isColumnMarkShape`）なら true
  */
-function isIntentShape(value) {
+function isIntentShape(value, config) {
   if (!isPlain(value)) return false;
   if (!INTENT_KINDS.includes(value.kind)) return false;
   if (!isIntFrom(value.amount, 0) || !isIntFrom(value.baseAmount, 0) || !isIntFrom(value.defense, 0)) return false;
   if (value.variant !== undefined && typeof value.variant !== 'string') return false;
   if (value.minions !== undefined && !isIntFrom(value.minions, 0)) return false;
+  if (value.mark !== undefined && !isColumnMarkShape(value.mark, config.columnCount)) return false;
   if (value.burn !== undefined) {
     const burn = value.burn;
     if (!isPlain(burn) || !isIntFrom(burn.min, 0) || !Number.isInteger(burn.max) || burn.max < burn.min) return false;
@@ -263,7 +267,7 @@ const FIELDS = Object.freeze({
       Number.isInteger(value.maxHp) &&
       value.hp <= value.maxHp &&
       isEnemyPartsShape(enemySpecOf(config, value.typeId), value.parts, value.hp) &&
-      isIntentShape(value.intent) &&
+      isIntentShape(value.intent, config) &&
       isEnemyMinionsShape(enemySpecOf(config, value.typeId), value.minions, value.intent) &&
       isBehaviorState(enemySpecOf(config, value.typeId).behavior, value.behaviorState),
     load: (game, value) => {
