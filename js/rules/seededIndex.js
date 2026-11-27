@@ -2,7 +2,7 @@
 
 /**
  * 用途の鍵の表（混ぜ合わせの値であり、ルールの数値ではない）。用途ごとに別の列にするために混ぜる。
- * @type {Readonly<{member: number, last: number, first: number, middle: number, star: number}>}
+ * @type {Readonly<{member: number, last: number, first: number, middle: number, star: number, bagLast: number, bagFirst: number, bagMiddle: number}>}
  */
 export const STREAM = Object.freeze({
   member: 1,
@@ -10,6 +10,9 @@ export const STREAM = Object.freeze({
   first: 3,
   middle: 4,
   star: 5,
+  bagLast: 6,
+  bagFirst: 7,
+  bagMiddle: 8,
 });
 
 /**
