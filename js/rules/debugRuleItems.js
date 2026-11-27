@@ -68,6 +68,8 @@ function rangeItems(baseId, group, baseName, kind, rangeOf, unit = null) {
 const BEHAVIOR_ITEMS = Object.freeze({
   steady: (typeId, behavior, unit) => rangeItems(`${typeId}.attack`, typeId, 'attack', 'amount',
     (c) => c.enemies[typeId].behavior.attackRange, unit),
+  assault: (typeId, behavior, unit) => rangeItems(`${typeId}.attack`, typeId, 'attack', 'amount',
+    (c) => c.enemies[typeId].behavior.attackRange, unit),
   cycle: (typeId, behavior, unit) => {
     const items = [
       item(`${typeId}.cycleLength`, typeId, 'cycleLength', 'cycleLength', 'nextCycle', null, null,

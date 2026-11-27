@@ -51,12 +51,12 @@
 /**
  * 敵の行動の決まりの設定。
  * @typedef {Object} EnemyBehaviorSpec
- * @property {'steady'|'cycle'|'inhale'|'buildup'|'either'|'brood'} type 行動の決まりの種類（'steady'＝毎ターン攻撃、'cycle'＝周期の攻撃、'inhale'＝吸い込んでからブレス、'buildup'＝溜めて大攻撃、'either'＝攻撃か防御のどちらか、'brood'＝親と子の局面ごとの行動）。
+ * @property {'steady'|'assault'|'cycle'|'inhale'|'buildup'|'either'|'brood'} type 行動の決まりの種類（'steady'＝毎ターン攻撃、'assault'＝毎ターン攻撃だけ（防御しない）、'cycle'＝周期の攻撃、'inhale'＝吸い込んでからブレス、'buildup'＝溜めて大攻撃、'either'＝攻撃か防御のどちらか、'brood'＝親と子の局面ごとの行動）。
  * @property {Readonly<ClawSpec>} [claw] 爪の攻撃（'inhale' のみ）。
  * @property {Readonly<BreathSpec>} [breath] ブレスの攻撃と燃やす札（'inhale' のみ）。
  * @property {number} [inhaleChance] 直前の予告が吸い込む・ブレスでないとき、フェーズごとに吸い込むを予告する確率（0〜1。'inhale' のみ）。
  * @property {number} [cycleLength] 1周期のフェーズ数。最後のフェーズで攻撃、ほかは振りかぶり（'cycle' のみ。1以上の整数）。
- * @property {Readonly<AmountRangeSpec>} [attackRange] 周期の最後のフェーズの攻撃の量の幅（'cycle'）、または毎ターンの・ふつうの攻撃の量の幅（'steady'・'buildup'・'either'）、子の攻撃の量の幅（'brood'）。
+ * @property {Readonly<AmountRangeSpec>} [attackRange] 周期の最後のフェーズの攻撃の量の幅（'cycle'）、または毎ターンの・ふつうの攻撃の量の幅（'steady'・'assault'・'buildup'・'either'）、子の攻撃の量の幅（'brood'）。
  * @property {Readonly<AmountRangeSpec>} [heavyRange] 大攻撃の量の幅（'buildup' のみ）。
  * @property {number} [chargeChance] 溜めていないターンに溜めるを予告する確率（0〜1。'buildup' のみ）。
  * @property {number} [chargeTurns] 溜めのターン数（1以上の整数。溜めてから大攻撃までのターン数。'buildup' のみ）。

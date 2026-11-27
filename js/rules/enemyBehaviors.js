@@ -1,5 +1,5 @@
 /**
- * 責務: 敵の行動の決まり（種類ごとの状態の初期値・状態の形の確かめ・次の行動の決め方・数え下ろし・隙かの問い合わせ）の表と呼び分け、
+ * 責務: 敵の行動の決まり（毎ターン攻撃だけを含む。種類ごとの状態の初期値・状態の形の確かめ・次の行動の決め方・数え下ろし・隙かの問い合わせ）の表と呼び分け、
  * 行動を作る小さな関数、行動の量の幅からの抽選、攻撃の直後の回復の抽選、親子の敵の局面ごとの行動。渡された乱数だけを使う純粋な関数（ルール層）。
  */
 
@@ -220,6 +220,20 @@ const BEHAVIORS = Object.freeze({
     countdown: () => null,
     isOpening: () => false,
   }),
+  /**
+   * 毎ターン攻撃だけの決まり（防御しない）。乱数は量の抽選の1回だけ。状態は持たない・数え下ろしは持たない。
+   * 隙はすべてのターン（防御は常に 0）。
+   */
+  assault: Object.freeze({
+    initialState: () => ({}),
+    isState: (state) => isPlainObject(state),
+    planNext: (behavior, state, random, unit) => ({
+      action: steadyAttackAction(behavior, random, unit),
+      state,
+    }),
+    countdown: () => null,
+    isOpening: () => true,
+  }),
   cycle: Object.freeze({
     initialState: () => ({ countdown: null }),
     isState: (state) => isPlainObject(state) && Number.isInteger(state.countdown) && state.countdown >= 0,
@@ -346,7 +360,7 @@ export function createBehaviorState(behavior) {
 
 /**
  * 値が、その決まりの状態の形か（保存したデータの確かめ用。乱数は呼ばない）。
- * 決まりごと（steady・either: プレーンなオブジェクト。cycle: `countdown` が 0 以上の整数。inhale: `lastVariant` が 'claw'・'inhale'・'breath'。
+ * 決まりごと（steady・assault・either: プレーンなオブジェクト。cycle: `countdown` が 0 以上の整数。inhale: `lastVariant` が 'claw'・'inhale'・'breath'。
  * brood: `lastVariant` が null か 'protect'・'rush'・'rage'・'bigRush'。
  * buildup: `turnsToHeavy` が null か 0 以上の整数、`chargeTurns` が 0 以上の整数）。
  * @param {{ type: string }} behavior 行動の決まりの設定
@@ -360,7 +374,7 @@ export function isBehaviorState(behavior, state) {
 
 /**
  * 次の行動を決める。引数の状態は書き換えず、新しい状態を返す。
- * 乱数の使い方は決まりごと（steady: 攻撃の量。cycle: 攻撃のフェーズだけ量。inhale: ブレス・爪は量、それ以外は吸い込むの抽選→外れなら爪の量。
+ * 乱数の使い方は決まりごと（steady: 攻撃の量。assault: 攻撃の量。cycle: 攻撃のフェーズだけ量。inhale: ブレス・爪は量、それ以外は吸い込むの抽選→外れなら爪の量。
  * buildup: 溜めていないターンは溜める抽選1回（外れれば量1回が続く）・溜めの続きは0回・大攻撃は量1回・大攻撃の次は量1回。
  * either: 攻撃の抽選1回→当たれば量1回、外れれば大防御の抽選1回→量1回）。
  * @param {{ type: string }} behavior 行動の決まりの設定

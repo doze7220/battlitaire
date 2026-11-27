@@ -40,6 +40,14 @@ const INTENT_TABLE = Object.freeze({
     },
     chosen: () => 'attackDefend',
   }),
+  assault: Object.freeze({
+    ids: () => ['attack'],
+    plan: (behavior, id, random, unit) => {
+      if (id !== 'attack') throw new Error(`unknown intent id: ${id}`);
+      return { action: steadyAttackAction(behavior, random, unit), state: {} };
+    },
+    chosen: () => 'attack',
+  }),
   cycle: Object.freeze({
     ids: (behavior) => {
       const ids = ['windup', 'attack'];

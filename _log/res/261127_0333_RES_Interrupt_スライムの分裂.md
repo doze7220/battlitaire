@@ -395,7 +395,7 @@ export function createMinionPlaces({ groundY, fieldH, figures }) { … }
         *   2章「要件2」の状態・計算の置き場所・攻防の計算・ゲームのとおりに書く。`enemySplit.js` は何も import しない（設定の型は JSDoc の参照だけ）。各関数・型に JSDoc（`minionShares` に「子が先」の決まり、`minionBirths` に整数の切り上げの式と例）。`Game.js` は呼ぶ行だけを足す。
         *   確かめ: (1) `minionBirths` の要件5の値（0・1・3・4・10・11 → 0・1・1・2・3・4。割合 0・100・`split` なし）と `minionShares` の場合分け（子 0・盾より少ない・同じ・多い・盾 0・城の HP で頭打ち）を単体で。(2) `computeBattle` に `minions`・`split` を渡した要件5の攻防の場合分けで、出来事の並び・量・結果の `minions` が要件2のとおりで、合計が今の式と同じ。`minions`・`split` を省いた入力の出来事・結果（`minions` を除く）が変更前と同じ。(3) スクラッチの写しの設定（スライムの行に `split: { percent: 30 }` だけを足し、`behavior` は今の `either` のまま。2章「要件5」の先回りの依存）の `Game` で、`switchEnemy(game, 'slime')` でスライムを出し、攻防のたびに `enemy.minions` が生まれた数・次のターンの予告の `minions` がその数・その次の攻防で `minionAttack` の量がその数、倒した攻防・城が落ちた攻防で 0、敵が替わると 0。(4) `RULES` のままで、変更前と並べたランダムなゲーム（強化を取るもの・敵を数体倒すもの・負けまで）で毎手の結果・状態（予告・乱数の状態・3択の候補まで）が一致（敵の `minions`・結果の `minions` は比べない）。(5) 代用の `oz` のローダーで `js/main.js` から辿るモジュールがすべて読み込める。
         *   共通の作業。
-*   [ ] タスク2: ルール層の行動の決まり「毎ターン攻撃だけ」（`assault`）— 表の行だけ（どの敵もまだ使わない）
+*   [x] タスク2: ルール層の行動の決まり「毎ターン攻撃だけ」（`assault`）— 表の行だけ（どの敵もまだ使わない）
     *   **対象ファイル** :
         *   `./js/rules/enemyBehaviors.js` : 更新（`BEHAVIORS.assault`・説明の乱数の使い方と形の並び・先頭の責務）
         *   `./js/rules/debugIntents.js` : 更新（`INTENT_TABLE.assault`）
@@ -505,7 +505,12 @@ export function createMinionPlaces({ groundY, fieldH, figures }) { … }
 
 ### タスク2: ルール層の行動の決まり「毎ターン攻撃だけ」（`assault`）— 表の行だけ（どの敵もまだ使わない）
 *   **作業内容** :
-    *   （未記入）
+    *   `enemyBehaviors.js` に `BEHAVIORS.assault`（JSDoc 付き。`isOpening` 常に真・乱数は量の1回）、`planBehaviorAction`・`isBehaviorState` の説明と先頭の責務に assault を追記。`debugIntents.js` に `INTENT_TABLE.assault`、`debugRuleItems.js` に `BEHAVIOR_ITEMS.assault`、`config.js` の `EnemyBehaviorSpec.type` と `attackRange` の説明に `assault` を追記。スライムの行は未変更。
+    *   確かめ（スクラッチの一時ファイル。終わって削除済み）:
+        *   (1) 写しの設定（スライムの `type` だけ `assault`）で `planBehaviorAction` 500回: 毎回攻撃・量 2〜3・`variant` なし・状態 `{}`・乱数1回、`isState` 真・`countdown` null・`isOpening` 真。`createIntent` の予告は防御 0・乱数 0 回。`RULE_ITEMS` のスライム項目は `slime.maxHp`・`slime.attack.min`・`slime.attack.max` の3つ。`intentChoiceIds` が `['attack']`、`planChosenIntent` が `{action:{kind:'attack',amount},state:{}}`、`chosenIntentOf` が `'attack'`。
+        *   (2) `RULES` のままで `RULE_ITEMS` は 69 個（変更前と同数）。ほかの決まりの行は変えていない。
+        *   (3) `js/rules/` の全モジュールが読み込める。構文チェック: 4ファイルともエラーなし。（`js/main.js` 経由の画面側は今回変えていないので、代用 `oz` ローダーでの確認は省略）
+    *   開発資料: 追記の必要なし（タスク7・10 で `assault` を含めて反映する想定）。
 
 ### タスク3: 中断データ（版 8・子の数）
 *   **作業内容** :
