@@ -115,7 +115,7 @@ const CARD_ART_RANGE = Object.freeze({ minX: -50, maxX: 50, minY: -70, maxY: 70 
 
 /**
  * 識別子 → 絵と絵の範囲の凍結した表。
- * 兵（soldier）・ゴブリン（goblin）・オーガ（ogre）・骸骨（skeleton）の範囲（x ±99・y ±98）はスプライトの bounds（x ±106・y ±105。太さ 16 の線を含む）と違う。
+ * 兵（soldier）・ゴブリン（goblin）・オーガ（ogre）・骸骨（skeleton）・亡者（undead）の範囲（x ±99・y ±98）はスプライトの bounds（x ±106・y ±105。太さ 16 の線を含む）と違う。
  * 表は兵の描く大きさ（drawSpriteCentered の size）の基準で、bounds に合わせると約 7% 小さく描かれるため、見た目を変えないよう今の値を残す。
  * 描く位置・大きさには bounds を使わない。焼き付ける範囲を求めるときだけ、表の範囲と bounds を合わせて使う（troopFigureBakeBounds）。
  * スプライトを描き直して差し替えるときに、表を新しい bounds に合わせ直し、layout.js の TROOP_SIZE も一緒に見直す。
