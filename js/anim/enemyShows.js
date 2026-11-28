@@ -134,6 +134,15 @@ export const ENEMY_SHOWS = Object.freeze({
     pace: 'normal',
     swordsReturn: false,
   }),
+  necromancer: Object.freeze({
+    body: 'figure',
+    attacks: Object.freeze({ default: 'strike' }),
+    heavy: Object.freeze([]),
+    charge: Object.freeze([]),
+    dents: false,
+    pace: 'normal',
+    swordsReturn: true,
+  }),
   dragon: Object.freeze({
     body: 'figure',
     attacks: Object.freeze({ default: 'strike', breath: 'flames' }),

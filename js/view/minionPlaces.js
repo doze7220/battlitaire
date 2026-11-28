@@ -24,6 +24,7 @@
  */
 export const MINION_PLACES = Object.freeze({
   slime: Object.freeze({ size: 24, area: Object.freeze({ x: 440, w: 70, h: 130 }) }),
+  necromancer: Object.freeze({ size: 24, area: Object.freeze({ x: 430, w: 110, h: 150 }) }),
 });
 
 /**

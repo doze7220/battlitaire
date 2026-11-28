@@ -19,6 +19,7 @@ import { SPRITE_IDS } from './spriteView.js';
  */
 export const MINION_SKINS = Object.freeze({
   slime: Object.freeze({ body: SPRITE_IDS.slimeChild, item: null, bake: 'slimeChild' }),
+  necromancer: Object.freeze({ body: SPRITE_IDS.undead, item: null, bake: 'undead' }),
 });
 
 /**

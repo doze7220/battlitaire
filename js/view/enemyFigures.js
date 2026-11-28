@@ -1,5 +1,5 @@
 /**
- * 責務: 絵で描く敵（巨人・毒キノコ・ドラゴンなど）ごとの配置の表 `ENEMY_FIGURES` を持ち、絵の矩形・シールドの並べ先・当たる位置・口・回復の文字・予告の札の置き場所を組み立てる。
+ * 責務: 絵で描く敵（巨人・毒キノコ・ネクロマンサー・ドラゴンなど）ごとの配置の表 `ENEMY_FIGURES` を持ち、絵の矩形・シールドの並べ先・当たる位置・口・回復の文字・予告の札の置き場所を組み立てる。
  * 画面全体の配置は持たず、必要な基準の値は引数で受け取る。ルール層は import せず、状態は変えない。
  */
 
@@ -77,6 +77,15 @@ const ENEMY_FIGURES = Object.freeze({
   giant: Object.freeze({
     sprite: SPRITE_IDS.giant,
     height: 200,
+    shield: Object.freeze({ cx: 0.41, cy: 0.39, w: 0.7, h: 0.3 }),
+    hit: 0.15,
+    mouth: null,
+    intent: Object.freeze({ x: 0.32, gap: null }),
+    minScale: 1,
+  }),
+  necromancer: Object.freeze({
+    sprite: SPRITE_IDS.necromancer,
+    height: 160,
     shield: Object.freeze({ cx: 0.41, cy: 0.39, w: 0.7, h: 0.3 }),
     hit: 0.15,
     mouth: null,

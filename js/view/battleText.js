@@ -67,6 +67,7 @@ const AMOUNTLESS_KINDS = new Set(['windup']);
  */
 export const MINION_LABELS = Object.freeze({
   slime: '子スライム',
+  necromancer: '亡者',
 });
 
 /**
