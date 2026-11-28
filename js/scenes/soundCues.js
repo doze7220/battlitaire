@@ -146,12 +146,14 @@ export function playStartSe() {
  * 敵の種類の識別子 → 行動の中の種類の引き鍵 → 敵の攻撃の始まりの音の名前。
  * 引き方は enemyShows.js の enemyAttackShow と同じ。goblins・skeletons・slime など表にない敵は持たない（鳴らさない）。
  * 猪の親子（boar）は突進・大突進だけ鳴らし、子の攻撃（default）は持たない（鳴らさない）。
+ * ゴーレム（golem）も default を持たず、ふつうの攻撃では鳴らさない。体当たり（tackle）だけ巨人の攻撃の音を鳴らす。
  * @type {Readonly<Record<string, Readonly<Record<string, string>>>>}
  */
 export const ENEMY_ATTACK_SE = Object.freeze({
   wolf: Object.freeze({ default: 'dragonClaw' }),
   boar: Object.freeze({ rush: 'giantAttack', bigRush: 'giantAttack' }),
   giant: Object.freeze({ default: 'giantAttack' }),
+  golem: Object.freeze({ tackle: 'giantAttack' }),
   dragon: Object.freeze({ default: 'dragonClaw', breath: 'dragonBreath' }),
 });
 

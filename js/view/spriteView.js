@@ -6,6 +6,7 @@
 import background from 'assets/sprites/background.js';
 import unitCastle from 'assets/sprites/unit_castle.js';
 import unitGiant from 'assets/sprites/unit_giant.js';
+import unitGolem from 'assets/sprites/unit_golem.js';
 import unitNecromancer from 'assets/sprites/unit_necromancer.js';
 import unitUndead from 'assets/sprites/unit_undead.js';
 import unitDragon from 'assets/sprites/unit_dragon.js';
@@ -62,12 +63,13 @@ import intentBreath from 'assets/sprites/intent_breath.js';
 
 /**
  * スプライトの識別子（呼ぶ側はこの定数で絵を指す）。
- * @type {Readonly<{background: string, castle: string, giant: string, necromancer: string, undead: string, dragon: string, soldier: string, goblin: string, ogre: string, skeleton: string, wolf: string, boar: string, uribo: string, slime: string, slimeChild: string, mushroom: string, sword: string, shield: string, hammer: string, gold: string, fire: string, hit: string, cardFrontSword: string, cardFrontShield: string, cardFrontHammer: string, cardFrontGold: string, cardBack: string}>}
+ * @type {Readonly<{background: string, castle: string, giant: string, golem: string, necromancer: string, undead: string, dragon: string, soldier: string, goblin: string, ogre: string, skeleton: string, wolf: string, boar: string, uribo: string, slime: string, slimeChild: string, mushroom: string, sword: string, shield: string, hammer: string, gold: string, fire: string, hit: string, cardFrontSword: string, cardFrontShield: string, cardFrontHammer: string, cardFrontGold: string, cardBack: string}>}
  */
 export const SPRITE_IDS = Object.freeze({
   background: 'background',
   castle: 'castle',
   giant: 'giant',
+  golem: 'golem',
   necromancer: 'necromancer',
   undead: 'undead',
   dragon: 'dragon',
@@ -125,6 +127,7 @@ const SPRITE_TABLE = Object.freeze({
   [SPRITE_IDS.background]: Object.freeze({ sprite: background, minX: -360, maxX: 360, minY: -260, maxY: 100 }),
   [SPRITE_IDS.castle]: Object.freeze({ sprite: unitCastle, minX: -115, maxX: 101, minY: -292, maxY: 150 }),
   [SPRITE_IDS.giant]: Object.freeze({ sprite: unitGiant, minX: -113, maxX: 160, minY: -153, maxY: 243 }),
+  [SPRITE_IDS.golem]: Object.freeze({ sprite: unitGolem, minX: -113, maxX: 160, minY: -153, maxY: 243 }),
   [SPRITE_IDS.necromancer]: Object.freeze({ sprite: unitNecromancer, minX: -113, maxX: 160, minY: -153, maxY: 243 }),
   [SPRITE_IDS.undead]: Object.freeze({ sprite: unitUndead, minX: -99, maxX: 99, minY: -98, maxY: 98 }),
   [SPRITE_IDS.dragon]: Object.freeze({ sprite: unitDragon, minX: -150, maxX: 168, minY: -196, maxY: 200 }),

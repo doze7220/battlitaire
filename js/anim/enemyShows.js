@@ -134,6 +134,15 @@ export const ENEMY_SHOWS = Object.freeze({
     pace: 'normal',
     swordsReturn: false,
   }),
+  golem: Object.freeze({
+    body: 'figure',
+    attacks: Object.freeze({ default: 'strike', tackle: 'dashStraight' }),
+    heavy: Object.freeze(['tackle']),
+    charge: Object.freeze(['crouch']),
+    dents: false,
+    pace: 'slow',
+    swordsReturn: false,
+  }),
   necromancer: Object.freeze({
     body: 'figure',
     attacks: Object.freeze({ default: 'strike' }),
