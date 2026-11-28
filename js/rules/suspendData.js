@@ -12,6 +12,7 @@ import { isBehaviorState } from './enemyBehaviors.js';
 import { isColumnMarkShape } from './columnMarks.js';
 import { isEnemyPartsShape } from './enemyParts.js';
 import { isEnemyMinionsShape } from './enemySplit.js';
+import { isEnemyStockShape } from './enemyStock.js';
 import { isGameStats } from './gameStats.js';
 import { isBattleRecord } from './battleRecord.js';
 import { isUpgradeState } from './upgrades.js';
@@ -28,9 +29,10 @@ import { handSizeOf } from './upgradeBoosts.js';
  * 8: 敵の子の数 `minions` と予告の `minions` を足したとき 7 から上げた。
  * 9: 予告の疲弊の前の防御 `baseDefense` をなくし、激昂の倍率の前の攻撃の量 `baseAmount` を足したとき 8 から上げた。
  * 10: 予告に列の印 `mark`（毒キノコの混乱）を足したとき 9 から上げた。
+ * 11: 敵の持ち越した溜め `defenseStock` と予告の `stock`・`spendStock` を足したとき 10 から上げた。
  * @type {number}
  */
-export const SUSPEND_VERSION = 10;
+export const SUSPEND_VERSION = 11;
 
 /**
  * 中断データ（ターンの始まり、または3択の段階の状態。`null`・真偽値・文字列・数・配列・プレーンなオブジェクトだけでできている）。
@@ -52,7 +54,7 @@ export const SUSPEND_VERSION = 10;
  * @property {number} battleActionBonus この戦闘の間、毎ターン足す行動の数（3択の段階では 0）
  * @property {Object<string, number>} gauges ゲージの識別子 → 値
  * @property {{ hp: number, maxHp: number }} castle 城
- * @property {{ typeId: string, hp: number, maxHp: number, parts: import('./enemyParts.js').EnemyParts|null, minions: number, intent: import('./combatants.js').EnemyIntent, behaviorState: object }} enemy 敵（名前は設定から引くので持たない。`parts` は親子の敵だけ値を持ち、合計が `hp`。`minions` は待っている子（スライムの子スライム・亡者）の数で、子を持たない敵は 0）
+ * @property {{ typeId: string, hp: number, maxHp: number, parts: import('./enemyParts.js').EnemyParts|null, minions: number, defenseStock: number, intent: import('./combatants.js').EnemyIntent, behaviorState: object }} enemy 敵（名前は設定から引くので持たない。`parts` は親子の敵だけ値を持ち、合計が `hp`。`minions` は待っている子（スライムの子スライム・亡者）の数で、子を持たない敵は 0。`defenseStock` は持ち越した防御（溜め）で、持ち越さない敵は 0）
  * @property {import('./gameStats.js').GameStats} stats 結果の記録（倒した数・総ターン数・スコア・項目ごとの合計と回数・倒した敵の並び・最大の一撃・一番長いコンボ）
  * @property {import('./battleRecord.js').BattleRecord} battleRecord 今の敵との戦闘の記録（使ったターン数・城が被害を受けたか・一番長い区切りの枚数。3択の段階では倒した敵の記録）
  * @property {import('./upgrades.js').UpgradeState} upgrades 取った強化
@@ -115,7 +117,7 @@ const INTENT_KINDS = Object.freeze(['attack', 'windup', 'guard']);
  * 予告の形が正しいか。
  * @param {unknown} value 調べる値
  * @param {Readonly<import('./config.js').Rules>} config ルールの設定（印の列の範囲の確かめに列の数を使う）
- * @returns {boolean} `kind` が 'attack'・'windup'・'guard'、`amount`・`baseAmount`・`defense` が 0 以上の整数、`variant` は無いか文字列、`burn` は無いか 0 ≤ min ≤ max の整数、`minions` は無いか 0 以上の整数、`mark` は無いか列の印の形（`isColumnMarkShape`）なら true
+ * @returns {boolean} `kind` が 'attack'・'windup'・'guard'、`amount`・`baseAmount`・`defense` が 0 以上の整数、`variant` は無いか文字列、`burn` は無いか 0 ≤ min ≤ max の整数、`minions` は無いか 0 以上の整数、`mark` は無いか列の印の形（`isColumnMarkShape`）、`spendStock` は無いか `true` なら true
  */
 function isIntentShape(value, config) {
   if (!isPlain(value)) return false;
@@ -123,6 +125,7 @@ function isIntentShape(value, config) {
   if (!isIntFrom(value.amount, 0) || !isIntFrom(value.baseAmount, 0) || !isIntFrom(value.defense, 0)) return false;
   if (value.variant !== undefined && typeof value.variant !== 'string') return false;
   if (value.minions !== undefined && !isIntFrom(value.minions, 0)) return false;
+  if (value.spendStock !== undefined && value.spendStock !== true) return false;
   if (value.mark !== undefined && !isColumnMarkShape(value.mark, config.columnCount)) return false;
   if (value.burn !== undefined) {
     const burn = value.burn;
@@ -256,6 +259,7 @@ const FIELDS = Object.freeze({
         maxHp: game.enemy.maxHp,
         parts: game.enemy.parts,
         minions: game.enemy.minions,
+        defenseStock: game.enemy.defenseStock ?? 0,
         intent: game.enemy.intent,
         behaviorState: game.enemy.behaviorState,
       }),
@@ -269,6 +273,7 @@ const FIELDS = Object.freeze({
       isEnemyPartsShape(enemySpecOf(config, value.typeId), value.parts, value.hp) &&
       isIntentShape(value.intent, config) &&
       isEnemyMinionsShape(enemySpecOf(config, value.typeId), value.minions, value.intent) &&
+      isEnemyStockShape(enemySpecOf(config, value.typeId), value.defenseStock, value.intent) &&
       isBehaviorState(enemySpecOf(config, value.typeId).behavior, value.behaviorState),
     load: (game, value) => {
       const v = structuredClone(/** @type {any} */ (value));
@@ -279,6 +284,7 @@ const FIELDS = Object.freeze({
         maxHp: v.maxHp,
         parts: v.parts,
         minions: v.minions,
+        defenseStock: v.defenseStock,
         intent: v.intent,
         behaviorState: v.behaviorState,
       };

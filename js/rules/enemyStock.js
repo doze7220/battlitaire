@@ -1,5 +1,5 @@
 /**
- * 責務: ターンをまたいで持ち越す敵の防御（溜め）の純粋な計算（持ち越すか・予告への溜めの付け方・攻撃に移した溜め・攻防の後の溜め）。
+ * 責務: ターンをまたいで持ち越す敵の防御（溜め）の純粋な計算（持ち越すか・予告への溜めの付け方・攻撃に移した溜め・攻防の後の溜め・中断データの形の確かめ）。
  * 何も import しない（ルール層）。
  */
 
@@ -59,4 +59,23 @@ export function stockAfterBattle(spec, intent, events, defeated) {
   if (!carriesDefense(spec) || defeated) return 0;
   const blocked = events.filter((event) => event.type === 'enemyBlock').reduce((sum, event) => sum + event.amount, 0);
   return Math.max(0, intent.defense - blocked);
+}
+
+/**
+ * 中断データの敵の持ち越した溜め `defenseStock` と予告の `stock` の形が正しいか（どんな値でも例外を投げない。設定の数値とは比べない）。
+ * 持ち越さない敵は `defenseStock === 0` かつ予告に `stock` がない。
+ * 持ち越す敵は `defenseStock` が 0 以上の整数で、予告の `stock` がプレーンなオブジェクトで `gain`・`spent` が 0 以上の整数（3択の段階の予告も持つ）。
+ * @param {{ carryDefense?: boolean }} spec 敵の種類の設定
+ * @param {unknown} defenseStock 敵の持ち越した溜め
+ * @param {unknown} intent 予告（プレーンなオブジェクトでなければ `stock` は無いものとして見る）
+ * @returns {boolean} 形が合えば true
+ */
+export function isEnemyStockShape(spec, defenseStock, intent) {
+  const stock = typeof intent === 'object' && intent !== null ? /** @type {{ stock?: unknown }} */ (intent).stock : undefined;
+  if (!carriesDefense(spec)) return defenseStock === 0 && stock === undefined;
+  const isCount = (/** @type {unknown} */ v) => Number.isInteger(v) && /** @type {number} */ (v) >= 0;
+  if (!isCount(defenseStock)) return false;
+  if (typeof stock !== 'object' || stock === null || Array.isArray(stock)) return false;
+  const { gain, spent } = /** @type {{ gain?: unknown, spent?: unknown }} */ (stock);
+  return isCount(gain) && isCount(spent);
 }
