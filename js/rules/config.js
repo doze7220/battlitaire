@@ -52,12 +52,12 @@
 /**
  * 敵の行動の決まりの設定。
  * @typedef {Object} EnemyBehaviorSpec
- * @property {'steady'|'assault'|'cycle'|'inhale'|'buildup'|'either'|'brood'|'confuse'} type 行動の決まりの種類（'steady'＝毎ターン攻撃、'assault'＝毎ターン攻撃だけ（防御しない）、'cycle'＝周期の攻撃、'inhale'＝吸い込んでからブレス、'buildup'＝溜めて大攻撃、'either'＝攻撃か防御のどちらか、'brood'＝親と子の局面ごとの行動、'confuse'＝混乱の周期（ふつうのターンは攻撃と防御、混乱のターンは強い攻撃か厚い守りに列の印を付ける））。
+ * @property {'steady'|'assault'|'cycle'|'inhale'|'buildup'|'either'|'brood'|'confuse'|'hoard'} type 行動の決まりの種類（'steady'＝毎ターン攻撃、'assault'＝毎ターン攻撃だけ（防御しない）、'cycle'＝周期の攻撃、'inhale'＝吸い込んでからブレス、'buildup'＝溜めて大攻撃、'either'＝攻撃か防御のどちらか、'brood'＝親と子の局面ごとの行動、'confuse'＝混乱の周期（ふつうのターンは攻撃と防御、混乱のターンは強い攻撃か厚い守りに列の印を付ける）、'hoard'＝防御を溜めて体当たり（防御を取る・攻撃・身をかがめる・体当たりの並び））。
  * @property {Readonly<ClawSpec>} [claw] 爪の攻撃（'inhale' のみ）。
  * @property {Readonly<BreathSpec>} [breath] ブレスの攻撃と燃やす札（'inhale' のみ）。
  * @property {number} [inhaleChance] 直前の予告が吸い込む・ブレスでないとき、フェーズごとに吸い込むを予告する確率（0〜1。'inhale' のみ）。
  * @property {number} [cycleLength] 1周期のフェーズ数。最後のフェーズで攻撃、ほかは振りかぶり（'cycle' のみ。1以上の整数）。
- * @property {Readonly<AmountRangeSpec>} [attackRange] 周期の最後のフェーズの攻撃の量の幅（'cycle'）、または毎ターンの・ふつうの攻撃の量の幅（'steady'・'assault'・'buildup'・'either'）、子の攻撃の量の幅（'brood'）、ふつうのターンの攻撃の量の幅（'confuse'）。
+ * @property {Readonly<AmountRangeSpec>} [attackRange] 周期の最後のフェーズの攻撃の量の幅（'cycle'）、または毎ターンの・ふつうの攻撃の量の幅（'steady'・'assault'・'buildup'・'either'）、子の攻撃の量の幅（'brood'）、ふつうのターンの攻撃の量の幅（'confuse'）、攻撃と体当たりの攻撃の分の量の幅（'hoard'）。
  * @property {Readonly<AmountRangeSpec>} [heavyRange] 大攻撃の量の幅（'buildup'）、混乱のターンの強い攻撃の量の幅（'confuse'）。
  * @property {number} [chargeChance] 溜めていないターンに溜めるを予告する確率（0〜1。'buildup' のみ）。
  * @property {number} [chargeTurns] 溜めのターン数（1以上の整数。溜めてから大攻撃までのターン数。'buildup' のみ）。
@@ -74,6 +74,10 @@
  * @property {Readonly<AmountRangeSpec>} [rushRange] 怒った親の突進の量の幅（'brood' のみ）。
  * @property {number} [rageChance] 怒りを溜めるを予告する確率（0〜1。'brood' のみ）。
  * @property {Readonly<AmountRangeSpec>} [bigRushRange] 大突進の量の幅（'brood' のみ）。
+ * @property {Readonly<AmountRangeSpec>} [fortifyRange] 防御を取るで溜めに足す量の幅（加算の前。'hoard' のみ）。
+ * @property {Readonly<AmountRangeSpec>} [firstFortifyTurn] 最初（戦闘の始まり・体当たりの後）の防御を取るのターンの幅（1 以上の整数。'hoard' のみ）。
+ * @property {Readonly<AmountRangeSpec>} [fortifyInterval] 防御を取るから次の防御を取る（または身をかがめる）までのターン数の幅（1 以上の整数。'hoard' のみ）。
+ * @property {Readonly<AmountRangeSpec>} [fortifyCount] 身をかがめるまでに防御を取る回数の幅（1 以上の整数。'hoard' のみ）。
  */
 
 /**
@@ -97,6 +101,7 @@
  * @property {number} maxHp 敵の元の最大 HP（ステージの加算の前）。
  * @property {number} [unitPoints] 1体が受け持つポイント（1 以上の整数。書かなければ 1。HP・攻撃・防御の量はポイントで書き、この倍数にする）。
  * @property {Readonly<EnemyDefenseSpec>} [defense] 防御（ターンごとの張る確率と量の幅）。行動と別に防御を抽選する敵だけが持つ。
+ * @property {boolean} [carryDefense] 真の敵だけ、攻防の後に残った防御を次のターンへ持ち越す（任意。書かなければ防御はそのターンの終わりに消える。計算は `enemyStock.js`）。
  * @property {Readonly<EnemyBehaviorSpec>} behavior 行動の決まり。
  * @property {string} [motion] 並びの組の鍵（任意。書かなければ behavior.type）。
  * @property {Readonly<EnemyBroodSpec>} [brood] 親と子を持つ敵の設定（任意。書かなければ親子でない）。

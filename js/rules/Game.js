@@ -1,7 +1,7 @@
 /**
  * 責務: ゲーム全体の状態（山札・捨て札・列・手札・ゲージ・行動回数・フェーズと段階・城・敵）の保持と、
  * 問い合わせ・操作（置く・捨てる・放つ・手札に入れる・手札から置く・束を移す・攻防・次のフェーズ）の提供。予告に列の印を付け、印の列の束をひとりでに放つ。
- * ステージの番号・今の敵・今の戦闘の記録とスコア（結果の記録）・取った強化と3択の段階・この戦闘の間の行動の足し分・ゲージごとの精鋭の数と上振れを持ち（親子の敵は親と子の局面を予告に、親と子の HP を攻防に渡し、子を持つ敵は子の数を予告と攻防に渡し、亡者の敵は自軍の兵の人数と精鋭を攻防に渡す）、放つ計算とターンの始まりの行動に強化の足し分を渡す。攻防では札の燃やしを反映する。操作は「何が起きたか」を返す。
+ * ステージの番号・今の敵・今の戦闘の記録とスコア（結果の記録）・取った強化と3択の段階・この戦闘の間の行動の足し分・ゲージごとの精鋭の数と上振れを持ち（親子の敵は親と子の局面を予告に、親と子の HP を攻防に渡し、子を持つ敵は子の数を予告と攻防に渡し、亡者の敵は自軍の兵の人数と精鋭を攻防に渡す）、放つ計算とターンの始まりの行動に強化の足し分を渡す。攻防では札の燃やしを反映する。ターンをまたいで防御を持ち越す敵は、攻防の後に残った溜めを次の予告に渡す。操作は「何が起きたか」を返す。
  */
 
 import { RULES } from './config.js';
@@ -24,6 +24,7 @@ import { enemySituationOf, battlePartsOf } from './enemyParts.js';
 import { enemyTypeIdOfStage } from './stageOrder.js';
 import { computeBattle } from './battle.js';
 import { intentWithMinions } from './enemySplit.js';
+import { intentWithStock, stockAfterBattle } from './enemyStock.js';
 import { raiseTroopsOf } from './enemyRaise.js';
 import { createIntent } from './enemyIntent.js';
 import { rageStatusOf } from './enemyRage.js';
@@ -215,6 +216,7 @@ export class Game {
 
   /**
    * 行動から、今の敵の予告（ステージの加算・防御の量・激昂の倍率をかけたもの）を作る（行動が防御の量を持たず、敵が防御の設定を持ち、隙でないときだけ、防御の抽選で乱数を2回呼ぶ）。
+   * 防御を持ち越す敵（`carryDefense`）は、`createIntent` の直後に持ち越した溜め `enemy.defenseStock` を付ける（`intentWithStock`。乱数は呼ばない）。
    * 行動が印の求めを持てば、その時点の列から印の列を選んで予告の `mark`（列の印）にする（乱数は呼ばない）。
    * @param {import('./combatants.js').EnemyAction} action 行動の決まりが決めた行動
    * @returns {import('./combatants.js').EnemyIntent} 新しい予告
@@ -223,7 +225,7 @@ export class Game {
     const spec = enemySpecOf(this.config, this.enemy.typeId);
     const intent = createIntent(spec, action, this.stageBonus(), this.battleTurn, this.config.rage, this.random);
     return withMarkColumn(
-      intentWithMinions(spec, intent, this.enemy.minions ?? 0),
+      intentWithMinions(spec, intentWithStock(spec, intent, this.enemy.defenseStock ?? 0), this.enemy.minions ?? 0),
       this.columns,
       this.config,
       releaseBoostOf(this.config, this.upgrades),
@@ -648,6 +650,7 @@ export class Game {
    * 決着しなければ段階は 'result'、決着したら 'over' になる（敵を倒しただけなら 'result'）。
    * 敵は入れ替えない（入れ替わりは次のフェーズの頭）。行動の `burn` があれば列の札を燃やして捨て札へ移す。
    * 設定に `raise` がある敵（亡者）には、盾・剣の兵の人数と精鋭（`raiseTroopsOf`）を攻防に渡し、死んだ兵の人数を次のターンの子の数にする。
+   * 防御を持ち越す敵（`carryDefense`）は、攻防の後に残った防御（`stockAfterBattle`）を `enemy.defenseStock` に入れる（持ち越さない敵は 0）。
    * @returns {BattleResult|null} 結果。攻防に入れなければ `null`
    */
   resolveBattle() {
@@ -677,6 +680,7 @@ export class Game {
     this.enemy.hp = calc.enemyHp;
     this.enemy.parts = calc.enemyParts;
     this.enemy.minions = calc.minions;
+    this.enemy.defenseStock = stockAfterBattle(spec, enemyAction, calc.events, calc.enemyDefeated);
     this.stats = tallyBattle(this.stats, calc.events, attack);
     this.battleRecord = recordBattle(this.battleRecord, calc.events);
     let defeat = null;

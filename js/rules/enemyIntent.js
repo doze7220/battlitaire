@@ -6,6 +6,7 @@
 import { isOpeningAction } from './enemyBehaviors.js';
 import { rollDefense } from './enemyDefense.js';
 import { rageStatusOf, ragedAmount } from './enemyRage.js';
+import { stockSpentOf } from './enemyStock.js';
 import { unitPointsOf, floorToUnit } from './unitPoints.js';
 
 /**
@@ -45,6 +46,7 @@ export function createIntent(spec, action, bonus, battleTurn, rage, random) {
 
 /**
  * 倍率の前の攻撃の量（baseAmount）から、いまのターン数の激昂の倍率で amount を数え直した新しい予告を返す（乱数は呼ばない。防御などはそのまま）。
+ * 攻撃に移した溜め（`stockSpentOf`。体当たり）は倍率をかけず、倍率の後の量に足し直す（持たない敵は 0 で今と同じ値）。
  * @param {{ unitPoints?: number }} spec 敵の種類の設定
  * @param {import('./combatants.js').EnemyIntent} intent 今の予告
  * @param {number} battleTurn 戦闘のターン数（1 から）
@@ -52,5 +54,9 @@ export function createIntent(spec, action, bonus, battleTurn, rage, random) {
  * @returns {import('./combatants.js').EnemyIntent} 新しい予告
  */
 export function refreshIntent(spec, intent, battleTurn, rage) {
-  return { ...intent, amount: ragedAmount(intent.baseAmount, rageStatusOf(rage, battleTurn).percent, unitPointsOf(spec)) };
+  return {
+    ...intent,
+    amount:
+      ragedAmount(intent.baseAmount, rageStatusOf(rage, battleTurn).percent, unitPointsOf(spec)) + stockSpentOf(intent),
+  };
 }
