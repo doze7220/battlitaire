@@ -1,6 +1,6 @@
 /**
- * 責務: 敵の行動（爪・吸い込む・ブレス・溜める・大攻撃・突進・怒りを溜める・大突進の種類と防御と子の数を含む）・予告の量の数字・子の数の数字・量の代わりの文字（怒り）・表にない予告の印・決着・敵を倒したときの案内・敵の名前とレベル・激昂の倍率・数え下ろし・回復の量・当たりのダメージの数字・放った区切りの式・4スートそろいの文字を、画面に出す文字に直す。
- * 体の前のシールドの残りの数（溜めた防御の数字）も文字にする。列の印の名前（「混乱」。予告の札と始まりの文字の頭）と、ひとりでに放つときの呼び（「混乱！」）も文字に直す。計算はせず、量をそのまま文字にする。ルール層は実行時に import しない。
+ * 責務: 敵の行動（爪・吸い込む・ブレス・溜める・大攻撃・突進・怒りを溜める・大突進・防御を取る・身をかがめる・体当たりの種類と防御と子の数を含む）・予告の量の数字・子の数の数字・量の代わりの文字（怒り・身をかがめる）・表にない予告の印・決着・敵を倒したときの案内・敵の名前とレベル・激昂の倍率・数え下ろし・回復の量・当たりのダメージの数字・放った区切りの式・4スートそろいの文字を、画面に出す文字に直す。
+ * 体の前のシールドの残りの数（溜めた防御の数字）と、溜めに足した量（「+5」）も文字にする。列の印の名前（「混乱」。予告の札と始まりの文字の頭）と、ひとりでに放つときの呼び（「混乱！」）も文字に直す。計算はせず、量をそのまま文字にする。ルール層は実行時に import しない。
  */
 
 import { intentParts } from './intentParts.js';
@@ -45,6 +45,9 @@ const VARIANT_LABELS = Object.freeze({
   rush: '突進',
   rage: '怒りを溜める',
   bigRush: '大突進',
+  fortify: '防御を取る',
+  crouch: '身をかがめる',
+  tackle: '体当たり',
 });
 
 /**
@@ -53,6 +56,7 @@ const VARIANT_LABELS = Object.freeze({
  */
 const BADGE_LABELS = Object.freeze({
   rage: '怒り',
+  crouch: '身をかがめる',
 });
 
 /**
@@ -164,10 +168,11 @@ export function defeatHintText() {
 /**
  * 敵の予告を「攻撃 3 ／ 防御 2」「攻撃 4 +子スライム 8」のような文字にする。出す側は intentParts で決め、片方だけならその文字だけ。
  * 子の側が出るときは、攻撃の側（出さないときは空）の後ろに半角の空白をはさんで「+子の名前 数」を続ける。
+ * 溜めの側（gain）が出るときは、「{名前} +{gain}」を攻撃の側と防御の側の間に入れる（「防御を取る +5 ／ 防御 9」）。
  * 列の印があるときは、全体の頭に「混乱 ＋ 」のように印の名前と「 ＋ 」を付ける（「混乱 ＋ 大攻撃 9」「混乱 ＋ 防御 9」）。
  * @param {import('../rules/combatants.js').EnemyIntent} action 敵の予告
  * @param {string|null} [typeId=null] 敵の種類の識別子（子の名前を MINION_LABELS で引く。null・表にない種類は「？」）
- * @returns {string} （列の印があれば頭に「印の名前 ＋ 」）攻撃の側（表示名と量。variant が表にあればその表示名。「爪 10」「吸い込む」「ブレス 25」「振りかぶり」。種類が未知なら「？」）に子の側（「+子スライム 8」）を空白で続けたものと、防御の側（「防御 量」）を ` ／ ` でつないだ文字
+ * @returns {string} （列の印があれば頭に「印の名前 ＋ 」）攻撃の側（表示名と量。variant が表にあればその表示名。「爪 10」「吸い込む」「ブレス 25」「振りかぶり」。種類が未知なら「？」）に子の側（「+子スライム 8」）を空白で続けたものと、溜めの側（「防御を取る +5」）と、防御の側（「防御 量」）を ` ／ ` でつないだ文字
  */
 export function enemyActionText(action, typeId = null) {
   const parts = intentParts(action);
@@ -175,6 +180,7 @@ export function enemyActionText(action, typeId = null) {
   const minionText = parts.minions ? `+${minionLabelOf(typeId)} ${intentMinionText(action)}` : null;
   if (parts.attack) texts.push(minionText === null ? attackSideText(action) : `${attackSideText(action)} ${minionText}`);
   else if (minionText !== null) texts.push(minionText);
+  if (parts.gain) texts.push(`${stockGainNameOf(action)} ${intentStockGainText(action)}`);
   if (parts.defense) texts.push(`${ACTION_LABELS.defend} ${intentDefenseText(action)}`);
   const body = texts.join(SIDE_SEPARATOR);
   return parts.mark ? `${markLabelText(action.mark.kind)}${MARK_SEPARATOR}${body}` : body;
@@ -187,6 +193,26 @@ export function enemyActionText(action, typeId = null) {
  */
 function minionLabelOf(typeId) {
   return typeId !== null && Object.prototype.hasOwnProperty.call(MINION_LABELS, typeId) ? MINION_LABELS[typeId] : UNKNOWN_ACTION_LABEL;
+}
+
+/**
+ * 溜めを足す予告の、始まりの文字に出す行動の名前を引く。
+ * @param {import('../rules/combatants.js').EnemyAction} action 敵の予告（stock.gain が 0 より大きい）
+ * @returns {string} 中の種類が VARIANT_LABELS にあればその名前、なければ「防御」
+ */
+function stockGainNameOf(action) {
+  return typeof action.variant === 'string' && Object.prototype.hasOwnProperty.call(VARIANT_LABELS, action.variant)
+    ? VARIANT_LABELS[action.variant]
+    : ACTION_LABELS.defend;
+}
+
+/**
+ * 溜めに足した量を「+5」のような文字にする（予告の札の防御の側に添える文字・始まりの文字が共用する）。
+ * @param {import('../rules/combatants.js').EnemyIntent} action 敵の予告（stock が gain を持つ）
+ * @returns {string} 「+足した量」
+ */
+export function intentStockGainText(action) {
+  return `+${action.stock.gain}`;
 }
 
 /**

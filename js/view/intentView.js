@@ -1,10 +1,10 @@
 /**
- * 責務: 敵の頭の上の予告の札（攻撃の側・防御の側の絵と量の数字・ブレス・大攻撃・大突進の目立たせ、量のない行動の「怒り」の文字。右端からはみ出さない）と、攻撃の札の右に並べる子の絵と数の札・列の印の札（「混乱」。渦巻きの絵と文字）、その下の数え下ろしの文字の描画。
+ * 責務: 敵の頭の上の予告の札（攻撃の側・防御の側の絵と量の数字・防御の側に添える溜めの「+量」・ブレス・大攻撃・大突進・体当たりの目立たせ、量のない行動の「怒り」「身をかがめる」の文字。右端からはみ出さない）と、攻撃の札の右に並べる子の絵と数の札・列の印の札（「混乱」。渦巻きの絵と文字）、その下の数え下ろしの文字の描画。
  * 予告の種類 → 絵の表を持つ。状態は変えず、ルール層・anim は実行時に import しない。
  */
 
 import { roundRectPath } from './cardView.js';
-import { intentAmountText, intentBadgeLabel, intentDefenseText, intentMinionText, markLabelText, unknownIntentText, countdownText } from './battleText.js';
+import { intentAmountText, intentBadgeLabel, intentDefenseText, intentStockGainText, intentMinionText, markLabelText, unknownIntentText, countdownText } from './battleText.js';
 import { intentParts } from './intentParts.js';
 import { INTENT_IDS, drawIntentIcon, drawSpriteCentered } from './spriteView.js';
 import { minionSkinOf } from './minionSkins.js';
@@ -26,6 +26,8 @@ const INTENT_ICONS = Object.freeze({
   rush: INTENT_IDS.attack,
   rage: INTENT_IDS.windup,
   bigRush: INTENT_IDS.attack,
+  crouch: INTENT_IDS.windup,
+  tackle: INTENT_IDS.attack,
 });
 
 /** 予告の札の防御の側の絵の識別子。 */
@@ -35,9 +37,12 @@ const DEFENSE_ICON = INTENT_IDS.defend;
  * 札を目立たせる行動の中の種類（variant）の集合。
  * @type {Set<string>}
  */
-const EMPHASIZED_VARIANTS = new Set(['breath', 'heavy', 'bigRush']);
+const EMPHASIZED_VARIANTS = new Set(['breath', 'heavy', 'bigRush', 'tackle']);
 
-/** 量のない行動の札に量の代わりに出す文字（「怒り」）のフォント。 */
+/** 防御の側の数字の右に添える、溜めに足した量（「+5」）の芯の色（水色）。 */
+const STOCK_GAIN_COLOR = '#8fd3ff';
+
+/** 量のない行動の札に量の代わりに出す文字（「怒り」「身をかがめる」）と、防御の側の「+5」のフォント。 */
 const BADGE_LABEL_FONT = 'bold 22px sans-serif';
 /** 量のない行動の札に量の代わりに出す文字（「怒り」）の芯の色（橙）。 */
 const BADGE_LABEL_COLOR = '#ffb347';
@@ -50,15 +55,15 @@ const BADGE_FILL = 'rgba(20, 24, 36, 0.75)';
 const BADGE_STROKE = 'rgba(255, 255, 255, 0.7)';
 /** ふつうの札の縁の太さ。 */
 const BADGE_STROKE_WIDTH = 2;
-/** `EMPHASIZED_VARIANTS` の札（ブレス・大攻撃・大突進）の塗りの色。 */
+/** `EMPHASIZED_VARIANTS` の札（ブレス・大攻撃・大突進・体当たり）の塗りの色。 */
 const EMPHASIS_FILL = 'rgba(170, 20, 20, 0.92)';
-/** `EMPHASIZED_VARIANTS` の札（ブレス・大攻撃・大突進）の縁の色。 */
+/** `EMPHASIZED_VARIANTS` の札（ブレス・大攻撃・大突進・体当たり）の縁の色。 */
 const EMPHASIS_STROKE = '#ffe45c';
-/** `EMPHASIZED_VARIANTS` の札（ブレス・大攻撃・大突進）の縁の太さ。 */
+/** `EMPHASIZED_VARIANTS` の札（ブレス・大攻撃・大突進・体当たり）の縁の太さ。 */
 const EMPHASIS_STROKE_WIDTH = 3;
 /** 量の数字の芯の色（ふつう）。 */
 const AMOUNT_COLOR = '#ffffff';
-/** 量の数字の芯の色（`EMPHASIZED_VARIANTS` の札（ブレス・大攻撃・大突進））。 */
+/** 量の数字の芯の色（`EMPHASIZED_VARIANTS` の札（ブレス・大攻撃・大突進・体当たり））。 */
 const EMPHASIS_AMOUNT_COLOR = '#ffe45c';
 /** 量の数字・「？」のフォント。 */
 const AMOUNT_FONT = 'bold 30px sans-serif';
@@ -201,7 +206,7 @@ export function drawEnemyIntent(ctx, battleLayout, enemy, countdown, entrance) {
   const emphasized = typeof action.variant === 'string' && EMPHASIZED_VARIANTS.has(action.variant);
   const amountColor = emphasized ? EMPHASIS_AMOUNT_COLOR : AMOUNT_COLOR;
 
-  /** 札に並べる側（左から攻撃の側、防御の側）。iconId が null なら「？」を出す。 */
+  /** 札に並べる側（左から攻撃の側、防御の側）。iconId が null なら「？」を出す。gain は防御の側の数字の右に添える「+量」の文字（なければ省く）。 */
   const sides = [];
   if (parts.attack) {
     const amount = intentAmountText(action);
@@ -212,7 +217,12 @@ export function drawEnemyIntent(ctx, battleLayout, enemy, countdown, entrance) {
     });
   }
   if (parts.defense) {
-    sides.push({ iconId: DEFENSE_ICON, amount: intentDefenseText(action), label: null });
+    sides.push({
+      iconId: DEFENSE_ICON,
+      amount: intentDefenseText(action),
+      label: null,
+      gain: parts.gain ? intentStockGainText(action) : null,
+    });
   }
 
   ctx.save();
@@ -229,6 +239,12 @@ export function drawEnemyIntent(ctx, battleLayout, enemy, countdown, entrance) {
     ctx.font = BADGE_LABEL_FONT;
     side.labelW = ctx.measureText(side.label).width;
     w += badge.gap + side.labelW;
+  }
+  for (const side of sides) {
+    if (side.gain === undefined || side.gain === null) continue;
+    ctx.font = BADGE_LABEL_FONT;
+    side.gainW = ctx.measureText(side.gain).width;
+    w += badge.gap + side.gainW;
   }
   /** 攻撃・防御の札の右に足す札（左から子の札、印の札）。w は札の幅、draw は左端の x を受けて描く。 */
   const extras = [];
@@ -286,6 +302,14 @@ export function drawEnemyIntent(ctx, battleLayout, enemy, countdown, entrance) {
       });
       ctx.restore();
       cursor += badge.gap + side.labelW;
+    }
+    if (side.gain !== undefined && side.gain !== null) {
+      ctx.save();
+      drawOutlinedText(ctx, side.gain, cursor + badge.gap, cy, {
+        font: BADGE_LABEL_FONT, align: 'left', color: STOCK_GAIN_COLOR, outlineWidth: AMOUNT_OUTLINE_WIDTH,
+      });
+      ctx.restore();
+      cursor += badge.gap + side.gainW;
     }
     cursor += badge.sideGap;
   }
