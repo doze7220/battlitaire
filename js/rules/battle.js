@@ -1,11 +1,12 @@
 /**
  * 責務: 攻防（敵の攻撃・防御・振りかぶり、城の被害・札が燃える・敵の回復・敵への攻撃・回復・決着）の出来事の並びと結果を求める純粋な計算。
  * 親子の敵では、敵へのダメージを親と子に分けて出来事に出し、攻防の後の親と子の HP を返す。
- * 子（次のターンに持ち越す攻撃のユニット）を持つ敵では、襲う子をふつうの攻撃に上乗せ（子が先）し、生まれる子の数を返す。
+ * 子（次のターンに持ち越す攻撃のユニット）を持つ敵では、襲う子をふつうの攻撃に上乗せ（子が先）し、生まれる子の数（亡者の敵は死んだ兵の人数を足す）を返す。
  */
 
 import { splitPartDamage } from './enemyParts.js';
 import { minionBirths, minionShares } from './enemySplit.js';
+import { troopDeaths } from './enemyRaise.js';
 
 /**
  * 攻防の計算の入力（すべて0以上の整数）。
@@ -23,6 +24,7 @@ import { minionBirths, minionShares } from './enemySplit.js';
  * @property {import('./enemyParts.js').BattleParts|null} [enemyParts] 親子の敵の攻防の前の親と子の HP と当たる順（省く・null は親子でない敵。合計は enemyHp と同じ・enemyHeal は 0）
  * @property {number} [minions] この攻防でふつうの攻撃に上乗せして襲う子の数（省くと 0）
  * @property {{ percent: number }|null} [split] 分裂の設定（省く・null は子が生まれない）
+ * @property {{ shield: import('./enemyRaise.js').TroopPoints, sword: import('./enemyRaise.js').TroopPoints }|null} [raise] 盾・剣の兵のポイントの形（省く・null は亡者を作らない敵。あれば死んだ盾の兵・剣の兵の人数を数えて出来事に出す）
  */
 
 /**
@@ -36,6 +38,8 @@ import { minionBirths, minionShares } from './enemySplit.js';
  * @property {import('./cardBurn.js').BurnedCard[]} [burns] 燃えた札の並び（`cardBurn` のときだけ）
  * @property {import('./enemyParts.js').PartDamage[]} [parts] 親と子に当たった量（当たる順。`enemyDamage` で親子の敵のときだけ。量の合計は amount）
  * @property {number} [minions] `block`・`castleDamage` のうち子の分（`minionAttack` がある攻防だけ。0 のこともある。子が先）
+ * @property {number} [raisedByMinions] `block` のうち、亡者との相打ちで死んで亡者になる盾の兵の人数（入力の `raise` があるときだけ。倒した・城が落ちた攻防では 0）
+ * @property {number} [raised] `block`・`enemyBlock` のうち、敵自身の攻撃・防御で死んで亡者になる兵の人数（入力の `raise` があるときだけ。`block` では亡者との相打ちの分を含まない。倒した・城が落ちた攻防では 0）
  */
 
 /**
@@ -48,12 +52,14 @@ import { minionBirths, minionShares } from './enemySplit.js';
  * @property {'lose'|null} outcome 決着（城が落ちたら 'lose'、そうでなければ null。敵を倒しただけなら null）
  * @property {import('./cardBurn.js').BurnedCard[]} burned 実際に燃えた札の並び（城が落ちて負けで終わったときは空）
  * @property {import('./enemyParts.js').EnemyParts|null} enemyParts 攻防の後の親と子の HP（城が落ちた攻防は入力のまま。親子でない敵は null）
- * @property {number} minions 攻防の後の子の数（その攻防で生まれた数。倒した・城が落ちた攻防・生まれない敵は 0）
+ * @property {number} minions 攻防の後の子の数（その攻防で生まれた数と、亡者の敵では亡者になった兵の人数。倒した・城が落ちた攻防・生まれない敵は 0）
  */
 
 /**
  * 攻防を計算する。引数は書き換えない。余った防御は消える。
  * 敵の防御の余りも消える。未知の敵の行動の種類は Error を投げる。親子の敵（入力の `enemyParts`）の親と子の合計が敵の HP と違うとき、敵の回復があるときも Error を投げる。
+ * 入力の `raise` があるときは、前から使ったポイントで使い切られた兵の人数を数え（`troopDeaths`）、出来事 `block`（`raisedByMinions`・`raised`）と `enemyBlock`（`raised`）に付ける。
+ * 倒した・城が落ちた攻防では 0 にする。量 0 で並びに入らない出来事には付かない。合計の量の式は変えない。
  * 順序: 敵の行動（攻撃か振りかぶりか防御だけ）→ 敵の防御（量があれば）→ 襲う子（あれば。ふつうの攻撃に上乗せし、盾の兵・城には子が先）→ 相殺 → 城の被害（0なら負け）→ 札が燃える → 敵の回復（最大 HP で頭打ち）→ 敵の防御での相殺 → 敵への攻撃
  * （0になったら撃破の出来事を入れて続ける。倒さず子を持つ敵なら生まれた子の出来事が続く）→ 回復。
  * @param {BattleInput} input 攻防の入力
@@ -98,12 +104,22 @@ export function computeBattle(input) {
   const blocked = Math.min(defense, total);
   const damage = Math.min(total - blocked, castleHp);
   const share = minionShares(minions, blocked, damage);
-  if (blocked > 0) events.push({ type: 'block', amount: blocked, ...(minions > 0 ? { minions: share.blocked } : {}) });
+  /** @type {BattleEvent|null} */
+  let blockEvent = null;
+  if (blocked > 0) {
+    blockEvent = { type: 'block', amount: blocked, ...(minions > 0 ? { minions: share.blocked } : {}) };
+    events.push(blockEvent);
+  }
 
   castleHp -= damage;
   if (damage > 0) events.push({ type: 'castleDamage', amount: damage, ...(minions > 0 ? { minions: share.damage } : {}) });
 
+  const raise = input.raise ?? null;
   if (castleHp === 0) {
+    if (raise && blockEvent) {
+      blockEvent.raisedByMinions = 0;
+      blockEvent.raised = 0;
+    }
     events.push({ type: 'lose', amount: 0 });
     return { events, castleHp, enemyHp, enemyDefeated: false, outcome: 'lose', burned: [], enemyParts: partsBefore, minions: 0 };
   }
@@ -116,7 +132,12 @@ export function computeBattle(input) {
   if (enemyHealed > 0) events.push({ type: 'enemyHeal', amount: enemyHealed });
 
   const enemyBlocked = Math.min(attack, enemyDefense);
-  if (enemyBlocked > 0) events.push({ type: 'enemyBlock', amount: enemyBlocked });
+  /** @type {BattleEvent|null} */
+  let enemyBlockEvent = null;
+  if (enemyBlocked > 0) {
+    enemyBlockEvent = { type: 'enemyBlock', amount: enemyBlocked };
+    events.push(enemyBlockEvent);
+  }
 
   const dealt = Math.min(attack - enemyBlocked, enemyHp);
   enemyHp -= dealt;
@@ -139,9 +160,22 @@ export function computeBattle(input) {
     events.push({ type: 'enemyDefeat', amount: 0 });
   }
 
+  let raisedTotal = 0;
+  if (raise) {
+    const byMinions = enemyDefeated ? 0 : troopDeaths(raise.shield, share.blocked);
+    const byStrike = enemyDefeated ? 0 : troopDeaths(raise.shield, blocked) - byMinions;
+    const bySword = enemyDefeated ? 0 : troopDeaths(raise.sword, enemyBlocked);
+    if (blockEvent) {
+      blockEvent.raisedByMinions = byMinions;
+      blockEvent.raised = byStrike;
+    }
+    if (enemyBlockEvent) enemyBlockEvent.raised = bySword;
+    raisedTotal = byMinions + byStrike + bySword;
+  }
+
   const healed = Math.min(heal, castleMaxHp - castleHp);
   castleHp += healed;
   if (healed > 0) events.push({ type: 'heal', amount: healed });
 
-  return { events, castleHp, enemyHp, enemyDefeated, outcome: null, burned, enemyParts: partsAfter, minions: born };
+  return { events, castleHp, enemyHp, enemyDefeated, outcome: null, burned, enemyParts: partsAfter, minions: born + raisedTotal };
 }

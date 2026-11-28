@@ -1,5 +1,5 @@
 /**
- * 責務: 次のターンに持ち越す攻撃のユニット（子。スライムの子スライム）を持つ敵の純粋な計算（生まれる数・相殺と城の被害のうち子の分・予告への子の数の付け方・中断データの形の確かめ）。
+ * 責務: 次のターンに持ち越す攻撃のユニット（子。スライムの子スライム・亡者）を持つ敵の純粋な計算（子を持つか・生まれる数・相殺と城の被害のうち子の分・予告への子の数の付け方・中断データの形の確かめ）。
  * 何も import しない（ルール層）。
  */
 
@@ -32,14 +32,23 @@ export function minionShares(minions, blocked, damage) {
 }
 
 /**
- * 予告に、襲う子の数を付ける。子を持つ敵（設定に `split` がある）だけ付け、持たない敵の予告はそのまま返す。
- * @param {{ split?: object }} spec 敵の種類の設定
+ * 子を持つ敵か。設定に `split`（与えたダメージの割合で生まれる）か `raise`（死んだ自軍の兵の人数だけ生まれる）がある敵。
+ * @param {{ split?: object, raise?: boolean }} spec 敵の種類の設定
+ * @returns {boolean} 子を持つなら true
+ */
+export function hasMinions(spec) {
+  return Boolean(spec.split) || spec.raise === true;
+}
+
+/**
+ * 予告に、襲う子の数を付ける。子を持つ敵（設定に `split` か `raise` がある。`hasMinions`）だけ付け、持たない敵の予告はそのまま返す。
+ * @param {{ split?: object, raise?: boolean }} spec 敵の種類の設定
  * @param {import('./combatants.js').EnemyIntent} intent 予告
  * @param {number|undefined} minions 敵の待っている子の数（`undefined` は 0 とみなす）
  * @returns {import('./combatants.js').EnemyIntent} 子を持つ敵は `minions` を足した新しい予告、持たない敵は `intent` そのまま
  */
 export function intentWithMinions(spec, intent, minions) {
-  if (!spec.split) return intent;
+  if (!hasMinions(spec)) return intent;
   return { ...intent, minions: minions ?? 0 };
 }
 

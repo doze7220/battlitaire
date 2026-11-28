@@ -101,6 +101,7 @@
  * @property {string} [motion] 並びの組の鍵（任意。書かなければ behavior.type）。
  * @property {Readonly<EnemyBroodSpec>} [brood] 親と子を持つ敵の設定（任意。書かなければ親子でない）。
  * @property {Readonly<EnemySplitSpec>} [split] 分裂の設定（任意。書かなければ子を持たない。ダメージを受けると次のターンに襲う子が生まれる）。
+ * @property {boolean} [raise] 亡者の設定（任意。`true` の敵だけ、敵の攻撃で死んだ盾の兵・敵の防御で死んだ剣の兵が、死んだ人数だけ次のターンに襲う子（亡者）になる）。
  */
 
 /**

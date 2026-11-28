@@ -24,7 +24,7 @@ import { unitPointsOf } from './unitPoints.js';
  * amount は攻撃の値にステージの加算を足した後の量に激昂の倍率をかけた最後の量（振りかぶり・吸い込む・防御だけは 0。予告・攻防が読むのはこれだけ）、
  * baseAmount は加算の後・倍率の前の量（DEBUG でターンの番号・激昂の値を変えたとき amount を数え直す元になるだけ）、
  * defense は抽選した（防御だけの行動では行動が持つ）防御の量にステージの加算を足した後の防御の量（激昂の倍率はかけない。張らない・隙のターンは 0。予告・シールド・攻防が読むのはこれだけ）。
- * 子を持つ敵（設定に `split` がある）の予告だけ、このターンのふつうの攻撃に上乗せして襲う子の数 `minions` を持つ（任意）。
+ * 子を持つ敵（設定に `split` か `raise`（亡者）がある）の予告だけ、このターンのふつうの攻撃に上乗せして襲う子の数 `minions` を持つ（任意）。
  * 予告の `mark` は列の印（種類・列・済んだか）。行動の `mark`（印の求め）とは形が違い、`enemy.intent` に入る予告（`Game.intentOf` の戻り値）は必ずこちら。印を求めない行動・ほかの敵の予告は持たない。
  * @typedef {Omit<EnemyAction, 'mark'> & { baseAmount: number, defense: number, minions?: number, mark?: import('./columnMarks.js').ColumnMark }} EnemyIntent
  */
@@ -45,7 +45,7 @@ import { unitPointsOf } from './unitPoints.js';
  * @property {number} maxHp 最大 HP
  * @property {EnemyIntent|null} intent 次の行動の予告（未決定なら null）
  * @property {import('./enemyParts.js').EnemyParts|null} parts 親と子の HP（親子でない敵は null。親子の敵は hp === parts.parent + parts.child を保つ）
- * @property {number} minions 次のターンに襲う待っている子の数（0 以上の整数。子を持たない敵はいつも 0）
+ * @property {number} minions 次のターンに襲う待っている子・亡者の数（0 以上の整数。子を持たない敵はいつも 0）
  * @property {object} behaviorState 行動の決まりの状態（steady・either では {}、cycle では { countdown }、inhale では { lastVariant }、buildup では { turnsToHeavy, chargeTurns }、confuse では { untilConfuse }）
  */
 
