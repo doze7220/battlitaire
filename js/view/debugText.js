@@ -32,7 +32,7 @@ export const DEBUG_TEXT = Object.freeze({
   hpToFull: '満タンにする',
   childToZero: '子を 0 にする',
   parentToZero: '親を 0 にする',
-  minionClear: '子スライムを 0 にする',
+  minionClear: '子・亡者を 0 にする',
   upgrades: '強化',
   upgradeOffer: '3択を出す',
   upgradeClear: '強化をすべて外す',
@@ -235,12 +235,12 @@ export function fpsText(v) {
 }
 
 /**
- * 「子スライム +n」ボタンの文字にする。
+ * 「子・亡者 +n」ボタンの文字にする。
  * @param {number} n 1回で足す子の数
- * @returns {string} 例「子スライム +5」
+ * @returns {string} 例「子・亡者 +5」
  */
 export function minionAddText(n) {
-  return `子スライム +${n}`;
+  return `子・亡者 +${n}`;
 }
 
 /**

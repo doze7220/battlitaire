@@ -7,7 +7,7 @@ import { enemyTypeIds, enemySpecOf } from './enemyTypes.js';
 import { refreshIntent } from './enemyIntent.js';
 import { intentChoiceIds, planChosenIntent, chosenIntentOf } from './debugIntents.js';
 import { ENEMY_SITUATIONS, enemySituationOf, partsWithTotal, zeroPart } from './enemyParts.js';
-import { intentWithMinions } from './enemySplit.js';
+import { intentWithMinions, hasMinions } from './enemySplit.js';
 import { clearEliteOf } from './elites.js';
 import { upgradeIds, takeUpgrade, clearUpgrades, fixedUpgradeValue, isUpgradeCapped, takenUpgradeList } from './upgrades.js';
 
@@ -265,8 +265,8 @@ function setEnemyMinions(game, spec, minions) {
 }
 
 /**
- * 待っている子（次のターンに襲う子スライム）を count 匹足す。予告の子の数も合わせる。
- * 段取り中で、count が 1 以上の整数で、敵が子を持ち（設定に `split` がある）、敵の HP が 0 より大きいときだけ。
+ * 待っている子・亡者（次のターンに襲う子スライム・亡者）を count 体足す。予告の子の数も合わせる。
+ * 段取り中で、count が 1 以上の整数で、敵が子を持ち（`hasMinions(spec)`。設定に `split` か `raise` がある）、敵の HP が 0 より大きいときだけ。
  * 行動の回数・乱数・HP は触らない。
  * @param {import('./Game.js').Game} game ゲーム
  * @param {number} count 足す数（1 以上の整数）
@@ -276,22 +276,22 @@ export function addEnemyMinions(game, count) {
   if (!isPlanning(game)) return false;
   if (!Number.isInteger(count) || count < 1) return false;
   const spec = enemySpecOf(game.config, game.enemy.typeId);
-  if (!spec.split) return false;
+  if (!hasMinions(spec)) return false;
   if (!(game.enemy.hp > 0)) return false;
   setEnemyMinions(game, spec, (game.enemy.minions ?? 0) + count);
   return true;
 }
 
 /**
- * 待っている子を 0 匹にする。予告の子の数も合わせる。
- * 段取り中で、敵が子を持ち、子が 1 匹以上いるときだけ。行動の回数・乱数・HP は触らない。
+ * 待っている子・亡者を 0 体にする。予告の子の数も合わせる。
+ * 段取り中で、敵が子を持ち、子が 1 体以上いるときだけ。行動の回数・乱数・HP は触らない。
  * @param {import('./Game.js').Game} game ゲーム
  * @returns {boolean} 0 にしたら true（条件外・子を持たない敵・もう 0 なら false）
  */
 export function clearEnemyMinions(game) {
   if (!isPlanning(game)) return false;
   const spec = enemySpecOf(game.config, game.enemy.typeId);
-  if (!spec.split) return false;
+  if (!hasMinions(spec)) return false;
   if (!(game.enemy.minions > 0)) return false;
   setEnemyMinions(game, spec, 0);
   return true;
