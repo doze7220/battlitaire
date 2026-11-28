@@ -27,6 +27,8 @@ import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * @property {{ x: number, y: number }|null} mouth 炎が出る口の位置（口のない敵は null）
  * @property {{ x: number, y: number }} healText 敵の回復の量の文字の中心
  * @property {IntentSpot} intent 予告の札の上端の基準（中央。右端からはみ出すときは左へ寄る。`gap` が null の敵は札の下端が人数の表示の枠の下端にそろい、持つ敵は札の下端が絵の上端の `gap` 上にくる）
+ * @property {number|null} shieldMax 体の前に並べるシールドの印の上限（null なら防御の量の数だけ並べる）
+ * @property {{ x: number, y: number }|null} shieldCount シールドの残りの数の数字の位置（x は数字の右端、y は中心。数字を出さない敵は null）
  * @property {number} minScale HP が 0 に近いときの体の倍率（1 なら縮まない）
  */
 
@@ -35,7 +37,9 @@ import { SPRITE_IDS, spriteFitRect } from './spriteView.js';
  * cx・cy は中心、w・h は幅・高さ。シールドを張らない敵は null）、hit は攻撃の兵が当たって止まる x の絵の矩形の幅に対する割合（左端から。試遊で決め直す）、
  * mouth は炎が出る位置の絵の矩形に対する割合 {x, y}（口のない敵は null。試遊で決め直す）、
  * intent は予告の札の中心の x の絵の矩形に対する割合 {x}（試遊で決め直す）と、絵の上端と札の下端の間 gap（px。null なら札の下端を人数の表示の枠の下端にそろえる）、
- * minScale は HP が 0 に近いときの体の倍率（1 なら縮まない）。
+ * shieldMax はシールドの印の上限（null は上限なし。防御がこれを越えても印はこの数で止まる）、
+ * shieldCount はシールドの残りの数の数字の位置の絵の矩形に対する割合 {x, y}（x は数字の右端、y は中心。null は数字を出さない。試遊で決め直す）、
+ * minScale は HP が 0 に近いときの体の倍率（1 なら縮まない）。全行で shieldMax・shieldCount を必ず書く。
  */
 const ENEMY_FIGURES = Object.freeze({
   wolf: Object.freeze({
@@ -45,6 +49,8 @@ const ENEMY_FIGURES = Object.freeze({
     hit: 0.12,
     mouth: null,
     intent: Object.freeze({ x: 0.5, gap: 30 }),
+    shieldMax: null,
+    shieldCount: null,
     minScale: 1,
   }),
   boar: Object.freeze({
@@ -54,6 +60,8 @@ const ENEMY_FIGURES = Object.freeze({
     hit: 0.12,
     mouth: null,
     intent: Object.freeze({ x: 0.5, gap: null }),
+    shieldMax: null,
+    shieldCount: null,
     minScale: 1,
   }),
   slime: Object.freeze({
@@ -63,6 +71,8 @@ const ENEMY_FIGURES = Object.freeze({
     hit: 0.12,
     mouth: null,
     intent: Object.freeze({ x: 0.5, gap: 30 }),
+    shieldMax: null,
+    shieldCount: null,
     minScale: 0.5,
   }),
   mushroom: Object.freeze({
@@ -72,6 +82,8 @@ const ENEMY_FIGURES = Object.freeze({
     hit: 0.12,
     mouth: null,
     intent: Object.freeze({ x: 0.5, gap: 30 }),
+    shieldMax: null,
+    shieldCount: null,
     minScale: 1,
   }),
   giant: Object.freeze({
@@ -81,6 +93,8 @@ const ENEMY_FIGURES = Object.freeze({
     hit: 0.15,
     mouth: null,
     intent: Object.freeze({ x: 0.32, gap: null }),
+    shieldMax: null,
+    shieldCount: null,
     minScale: 1,
   }),
   necromancer: Object.freeze({
@@ -90,6 +104,8 @@ const ENEMY_FIGURES = Object.freeze({
     hit: 0.15,
     mouth: null,
     intent: Object.freeze({ x: 0.32, gap: null }),
+    shieldMax: null,
+    shieldCount: null,
     minScale: 1,
   }),
   dragon: Object.freeze({
@@ -99,6 +115,8 @@ const ENEMY_FIGURES = Object.freeze({
     hit: 0.15,
     mouth: Object.freeze({ x: 0.03, y: 0.3 }),
     intent: Object.freeze({ x: 0.25, gap: null }),
+    shieldMax: null,
+    shieldCount: null,
     minScale: 1,
   }),
 });
@@ -142,6 +160,8 @@ export function createEnemyFigures({ groundY, centerX, maxHeight, intentTop, bad
       },
       hitX: rect.x + rect.w * def.hit,
       mouth: def.mouth === null ? null : { x: rect.x + rect.w * def.mouth.x, y: rect.y + rect.h * def.mouth.y },
+      shieldMax: def.shieldMax,
+      shieldCount: def.shieldCount === null ? null : { x: rect.x + rect.w * def.shieldCount.x, y: rect.y + rect.h * def.shieldCount.y },
       minScale: def.minScale,
     });
   }

@@ -1,5 +1,5 @@
 /**
- * 責務: 戦闘の段の敵の絵（どの絵の敵も。攻防中は倒れる動き・駆け寄りのずれ・姿勢で段の中に切り抜く）と、段取りの間の絵・群れ（待機の伸び縮み）・待っている子の群れ・シールドマークを描く。
+ * 責務: 戦闘の段の敵の絵（どの絵の敵も。攻防中は倒れる動き・駆け寄りのずれ・姿勢で段の中に切り抜く）と、段取りの間の絵・群れ（待機の伸び縮み）・待っている子の群れ・シールドマーク（上限つき）・溜めの数字を描く。
  * 段取りの間は入りのずれ（見えるか・横のずれ）を受けて描く。状態は変えず、ルール層・anim は実行時に import しない。
  */
 
@@ -9,6 +9,7 @@ import { isHordeEnemy } from './hordeSkins.js';
 import { drawSpriteFit } from './spriteView.js';
 import { bodyScale, scaledShieldArea } from './figureScale.js';
 import { hordeHpOf, figureHpOf } from './bodyHp.js';
+import { drawShieldCount } from './shieldCountView.js';
 
 /** 群れの兵の種類（troopView.js の種類）。 */
 const HORDE_KIND = 'goblin';
@@ -97,7 +98,7 @@ function drawShieldMark(ctx, rect) {
 }
 
 /**
- * 敵の絵を描く。段取りの間（figure が null）は兵の群れ（群れの絵を持つ敵）と待っている子の群れ（enemy.minions が 1 以上の敵）と絵（絵を持ち、絵の体の HP が 0 より大きい敵。群れが奥・絵が手前）を描き、絵を持つ敵にはそのターンの防御の量のシールドマークも描き、
+ * 敵の絵を描く。段取りの間（figure が null）は兵の群れ（群れの絵を持つ敵）と待っている子の群れ（enemy.minions が 1 以上の敵）と絵（絵を持ち、絵の体の HP が 0 より大きい敵。群れが奥・絵が手前）を描き、絵を持つ敵にはそのターンの防御の量のシールドマーク（絵に `shieldMax` があればその数まで。`shieldCount` を持つ絵にはそのターンの防御の量の数字も）も描き、
  * 攻防の演出中は絵だけを倒れる動きのずれで段の中に切り抜いて描く（群れ・シールドは名簿の1体として別に描かれる）。
  * 段取りの間は entrance を受け、見えないなら何も描かず、横のずれがあれば絵・群れ・子の群れ・シールドマークをまとめてずらす。
  * 引数は読むだけで書き換えない。
@@ -146,7 +147,10 @@ export function drawEnemyFigure(ctx, battleLayout, enemy, figure = null, pose = 
     ctx.restore();
     if (fig.shieldArea !== null && enemy.intent !== null && enemy.intent.defense > 0) {
       const shieldArea = scale === 1 ? fig.shieldArea : scaledShieldArea(fig, scale);
-      for (const rect of battleLayout.shieldRects(enemy.intent.defense, shieldArea)) drawShieldMark(ctx, rect);
+      const defense = enemy.intent.defense;
+      const marks = fig.shieldMax === null ? defense : Math.min(defense, fig.shieldMax);
+      for (const rect of battleLayout.shieldRects(marks, shieldArea)) drawShieldMark(ctx, rect);
+      if (fig.shieldCount !== null) drawShieldCount(ctx, fig.shieldCount, defense);
     }
   }
   ctx.restore();

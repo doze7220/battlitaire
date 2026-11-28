@@ -1,6 +1,6 @@
 /**
- * 敵の体（群れ・絵・シールドを名簿へ置く、攻撃の兵が当たる（精鋭は自分のポイントを1回で使う。絵の体に当たって城へ帰る剣を含む）・シールドが剥がれる、倒れたとき絵が跳ねて落ちる記録）と、
- * 時計からの絵の見た目を求める。体の見せ方ごとの違いはこのファイルの表で分ける。描画も状態の変更もしない。
+ * 敵の体（群れ・絵・シールドを名簿へ置く、攻撃の兵が当たる（精鋭は自分のポイントを1回で使う。絵の体に当たって城へ帰る剣を含む）・シールドが剥がれる（印の上限つき）、倒れたとき絵が跳ねて落ちる記録）と、
+ * 時計からの絵の見た目とシールドの残りの数を求める。体の見せ方ごとの違いはこのファイルの表で分ける。描画も状態の変更もしない。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
@@ -26,6 +26,10 @@ import { isWoundedBody, splitPoints } from '../view/bodyPoints.js';
  * @property {number} fallOutY 絵が消える足元の y（群れは 0）
  * @property {boolean} swordsReturn 絵の体に当たった攻撃の兵が、落ちずに城へ帰るか（絵と親子の親は `enemySwordsReturn`、群れは false。親子の子の群れの当たりには効かない）
  * @property {{parent: number, child: number}|null} partHp 親と子の残りの HP（親子の敵だけ。攻防の前の写しで、当たりのたびに減らす。ほかの敵は null）
+ * @property {number|null} shieldMax 置くシールドの印の上限（絵の行の `shieldMax`。上限なしと群れは null）
+ * @property {number} shieldStart 攻防の前のシールドの数（＝防御の量。シールドを張らない体は 0。上限を越える分も数える）
+ * @property {number} shieldsLeft シールドの残りの数（時間割の組み立て中に、剣が当たるたびに減る）
+ * @property {number[]} shieldDrops 剣のポイントがシールドに当たった時刻（ms。当たった順）
  */
 
 /**
@@ -77,6 +81,10 @@ const BODY_SETUPS = Object.freeze({
         fallOutY: 0,
         partHp: null,
         swordsReturn: false,
+        shieldMax: null,
+        shieldStart: 0,
+        shieldsLeft: 0,
+        shieldDrops: [],
       },
       shieldArea: null,
     };
@@ -103,6 +111,10 @@ const BODY_SETUPS = Object.freeze({
         fallOutY: battleLayout.area.y + battleLayout.area.h + figure.rect.h,
         partHp: null,
         swordsReturn: enemySwordsReturn(typeId),
+        shieldMax: figure.shieldMax,
+        shieldStart: 0,
+        shieldsLeft: 0,
+        shieldDrops: [],
       },
       shieldArea: scaledShieldArea(figure, scale),
     };
@@ -148,13 +160,13 @@ const BODY_HITS = Object.freeze({
 });
 
 /**
- * 敵の体を作り、群れとシールドを時刻 0 から名簿へ置く。
+ * 敵の体を作り、群れとシールドを時刻 0 から名簿へ置く（シールドは `shieldMax` があれば min(防御, 上限) 個。数は `shieldStart` に防御の量のまま持つ）。
  * 落とす順は、群れは番号の大きい方から、シールドは左の列から（同じ列は上から）。
  * @param {import('./troopRoster.js').TroopRoster} roster 名簿
  * @param {import('../view/layout.js').BattleLayout} battleLayout 最上段の配置
  * @param {string} typeId 敵の種類の識別子
  * @param {number} hp 攻防の前の敵の HP（群れのポイントの量）
- * @param {number} defense 攻防の前の敵の防御の量（絵を持つ敵のシールドの数。群れはシールドを置かない）
+ * @param {number} defense 攻防の前の敵の防御の量（絵を持つ敵のシールドの数。絵の行に上限 `shieldMax` があれば置く印は上限まで。群れはシールドを置かない）
  * @param {number} maxHp 敵の最大 HP（絵の体の倍率を求める。シールドの並べ先は攻防の前の HP の倍率）
  * @param {number} unit 1体のポイント（1 以上の整数。群れの体の数と傷ついた体を決める。1 なら HP の数の体）
  * @param {{parent: number, child: number}|null} [parts] 攻防の前の親と子の HP（親子の体だけが読む。親子でない敵は null）
@@ -165,7 +177,10 @@ export function createEnemyBody(roster, battleLayout, typeId, hp, defense, maxHp
   const style = enemyBodyStyle(typeId);
   const { body, shieldArea } = BODY_SETUPS[style](roster, battleLayout, typeId, hp, maxHp, unit, parts);
   if (shieldArea !== null && defense > 0) {
-    const points = battleLayout.shieldRects(defense, shieldArea).map((r) => ({
+    body.shieldStart = defense;
+    body.shieldsLeft = defense;
+    const placed = body.shieldMax === null ? defense : Math.min(defense, body.shieldMax);
+    const points = battleLayout.shieldRects(placed, shieldArea).map((r) => ({
       x: r.x + r.w / 2,
       y: r.y + r.h,
       size: r.w,
@@ -179,6 +194,8 @@ export function createEnemyBody(roster, battleLayout, typeId, hp, defense, maxHp
 /**
  * 攻撃の兵を前から count ポイントぶん、シールドに当たる位置へ進め、着いた時刻に兵が自分のポイントを使い（精鋭は1回で複数。使い切れば落ち、残れば傷ついて残る）、
  * 使ったポイントの数だけ前からのシールドを同じ時刻に跳ねて落とす（HP は変わらない）。
+ * 印の数に上限 `shieldMax` がある体は、残りが上限以下になってからのポイントだけ印を落とし、上限を越えている間は印を落とさない
+ * （当たった時刻は上限に関わらず `shieldDrops` に記録し、`shieldCountAt` が数字の減りを答える）。
  * 敵に当たる間隔（`hitStaggerMs`・上限 `hitStaggerMaxMs`）で1体ずつずらす。
  * @param {EnemyBody} body 敵の体
  * @param {import('./troopRoster.js').TroopRoster} roster 名簿
@@ -191,10 +208,28 @@ export function hitEnemyShield(body, roster, count, t) {
   const hits = chargePoints(roster, 'attack', count, body.shieldHitX, t, BATTLE_ANIM.hitMoveMs, 'hit');
   const popTimes = [];
   for (const hit of hits) {
-    for (let i = 0; i < hit.points; i++) popTimes.push(hit.time);
+    for (let i = 0; i < hit.points; i++) {
+      body.shieldDrops.push(hit.time);
+      if (body.shieldMax === null || body.shieldsLeft <= body.shieldMax) popTimes.push(hit.time);
+      body.shieldsLeft -= 1;
+    }
   }
   popTroops(roster, 'shield', popTimes);
   return hits.map((hit) => hit.time);
+}
+
+/**
+ * シールドの残りの数を、時計の値で答える（攻防の前の数から、その時刻までに剣のポイントが当たった数を引く。シールドを張らない体は 0）。
+ * @param {EnemyBody} body 敵の体
+ * @param {number} clock 時計の値（ms）
+ * @returns {number} シールドの残りの数
+ */
+export function shieldCountAt(body, clock) {
+  let gone = 0;
+  for (const time of body.shieldDrops) {
+    if (time <= clock) gone += 1;
+  }
+  return body.shieldStart - gone;
 }
 
 /**

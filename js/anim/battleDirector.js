@@ -13,7 +13,7 @@ import { sampleTroopCounts, sampleTroopExtras } from './troopCounter.js';
 import { buildBattleCues, knockoutTime } from './battleCues.js';
 import { sampleBurnBoard } from './burnTrack.js';
 import { HitMarkSwarm } from './hitMarks.js';
-import { enemyFigureFallAt, enemyFigureFalling, sampleEnemyFigure } from './enemyBody.js';
+import { enemyFigureFallAt, enemyFigureFalling, sampleEnemyFigure, shieldCountAt } from './enemyBody.js';
 import { applyDent } from './figureDent.js';
 import { BattleFx } from './battleFx.js';
 import { chargeLevel } from './chargeShow.js';
@@ -30,6 +30,7 @@ import { sampleFigurePose } from './enemyIdle.js';
  * @property {import('./chargeShow.js').ChargePoseLook} pose 絵の姿勢（ための姿勢に待機の伸び縮みと、へこむ敵（スライム）のへこみを重ねたもの。読むだけ。毎回同じ入れ物）
  * @property {{attack: number, defense: number, heal: number}} troopCounts 攻撃・防御・修理の人数の表示値（人数 + 上振れ）
  * @property {{attack: number, defense: number, heal: number}} troopExtras 攻撃・防御・修理の上振れ（人数の表示値のうち精鋭の上振れの分。表示は後のタスク）
+ * @property {number} shieldCount シールドの残りの数（剣が当たった時刻ごとに 1 ずつ減る。シールドを張らない体は 0。数字を出す絵だけが読む）
  * @property {number} castleHp 表示する城の HP
  * @property {number} enemyHp 表示する敵の HP
  * @property {{amount: number, alpha: number}|null} enemyHealPop 敵の回復の量の浮き出し（なければ null）
@@ -183,6 +184,7 @@ export class BattleDirector {
       pose: this.pose,
       troopCounts: sampleTroopCounts(tl.troopCounter, this.clock),
       troopExtras: sampleTroopExtras(tl.troopCounter, this.clock),
+      shieldCount: shieldCountAt(tl.body, this.clock),
       castleHp: finished ? this.result.castleHp : sampleHp(tl.castleHpStart, tl.castleHpChanges, this.clock),
       enemyHp: finished ? this.result.enemyHp : sampleHp(tl.enemyHpStart, tl.enemyHpChanges, this.clock),
       enemyHealPop,

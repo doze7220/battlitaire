@@ -1,6 +1,6 @@
 /**
  * 責務: 攻防の演出中の最上段の描画の取りまとめ（揺らして段の中で切り抜く戦闘の段（倒れる絵・兵を渡す）・ヒットマーク・エフェクト、段の暗さと光、
- * 人数の表示・敵の回復の量・最上部の HP・敵の名前・「激昂」・TURN・金貨のゲージ・敵を倒したときの案内（「倒した！」・内訳・合計・出そろった後のタップの案内））。
+ * 溜めを持つ敵のシールドの残りの数の数字・人数の表示・敵の回復の量・最上部の HP・敵の名前・「激昂」・TURN・金貨のゲージ・敵を倒したときの案内（「倒した！」・内訳・合計・出そろった後のタップの案内））。
  * 状態は変えず、ルール層・anim は実行時に import しない。
  */
 
@@ -9,6 +9,7 @@ import { drawHitMarks } from './hitMarkView.js';
 import { drawImpactFx, drawStageOverlay } from './battleFxView.js';
 import { drawTroopCounter } from './troopCountView.js';
 import { drawTopGauges } from './topGaugeView.js';
+import { drawShieldCount } from './shieldCountView.js';
 import { defeatText, healAmountText, defeatHintText } from './battleText.js';
 import { defeatScoreLines, defeatTotalText } from './scoreText.js';
 
@@ -127,6 +128,11 @@ export function drawBattleShow(ctx, battleLayout, game, result, look, tally) {
     pose: look.pose,
     troops: look.troops,
   });
+  const figures = battleLayout.enemyFigures;
+  if (Object.prototype.hasOwnProperty.call(figures, game.enemy.typeId)) {
+    const spot = figures[game.enemy.typeId].shieldCount;
+    if (spot !== null) drawShieldCount(ctx, spot, look.shieldCount);
+  }
   drawHitMarks(ctx, look.hitMarks);
   drawImpactFx(ctx, look.fx);
   ctx.restore();
