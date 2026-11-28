@@ -54,6 +54,8 @@ const VALIDATORS = Object.freeze({
   cycleLength: (v) => Number.isInteger(v) && v >= 1,
   chargeTurns: (v) => Number.isInteger(v) && v >= 1,
   confuseTurns: (v) => Number.isInteger(v) && v >= 1,
+  fortifyTurns: (v) => Number.isInteger(v) && v >= 1,
+  fortifyCount: (v) => Number.isInteger(v) && v >= 1,
   defense: (v) => Number.isInteger(v) && v >= 0,
   amount: (v) => Number.isInteger(v) && v >= 0,
   burn: (v) => Number.isInteger(v) && v >= 0,
@@ -168,7 +170,7 @@ export function ruleValue(game, id) {
  * 項目がいつから効くかを答える。
  * @param {import('./Game.js').Game} game ゲーム
  * @param {string} id 項目の識別子
- * @returns {string|null} 'now'|'nextIntent'|'nextCycle'|'nextCharge'|'nextConfuse'|'nextBattle'|'nextStage'|'onAppear'。知らない id は null（'onAppear' は今の敵でない敵の組の項目だけ）
+ * @returns {string|null} 'now'|'nextIntent'|'nextCycle'|'nextCharge'|'nextConfuse'|'nextFortify'|'nextTackle'|'nextBattle'|'nextStage'|'onAppear'。知らない id は null（'onAppear' は今の敵でない敵の組の項目だけ）
  */
 export function ruleTiming(game, id) {
   const it = ruleItemById(id);

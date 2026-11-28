@@ -12,9 +12,9 @@ import { unitPointsOf } from './unitPoints.js';
  * @typedef {Object} RuleItem
  * @property {string} id 識別子（例 'castle.maxHp'、'goblins.attack.min'）。
  * @property {string} group 組（'castle'・'stageStars'（★の抽選）・'rage'（激昂）か敵の種類の識別子）。
- * @property {string} kind 値の種類（'castleMaxHp'|'enemyMaxHp'|'defense'|'amount'|'chance'|'percent'|'risePercent'|'rageTurn'|'rageStep'|'cycleLength'|'burn'|'chargeTurns'|'confuseTurns'。'percent' は 0〜100 の整数の百分率、'risePercent' は★の抽選の1ステージごとに上がる確率の量（0〜100 の整数の百分率）、'rageTurn' は激昂の始まる戦闘のターン（1 以上の整数）、'rageStep' は激昂の1ターンごとに上がる倍率の量（0 以上の整数の百分率））。
+ * @property {string} kind 値の種類（'castleMaxHp'|'enemyMaxHp'|'defense'|'amount'|'chance'|'percent'|'risePercent'|'rageTurn'|'rageStep'|'cycleLength'|'burn'|'chargeTurns'|'confuseTurns'|'fortifyTurns'|'fortifyCount'。'fortifyTurns' は防御を取る間隔のターン数（1 以上の整数）、'fortifyCount' は身をかがめるまでに防御を取る回数（1 以上の整数）、'percent' は 0〜100 の整数の百分率、'risePercent' は★の抽選の1ステージごとに上がる確率の量（0〜100 の整数の百分率）、'rageTurn' は激昂の始まる戦闘のターン（1 以上の整数）、'rageStep' は激昂の1ターンごとに上がる倍率の量（0 以上の整数の百分率））。
  * @property {string} name 項目の名前の識別子（DEBUG タブが文字を引く）。
- * @property {string} timing 今の敵（城・★の抽選）のときに効く時期（'now'|'nextIntent'|'nextCycle'|'nextCharge'|'nextConfuse'|'nextBattle'|'nextStage'）。
+ * @property {string} timing 今の敵（城・★の抽選）のときに効く時期（'now'|'nextIntent'|'nextCycle'|'nextCharge'|'nextConfuse'|'nextFortify'|'nextTackle'|'nextBattle'|'nextStage'）。
  * @property {string|null} pairId 最小と最大の組の相手の id（組でなければ null）。
  * @property {'min'|'max'|null} side 組の中で自分が最小か最大か（組でなければ null）。
  * @property {(config: any) => number} get 設定から値を読む。
@@ -48,7 +48,7 @@ function item(id, group, kind, name, timing, pairId, side, get, set, unit = null
  * @param {string} kind 値の種類
  * @param {(config: any) => { min: number, max: number }} rangeOf 設定から範囲のオブジェクトを引く
  * @param {number|null} [unit] 1体のポイントの刻み（量の幅だけ。既定 null）
- * @param {string} [timing] 効く時期（既定 'nextIntent'。混乱の間隔は 'nextConfuse'）
+ * @param {string} [timing] 効く時期（既定 'nextIntent'。混乱の間隔は 'nextConfuse'、防御を取る間隔は 'nextFortify'、防御を取る回数は 'nextTackle'）
  * @returns {Readonly<RuleItem>[]} [最小, 最大]
  */
 function rangeItems(baseId, group, baseName, kind, rangeOf, unit = null, timing = 'nextIntent') {
@@ -141,6 +141,15 @@ const BEHAVIOR_ITEMS = Object.freeze({
     ...rangeItems(`${typeId}.bigGuard`, typeId, 'thickGuard', 'defense', (c) => c.enemies[typeId].behavior.bigGuardRange, unit),
     ...rangeItems(`${typeId}.confuseInterval`, typeId, 'confuseInterval', 'confuseTurns',
       (c) => c.enemies[typeId].behavior.confuseInterval, null, 'nextConfuse'),
+  ],
+  // 防御を溜めて体当たり。最初の防御を取るのターン（firstFortifyTurn）はスライダーに出さない（今の敵には「次の体当たりの後から」しか効かないため）
+  hoard: (typeId, behavior, unit) => [
+    ...rangeItems(`${typeId}.attack`, typeId, 'attack', 'amount', (c) => c.enemies[typeId].behavior.attackRange, unit),
+    ...rangeItems(`${typeId}.fortify`, typeId, 'fortify', 'defense', (c) => c.enemies[typeId].behavior.fortifyRange, unit),
+    ...rangeItems(`${typeId}.fortifyInterval`, typeId, 'fortifyInterval', 'fortifyTurns',
+      (c) => c.enemies[typeId].behavior.fortifyInterval, null, 'nextFortify'),
+    ...rangeItems(`${typeId}.fortifyCount`, typeId, 'fortifyCount', 'fortifyCount',
+      (c) => c.enemies[typeId].behavior.fortifyCount, null, 'nextTackle'),
   ],
 });
 

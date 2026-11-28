@@ -103,6 +103,12 @@ export const RULE_ITEM_TEXT = Object.freeze({
   thickGuardMax: '厚い守りの量 最大',
   confuseIntervalMin: '混乱の間隔 最小',
   confuseIntervalMax: '混乱の間隔 最大',
+  fortifyMin: '防御を取る量 最小',
+  fortifyMax: '防御を取る量 最大',
+  fortifyIntervalMin: '防御を取る間隔 最小',
+  fortifyIntervalMax: '防御を取る間隔 最大',
+  fortifyCountMin: '身をかがめるまでの回数 最小',
+  fortifyCountMax: '身をかがめるまでの回数 最大',
   splitPercent: '子スライムが生まれる割合',
   riseStar3: '★3 の上がる量',
   riseStar2: '★2 の上がる量',
@@ -139,6 +145,8 @@ export const RULE_TIMING_TEXT = Object.freeze({
   nextCycle: '次の周期から',
   nextCharge: '次の溜めから',
   nextConfuse: '次の混乱から',
+  nextFortify: '次の防御を取るから',
+  nextTackle: '次の体当たりの後から',
   nextBattle: '次の攻防から',
   nextStage: '次のステージから',
   onAppear: '出てきたときから',
@@ -195,6 +203,9 @@ export const INTENT_CHOICE_TEXT = Object.freeze({
   bigRush: '大突進',
   confuseGuard: '混乱＋厚い守り',
   confuseHeavy: '混乱＋強い攻撃',
+  fortify: '防御を取る',
+  crouch: '身をかがめる',
+  tackle: '体当たり',
 });
 
 /**

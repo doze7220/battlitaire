@@ -19,6 +19,9 @@ import {
   rageAction,
   bigRushAction,
   confusedAction,
+  fortifyAction,
+  crouchAction,
+  tackleAction,
   rollAmount,
 } from './enemyBehaviors.js';
 
@@ -164,6 +167,40 @@ const INTENT_TABLE = Object.freeze({
       return intent.kind === 'guard' ? 'confuseGuard' : 'confuseHeavy';
     },
   }),
+  // 防御を溜めて体当たり（ゴーレム）。「防御を取る」は回数が未開始なら引いて1回分を数え下ろし、間隔を引き直す（乱数の順は 量 → 回数 → 間隔）。
+  // 「攻撃」は今の数え方をそのまま残す。「身をかがめる」は次のターンを体当たりにする。「体当たり」は並びを始め直す
+  hoard: Object.freeze({
+    ids: () => ['fortify', 'attack', 'crouch', 'tackle'],
+    plan: (behavior, id, random, unit, state) => {
+      if (id === 'fortify') {
+        const action = fortifyAction(behavior, random, unit);
+        const count = state?.fortifiesLeft ?? rollAmount(behavior.fortifyCount, random);
+        const interval = rollAmount(behavior.fortifyInterval, random);
+        return { action, state: { untilFortify: interval, fortifiesLeft: Math.max(0, count - 1), tackleNext: false } };
+      }
+      if (id === 'attack') {
+        return {
+          action: steadyAttackAction(behavior, random, unit),
+          state: { untilFortify: state?.untilFortify ?? null, fortifiesLeft: state?.fortifiesLeft ?? null, tackleNext: false },
+        };
+      }
+      if (id === 'crouch') {
+        return { action: crouchAction(), state: { untilFortify: null, fortifiesLeft: null, tackleNext: true } };
+      }
+      if (id === 'tackle') {
+        return {
+          action: tackleAction(behavior, random, unit),
+          state: { untilFortify: null, fortifiesLeft: null, tackleNext: false },
+        };
+      }
+      throw new Error(`unknown intent id: ${id}`);
+    },
+    chosen: (behavior, intent) => {
+      if (intent.variant === 'tackle') return 'tackle';
+      if (intent.variant === 'crouch') return 'crouch';
+      return intent.kind === 'guard' ? 'fortify' : 'attack';
+    },
+  }),
 });
 
 /**
@@ -196,7 +233,7 @@ export function intentChoiceIds(behavior, situation = null) {
  * @param {string} id 指定する行動の識別子
  * @param {() => number} random 0以上1未満を返す乱数の関数
  * @param {number} [unit] 1体のポイント（量の抽選の刻み。既定 1。1 では今と同じ値）
- * @param {object|null} [state] 今の決まりの状態（`confuse` の「攻撃と防御」だけが読む。ほかは無視する。既定 null）
+ * @param {object|null} [state] 今の決まりの状態（`confuse` の「攻撃と防御」と `hoard` の「防御を取る」「攻撃」だけが読む。ほかは無視する。既定 null）
  * @returns {{ action: import('./combatants.js').EnemyAction, state: object }} 行動と、決まりの状態
  * @throws {Error} 未知の種類、または表にない識別子のとき
  */
