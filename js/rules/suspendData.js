@@ -52,7 +52,7 @@ export const SUSPEND_VERSION = 10;
  * @property {number} battleActionBonus この戦闘の間、毎ターン足す行動の数（3択の段階では 0）
  * @property {Object<string, number>} gauges ゲージの識別子 → 値
  * @property {{ hp: number, maxHp: number }} castle 城
- * @property {{ typeId: string, hp: number, maxHp: number, parts: import('./enemyParts.js').EnemyParts|null, minions: number, intent: import('./combatants.js').EnemyIntent, behaviorState: object }} enemy 敵（名前は設定から引くので持たない。`parts` は親子の敵だけ値を持ち、合計が `hp`。`minions` は待っている子の数で、子を持たない敵は 0）
+ * @property {{ typeId: string, hp: number, maxHp: number, parts: import('./enemyParts.js').EnemyParts|null, minions: number, intent: import('./combatants.js').EnemyIntent, behaviorState: object }} enemy 敵（名前は設定から引くので持たない。`parts` は親子の敵だけ値を持ち、合計が `hp`。`minions` は待っている子（スライムの子スライム・亡者）の数で、子を持たない敵は 0）
  * @property {import('./gameStats.js').GameStats} stats 結果の記録（倒した数・総ターン数・スコア・項目ごとの合計と回数・倒した敵の並び・最大の一撃・一番長いコンボ）
  * @property {import('./battleRecord.js').BattleRecord} battleRecord 今の敵との戦闘の記録（使ったターン数・城が被害を受けたか・一番長い区切りの枚数。3択の段階では倒した敵の記録）
  * @property {import('./upgrades.js').UpgradeState} upgrades 取った強化
