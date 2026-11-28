@@ -41,6 +41,7 @@ import { enemyAttackShow, enemyDefenseShow, hasChargeShow, isHeavyAttack } from 
  * @property {'defense'|'castle'} [to] `dash` のみ: 絵が駆け寄る行き先（防御の兵の前・城の前）
  * @property {string} [style] `dash`・`dashBack` のみ: 駆け寄りの見せ方の名前（`DASH_STYLES` の項目名）
  * @property {boolean} [parallel] `burn`・`form` のみ: true なら次の段と同時に始める
+ * @property {number} [raised] `block`・`strikeBlock`・`enemyBlock`・`shieldBlock` のみ: この段で倒れた兵のうち亡者に変わる人数（出来事の `raised`（子の相打ちの段は `raisedByMinions`）の写し。出来事が持つときだけ付く）
  */
 
 /** 「自軍の突撃」を、その直前に差し込む出来事の種類。 */
@@ -53,6 +54,15 @@ const EVENT_TO_STEP = {
   heal: 'heal',
   enemyHeal: 'enemyHeal',
 };
+
+/**
+ * 出来事が亡者になる人数 `raised`（敵自身の攻撃・防御の分）を持つときだけ、段に付ける項目を返す（そのまま写す。引き算しない）。
+ * @param {{raised?: number}} event 出来事（`block`・`enemyBlock`）
+ * @returns {{raised: number}|{}} `raised` を持つなら `{ raised }`、なければ空
+ */
+function raisedMarkOf(event) {
+  return event.raised !== undefined ? { raised: event.raised } : {};
+}
 
 /**
  * 攻防の前（`resolveBattle()` を呼ぶ前）の値を写す。読むだけで変更しない。
@@ -141,16 +151,17 @@ export function buildBattleSteps(result, before) {
       const own = event.amount - (event.minions ?? 0);
       if (own > 0) {
         const type = event.type === 'block' ? show.blockStep : show.castleStep;
+        const raisedMark = raisedMarkOf(event);
         steps.push(
           show.unit !== null
-            ? { type, amount: own, kind: show.unit, ...heavyMark }
-            : { type, amount: own, ...heavyMark },
+            ? { type, amount: own, kind: show.unit, ...heavyMark, ...raisedMark }
+            : { type, amount: own, ...heavyMark, ...raisedMark },
         );
       }
       continue;
     }
     if (event.type === 'enemyBlock') {
-      if (event.amount > 0) steps.push({ type: defenseShow.blockStep, amount: event.amount });
+      if (event.amount > 0) steps.push({ type: defenseShow.blockStep, amount: event.amount, ...raisedMarkOf(event) });
       continue;
     }
     if (event.type === 'enemyDamage' && event.parts !== undefined) {

@@ -1,6 +1,6 @@
 /**
  * 兵1体の動きの記録（脚・終わり方）の作成と追記、時計からの1体の見た目（位置・傾き・濃さ・待っているか）を求める。
- * 弾む・揺れる・進む向きと逆へ弾かれて落ちる・その場で消える・踏み込み（加速）・当たって残る（終わり方を決めずポイントだけ減らす）の式はここだけに置く。
+ * 弾む・揺れる・進む向きと逆へ弾かれて落ちる・その場で消える・踏み込み（加速）・当たって残る（終わり方を決めずポイントだけ減らす）・落ちる終わり方をその場で消えるに替える（亡者に変わる兵）の式はここだけに置く。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
@@ -245,6 +245,22 @@ export function spendTroopPoints(unit, points, time, fallOutY) {
 export function touchTroopPoints(unit, points, time) {
   unit.points -= points;
   unit.woundHits.push({ time, x: unit.x, y: unit.y, points });
+}
+
+/**
+ * 跳ねて落ちる終わり方（'fall'）の兵を、その場で消える終わり方（'vanish'）に替える（亡者に変わる兵）。
+ * 時刻・位置・`points` は同じで、見えなくなる時刻は終わり方の時刻、横のずれは 0 になる。
+ * @param {TroopUnit} unit 兵
+ * @returns {void}
+ * @throws {Error} 終わり方がない・'fall' でないとき
+ */
+export function vanishTroopEnd(unit) {
+  if (unit.end === null || unit.end.type !== 'fall') {
+    throw new Error('vanishTroopEnd: 跳ねて落ちる終わり方（fall）の兵ではありません');
+  }
+  unit.end.type = 'vanish';
+  unit.end.doneAt = unit.end.time;
+  unit.end.dx = 0;
 }
 
 /**

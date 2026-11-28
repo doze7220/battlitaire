@@ -1,6 +1,6 @@
 /**
  * 段の並びから、段の時刻（同時に始める段を含む）・兵の名簿・敵の体・ヒットマーク・当たりの記録・HP の変化・浮き出し・燃える札・音のきっかけの時刻を組み立てて時間割にする。
- * きっかけの時刻の式はここだけにある。描画も状態の変更も行わない。待っていた自軍の兵・子の引き継ぎも行う。
+ * きっかけの時刻の式はここだけにある。描画も状態の変更も行わない。待っていた自軍の兵・子の引き継ぎと、亡者に変わる兵（raiseShow.js）の段ごとの呼び出しも行う。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
@@ -31,6 +31,7 @@ import { createHitMarkList, hitMarksEnd } from './hitMarks.js';
 import { createImpactLog, recordStepImpacts, watchStep } from './impactLog.js';
 import { battleFxEnd } from './battleFx.js';
 import { checkWaitingMinions, hatchMinions, marchMinions, placeWaitingMinions } from './minionShow.js';
+import { raiseFallen, watchRaise } from './raiseShow.js';
 
 /**
  * 時刻つきの段。BattleStep に start・end（ms）と、音のきっかけの時刻 cueTimes（絶対時刻 ms。なければ空）を足したもの。
@@ -72,6 +73,7 @@ import { checkWaitingMinions, hatchMinions, marchMinions, placeWaitingMinions } 
  * @property {number} unit 敵の1体のポイント（`before.enemyUnit`。1 以上の整数）
  * @property {number[]} cueTimes いま組み立てている段の音のきっかけの時刻（絶対 ms。段ごとに空にして、builder が足す）
  * @property {import('../view/layout.js').Layout} boardLayout 盤面の配置（columnCardRects・discard と、敵の体・敵の側の兵の出る位置の battle を使う）
+ * @property {number} riseEnd 亡者に変わった兵が待つ場所に着く最後の時刻（ms。なければ 0。演出の終わりに含める）
  */
 
 /**
@@ -451,6 +453,7 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout, wai
     unit: before.enemyUnit,
     cueTimes: [],
     boardLayout,
+    riseEnd: 0,
   };
   let waitingTotal = 0;
   for (const kind of OWN_KINDS) {
@@ -483,8 +486,10 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout, wai
     if (index > 0 && steps[index - 1].parallel !== true) t += BATTLE_ANIM.stepGapMs;
     state.cueTimes = [];
     const watch = watchStep(state.roster, state.hitMarks);
+    const raiseWatch = watchRaise(state.roster, step);
     const duration = builder(state, step, t);
     recordStepImpacts(state.impacts, watch, step, index, state.body.style);
+    if (raiseWatch !== null) state.riseEnd = Math.max(state.riseEnd, raiseFallen(state.roster, raiseWatch, step.raised));
     timed.push({ ...step, start: t, end: t + duration, cueTimes: state.cueTimes });
     if (step.parallel === true) {
       parallelEnd = Math.max(parallelEnd, t + duration);
@@ -503,7 +508,7 @@ export function buildBattleTimeline(steps, before, troopLayout, boardLayout, wai
       ends: rosterEndTimes(state.roster, kind),
     })),
   ]);
-  let endTime = Math.max(stepEnd, rosterEndTime(state.roster));
+  let endTime = Math.max(stepEnd, rosterEndTime(state.roster), state.riseEnd);
   for (const track of state.enemyHealPops) endTime = Math.max(endTime, popTrackEnd(track));
   for (const burn of state.burns) endTime = Math.max(endTime, burn.tween.delay + burn.tween.duration);
   endTime = Math.max(endTime, enemyBodyEnd(state.body), hitMarksEnd(state.hitMarks));

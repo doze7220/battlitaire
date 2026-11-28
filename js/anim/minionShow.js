@@ -9,7 +9,8 @@ import { enterTroops, marchSquad, spawnTroops } from './troopRoster.js';
 /**
  * 出来事の並びから、襲う子の段（行進・盾の兵との相打ち・城への当たり）を作る。`minionAttack` がなければ空。
  * 相打ちの量は `block.minions`、城への当たりの量は `castleDamage.minions`（どちらも 0 のときは段を作らない）。
- * @param {Array<{type: string, amount: number, minions?: number}>} events 攻防の出来事の並び（`BattleResult.events`）
+ * 相打ちの段には、`block.raisedByMinions`（亡者との相打ちで亡者になる人数）があれば `raised` としてそのまま写す。
+ * @param {Array<{type: string, amount: number, minions?: number, raisedByMinions?: number}>} events 攻防の出来事の並び（`BattleResult.events`）
  * @returns {import('./battleSteps.js').BattleStep[]} 子の段の並び（`minionMarch`・`block`・`castleHit`。段の種類 `block`・`castleHit` の `kind` は 'minion'）
  */
 export function minionAttackSteps(events) {
@@ -21,7 +22,10 @@ export function minionAttackSteps(events) {
   const damage = castle !== undefined ? (castle.minions ?? 0) : 0;
   /** @type {import('./battleSteps.js').BattleStep[]} */
   const steps = [{ type: 'minionMarch', amount: attack.amount, pairs: blocked }];
-  if (blocked > 0) steps.push({ type: 'block', amount: blocked, kind: 'minion' });
+  if (blocked > 0) {
+    const raised = block !== undefined && block.raisedByMinions !== undefined ? { raised: block.raisedByMinions } : {};
+    steps.push({ type: 'block', amount: blocked, kind: 'minion', ...raised });
+  }
   if (damage > 0) steps.push({ type: 'castleHit', amount: damage, kind: 'minion' });
   return steps;
 }
