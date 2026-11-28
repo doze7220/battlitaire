@@ -80,7 +80,8 @@ const ENEMY_COLS = 2;
  * 最後の段が `ENEMY_COLS` に満たないときは、その数ぶんの幅にする。`upgradeLabel`・`upgradeButtons`（3択を出す・すべて外す）・
  * `upgradeAddButtons`（強化の種類ごとの「取る」。1段に `UPGRADE_COLS` 個ずつ。今は1つずつで幅は全幅）は敵の HP の下。
  * `enemyPartButtons`（子を 0 にする・親を 0 にする。半分の幅2つ）は敵の HP の「1 にする」「満タンにする」の下、
- * `enemyMinionButtons`（子スライム +5・子スライムを 0 にする。半分の幅2つ）はその下で、強化以降は2段ぶん下がる。
+ * `enemyMinionButtons`（子スライム +5・子スライムを 0 にする。半分の幅2つ）はその下、
+ * `enemyStockButtons`（溜め +5・溜めを 0 にする。半分の幅2つ）はさらにその下で、強化以降は3段ぶん下がる。
  * `lineupLabel`・`lineupRows`（`LINEUP_ROWS` 行・行の間は空けない・全幅）はステージを移るボタンの下の先の並びの一覧で、
  * 敵の見出し以降はその分だけ下がる。
  * `ruleTop` はルールの値の並びの始まりの y。
@@ -97,6 +98,7 @@ const ENEMY_COLS = 2;
  *   enemyHp: object, enemyButtons: Readonly<{ one: object, full: object }>,
  *   enemyPartButtons: Readonly<{ child: object, parent: object }>,
  *   enemyMinionButtons: Readonly<{ add: object, clear: object }>,
+ *   enemyStockButtons: Readonly<{ add: object, clear: object }>,
  *   upgradeLabel: object, upgradeButtons: Readonly<{ offer: object, clear: object }>,
  *   upgradeAddButtons: ReadonlyArray<object>,
  *   fpsCheckbox: object, fpsValue: object, bakeCheckbox: object,
@@ -142,8 +144,10 @@ export function createDebugLayout(enemyCount, upgradeCount) {
   const enemyPartButtonsY = enemyButtonsY + BUTTON_H + GAP;
   /** 子スライムを足す・子スライムを 0 にするボタンの y（子を 0 にする・親を 0 にするの下）。 */
   const enemyMinionButtonsY = enemyPartButtonsY + BUTTON_H + GAP;
+  /** 溜め +5・溜めを 0 にするボタンの y（子・亡者のボタンの下）。 */
+  const enemyStockButtonsY = enemyMinionButtonsY + BUTTON_H + GAP;
   /** 強化の見出しの y。 */
-  const upgradeLabelY = enemyMinionButtonsY + BUTTON_H + GAP;
+  const upgradeLabelY = enemyStockButtonsY + BUTTON_H + GAP;
   /** 3択を出す・すべて外すボタンの y（見出しのすぐ下）。 */
   const upgradeButtonsY = upgradeLabelY + LABEL_H;
   /** 強化の「取る」ボタンの最初の段の y。 */
@@ -203,6 +207,10 @@ export function createDebugLayout(enemyCount, upgradeCount) {
     enemyMinionButtons: Object.freeze({
       add: rect(enemyMinionButtonsY, BUTTON_H, 0, HALF_W),
       clear: rect(enemyMinionButtonsY, BUTTON_H, HALF_W + BUTTON_GAP, HALF_W),
+    }),
+    enemyStockButtons: Object.freeze({
+      add: rect(enemyStockButtonsY, BUTTON_H, 0, HALF_W),
+      clear: rect(enemyStockButtonsY, BUTTON_H, HALF_W + BUTTON_GAP, HALF_W),
     }),
     upgradeLabel: rect(upgradeLabelY, LABEL_H),
     upgradeButtons: Object.freeze({

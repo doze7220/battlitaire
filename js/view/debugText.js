@@ -1,6 +1,6 @@
 /**
  * 責務: DEBUG タブの文字を凍結した定数で持ち、ステージを移るボタン・次の行動の選択肢・HP・FPS・
- * 強化のボタン・子・亡者のボタン・先の並びの一覧の1行・ルールの値の項目名・組の見出し・効く時期・百分率を文字にする。何も import しない。
+ * 強化のボタン・子・亡者のボタン・溜めのボタン・先の並びの一覧の1行・ルールの値の項目名・組の見出し・効く時期・百分率を文字にする。何も import しない。
  */
 
 /**
@@ -10,7 +10,7 @@
  *   troops: Readonly<{ attack: string, defense: string, heal: string }>,
  *   stage: string, enemy: string, intent: string, noChoice: string, battleTurn: string,
  *   castleHp: string, enemyHp: string, hpToOne: string, hpToFull: string,
- *   childToZero: string, parentToZero: string, minionClear: string,
+ *   childToZero: string, parentToZero: string, minionClear: string, stockClear: string,
  *   upgrades: string, upgradeOffer: string, upgradeClear: string,
  *   fpsVisible: string, fps: string, bakedDrawing: string,
  *   rulesReset: string, lineup: string, lineupCurrent: string, lineupOther: string
@@ -33,6 +33,7 @@ export const DEBUG_TEXT = Object.freeze({
   childToZero: '子を 0 にする',
   parentToZero: '親を 0 にする',
   minionClear: '子・亡者を 0 にする',
+  stockClear: '溜めを 0 にする',
   upgrades: '強化',
   upgradeOffer: '3択を出す',
   upgradeClear: '強化をすべて外す',
@@ -252,6 +253,15 @@ export function fpsText(v) {
  */
 export function minionAddText(n) {
   return `子・亡者 +${n}`;
+}
+
+/**
+ * 「溜め +n」ボタンの文字にする。
+ * @param {number} n 1回で足す溜めの量
+ * @returns {string} 例「溜め +5」
+ */
+export function stockAddText(n) {
+  return `溜め +${n}`;
 }
 
 /**

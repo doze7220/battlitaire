@@ -17,6 +17,8 @@ import {
   zeroEnemyParent,
   addEnemyMinions,
   clearEnemyMinions,
+  addEnemyStock,
+  clearEnemyStock,
   setBattleTurn,
   upgradeChoices,
   addUpgrade,
@@ -310,6 +312,21 @@ export class BoardDebug {
    */
   clearEnemyMinions() {
     clearEnemyMinions(this.game);
+  }
+
+  /**
+   * 敵の持ち越した溜めを count 足す（予告も付け直る）。溜めを持ち越さない敵・段取り中でないときは何もしない。見た目は描くときにルール層を読んで合う。
+   * @param {number} count 足す量（1 以上の整数）
+   */
+  addEnemyStock(count) {
+    addEnemyStock(this.game, count);
+  }
+
+  /**
+   * 敵の持ち越した溜めを 0 にする（予告も付け直る）。溜めを持ち越さない敵・溜めがないときは何もしない。
+   */
+  clearEnemyStock() {
+    clearEnemyStock(this.game);
   }
 
   /**

@@ -5,7 +5,7 @@
 import { Engine } from 'oz';
 import { addRuleSliders } from './debugRuleSliders.js';
 import { createDebugLayout, DEBUG_FPS_POSITION } from '../view/debugLayout.js';
-import { DEBUG_TEXT, lineupRowText, intentChoiceText, hpText, fpsText, stageStepText, upgradeAddText, minionAddText } from '../view/debugText.js';
+import { DEBUG_TEXT, lineupRowText, intentChoiceText, hpText, fpsText, stageStepText, upgradeAddText, minionAddText, stockAddText } from '../view/debugText.js';
 import { upgradeTextOf } from '../view/upgradeText.js';
 import { troopBakesEnabled, setTroopBakesEnabled } from '../view/troopBakes.js';
 
@@ -43,6 +43,12 @@ const STAGE_STEPS = Object.freeze([-5, -1, 1, 5]);
  * @type {number}
  */
 const MINION_STEP = 5;
+
+/**
+ * 「溜め +5」ボタン1回で足す溜めの量。DEBUG タブのボタンで、ルールの値ではない。試遊で決め直す値。
+ * @type {number}
+ */
+const STOCK_STEP = 5;
 
 /** 兵のスライダーを足す種類の並び（`createDebugLayout` の `troopSliders` の項目の順）。 */
 const TROOP_KINDS = Object.freeze(['attack', 'defense', 'heal']);
@@ -194,6 +200,17 @@ function buildDebugTab(debug, tab, close) {
     ...layout.enemyMinionButtons.clear,
     label: DEBUG_TEXT.minionClear,
     onPress: () => debug.clearEnemyMinions(),
+  });
+
+  area.addButton({
+    ...layout.enemyStockButtons.add,
+    label: stockAddText(STOCK_STEP),
+    onPress: () => debug.addEnemyStock(STOCK_STEP),
+  });
+  area.addButton({
+    ...layout.enemyStockButtons.clear,
+    label: DEBUG_TEXT.stockClear,
+    onPress: () => debug.clearEnemyStock(),
   });
 
   area.addValue({ ...layout.upgradeLabel, label: DEBUG_TEXT.upgrades, read: () => '' });

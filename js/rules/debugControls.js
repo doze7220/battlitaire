@@ -1,5 +1,5 @@
 /**
- * 責務: DEBUG タブから呼ばれる、ゲームの状態を書き換えるデバッグ用の操作（兵のゲージ・ステージを移る・敵の切り替え・次の行動の指定・戦闘のターンの番号・城と敵の HP（親子の敵は親と子の HP も）・親と子の HP を 0 にする・待っている子の数を足す／0 にする（子を持つ敵）・強化の取る（上限で止まる）・すべて外す・3択を出す）と問い合わせ。
+ * 責務: DEBUG タブから呼ばれる、ゲームの状態を書き換えるデバッグ用の操作（兵のゲージ・ステージを移る・敵の切り替え・次の行動の指定・戦闘のターンの番号・城と敵の HP（親子の敵は親と子の HP も）・親と子の HP を 0 にする・待っている子の数を足す／0 にする（子を持つ敵）・持ち越した溜めの操作・強化の取る（上限で止まる）・すべて外す・3択を出す）と問い合わせ。
  * 段取り中だけ効き、行動の回数は使わない（ルール層）。
  */
 
@@ -8,6 +8,7 @@ import { refreshIntent } from './enemyIntent.js';
 import { intentChoiceIds, planChosenIntent, chosenIntentOf } from './debugIntents.js';
 import { ENEMY_SITUATIONS, enemySituationOf, partsWithTotal, zeroPart } from './enemyParts.js';
 import { intentWithMinions, hasMinions } from './enemySplit.js';
+import { carriesDefense, intentWithStock } from './enemyStock.js';
 import { clearEliteOf } from './elites.js';
 import { upgradeIds, takeUpgrade, clearUpgrades, fixedUpgradeValue, isUpgradeCapped, takenUpgradeList } from './upgrades.js';
 
@@ -294,6 +295,52 @@ export function clearEnemyMinions(game) {
   if (!hasMinions(spec)) return false;
   if (!(game.enemy.minions > 0)) return false;
   setEnemyMinions(game, spec, 0);
+  return true;
+}
+
+/**
+ * 持ち越した溜めを書き換え、今の予告も溜めを付け直す共通の処理（段取り中で、溜めを持ち越す敵のときだけ呼ぶ）。
+ * @param {import('./Game.js').Game} game ゲーム
+ * @param {any} spec 今の敵の設定
+ * @param {number} stock 新しい溜め（0 以上の整数）
+ * @returns {void}
+ */
+function setEnemyStock(game, spec, stock) {
+  const { enemy } = game;
+  enemy.defenseStock = stock;
+  if (enemy.intent) enemy.intent = intentWithStock(spec, enemy.intent, stock);
+}
+
+/**
+ * 持ち越した溜めを count だけ足す。予告も付け直す（防御を取る・攻撃・身をかがめるは防御、体当たりは威力が変わる）。
+ * 段取り中で、count が 1 以上の整数で、溜めを持ち越す敵（`carriesDefense(spec)`）で、敵の HP が 0 より大きいときだけ。
+ * 行動の回数・乱数・HP は触らない。
+ * @param {import('./Game.js').Game} game ゲーム
+ * @param {number} count 足す量（1 以上の整数）
+ * @returns {boolean} 足したら true（条件外・溜めを持ち越さない敵なら false）
+ */
+export function addEnemyStock(game, count) {
+  if (!isPlanning(game)) return false;
+  if (!Number.isInteger(count) || count < 1) return false;
+  const spec = enemySpecOf(game.config, game.enemy.typeId);
+  if (!carriesDefense(spec)) return false;
+  if (!(game.enemy.hp > 0)) return false;
+  setEnemyStock(game, spec, (game.enemy.defenseStock ?? 0) + count);
+  return true;
+}
+
+/**
+ * 持ち越した溜めを 0 にする。予告も付け直す（防御を取るのターンは今回足す量が残る）。
+ * 段取り中で、溜めを持ち越す敵で、溜めが 1 以上のときだけ。行動の回数・乱数・HP は触らない。
+ * @param {import('./Game.js').Game} game ゲーム
+ * @returns {boolean} 0 にしたら true（条件外・溜めを持ち越さない敵・もう 0 なら false）
+ */
+export function clearEnemyStock(game) {
+  if (!isPlanning(game)) return false;
+  const spec = enemySpecOf(game.config, game.enemy.typeId);
+  if (!carriesDefense(spec)) return false;
+  if (!(game.enemy.defenseStock > 0)) return false;
+  setEnemyStock(game, spec, 0);
   return true;
 }
 
