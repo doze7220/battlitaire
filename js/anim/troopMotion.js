@@ -1,6 +1,6 @@
 /**
  * 兵1体の動きの記録（脚・終わり方）の作成と追記、時計からの1体の見た目（位置・傾き・濃さ・待っているか）を求める。
- * 弾む・揺れる・進む向きと逆へ弾かれて落ちる・その場で消える・踏み込み（加速）の式はここだけに置く。
+ * 弾む・揺れる・進む向きと逆へ弾かれて落ちる・その場で消える・踏み込み（加速）・当たって残る（終わり方を決めずポイントだけ減らす）の式はここだけに置く。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
@@ -88,7 +88,7 @@ const KNOCK_DIRS = Object.freeze({
  * @property {number} freeAt 作るときだけ使う。最後の脚の終わりの時刻（次の脚はこれ以降に始める）
  * @property {number} points 作るときだけ使う。残りのポイント（名簿を組み立てる間だけ減らす。既定 1）
  * @property {number|null} woundAt 傷ついた姿になる時刻（ms。null なら傷つかない。始めから傷ついた体は現れる時刻）
- * @property {Array<{time: number, x: number, y: number, points: number}>} woundHits 攻防の途中で傷ついた当たり（時刻と位置とその当たりで使ったポイント。始めから傷ついた体は空）
+ * @property {Array<{time: number, x: number, y: number, points: number}>} woundHits 攻防の途中で当たって残った当たり（傷ついた当たりと、城へ帰る剣の当たり。時刻と位置とその当たりで使ったポイント。始めから傷ついた体は空）
  */
 
 /**
@@ -231,6 +231,19 @@ export function spendTroopPoints(unit, points, time, fallOutY) {
     return;
   }
   if (unit.woundAt === null) unit.woundAt = time;
+  unit.woundHits.push({ time, x: unit.x, y: unit.y, points });
+}
+
+/**
+ * 兵の残りのポイントを points だけ減らし、当たり（time と今いる位置と使ったポイント）を `woundHits` に足す。
+ * `spendTroopPoints` と違い、残りが 0 以下になっても終わり方を決めず、傷ついた姿にもしない（当たって落ちずに残る。後で城へ帰る）。
+ * @param {TroopUnit} unit 兵
+ * @param {number} points 減らすポイント
+ * @param {number} time 当たる時刻（ms。呼ぶ側が `unit.freeAt` 以降にそろえる）
+ * @returns {void}
+ */
+export function touchTroopPoints(unit, points, time) {
+  unit.points -= points;
   unit.woundHits.push({ time, x: unit.x, y: unit.y, points });
 }
 

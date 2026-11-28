@@ -56,10 +56,10 @@ export const HORDE_BODIES = Object.freeze({
 });
 
 /**
- * 敵の種類の識別子ごとの見せ方の表。`dents` は体に当たるとへこむか（スライムだけ真）。`pace` は動きの速さと止めの長さの名前（`ENEMY_PACES` の項目名）。`attacks` は行動の中の種類（`variant`）→ 攻撃の見せ方の名前（`default` は既定）。
+ * 敵の種類の識別子ごとの見せ方の表。`dents` は体に当たるとへこむか（スライムだけ真）。`pace` は動きの速さと止めの長さの名前（`ENEMY_PACES` の項目名）。`swordsReturn` は絵の体に当たった攻撃の兵が、落ちずに城へ帰るか（群れの体の当たりには効かない）。`attacks` は行動の中の種類（`variant`）→ 攻撃の見せ方の名前（`default` は既定）。
  * `heavy` は大きな一撃とみなす攻撃の中の種類の並び、`charge` はための動きを見せる振りかぶりの中の種類の並び
  * （中の種類のない行動は `default`）。
- * @type {Readonly<Record<string, Readonly<{body: 'horde'|'figure'|'brood', attacks: Readonly<Record<string, string>>, heavy: readonly string[], charge: readonly string[], dents: boolean, pace: 'normal'|'slow'}>>>}
+ * @type {Readonly<Record<string, Readonly<{body: 'horde'|'figure'|'brood', attacks: Readonly<Record<string, string>>, heavy: readonly string[], charge: readonly string[], dents: boolean, pace: 'normal'|'slow', swordsReturn: boolean}>>>}
  */
 export const ENEMY_SHOWS = Object.freeze({
   goblins: Object.freeze({
@@ -69,6 +69,7 @@ export const ENEMY_SHOWS = Object.freeze({
     charge: Object.freeze([]),
     dents: false,
     pace: 'normal',
+    swordsReturn: false,
   }),
   ogres: Object.freeze({
     body: 'horde',
@@ -77,6 +78,7 @@ export const ENEMY_SHOWS = Object.freeze({
     charge: Object.freeze([]),
     dents: false,
     pace: 'slow',
+    swordsReturn: false,
   }),
   wolf: Object.freeze({
     body: 'figure',
@@ -85,6 +87,7 @@ export const ENEMY_SHOWS = Object.freeze({
     charge: Object.freeze(['charge']),
     dents: false,
     pace: 'normal',
+    swordsReturn: false,
   }),
   boar: Object.freeze({
     body: 'brood',
@@ -93,6 +96,7 @@ export const ENEMY_SHOWS = Object.freeze({
     charge: Object.freeze(['rage']),
     dents: false,
     pace: 'normal',
+    swordsReturn: false,
   }),
   slime: Object.freeze({
     body: 'figure',
@@ -101,6 +105,7 @@ export const ENEMY_SHOWS = Object.freeze({
     charge: Object.freeze([]),
     dents: true,
     pace: 'normal',
+    swordsReturn: false,
   }),
   skeletons: Object.freeze({
     body: 'horde',
@@ -109,6 +114,7 @@ export const ENEMY_SHOWS = Object.freeze({
     charge: Object.freeze([]),
     dents: false,
     pace: 'normal',
+    swordsReturn: false,
   }),
   mushroom: Object.freeze({
     body: 'figure',
@@ -117,6 +123,7 @@ export const ENEMY_SHOWS = Object.freeze({
     charge: Object.freeze([]),
     dents: false,
     pace: 'normal',
+    swordsReturn: false,
   }),
   giant: Object.freeze({
     body: 'figure',
@@ -125,6 +132,7 @@ export const ENEMY_SHOWS = Object.freeze({
     charge: Object.freeze(['default']),
     dents: false,
     pace: 'normal',
+    swordsReturn: false,
   }),
   dragon: Object.freeze({
     body: 'figure',
@@ -133,6 +141,7 @@ export const ENEMY_SHOWS = Object.freeze({
     charge: Object.freeze(['inhale']),
     dents: false,
     pace: 'normal',
+    swordsReturn: false,
   }),
 });
 
@@ -140,7 +149,7 @@ export const ENEMY_SHOWS = Object.freeze({
  * 敵の種類の見せ方の項目を引く。
  * @param {string} typeId 敵の種類の識別子
  * @param {string} name 呼び出し元の関数名（Error の文の頭）
- * @returns {Readonly<{body: 'horde'|'figure'|'brood', attacks: Readonly<Record<string, string>>, heavy: readonly string[], charge: readonly string[], dents: boolean, pace: 'normal'|'slow'}>}
+ * @returns {Readonly<{body: 'horde'|'figure'|'brood', attacks: Readonly<Record<string, string>>, heavy: readonly string[], charge: readonly string[], dents: boolean, pace: 'normal'|'slow', swordsReturn: boolean}>}
  */
 function showOf(typeId, name) {
   if (!Object.prototype.hasOwnProperty.call(ENEMY_SHOWS, typeId)) {
@@ -242,4 +251,13 @@ export function enemyPace(typeId) {
     throw new Error(`enemyPace: 未知の動きの速さ ${name}（${typeId}）`);
   }
   return ENEMY_PACES[name];
+}
+
+/**
+ * 絵の体に当たった攻撃の兵が、落ちずに城へ帰るか（`swordsReturn`）を返す。
+ * @param {string} typeId 敵の種類の識別子
+ * @returns {boolean} 城へ帰るなら true
+ */
+export function enemySwordsReturn(typeId) {
+  return showOf(typeId, 'enemySwordsReturn').swordsReturn;
 }

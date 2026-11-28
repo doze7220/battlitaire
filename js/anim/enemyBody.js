@@ -1,10 +1,10 @@
 /**
- * 敵の体（群れ・絵・シールドを名簿へ置く、攻撃の兵が当たる（精鋭は自分のポイントを1回で使う）・シールドが剥がれる、倒れたとき絵が跳ねて落ちる記録）と、
+ * 敵の体（群れ・絵・シールドを名簿へ置く、攻撃の兵が当たる（精鋭は自分のポイントを1回で使う。絵の体に当たって城へ帰る剣を含む）・シールドが剥がれる、倒れたとき絵が跳ねて落ちる記録）と、
  * 時計からの絵の見た目を求める。体の見せ方ごとの違いはこのファイルの表で分ける。描画も状態の変更もしない。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
-import { enemyBodyStyle, enemyDents } from './enemyShows.js';
+import { enemyBodyStyle, enemyDents, enemySwordsReturn } from './enemyShows.js';
 import { createFigureDash, sampleFigureDash } from './figureDash.js';
 import { createTroopUnit, sampleTroop, setTroopEnd } from './troopMotion.js';
 import { chargePairs, chargePoints, placeTroops, popTroops } from './troopRoster.js';
@@ -24,6 +24,7 @@ import { isWoundedBody, splitPoints } from '../view/bodyPoints.js';
  * @property {number[]|null} dents 体に当たった兵の着いた時刻（ms。昇順。当たるとへこむ敵だけ。へこまない敵・群れは null）
  * @property {import('./troopMotion.js').TroopUnit|null} fall 倒れる動きだけに使う1体（群れは null。名簿には入れない）
  * @property {number} fallOutY 絵が消える足元の y（群れは 0）
+ * @property {boolean} swordsReturn 絵の体に当たった攻撃の兵が、落ちずに城へ帰るか（絵と親子の親は `enemySwordsReturn`、群れは false。親子の子の群れの当たりには効かない）
  * @property {{parent: number, child: number}|null} partHp 親と子の残りの HP（親子の敵だけ。攻防の前の写しで、当たりのたびに減らす。ほかの敵は null）
  */
 
@@ -75,6 +76,7 @@ const BODY_SETUPS = Object.freeze({
         fall: null,
         fallOutY: 0,
         partHp: null,
+        swordsReturn: false,
       },
       shieldArea: null,
     };
@@ -100,6 +102,7 @@ const BODY_SETUPS = Object.freeze({
         fall: createTroopUnit('figure', 0, figure.rect.x + figure.rect.w / 2, figure.rect.y + figure.rect.h, 0, 0),
         fallOutY: battleLayout.area.y + battleLayout.area.h + figure.rect.h,
         partHp: null,
+        swordsReturn: enemySwordsReturn(typeId),
       },
       shieldArea: scaledShieldArea(figure, scale),
     };
@@ -135,6 +138,7 @@ const BODY_HITS = Object.freeze({
     t,
     BATTLE_ANIM.hitMoveMs,
     'hit',
+    body.swordsReturn,
   ),
   brood: (body, roster, count, t, shownHp, part) => {
     if (part === 'child') return BODY_HITS.horde(body, roster, count, t, shownHp);

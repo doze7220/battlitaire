@@ -1,13 +1,13 @@
 /**
  * 兵1体ずつの名簿を作り（自動兵士・精鋭の印を付けることを含む）、段ごとに兵へ脚と終わり方を割り当てる
- * （出す・置く・行進・当たる（敵の HP を減らす当たりの記録を含む）・相打ち・前からポイントを使って落とす・城へ入る・右へ帰す・家へ跳ばす（後ろの精鋭を含む）・段取りの間の名簿から消す・精鋭の印を消す）。
+ * （出す・置く・行進・当たる（敵の HP を減らす当たりの記録・当たって残る剣を含む）・相打ち・前からポイントを使って落とす・城へ入る・右へ帰す・家へ跳ばす（後ろの精鋭を含む）・段取りの間の名簿から消す・精鋭の印を消す）。
  * 前から遅らせる式と、兵ごとのずれ（troopJitter.js）の足し方はここだけに置く。乱数は使わない。
  */
 
 import { BATTLE_ANIM } from './battleAnimConfig.js';
 import { campSlot } from '../view/campSlots.js';
 import { durationScale, startJitter } from './troopJitter.js';
-import { addTroopLeg, createTroopUnit, setTroopEnd, spendTroopPoints, troopHitEnd } from './troopMotion.js';
+import { addTroopLeg, createTroopUnit, setTroopEnd, spendTroopPoints, touchTroopPoints, troopHitEnd } from './troopMotion.js';
 import { matchPoints, spendFromFront } from './pointMatch.js';
 
 /**
@@ -706,10 +706,11 @@ export function chargeTo(roster, kind, count, targetX, t, moveMs, pace = 'move')
  * @param {number} t 段の始め（ms）
  * @param {number} moveMs 移動の時間（ms）
  * @param {string} [pace] 遅れの決め方（`'move'`＝移動の遅れ、`'hit'`＝敵に当たる間隔。省くと `'move'`）
+ * @param {boolean} [keep] 真なら、着いた時刻に落ちたり傷ついたりせず、ポイントだけ減らして残る（`touchTroopPoints`。残った兵は最後に使われなかった兵と一緒に城へ帰る）。省くと false（今のまま）
  * @returns {TroopHit[]} 当たり（着く時刻の昇順。同じ時刻は前から。`bodies` は進んだ兵自身）
  * @throws {Error} ポイントが足りないとき、pace が未知のとき
  */
-export function chargePoints(roster, kind, amount, targetX, t, moveMs, pace = 'move') {
+export function chargePoints(roster, kind, amount, targetX, t, moveMs, pace = 'move', keep = false) {
   const active = activeOf(roster, kind);
   const picks = spendFromFront(active.map((u) => u.points), Math.max(0, amount));
   const m = picks.length;
@@ -720,7 +721,11 @@ export function chargePoints(roster, kind, amount, targetX, t, moveMs, pace = 'm
     const unit = active[picks[k].index];
     const start = Math.max(t + chargeDelay(pace, k, m), unit.freeAt);
     addTroopLeg(unit, start, typeof targetX === 'function' ? targetX(spent) : targetX, contactY(roster, unit.y), moveMs);
-    spendTroopPoints(unit, picks[k].points, unit.freeAt, fallOutOf(roster, unit));
+    if (keep) {
+      touchTroopPoints(unit, picks[k].points, unit.freeAt);
+    } else {
+      spendTroopPoints(unit, picks[k].points, unit.freeAt, fallOutOf(roster, unit));
+    }
     spent += picks[k].points;
     hits.push({ time: unit.freeAt, points: picks[k].points, unit, bodies: [{ unit, time: unit.freeAt }] });
   }
@@ -804,6 +809,8 @@ export function rosterEndTime(roster) {
 
 /**
  * ある種類の兵の終わり方の始まる時刻（人数が1減る時刻）の昇順の並び。
+ * 当たって残りのポイントを使い切り、後で城へ帰った兵（`end.points` が 0 以下。ほかの終わり方の兵は 1 以上）は、
+ * 終わり方の時刻の代わりに、ポイントを使い切った当たり（最後の `woundHits`）の時刻を返す（人数がその当たりの時刻に減る）。
  * @param {TroopRoster} roster 名簿
  * @param {string} kind 種類
  * @returns {number[]} 時刻（ms）の昇順
@@ -812,7 +819,9 @@ export function rosterEndTimes(roster, kind) {
   const list = roster.ranked[kind] || [];
   const times = [];
   for (const unit of list) {
-    if (unit.end !== null) times.push(unit.end.time);
+    if (unit.end === null) continue;
+    const hits = unit.woundHits;
+    times.push(unit.end.points <= 0 && hits.length > 0 ? hits[hits.length - 1].time : unit.end.time);
   }
   return times.sort((a, b) => a - b);
 }
